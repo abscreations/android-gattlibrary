@@ -53,6 +53,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import timber.log.Timber
 import kotlin.math.max
@@ -322,10 +323,15 @@ internal object BtEngineCapabilities {
     // Permission-safe wrapper for range reads (Lint-friendly)
     // ─────────────────────────────────────────────────────────────
     private inline fun tryReadRange(engine: BtEngine, crossinline action: () -> Unit) {
-        val granted = ContextCompat.checkSelfPermission(
-            engine.context,
-            Manifest.permission.BLUETOOTH_CONNECT
-        ) == PackageManager.PERMISSION_GRANTED
+        // API 31+ only; pre-31 BLUETOOTH is install-time and always held.
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(
+                engine.context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
 
         if (!granted) {
             Timber.tag(BtEngineState.TAG).w("Missing BLUETOOTH_CONNECT; skipping range read.")

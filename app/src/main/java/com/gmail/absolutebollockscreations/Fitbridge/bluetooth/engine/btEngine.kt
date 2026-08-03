@@ -98,6 +98,7 @@ import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
@@ -448,13 +449,34 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
 
     /* ───────────────────────────── permission helpers ───────────────────────────── */
 
-    private fun hasConnectPermission() =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
-                PackageManager.PERMISSION_GRANTED
+    // BLUETOOTH_CONNECT / BLUETOOTH_SCAN do not exist before API 31, so checking
+    // them on an older device always returns DENIED and silently disables the
+    // whole engine - the symptom being a permission gate that opens, a scan that
+    // reports "skipped", and an empty device list with no error.
+    //
+    // Pre-31 the equivalents are install-time permissions (BLUETOOTH,
+    // BLUETOOTH_ADMIN) declared in the manifest and therefore always held, plus
+    // ACCESS_FINE_LOCATION at runtime for scanning only. Note that on API 23-30
+    // a scan additionally needs system Location to be switched on; that is a
+    // device setting rather than a permission, so it cannot be checked here.
 
-    private fun hasScanPermission() =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) ==
-                PackageManager.PERMISSION_GRANTED
+    private fun hasConnectPermission(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+                    PackageManager.PERMISSION_GRANTED
+        } else {
+            // BLUETOOTH is install-time and declared in the manifest.
+            true
+        }
+
+    private fun hasScanPermission(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) ==
+                    PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED
+        }
 
     private inline fun <T> guardConnectPerm(op: String, default: T, block: () -> T): T {
         if (!hasConnectPermission()) {
@@ -1339,7 +1361,10 @@ private fun BtEngine.stopProviderAdvertising(reason: String) {
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+    // Pre-31 BLUETOOTH_CONNECT does not exist; BLUETOOTH is install-time, so the
+    // platform calls below are always permitted there.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
         != PackageManager.PERMISSION_GRANTED
     ) {
         Timber.tag(BtEngineState.TAG).w("setGattErrorFor skipped platform calls: BLUETOOTH_CONNECT not granted")

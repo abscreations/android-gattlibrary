@@ -270,7 +270,7 @@ class FtmsEncoderTest {
                 "$profile must not fabricate a speed",
                 FtmsDataEncoders.encode(profile, full, null).isEmpty(),
             )
-            assertTrue("$profile requiresSpeed", FtmsDataEncoders.requiresSpeed(profile))
+            assertTrue("$profile requiresSpeed", requiresSpeed(profile))
         }
     }
 
@@ -399,7 +399,7 @@ class FtmsEncoderTest {
         assertEquals("More Data clear means stroke fields present", 0, flags(p) and 1)
         assertEquals("stroke rate is uint8 in 0.5 stroke/min", 170, p[2].toInt() and 0xFF)
         assertEquals("stroke count is uint16", 420, u16At(p, 3))
-        assertTrue("rower needs no speed", !FtmsDataEncoders.requiresSpeed(FtmsMachineProfile.INDOOR_ROWER))
+        assertTrue("rower needs no speed", !requiresSpeed(FtmsMachineProfile.INDOOR_ROWER))
     }
 
     @Test

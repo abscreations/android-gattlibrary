@@ -44,16 +44,24 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import kotlin.math.max
 
 /* ───────────────────────────── permissions ───────────────────────────── */
 
+// BLUETOOTH_CONNECT is API 31+. Before that, BLUETOOTH is an install-time
+// permission declared in the manifest and therefore always held; checking the
+// API 31 string on an older device returns DENIED and disables the caller.
 internal fun BtEngine.hasConnectPermission(): Boolean =
-    ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.BLUETOOTH_CONNECT
-    ) == PackageManager.PERMISSION_GRANTED
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.BLUETOOTH_CONNECT
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
 
 /* ───────────────────────────── misc helpers ───────────────────────────── */
 
