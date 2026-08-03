@@ -1,9 +1,11 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
+import android.content.Context
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
+import com.gmail.absolutebollockscreations.Fitbridge.power.FitBridgeWakeLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,9 +35,22 @@ import timber.log.Timber
  * [start] refuses in that case.
  */
 class FtmsSimulator(
+    private val appContext: Context,
     private val engineState: BtEngineState,
     private val peripheral: SimulatorPeripheralHost,
 ) {
+
+    /**
+     * CPU wake-lock owner, scoped to the generator rather than to the page.
+     *
+     * The display lock belongs to the page (see `KeepAwake` in SimulatorScreen),
+     * but the CPU lock must outlive it: the normal workflow is start generating,
+     * close the page, then go and connect a watch. Tying it to the composable
+     * would drop it at exactly the moment it starts mattering.
+     */
+    private val wakeLockOwner = object {
+        override fun toString(): String = "Simulator:generator"
+    }
 
     /**
      * The peripheral operations the simulator needs. Kept as an interface so the
@@ -200,6 +215,10 @@ class FtmsSimulator(
         engineState.setIsRunning(true)
         engineState.setHaveControl(effectiveControls)
 
+        // Keep the CPU up for as long as we are generating, so bridging survives
+        // the screen going off. Paired with the release in stop().
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+
         _state.value = State(
             running = true,
             machine = machine,
@@ -227,6 +246,7 @@ class FtmsSimulator(
         job?.cancel()
         job = null
         engine = null
+        FitBridgeWakeLock.releaseCpu(wakeLockOwner)
         peripheral.setControlOverride(null)
         runCatching { peripheral.stopAdvertising() }
             .onFailure { Timber.tag(TAG).w(it, "stopping simulator advertising threw") }
