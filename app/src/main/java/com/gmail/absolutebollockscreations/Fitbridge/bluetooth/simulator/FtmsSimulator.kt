@@ -1,0 +1,359 @@
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
+
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlSink
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import timber.log.Timber
+
+/**
+ * Debug-only synthetic data source.
+ *
+ * Ported from TrackMyIndoorWorkout's `mock_data_source.dart`, with one
+ * deliberate difference: TMIW pushes samples straight into the peripheral's
+ * metric store, because its own UI is fed from Dart. FitBridge is a bridge, so
+ * the simulator instead writes into [BtEngineState] - the same normalised model a
+ * real machine populates. Everything downstream then works unchanged: the app's
+ * Biking/Rowing/Treadmill screens light up, HR zones and charts populate, and
+ * `EngineMetricPump` carries the same numbers out over FTMS. One injection point
+ * exercises both roles of the bridge.
+ *
+ * Ownership is exclusive. Starting the simulator while a real machine is
+ * connected would put two writers on one state object and produce nonsense, so
+ * [start] refuses in that case.
+ */
+class FtmsSimulator(
+    private val engineState: BtEngineState,
+    private val peripheral: SimulatorPeripheralHost,
+) {
+
+    /**
+     * The peripheral operations the simulator needs. Kept as an interface so the
+     * generator can be tested without a Bluetooth stack, and so the simulator
+     * does not reach into `BtServiceManager`'s internals.
+     */
+    interface SimulatorPeripheralHost {
+        /** Publish the GATT database and advertise. Blocking; returns success. */
+        fun startAdvertising(profile: FtmsMachineProfile, targets: TargetCapabilities): Boolean
+
+        fun stopAdvertising()
+
+        /** Route Control Point procedures to [sink], or back to the machine on null. */
+        fun setControlOverride(sink: FtmsControlSink?)
+
+        val isAdvertising: Boolean
+    }
+
+    data class State(
+        val running: Boolean = false,
+        val machine: FtmsMachineProfile? = null,
+        val controlsEnabled: Boolean = false,
+        val controlsAvailable: Boolean = false,
+        val advertising: Boolean = false,
+        val samplesGenerated: Long = 0,
+        val elapsedSeconds: Int = 0,
+        /** Targets a downstream client has set and the simulator has applied. */
+        val acceptedTargets: Map<FtmsMockTarget, Double> = emptyMap(),
+        val lastSample: FtmsMockSample? = null,
+        val lastError: String? = null,
+    )
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val _state = MutableStateFlow(State())
+    val state: StateFlow<State> = _state
+
+    private var job: Job? = null
+
+    @Volatile
+    private var engine: FtmsMockEngine? = null
+
+    /**
+     * Control Point target while the simulator owns the machine.
+     *
+     * Reports the *simulator's* capability rather than the engine's, so the
+     * Supported-* Range characteristics, the Target Setting Features word and
+     * what actually happens when a target is written all come from one place.
+     */
+    private inner class SimulatorControlSink : FtmsControlSink {
+        override val canControl: Boolean
+            get() = engine?.controlsEnabled == true
+
+        override val targetCapabilities: TargetCapabilities
+            get() = engine?.controlCapabilities ?: TargetCapabilities.NONE
+
+        override fun requestControl(): Boolean = true
+
+        override fun reset(): Boolean {
+            engine?.reset()
+            publishTargets()
+            return true
+        }
+
+        // A synthetic machine is always willing to start and stop; the local
+        // procedure state machine in the peripheral tracks which it is.
+        override fun startOrResume(): Boolean = true
+        override fun stopOrPause(stop: Boolean): Boolean = true
+
+        override fun setTargetSpeedKph(kph: Double): Boolean =
+            apply(FtmsMockTarget.SPEED, kph)
+
+        override fun setTargetInclinationPercent(percent: Double): Boolean =
+            apply(FtmsMockTarget.INCLINATION, percent)
+
+        override fun setTargetResistance(level: Double): Boolean =
+            apply(FtmsMockTarget.RESISTANCE, level)
+
+        override fun setTargetPowerWatts(watts: Int): Boolean =
+            apply(FtmsMockTarget.POWER, watts.toDouble())
+
+        /** No synthetic heart-rate target: the athlete is not a controllable machine. */
+        override fun setTargetHeartRate(bpm: Int): Boolean = false
+
+        override fun setIndoorBikeSimulation(
+            windMps: Double,
+            gradePercent: Double,
+            crr: Double,
+            cw: Double,
+        ): Boolean = false
+
+        private fun apply(type: FtmsMockTarget, value: Double): Boolean {
+            val e = engine ?: return false
+            if (!e.setTarget(type, value)) return false
+            Timber.tag(TAG).i("control target applied %s = %.2f", type, value)
+            // Reflect the accepted target in the measurement stream immediately
+            // rather than waiting for the next tick, so a watch sees the machine
+            // respond within its own procedure timeout.
+            publish(e.snapshot())
+            publishTargets()
+            return true
+        }
+    }
+
+    private val controlSink = SimulatorControlSink()
+
+    /** True when a real machine is attached; the simulator must not fight it. */
+    private fun realMachineAttached(): Boolean = engineState.gatt != null
+
+    fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
+        FtmsMockControlProfile.forMachine(machine).any
+
+    /**
+     * Start generating data for [machine] and advertise as that machine.
+     *
+     * Blocking on the advertising verdict, so call it off the main thread.
+     */
+    fun start(machine: FtmsMachineProfile, enableControls: Boolean) {
+        if (realMachineAttached()) {
+            _state.value = _state.value.copy(
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+
+        val effectiveControls = enableControls && controlsAvailableFor(machine)
+        val current = _state.value
+        if (current.running &&
+            current.machine == machine &&
+            current.controlsEnabled == effectiveControls
+        ) {
+            return
+        }
+        if (current.running) stop()
+
+        val mockEngine = FtmsMockEngine(machine, controlsEnabled = effectiveControls)
+        engine = mockEngine
+
+        // Install the control sink before advertising begins, so a very fast
+        // downstream connection cannot write a target while the peripheral is
+        // still pointed at the (absent) real machine.
+        peripheral.setControlOverride(controlSink)
+
+        val started = runCatching {
+            peripheral.startAdvertising(machine, mockEngine.controlCapabilities)
+        }.getOrElse { t ->
+            Timber.tag(TAG).w(t, "simulator advertising threw")
+            false
+        }
+
+        if (!started) {
+            peripheral.setControlOverride(null)
+            engine = null
+            _state.value = State(
+                controlsAvailable = controlsAvailableFor(machine),
+                lastError = "Could not start advertising as ${machine.name}",
+            )
+            return
+        }
+
+        engineState.setConnectionState(SIMULATED_CONNECTED_STATE)
+        engineState.setActiveSession(true)
+        engineState.setIsRunning(true)
+        engineState.setHaveControl(effectiveControls)
+
+        _state.value = State(
+            running = true,
+            machine = machine,
+            controlsEnabled = effectiveControls,
+            controlsAvailable = controlsAvailableFor(machine),
+            advertising = peripheral.isAdvertising,
+            acceptedTargets = mockEngine.controlTargets(),
+        )
+
+        // Publish one sample before the loop so the UI and any already-subscribed
+        // client see data immediately rather than after the first period.
+        publish(mockEngine.snapshot())
+
+        job = scope.launch {
+            while (isActive) {
+                delay(PERIOD_MS)
+                val e = engine ?: break
+                publish(e.tick(PERIOD_MS / 1000.0))
+            }
+        }
+        Timber.tag(TAG).i("simulator started machine=%s controls=%s", machine, effectiveControls)
+    }
+
+    fun stop() {
+        job?.cancel()
+        job = null
+        engine = null
+        peripheral.setControlOverride(null)
+        runCatching { peripheral.stopAdvertising() }
+            .onFailure { Timber.tag(TAG).w(it, "stopping simulator advertising threw") }
+
+        engineState.setHaveControl(false)
+        engineState.setIsRunning(false)
+        engineState.setActiveSession(false)
+        engineState.setConnectionState(SIMULATED_DISCONNECTED_STATE)
+        clearEngineMetrics()
+
+        _state.value = State(controlsAvailable = _state.value.controlsAvailable)
+        Timber.tag(TAG).i("simulator stopped")
+    }
+
+    fun dispose() {
+        stop()
+        scope.cancel()
+    }
+
+    /** Refresh the advertising flag, which the peripheral owns and can change. */
+    fun refreshAdvertisingState() {
+        val s = _state.value
+        if (!s.running) return
+        _state.value = s.copy(advertising = peripheral.isAdvertising)
+    }
+
+    private fun publishTargets() {
+        val e = engine ?: return
+        _state.value = _state.value.copy(acceptedTargets = e.controlTargets())
+    }
+
+    /**
+     * Write one sample into [BtEngineState].
+     *
+     * Deliberately mirrors what the FTMS parsers do for a real machine, including
+     * leaving a metric untouched when this persona does not produce it - a
+     * simulated rower must not publish an inclination any more than a real one
+     * would.
+     */
+    private fun publish(sample: FtmsMockSample) {
+        engineState.setElapsedSeconds(sample.elapsedSeconds)
+        engineState.setHeartRate(sample.heartRate)
+        engineState.setExpEnergyTotal(sample.caloriesTotal)
+
+        sample.speedKph?.let {
+            engineState.setSpeedKph(it)
+            engineState.setSpeedMph(it / MILES_TO_KM)
+        }
+        sample.averageSpeedKph?.let { engineState.setAvgSpeedKph(it) }
+        sample.distanceMeters?.let { engineState.setTotalDistanceMeters(it) }
+        sample.cadence?.let { engineState.setInstantCadence(it) }
+        sample.resistance?.let { engineState.setResistance(it.toDouble()) }
+        sample.inclinationPercent?.let { engineState.setInclination(it) }
+        sample.powerWatts?.let { engineState.setInstantPower(it) }
+        sample.forceOnBeltNewtons?.let { engineState.setForceOnBelt(it) }
+        sample.instantPaceMinPerKm?.let { engineState.setInstantPace(it) }
+        sample.averagePaceMinPerKm?.let { engineState.setAvgPace(it) }
+        sample.positiveElevationMeters?.let { engineState.setElevationGainPos(it) }
+        sample.floors?.let { engineState.setTotalFloors(it) }
+
+        // The count field means a different thing per persona, so it is routed
+        // rather than written to all three.
+        sample.movementCount?.let { count ->
+            val e = engine
+            when {
+                e == null -> Unit
+                e.profile.isRower -> {
+                    engineState.setStrokeCount(count)
+                    sample.cadence?.let { engineState.setStrokeRate(it) }
+                }
+
+                e.profile.isClimber -> engineState.setTotalSteps(count)
+                else -> engineState.setTotalStrides(count.toDouble())
+            }
+        }
+
+        val s = _state.value
+        _state.value = s.copy(
+            samplesGenerated = s.samplesGenerated + 1,
+            elapsedSeconds = sample.elapsedSeconds,
+            advertising = peripheral.isAdvertising,
+            lastSample = sample,
+        )
+    }
+
+    /** Leave the state object as an idle machine would, not mid-workout. */
+    private fun clearEngineMetrics() {
+        engineState.setElapsedSeconds(null)
+        engineState.setSpeedKph(null)
+        engineState.setSpeedMph(null)
+        engineState.setAvgSpeedKph(null)
+        engineState.setTotalDistanceMeters(null)
+        engineState.setInstantCadence(null)
+        engineState.setAverageCadence(null)
+        engineState.setResistance(null)
+        engineState.setInclination(null)
+        engineState.setInstantPower(null)
+        engineState.setAveragePower(null)
+        engineState.setForceOnBelt(null)
+        engineState.setInstantPace(null)
+        engineState.setAvgPace(null)
+        engineState.setElevationGainPos(null)
+        engineState.setTotalFloors(null)
+        engineState.setTotalSteps(null)
+        engineState.setTotalStrides(null)
+        engineState.setStrokeCount(null)
+        engineState.setStrokeRate(null)
+        engineState.setExpEnergyTotal(null)
+        engineState.setHeartRate(null)
+    }
+
+    companion object {
+        private const val TAG = "FtmsSimulator"
+
+        /**
+         * Source cadence, independent of the peripheral's 700 ms notification
+         * cadence. The notifier always samples the latest snapshot, so this also
+         * exercises the same producer/consumer decoupling used when a real
+         * machine delivers records irregularly.
+         */
+        const val PERIOD_MS = 500L
+
+        private const val MILES_TO_KM = 1.609344
+
+        // BluetoothProfile.STATE_CONNECTED / STATE_DISCONNECTED, inlined so this
+        // class stays free of Android imports and unit-testable.
+        private const val SIMULATED_CONNECTED_STATE = 2
+        private const val SIMULATED_DISCONNECTED_STATE = 0
+    }
+}

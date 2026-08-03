@@ -81,7 +81,13 @@ class FtmsPeripheralController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val main = Handler(Looper.getMainLooper())
 
-    private val controlSink = EngineFtmsControlSink(engineProvider)
+    private val engineControlSink = EngineFtmsControlSink(engineProvider)
+
+    /**
+     * Control Point target. Normally the real machine; the data simulator swaps
+     * itself in so a watch's target writes steer the synthetic machine.
+     */
+    private val controlSink = SwitchableFtmsControlSink(engineControlSink)
     private val store = FtmsMetricStore()
 
     private val advertiser = FtmsPeripheralAdvertiser(
@@ -202,7 +208,7 @@ class FtmsPeripheralController(
         targetCapabilities = targets
         this.cyclingConfig = effectiveCyclingConfig
         notifier.configureCycling(effectiveCyclingConfig)
-        controlSink.beginSession(targets)
+        engineControlSink.beginSession(targets)
         runState = RunState.STARTING
 
         // Publication order matters. Android advertising includes the global
@@ -297,7 +303,7 @@ class FtmsPeripheralController(
         targetCapabilities = TargetCapabilities.NONE
         cyclingConfig = CyclingSensorConfig.DISABLED
         notifier.configureCycling(CyclingSensorConfig.DISABLED)
-        controlSink.endSession()
+        engineControlSink.endSession()
         runState = RunState.STOPPED
     }
 
@@ -320,6 +326,16 @@ class FtmsPeripheralController(
         notifier.periodMs = intervalMs
     }
 
+    /**
+     * Redirect FTMS Control Point procedures away from the real machine.
+     *
+     * Used by the data simulator so a watch can take control of, and actually
+     * steer, a synthetic machine. Pass null to hand control back to the engine.
+     */
+    fun setControlOverride(sink: FtmsControlSink?) {
+        controlSink.override = sink
+    }
+
     @SuppressLint("MissingPermission")
     fun stop() {
         desiredStart = null
@@ -334,7 +350,7 @@ class FtmsPeripheralController(
             targetCapabilities = TargetCapabilities.NONE
             cyclingConfig = CyclingSensorConfig.DISABLED
             notifier.configureCycling(CyclingSensorConfig.DISABLED)
-            controlSink.endSession()
+            engineControlSink.endSession()
             FtmsForegroundService.stop(context)
             restoreAdapterName()
             store.clear()

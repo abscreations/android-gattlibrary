@@ -99,6 +99,50 @@ object InertFtmsControlSink : FtmsControlSink {
 }
 
 /**
+ * Routes Control Point procedures to whichever downstream currently owns the
+ * machine.
+ *
+ * Normally that is the real one, [EngineFtmsControlSink]. The data simulator
+ * installs itself as [override] so a watch's target writes steer the synthetic
+ * machine instead - without it, the simulator could advertise target capability
+ * that nothing would act on, which is exactly the class of dishonesty the port
+ * was meant to remove.
+ *
+ * The switch is a volatile reference read per call, so it can be changed from
+ * the UI thread while a Control Point write is being handled on the GATT
+ * callback thread.
+ */
+class SwitchableFtmsControlSink(private val default: FtmsControlSink) : FtmsControlSink {
+
+    @Volatile
+    var override: FtmsControlSink? = null
+
+    private val active: FtmsControlSink
+        get() = override ?: default
+
+    override val canControl: Boolean get() = active.canControl
+    override val targetCapabilities: TargetCapabilities get() = active.targetCapabilities
+
+    override fun requestControl(): Boolean = active.requestControl()
+    override fun reset(): Boolean = active.reset()
+    override fun startOrResume(): Boolean = active.startOrResume()
+    override fun stopOrPause(stop: Boolean): Boolean = active.stopOrPause(stop)
+    override fun setTargetSpeedKph(kph: Double): Boolean = active.setTargetSpeedKph(kph)
+    override fun setTargetInclinationPercent(percent: Double): Boolean =
+        active.setTargetInclinationPercent(percent)
+
+    override fun setTargetResistance(level: Double): Boolean = active.setTargetResistance(level)
+    override fun setTargetPowerWatts(watts: Int): Boolean = active.setTargetPowerWatts(watts)
+    override fun setTargetHeartRate(bpm: Int): Boolean = active.setTargetHeartRate(bpm)
+    override fun setIndoorBikeSimulation(
+        windMps: Double,
+        gradePercent: Double,
+        crr: Double,
+        cw: Double,
+    ): Boolean = active.setIndoorBikeSimulation(windMps, gradePercent, crr, cw)
+}
+
+/**
  * Live pass-through to the upstream fitness machine via [BtServiceEngineFacade].
  *
  * This is the part of FitBridge that TrackMyIndoorWorkout does not have - a real
