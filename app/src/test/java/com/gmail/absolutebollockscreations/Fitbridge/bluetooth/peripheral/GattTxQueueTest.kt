@@ -1,0 +1,105 @@
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
+
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+
+import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class GattTxQueueTest {
+
+    private val characteristic = UUID.fromString("00002ad2-0000-1000-8000-00805f9b34fb")
+
+    @Test
+    fun `only one operation is posted until its callback arrives`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
+        val queue = GattTxQueue(scope, dataTimeoutMs = 1_000, controlTimeoutMs = 1_000) {
+            posted.trySend(it).isSuccess
+        }
+
+        val first = async { queue.send(1, "AA", characteristic, byteArrayOf(1), false, GattTxQueue.Priority.DATA, "first") }
+        posted.receive()
+        val second = async { queue.send(1, "AA", characteristic, byteArrayOf(2), false, GattTxQueue.Priority.DATA, "second") }
+        delay(50)
+        assertFalse(second.isCompleted)
+
+        queue.onNotificationSent("AA", true)
+        assertTrue(first.await())
+        posted.receive()
+        queue.onNotificationSent("AA", true)
+        assertTrue(second.await())
+        scope.cancel()
+    }
+
+    @Test
+    fun `control traffic overtakes queued data but not the in-flight operation`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
+        val queue = GattTxQueue(scope, dataTimeoutMs = 1_000, controlTimeoutMs = 1_000) {
+            posted.trySend(it).isSuccess
+        }
+
+        val first = async { queue.send(1, "AA", characteristic, byteArrayOf(1), false, GattTxQueue.Priority.DATA, "first") }
+        assertTrue(posted.receive().purpose == "first")
+        val data = async { queue.send(1, "AA", characteristic, byteArrayOf(2), false, GattTxQueue.Priority.DATA, "data") }
+        val control = async { queue.send(1, "AA", characteristic, byteArrayOf(3), true, GattTxQueue.Priority.CONTROL, "control") }
+
+        queue.onNotificationSent("AA", true)
+        assertTrue(first.await())
+        assertTrue(posted.receive().purpose == "control")
+        queue.onNotificationSent("AA", true)
+        assertTrue(control.await())
+        assertTrue(posted.receive().purpose == "data")
+        queue.onNotificationSent("AA", true)
+        assertTrue(data.await())
+        scope.cancel()
+    }
+
+    @Test
+    fun `callback from another device cannot complete the current operation`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
+        val queue = GattTxQueue(scope, dataTimeoutMs = 1_000, controlTimeoutMs = 1_000) {
+            posted.trySend(it).isSuccess
+        }
+
+        val result = async { queue.send(1, "AA", characteristic, byteArrayOf(1), false, GattTxQueue.Priority.DATA, "data") }
+        posted.receive()
+        queue.onNotificationSent("BB", true)
+        delay(50)
+        assertFalse(result.isCompleted)
+        queue.onNotificationSent("AA", true)
+        assertTrue(result.await())
+        scope.cancel()
+    }
+
+    @Test
+    fun `timeout and session cancellation fail pending work`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
+        val queue = GattTxQueue(scope, dataTimeoutMs = 40, controlTimeoutMs = 40) {
+            posted.trySend(it).isSuccess
+        }
+
+        val timedOut = async { queue.send(1, "AA", characteristic, byteArrayOf(1), false, GattTxQueue.Priority.DATA, "timeout") }
+        posted.receive()
+        assertFalse(timedOut.await())
+
+        val cancelled = async { queue.send(2, "BB", characteristic, byteArrayOf(2), false, GattTxQueue.Priority.DATA, "cancel") }
+        posted.receive()
+        queue.cancelSession(2)
+        assertFalse(cancelled.await())
+        scope.cancel()
+    }
+}

@@ -57,6 +57,15 @@ object BluetoothIds {
     val UUID_FITNESS_MACHINE_CONTROL_POINT: UUID = shortUuid(0x2AD9)
     val UUID_FITNESS_MACHINE_STATUS: UUID        = shortUuid(0x2ADA)
 
+    /**
+     * Training Status (0x2AD3) — Read + Notify.
+     *
+     * Exposed by the peripheral role so a central can tell an idle machine from
+     * a running one without inferring it from the measurement stream. Absent
+     * from the previous FitBridge GATT schema entirely.
+     */
+    val UUID_TRAINING_STATUS: UUID               = shortUuid(0x2AD3)
+
     // FTMS Data Characteristics
     val UUID_TREADMILL_DATA: UUID       = shortUuid(0x2ACD)
     val UUID_ELLIPTICAL_DATA: UUID      = shortUuid(0x2ACE)
