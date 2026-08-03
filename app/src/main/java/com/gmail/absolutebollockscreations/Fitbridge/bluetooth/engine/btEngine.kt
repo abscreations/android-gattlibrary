@@ -513,24 +513,45 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
     /* ───────────────────────────── connections ───────────────────────────── */
 
     /**
-     * FTMS connect with optional *pre-bond* attempt for unknown devices.
+     * FTMS connect.
      *
-     * Resiliency / FTMS compliance strategy:
-     *  - Pre-connection: if [preBondIfNeeded] is true and the device is not yet bonded, we make a
-     *    best-effort [requestBondCompat] call. Failure here does not abort the connect.
-     *  - Post-connection: as soon as a GATT is created, we schedule [ensureBondOrPrompt] in the
-     *    background (once per FTMS connection) to give the platform a chance to complete bonding
-     *    / secure pairing before we start issuing FEATURE / Supported-* reads or Control Point
-     *    writes that may require encryption on some vendors.
-     *  - CCCD enablement is handled via [enableFtmsNotificationsAndIndications] as soon as
-     *    services are discovered; this is independent from FEATURES / ranges and can succeed even
-     *    if those reads are flaky.
+     * ## Bonding policy: do not bond proactively
+     *
+     * FTMS does not require a bond. The Fitness Machine Service exposes its
+     * characteristics with plain read/write permissions, not the ENCRYPTED
+     * variants, so pairing buys nothing on a conformant machine - and on several
+     * it actively costs a connection.
+     *
+     * This engine previously forced a bond twice on every connect: once before
+     * `connectGatt` and again from a background coroutine as soon as the GATT
+     * object existed. The observed failure was:
+     *
+     *     ensureBondOrPrompt: requestBondCompat() -> false (initialState=11)
+     *     onClientConnectionState() - status=22        (TERMINATE_LOCAL_HOST)
+     *     ensureBondOrPrompt: final bond state=10      (BOND_NONE)
+     *
+     * The bond attempt raced service discovery, failed, and the local host tore
+     * the link down before onServicesDiscovered ever arrived - so CCCDs were
+     * never armed, control was never granted, and Start/Resume timed out. A
+     * peripheral that requires no encryption has no reason to accept a bond
+     * request, so this is the expected outcome, not a device quirk.
+     *
+     * The correct behaviour is to let Android escalate security **on demand**:
+     * if a peer answers a read or write with Insufficient Authentication or
+     * Insufficient Encryption, the platform starts bonding by itself and retries
+     * the operation. Machines that genuinely require encryption still work; ones
+     * that do not are left alone.
+     *
+     * [preBondIfNeeded] therefore defaults to false. It is retained rather than
+     * deleted so a specific machine that is known to need a bond up front can opt
+     * in at the call site, and so [promptPairing] remains available as an
+     * explicit user action.
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun connectFtms(
         address: String,
         activity: ActivityType,
-        preBondIfNeeded: Boolean = true
+        preBondIfNeeded: Boolean = false
     ): Boolean = connectFtmsInternal(
         address = address,
         activity = activity,
@@ -540,7 +561,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun connectFtms(
         address: String,
-        preBondIfNeeded: Boolean = true
+        preBondIfNeeded: Boolean = false
     ): Boolean = connectFtmsInternal(
         address = address,
         activity = null,              // AUTO mode (no preferred activity)
@@ -568,8 +589,12 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         stopScan()
         resetProviderAdvertisingState()
 
-        // Phase 1: opportunistic pre-connect bonding (best-effort, non-fatal).
+        // Opt-in only. See the bonding-policy note on connectFtms: bonding
+        // proactively raced service discovery and killed the link. Android
+        // escalates security by itself if the peer ever demands it.
         if (preBondIfNeeded && dev.bondState != BluetoothDevice.BOND_BONDED) {
+            Timber.tag(BtEngineState.TAG)
+                .i("pre-connect bond explicitly requested for %s", address)
             runCatching { dev.requestBondCompat() }
                 .onFailure {
                     Timber.tag(BtEngineState.TAG)
@@ -591,8 +616,10 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         state.gatt = dev.connectGatt(context, /*autoConnect=*/false, cb, BluetoothDevice.TRANSPORT_LE)
 
         val created = (state.gatt != null)
-        if (created) {
-            // Phase 2: schedule an early bonding attempt *after* the link is up.
+        if (created && preBondIfNeeded) {
+            // Only when bonding was explicitly asked for. This used to run on
+            // every connect and is what produced the TERMINATE_LOCAL_HOST
+            // disconnect before service discovery completed.
             scheduleEarlyBonding(dev)
         }
         created
@@ -757,8 +784,8 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             desiredAddress = address
             desiredActivity = activity
 
-            // Try direct connect first (with pre-bond)
-            val direct = connectFtms(address, activity, preBondIfNeeded = true)
+            // Direct connect. No pre-bond: see the bonding-policy note on connectFtms.
+            val direct = connectFtms(address, activity)
             if (direct) {
                 result = true
             } else if (!allowScanFallback) {
@@ -777,7 +804,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
                             state.devices.first { it.containsKey(address) }
                         }
                         stopScanImpl()
-                        if (found != null) connectFtms(address, activity, preBondIfNeeded = true) else false
+                        if (found != null) connectFtms(address, activity) else false
                     }
                 } catch (t: Throwable) {
                     Timber.tag(BtEngineState.TAG).w(t, "start(): scan/connect fallback failed")

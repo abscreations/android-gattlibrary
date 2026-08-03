@@ -739,31 +739,38 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
         try {
             val wasBonded = (dev.bondState == BluetoothDevice.BOND_BONDED)
 
-            // Strategy:
-            //  - If NOT bonded → always attempt bond.
-            //  - If bonded:
-            //      • first CCCD failure (previousAttempts == 0) → retry enable plan only
-            //      • second CCCD failure (previousAttempts > 0) → treat as stale bond and
-            //        force a (re)bond via ensureBondOrPrompt(...).
-            val shouldRebond =
-                !wasBonded || (wasBonded && previousAttempts > 0)
+            // Bonding policy (see connectFtms in btEngine.kt): never bond
+            // speculatively. A CCCD write can fail for many reasons - a busy
+            // queue, a slow peripheral, a descriptor the peer does not actually
+            // implement - and only one of them is fixed by pairing.
+            //
+            // This used to bond whenever the device was unbonded, so a machine
+            // that simply needed a retry got a pairing request instead, and an
+            // unencrypted peripheral (which has no reason to accept one) could
+            // lose the link entirely.
+            //
+            // Now the only case that warrants pairing is a *stale bond*: the
+            // device says it is bonded, yet the write still fails after a retry,
+            // which means the stored keys no longer match. Everything else just
+            // re-runs the enable plan, and if the peer genuinely requires
+            // encryption Android escalates on its own.
+            val staleBondSuspected = wasBonded && previousAttempts > 0
 
             var bondedOk = wasBonded
-            if (shouldRebond) {
+            if (staleBondSuspected) {
                 Timber.tag(BtEngineState.TAG).i(
-                    "CCCD recovery: attempting (re)bond for %s (bondState=%d, attempt=%d, wasBonded=%s)",
-                    mac,
-                    dev.bondState,
-                    attemptsNow,
-                    wasBonded
+                    "CCCD recovery: bonded but still failing after %d attempt(s) → suspected stale bond for %s, re-bonding",
+                    previousAttempts,
+                    mac
                 )
                 bondedOk = ensureBondOrPrompt(context, dev)
                 Timber.tag(BtEngineState.TAG)
                     .i("Bond result for %s → %s", mac, bondedOk)
             } else {
                 Timber.tag(BtEngineState.TAG).i(
-                    "CCCD recovery: already bonded (%s) — first failure, will retry enable plan without re-bond (attempt=%d)",
+                    "CCCD recovery: retrying enable plan without bonding (%s, bondState=%d, attempt=%d)",
                     mac,
+                    dev.bondState,
                     attemptsNow
                 )
             }
