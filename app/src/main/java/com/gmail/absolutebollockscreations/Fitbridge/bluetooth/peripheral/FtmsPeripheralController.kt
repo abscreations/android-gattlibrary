@@ -100,6 +100,57 @@ class FtmsPeripheralController(
 
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    /**
+     * All adapter-name changes go through here, serialised and confirmed.
+     *
+     * Everything Android-specific is confined to these three seams so the
+     * ordering rules can be unit-tested; see AdapterNameCoordinatorTest.
+     */
+    private val adapterNames = AdapterNameCoordinator(
+        gateway = object : AdapterNameCoordinator.Gateway {
+            @get:SuppressLint("MissingPermission", "HardwareIds")
+            override val currentName: String?
+                get() = currentAdapterName()
+
+            @SuppressLint("MissingPermission")
+            override fun requestName(name: String): Boolean {
+                if (!hasConnectPermission()) return false
+                val adapter =
+                    (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)
+                        ?.adapter ?: return false
+                return adapter.setName(name)
+            }
+        },
+        store = object : AdapterNameCoordinator.OriginalNameStore {
+            override fun read(): String? = prefs.getString(KEY_ORIGINAL_NAME, null)
+
+            // commit() rather than apply(): the value has to survive a process
+            // death that happens moments later, or the user's phone keeps our
+            // persona name permanently.
+            override fun write(name: String): Boolean =
+                prefs.edit().putString(KEY_ORIGINAL_NAME, name).commit()
+
+            override fun clear(): Boolean = prefs.edit().remove(KEY_ORIGINAL_NAME).commit()
+        },
+        scheduler = object : AdapterNameCoordinator.Scheduler {
+            private val runnables = mutableMapOf<Any, Runnable>()
+
+            override fun postDelayed(token: Any, delayMs: Long, action: () -> Unit) {
+                cancel(token)
+                val runnable = Runnable {
+                    runnables.remove(token)
+                    action()
+                }
+                runnables[token] = runnable
+                main.postDelayed(runnable, delayMs)
+            }
+
+            override fun cancel(token: Any) {
+                runnables.remove(token)?.let(main::removeCallbacks)
+            }
+        },
+    )
+
     private data class DesiredStart(
         val profile: FtmsMachineProfile,
         val upstreamAddress: String?,
@@ -122,18 +173,31 @@ class FtmsPeripheralController(
 
     private val adapterReceiver = object : BroadcastReceiver() {
         override fun onReceive(receiverContext: Context?, intent: Intent?) {
-            if (intent?.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
-            when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
-                BluetoothAdapter.STATE_TURNING_OFF,
-                BluetoothAdapter.STATE_OFF,
-                -> {
-                    operationEpoch.incrementAndGet()
-                    cancelRetry()
-                    stopResources(publishIdle = false)
-                    publish(PeripheralStatus(lastError = "Bluetooth adapter is off"))
-                }
+            when (intent?.action) {
+                // Android confirming a rename actually took effect. This is what
+                // unblocks a pending start; see AdapterNameCoordinator.
+                BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED ->
+                    adapterNames.onNameObserved(
+                        intent.getStringExtra(BluetoothAdapter.EXTRA_LOCAL_NAME),
+                    )
 
-                BluetoothAdapter.STATE_ON -> restartDesired("adapter-on")
+                BluetoothAdapter.ACTION_STATE_CHANGED -> {
+                    when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
+                        BluetoothAdapter.STATE_TURNING_OFF,
+                        BluetoothAdapter.STATE_OFF,
+                        -> {
+                            operationEpoch.incrementAndGet()
+                            cancelRetry()
+                            // A rename can never complete with the radio off;
+                            // fail it now rather than letting it time out.
+                            adapterNames.cancelAll("Bluetooth adapter is off")
+                            stopResources(publishIdle = false)
+                            publish(PeripheralStatus(lastError = "Bluetooth adapter is off"))
+                        }
+
+                        BluetoothAdapter.STATE_ON -> restartDesired("adapter-on")
+                    }
+                }
             }
         }
     }
@@ -161,10 +225,16 @@ class FtmsPeripheralController(
     private var cyclingConfig: CyclingSensorConfig = CyclingSensorConfig.DISABLED
 
     init {
-        // If the process died mid-session the phone is still named "FBRG-Treadmill".
-        // Put it back before doing anything else.
-        restoreAdapterNameIfStranded()
+        // Receiver first: the stranded restore below needs ACTION_LOCAL_NAME_CHANGED
+        // to confirm, and registering afterwards would leave it relying on the
+        // slower poll fallback.
         registerAdapterReceiver()
+        // If the process died mid-session the phone is still named "FBRG-Treadmill".
+        // Put it back before doing anything else. This is queued, and the
+        // coordinator is FIFO, so a start() arriving immediately cannot have its
+        // rename overwritten by this restore landing late - which is the second
+        // half of the advertised-name bug.
+        restoreAdapterNameIfStranded()
     }
 
     // ── public API ────────────────────────────────────────────────────────────
@@ -211,18 +281,51 @@ class FtmsPeripheralController(
         engineControlSink.beginSession(targets)
         runState = RunState.STARTING
 
-        // Publication order matters. Android advertising includes the global
-        // adapter name, and the notifier must not run until both the GATT server
-        // and the foreground lifetime guarantee are established.
-        val nameResult = setAdapterName(profile.advertisedName)
-        if (nameResult.isFailure) {
-            val failure = nameResult.exceptionOrNull()!!
-            rollbackSessionState()
-            publish(PeripheralStatus(lastError = failure.message))
-            onResult(Result.failure(failure))
-            return
+        // Publication order matters, and the adapter name is the first step for a
+        // reason: Android splices the GLOBAL adapter name into the advertisement
+        // at the moment advertising starts, so renaming and immediately
+        // advertising races the stack and can put the machine on the air under
+        // the phone's previous name. The coordinator does not call back until the
+        // adapter genuinely reports the new name, and fails rather than letting
+        // us advertise under the wrong identity.
+        adapterNames.apply(profile.advertisedName) nameCallback@{ nameResult ->
+            if (operationEpoch.get() != epoch) {
+                onResult(Result.failure(CancellationException("FTMS start was superseded")))
+                return@nameCallback
+            }
+            nameResult.fold(
+                onSuccess = {
+                    startAdvertisingAfterRename(
+                        profile = profile,
+                        targets = targets,
+                        effectiveCyclingConfig = effectiveCyclingConfig,
+                        upstreamAddress = upstreamAddress,
+                        epoch = epoch,
+                        onResult = onResult,
+                    )
+                },
+                onFailure = { failure ->
+                    Timber.tag(TAG).w(failure, "adapter rename failed; not advertising")
+                    // Put the name back if we changed it half-way, then give up.
+                    adapterNames.restore()
+                    rollbackSessionState()
+                    publish(PeripheralStatus(lastError = failure.message))
+                    onResult(Result.failure(failure))
+                    scheduleRetryIfRecoverable(failure)
+                },
+            )
         }
+    }
 
+    @SuppressLint("MissingPermission")
+    private fun startAdvertisingAfterRename(
+        profile: FtmsMachineProfile,
+        targets: TargetCapabilities,
+        effectiveCyclingConfig: CyclingSensorConfig,
+        upstreamAddress: String?,
+        epoch: Long,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
         advertiser.start(
             profile = profile,
             targets = targets,
@@ -262,7 +365,11 @@ class FtmsPeripheralController(
                                         connected = advertiser.hasClients(),
                                         clientId = advertiser.firstClientAddress(),
                                         machineType = profile.wireName,
-                                        advertisedName = profile.advertisedName,
+                                        // Report what is actually on the air, not
+                                        // what we asked for. The two used to be
+                                        // allowed to differ silently.
+                                        advertisedName = currentAdapterName()
+                                            ?: profile.advertisedName,
                                         nativeBikingSensorsEnabled = effectiveCyclingConfig.enabled,
                                         wheelCircumferenceMm = effectiveCyclingConfig
                                             .wheelCircumferenceMm
@@ -521,54 +628,19 @@ class FtmsPeripheralController(
      * it at all.
      */
     @SuppressLint("MissingPermission", "HardwareIds")
-    private fun setAdapterName(name: String): Result<Unit> {
-        if (!hasConnectPermission()) {
-            return Result.failure(
-                IllegalStateException("Bluetooth connect permission has not been granted"),
-            )
-        }
-        val adapter =
-            (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
-                ?: return Result.failure(
-                    IllegalStateException("Bluetooth adapter is unavailable"),
-                )
-        return runCatching {
-            val current = adapter.name
-            if (current == name) return@runCatching
-            if (prefs.getString(KEY_ORIGINAL_NAME, null) == null && current != null) {
-                check(prefs.edit().putString(KEY_ORIGINAL_NAME, current).commit()) {
-                    "Could not persist the original Bluetooth adapter name"
-                }
-            }
-            // adapter.setName() is asynchronous on modern Android: it returns true
-            // once the request is accepted, but adapter.name is not updated until
-            // the stack applies it a moment later. Verifying adapter.name == name
-            // synchronously here races that update. Trust the accepted request; the
-            // global name propagates before it matters to the advertisement.
-            check(adapter.setName(name)) { "Android rejected the Bluetooth adapter name change" }
-            Timber.tag(TAG).i("Bluetooth adapter name change requested for FTMS advertising")
-        }
-    }
+    private fun currentAdapterName(): String? = runCatching {
+        (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter?.name
+    }.getOrNull()
 
-    @SuppressLint("MissingPermission")
+    /** Restore the user's own name. Fire-and-forget; the coordinator serialises. */
     private fun restoreAdapterName() {
-        val original = prefs.getString(KEY_ORIGINAL_NAME, null) ?: return
-        if (!hasConnectPermission()) return
-        val adapter =
-            (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
-                ?: return
-        runCatching {
-            // Asynchronous, exactly as in setAdapterName: do not verify
-            // adapter.name == original synchronously - that race is what leaves the
-            // saved name stranded and re-firing every launch. Clear the saved
-            // original once the restore request is accepted.
-            check(adapter.setName(original)) { "Android rejected adapter-name restoration" }
-            check(prefs.edit().remove(KEY_ORIGINAL_NAME).commit()) {
-                "Could not clear the saved original adapter name"
+        adapterNames.restore { result ->
+            result.onFailure {
+                Timber.tag(TAG).w(
+                    it,
+                    "could not restore adapter name; retaining saved name for retry next launch",
+                )
             }
-            Timber.tag(TAG).i("Bluetooth adapter name restoration requested")
-        }.onFailure {
-            Timber.tag(TAG).w(it, "could not restore adapter name; retaining saved name for retry")
         }
     }
 
@@ -581,9 +653,15 @@ class FtmsPeripheralController(
 
     private fun registerAdapterReceiver() {
         if (adapterReceiverRegistered) return
-        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED).apply {
+            // The rename confirmation the coordinator waits on. Without this the
+            // only signal is the poll fallback, which is slower and, on stacks
+            // that never settle, indistinguishable from a genuine failure.
+            addAction(BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(adapterReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            // The system, not this app, is the sender, so this must be exported.
+            context.registerReceiver(adapterReceiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             @Suppress("DEPRECATION")
             context.registerReceiver(adapterReceiver, filter)
