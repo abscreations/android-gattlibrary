@@ -1,0 +1,1455 @@
+// =================================================================================================
+// File: BtEngineState.kt
+// Package: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
+// -------------------------------------------------------------------------------------------------
+// ROLE
+//   Central, in-memory state container for the Bluetooth engine.
+//
+//   BtEngineState is the single source of truth for:
+//     • Device discovery (FTMS + HRM)
+//     • Connection / error state
+//     • FTMS capabilities + control state
+//     • Fitness Machine Status / target set-points
+//     • Instant / average / peak workout metrics
+//     • Full-session time-series for graphing (no time-based trimming; UI decides window)
+//     • Heart-rate and HR-zone aggregation
+//     • Lap-level derived metrics
+//
+//   UI and other consumers read only the public StateFlow<T> properties. All mutation happens via
+//   helper setters/appenders called from BtEngine, FtmsProtocolHandler, HrmProtocolHandler and
+//   related parsers.
+// -------------------------------------------------------------------------------------------------
+// NOTES
+//   - This class is intentionally Android-light: it holds BluetoothGatt references and types but
+//     does not perform any platform calls itself.
+//   - All fields that the UI or service layer should react to are exposed as StateFlow<T>; call-side
+//     code must use the provided setters rather than mutating backing flows directly.
+//   - Time-series are now *full-session*: we no longer trim to a rolling N-minute window. The
+//     Composable layer (graphs) is responsible for choosing the visible window (e.g. last 5 min
+//     vs entire workout).
+// =================================================================================================
+
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
+
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.ScanResult
+import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import timber.log.Timber
+import kotlin.math.roundToInt
+
+
+class BtEngineState : HrmStateSink {
+
+    /* ───────────────────────────── types & constants ───────────────────────────── */
+
+    companion object {
+        internal const val TAG = "BtEngine"
+    }
+
+    /** Timestamped sample for graph series. */
+    data class TimedSample(val tMillis: Long, val v: Double)
+
+    enum class BtServiceType {
+        FTMS,         // Fitness Machine Service (0x1826)
+        HeartRate,    // Heart Rate (0x180D)
+        CSC,          // Cycling Speed & Cadence (0x1816)
+        RSC,          // Running Speed & Cadence (0x1814)
+        Power,        // Cycling Power (0x1818)
+        Glucose       // Glucose (0x1808)
+    }
+
+    /** Discovery model for scan lists. */
+    data class DiscoveredDevice(
+        val name: String,
+        val address: String,
+        val rssi: Int,
+        val lastSeenMs: Long,
+        val scanResult: ScanResult?,
+        val services: Set<BtServiceType> = emptySet(),
+        // Filled after connect/feature reads (e.g., treadmill/rower)
+        val machineFeature: Int? = null
+    )
+
+    // ⬇️ Container types for provider-side capabilities snapshot
+    //    Place this right after DiscoveredDevice so all “type” models live together.
+    /**
+     * Snapshot of FTMS capabilities that btService can use to build provider-side
+     * 0x2ACC (Fitness Machine Feature) and Supported-* Range characteristics.
+     *
+     * Floats are already in **spec units** as parsed from 0x2ACC / 0x2AD4–0x2AD8:
+     *  - speed*:      0.01 m/s units
+     *  - incline*:    0.1 degree units (or %, upstream decides – adapter just packs)
+     *  - resistance*: device-specific “level” units
+     *  - power*:      watts
+     *
+     * btService will treat these as ready-to-pack little-endian fields.
+     */
+    data class FtmsCapabilities(
+        val featuresRead: Boolean = false,
+        val supportsSpeed: Boolean = false,
+        val supportsInclination: Boolean = false,
+        val supportsResistance: Boolean = false,
+        val supportsPower: Boolean = false,
+
+        val speedMin: Float? = null,
+        val speedMax: Float? = null,
+        val speedIncr: Float? = null,
+        val speedRangeKnown: Boolean = false,
+
+        val inclineMin: Float? = null,
+        val inclineMax: Float? = null,
+        val inclineIncr: Float? = null,
+        val inclineRangeKnown: Boolean = false,
+
+        val resistanceMin: Float? = null,
+        val resistanceMax: Float? = null,
+        val resistanceIncr: Float? = null,
+        val resistanceRangeKnown: Boolean = false,
+
+        val powerMin: Float? = null,
+        val powerMax: Float? = null,
+        val powerIncr: Float? = null,
+        val powerRangeKnown: Boolean = false,
+    )
+
+    /**
+     * Canonical capabilities snapshot for provider-side usage.
+     *
+     * Populated by the FTMS capabilities reader once 0x2ACC and any relevant
+     * Supported-* Range characteristics have been parsed for the currently
+     * connected FTMS device.
+     */
+    var ftmsCapabilities: FtmsCapabilities = FtmsCapabilities()
+        private set
+
+    /**
+     * Simple triple for Supported-* Range characteristics:
+     *   - min / max / inc, already scaled to the raw FTMS units used on the wire.
+     */
+    data class RangeTriple(val min: Int, val max: Int, val inc: Int)
+
+    /**
+     * Update [ftmsCapabilities] with a newly parsed snapshot from the FTMS device.
+     *
+     * Typical caller: FtmsCapabilities reader module after reading:
+     *   - 0x2ACC (Fitness Machine Feature – FMF/TSF bits)
+     *   - 0x2AD4–0x2AD8 (Supported-* Range characteristics)
+     */
+    fun setFtmsCapabilities(caps: FtmsCapabilities) {
+        val old = ftmsCapabilities
+        ftmsCapabilities = caps
+        // keep legacy flag in sync for older consumers
+        featuresRead = caps.featuresRead
+
+        Timber.tag(TAG).i(
+            "ftmsCapabilities updated: " +
+                    "supports(S/I/R/P)=%s/%s/%s/%s " +
+                    "speed=[%s..%s step=%s known=%s] " +
+                    "incline=[%s..%s step=%s known=%s] " +
+                    "res=[%s..%s step=%s known=%s] " +
+                    "power=[%s..%s step=%s known=%s]",
+            caps.supportsSpeed,
+            caps.supportsInclination,
+            caps.supportsResistance,
+            caps.supportsPower,
+            caps.speedMin, caps.speedMax, caps.speedIncr, caps.speedRangeKnown,
+            caps.inclineMin, caps.inclineMax, caps.inclineIncr, caps.inclineRangeKnown,
+            caps.resistanceMin, caps.resistanceMax, caps.resistanceIncr, caps.resistanceRangeKnown,
+            caps.powerMin, caps.powerMax, caps.powerIncr, caps.powerRangeKnown,
+        )
+
+        if (!old.featuresRead && caps.featuresRead) {
+            Timber.tag(TAG).d("ftmsCapabilities: featuresRead → true (first full capability snapshot)")
+        }
+    }
+
+    fun mergeFtmsCapabilities(update: FtmsCapabilities) {
+        val old = ftmsCapabilities
+        ftmsCapabilities = FtmsCapabilities(
+            featuresRead          = update.featuresRead          || old.featuresRead,
+            supportsSpeed         = update.supportsSpeed         || old.supportsSpeed,
+            supportsInclination   = update.supportsInclination   || old.supportsInclination,
+            supportsResistance    = update.supportsResistance    || old.supportsResistance,
+            supportsPower         = update.supportsPower         || old.supportsPower,
+
+            speedMin              = update.speedMin              ?: old.speedMin,
+            speedMax              = update.speedMax              ?: old.speedMax,
+            speedIncr             = update.speedIncr             ?: old.speedIncr,
+            speedRangeKnown       = update.speedRangeKnown       || old.speedRangeKnown,
+
+            inclineMin            = update.inclineMin            ?: old.inclineMin,
+            inclineMax            = update.inclineMax            ?: old.inclineMax,
+            inclineIncr           = update.inclineIncr           ?: old.inclineIncr,
+            inclineRangeKnown     = update.inclineRangeKnown     || old.inclineRangeKnown,
+
+            resistanceMin         = update.resistanceMin         ?: old.resistanceMin,
+            resistanceMax         = update.resistanceMax         ?: old.resistanceMax,
+            resistanceIncr        = update.resistanceIncr        ?: old.resistanceIncr,
+            resistanceRangeKnown  = update.resistanceRangeKnown  || old.resistanceRangeKnown,
+
+            powerMin              = update.powerMin              ?: old.powerMin,
+            powerMax              = update.powerMax              ?: old.powerMax,
+            powerIncr             = update.powerIncr             ?: old.powerIncr,
+            powerRangeKnown       = update.powerRangeKnown       || old.powerRangeKnown,
+        )
+    }
+
+    fun resetFtmsCapabilities() {
+        featuresRead = false
+        supportsSpeed = false
+        supportsInclination = false
+        supportsResistance = false
+        supportsPower = false
+
+        speedMin = 0f; speedMax = 0f; speedIncr = 0f; speedRangeKnown = false
+        inclineMin = 0f; inclineMax = 0f; inclineIncr = 0f; inclineRangeKnown = false
+        resistanceMin = 0f; resistanceMax = 0f; resistanceIncr = 0f; resistanceRangeKnown = false
+        powerMin = 0f; powerMax = 0f; powerIncr = 0f; powerRangeKnown = false
+
+        ftmsCapabilities = FtmsCapabilities()
+    }
+
+    // ⬆️ END OF NEW FTMS CAPABILITIES BLOCK
+
+
+    /* ───────────────────────────── FTMS capabilities / ranges ───────────────────────────── */
+
+    /**
+     * Whether we have successfully read 0x2ACC + any Supported-* Range characteristics
+     * from the *real* FTMS device for this session.
+     *
+     * This is used by consumers that still rely on the legacy boolean/float fields
+     * below. Newer provider-side code should prefer [ftmsCapabilities] where possible.
+     */
+    var featuresRead = false
+
+    /**
+     * Legacy flags indicating what the real machine supports. Retained for engine-side
+     * logic and any existing UI consumers. btService should prefer [ftmsCapabilities].
+     */
+    var supportsSpeed = false
+    var supportsInclination = false
+    var supportsResistance = false
+    var supportsPower = false
+
+    /**
+     * Legacy range fields (engine-side, usually in human-readable units such as km/h,
+     * degrees, watts). These are still valid for existing math/UI.
+     *
+     * When building provider-side Supported-* Range characteristics, prefer the richer
+     * [ftmsCapabilities] snapshot if it is non-null; otherwise, these can be used as a
+     * fallback by converting to spec units in BtServiceSupportedRangesAdapter.
+     */
+    var speedMin = 0f
+    var speedMax = 0f
+    var speedIncr = 0f
+    var speedRangeKnown = false
+
+    var inclineMin = 0f
+    var inclineMax = 0f
+    var inclineIncr = 0f
+    var inclineRangeKnown = false
+
+    var resistanceMin = 0f
+    var resistanceMax = 0f
+    var resistanceIncr = 0f
+    var resistanceRangeKnown = false
+
+    var powerMin = 0f
+    var powerMax = 0f
+    var powerIncr = 0f
+    var powerRangeKnown = false
+
+    private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
+    val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices
+
+    private val _hrmDevices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
+    val hrmDevices: StateFlow<Map<String, DiscoveredDevice>> = _hrmDevices
+
+    private val _isScanning = MutableStateFlow(false)
+    val isScanning: StateFlow<Boolean> = _isScanning
+
+    /* ───────────────────────────── connections & characteristics ───────────────────────────── */
+
+    // FTMS connection (primary)
+    var gatt: BluetoothGatt? = null
+        set(value) {
+            val oldAddr = field?.device?.address
+            val newAddr = value?.device?.address
+            Timber.tag(TAG).d("FTMS GATT reference change %s → %s", oldAddr, newAddr)
+            field = value
+        }
+
+    private val _connectionState = MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
+    val connectionState: StateFlow<Int> = _connectionState
+
+    /** Wall-clock when the FTMS link *first* became CONNECTED (ms since epoch). Cleared on disconnect. */
+    @Volatile
+    var linkedAtMs: Long? = null
+        private set
+
+    private val _lastGattError = MutableStateFlow<String?>(null)
+    val lastGattError: StateFlow<String?> = _lastGattError
+
+    // HRM connection (separate GATT)
+    var gattHrm: BluetoothGatt? = null
+        set(value) {
+            val oldAddr = field?.device?.address
+            val newAddr = value?.device?.address
+            Timber.tag(TAG).d("HRM GATT reference change %s → %s", oldAddr, newAddr)
+            field = value
+        }
+
+    private val _hrmConnectionState = MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
+    val hrmConnectionState: StateFlow<Int> = _hrmConnectionState
+    private val _lastHrmError = MutableStateFlow<String?>(null)
+    val lastHrmError: StateFlow<String?> = _lastHrmError
+
+    // Characteristics (FTMS)
+    var controlPointChar: BluetoothGattCharacteristic? = null
+        set(value) {
+            val old = field?.uuid
+            val new = value?.uuid
+            Timber.tag(TAG).d("FTMS controlPointChar %s → %s", old, new)
+            field = value
+        }
+
+    // Characteristics (HRM)
+    var hrmMeasurementChar: BluetoothGattCharacteristic? = null
+        set(value) {
+            val old = field?.uuid
+            val new = value?.uuid
+            Timber.tag(TAG).d("HRM measurementChar %s → %s", old, new)
+            field = value
+        }
+    var hrmCtrlPointChar: BluetoothGattCharacteristic? = null
+        set(value) {
+            val old = field?.uuid
+            val new = value?.uuid
+            Timber.tag(TAG).d("HRM ctrlPointChar %s → %s", old, new)
+            field = value
+        }
+    var hrmBodyLocChar: BluetoothGattCharacteristic? = null
+        set(value) {
+            val old = field?.uuid
+            val new = value?.uuid
+            Timber.tag(TAG).d("HRM bodyLocChar %s → %s", old, new)
+            field = value
+        }
+
+    // FTMS control (per 0x2AD9 Request Control)
+    private val _haveControl = MutableStateFlow(false)
+    val haveControlFlow: StateFlow<Boolean> = _haveControl
+
+    // CCCD readiness for FTMS
+    private val _cccdReady = MutableStateFlow(false)
+    val cccdReady: StateFlow<Boolean> = _cccdReady
+
+    // Number of pending CCCD writes (FTMS)
+    var pendingCccdWrites: Int = 0
+
+    // ─────────────────────────────────────────────────────────────
+    // FTMS Fitness Machine Status + Targets (0x2ADA)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Last raw FTMS Fitness Machine Status opcode received (or null if none yet).
+     * This is the first byte of the 0x2ADA payload.
+     */
+    private val _lastFtmsStatusCode = MutableStateFlow<Byte?>(null)
+    val lastFtmsStatusCode: StateFlow<Byte?> = _lastFtmsStatusCode
+
+    /**
+     * Whether the upstream machine has reported a safety-key / emergency-stop event.
+     * Set to true on STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY; typically cleared
+     * on successful RESET or new session.
+     */
+    private val _safetyKeyEngaged = MutableStateFlow(false)
+    val safetyKeyEngaged: StateFlow<Boolean> = _safetyKeyEngaged
+
+    /** Current target speed in km/h (decoded from 0.01 km/h units). */
+    private val _targetSpeedKmh = MutableStateFlow<Float?>(null)
+    val targetSpeedKmh: StateFlow<Float?> = _targetSpeedKmh
+
+    /** Current target incline in degrees (decoded from 0.1° units). */
+    private val _targetInclineDeg = MutableStateFlow<Float?>(null)
+    val targetInclineDeg: StateFlow<Float?> = _targetInclineDeg
+
+    /** Current target resistance level (unitless, 0.1 resolution already applied). */
+    private val _targetResistanceLevel = MutableStateFlow<Float?>(null)
+    val targetResistanceLevel: StateFlow<Float?> = _targetResistanceLevel
+
+    /** Current target power in watts. */
+    private val _targetPowerWatts = MutableStateFlow<Int?>(null)
+    val targetPowerWatts: StateFlow<Int?> = _targetPowerWatts
+
+    /** Current target heart rate in bpm. */
+    private val _targetHeartRateBpm = MutableStateFlow<Int?>(null)
+    val targetHeartRateBpm: StateFlow<Int?> = _targetHeartRateBpm
+
+    /* ───────────────────────────── GATT operation queue ─────────────────────────────
+       Uses StackEntry defined in btEngine.GattQueue.kt to avoid duplication. */
+
+    val lock = Any()
+    internal val queue = ArrayDeque<StackEntry>()
+    var writeBusy: Boolean = false
+
+    /* ───────────────────────────── units / session flags ───────────────────────────── */
+
+    private val _units: MutableStateFlow<Int?> = MutableStateFlow(null)
+    val units: StateFlow<Int?> = _units
+
+    private val _activeSession: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val activeSession: StateFlow<Boolean> = _activeSession
+
+    private val _isRunning: MutableStateFlow<Boolean?> = MutableStateFlow(null)
+    val isRunning: StateFlow<Boolean?> = _isRunning
+
+    private val _elapsedTimeSec: MutableStateFlow<Int?> = MutableStateFlow(null)
+    val elapsedTimeSec: StateFlow<Int?> = _elapsedTimeSec
+
+    /* ───────────────────────────── FTMS metrics (instant/avg/peak) ─────────────────────────────
+       Note: "display" fields are unit-aware (km/mi), intended for direct UI consumption. */
+
+    // Stroke / rowing
+    private val _strokeRate = MutableStateFlow<Double?>(null)
+    val strokeRate: StateFlow<Double?> = _strokeRate
+    private val _peakStrokeRate = MutableStateFlow<Double?>(null)
+    val peakStrokeRate: StateFlow<Double?> = _peakStrokeRate
+    private val _strokeCount = MutableStateFlow<Int?>(null)
+    val strokeCount: StateFlow<Int?> = _strokeCount
+
+    // Distance (raw meters + unit-aware display)
+    private val _totalDistanceMeters = MutableStateFlow<Int?>(null)
+    val totalDistanceMeters: StateFlow<Int?> = _totalDistanceMeters
+    private val _totalDistanceDisplay = MutableStateFlow<Double?>(null)
+    val totalDistanceDisplay: StateFlow<Double?> = _totalDistanceDisplay
+
+    // Speed (kph/mph + unit-aware display)
+    private val _speedKph = MutableStateFlow<Double?>(null)
+    val speedKph: StateFlow<Double?> = _speedKph
+    private val _speedMph = MutableStateFlow<Double?>(null)
+    val speedMph: StateFlow<Double?> = _speedMph
+    private val _peakSpeedKph = MutableStateFlow<Double?>(null)
+    val peakSpeedKph: StateFlow<Double?> = _peakSpeedKph
+    private val _peakSpeedMph = MutableStateFlow<Double?>(null)
+    val peakSpeedMph: StateFlow<Double?> = _peakSpeedMph
+    private val _avgSpeedKph = MutableStateFlow<Double?>(null)
+    val avgSpeedKph: StateFlow<Double?> = _avgSpeedKph
+
+    private val _speedDisplay = MutableStateFlow<Double?>(null)
+    val speedDisplay: StateFlow<Double?> = _speedDisplay
+    private val _avgSpeedDisplay = MutableStateFlow<Double?>(null)
+    val avgSpeedDisplay: StateFlow<Double?> = _avgSpeedDisplay
+    private val _peakSpeedDisplay = MutableStateFlow<Double?>(null)
+    val peakSpeedDisplay: StateFlow<Double?> = _peakSpeedDisplay
+
+    // Pace (min / unit)
+    private val _instPace = MutableStateFlow<Double?>(null)
+    val instPace: StateFlow<Double?> = _instPace
+    private val _avgPace = MutableStateFlow<Double?>(null)
+    val avgPace: StateFlow<Double?> = _avgPace
+
+    // Keep last canonical (metric) pace so we can re-convert on unit change
+    private var lastInstantPaceMinPerKm: Double? = null
+    private var lastAvgPaceMinPerKm: Double? = null
+
+    // Power (W)
+    private val _instantPower = MutableStateFlow<Int?>(null)
+    val instantPower: StateFlow<Int?> = _instantPower
+    private val _averagePower = MutableStateFlow<Int?>(null)
+    val averagePower: StateFlow<Int?> = _averagePower
+    private val _peakPower = MutableStateFlow<Int?>(null)
+    val peakPower: StateFlow<Int?> = _peakPower
+
+    // Resistance (unitless "level" or device-specific units)
+    private val _resistance = MutableStateFlow<Double?>(null)
+    val resistance: StateFlow<Double?> = _resistance
+
+    // Energy / METs
+    private val _expEnergyTotal = MutableStateFlow<Int?>(null)
+    val expEnergyTotal: StateFlow<Int?> = _expEnergyTotal
+    private val _metabolicEquivalent = MutableStateFlow<Double?>(null)
+    val metabolicEquivalent: StateFlow<Double?> = _metabolicEquivalent
+
+    // Incline / ramp / elevation
+    private val _inclination = MutableStateFlow<Double?>(null)
+    val inclination: StateFlow<Double?> = _inclination
+    private val _rampAngle = MutableStateFlow<Double?>(null)
+    val rampAngle: StateFlow<Double?> = _rampAngle
+    private val _elevationGainPos = MutableStateFlow<Double?>(null)
+    val elevationGainPos: StateFlow<Double?> = _elevationGainPos
+    private val _elevationGainNeg = MutableStateFlow<Double?>(null)
+    val elevationGainNeg: StateFlow<Double?> = _elevationGainNeg
+
+    // Belt force
+    private val _forceOnBelt = MutableStateFlow<Int?>(null)
+    val forceOnBelt: StateFlow<Int?> = _forceOnBelt
+
+    // Cadence / strides / floors / steps
+    private val _instantCadence = MutableStateFlow<Double?>(null)
+    val instantCadence: StateFlow<Double?> = _instantCadence
+    private val _averageCadence = MutableStateFlow<Double?>(null)
+    val averageCadence: StateFlow<Double?> = _averageCadence
+    private val _totalStrides = MutableStateFlow<Double?>(null)
+    val totalStrides: StateFlow<Double?> = _totalStrides
+    private val _totalFloors = MutableStateFlow<Int?>(null)
+    val totalFloors: StateFlow<Int?> = _totalFloors
+    private val _totalSteps = MutableStateFlow<Int?>(null)
+    val totalSteps: StateFlow<Int?> = _totalSteps
+
+    /* ───────────────────────────── graphable time-series (full session) ─────────────────────────────
+       Series are stored in SI/neutral units for consistency:
+       - Heart Rate: bpm
+       - Speed: kph
+       - Cadence: spm (steps or strokes per minute depending on activity)
+       - Power: watts
+       - Incline: degrees (if device reports % grade, upstream should convert)
+       - Resistance: device-specific "level" (Double)
+       - Distance: meters
+       Time-series are now **unbounded for the duration of a session**. We never trim by time here;
+       graphs choose their own visible window (e.g., last 5 minutes vs. full-session zoom).
+     */
+
+    /** Optional baseline to avoid UI “jumps” for delta-based charts after a screen swap. */
+    private var distanceBaselineMetersForUi: Int = 0
+    /** Timestamp of the last series clear (for debugging or pacing logic). */
+    private var lastSeriesClearAtMs: Long = 0L
+
+    /**
+     * Clear time-series buffers and (optionally) zero certain rolling aggregates while
+     * *preserving* cumulative totals by default. This is the API your UI/ViewModel should call.
+     *
+     * @param keepTotals If true (default), cumulative totals such as totalDistanceMeters are kept.
+     *                   If false, those totals are also zeroed (use with care on provider side).
+     */
+    @Synchronized
+    fun clearTimeSeries(keepTotals: Boolean = true, nowMs: Long = System.currentTimeMillis()) {
+        Timber.tag(TAG).i("clearTimeSeries(keepTotals=%s)", keepTotals)
+
+        // 1) Clear time-series + running means (reuse helper)
+        clearAllTimeSeries()
+
+        // 2) Move baselines so delta-based math doesn’t spike after UI transitions
+        val curDist = _totalDistanceMeters.value ?: 0
+        distanceBaselineMetersForUi = curDist
+        lastSeriesClearAtMs = nowMs
+
+        // 3) If requested, also zero provider-side totals (rarely desired)
+        if (!keepTotals) {
+            _totalDistanceMeters.value = 0
+            _totalDistanceDisplay.value = 0.0
+            _elapsedTimeSec.value = 0
+            // Reset lap projections too, since totals got zeroed
+            _lapAvgSpeedMps.value = null
+            _lapAvgSpeedDisplay.value = null
+        }
+    }
+
+    /**
+     * Helper for UI/encoders that want distance starting at 0 after the last series clear.
+     * Consumers can use this instead of raw totalDistanceMeters to avoid a jump.
+     */
+    fun distanceSinceLastClear(): Int {
+        val cur = _totalDistanceMeters.value ?: 0
+        return (cur - distanceBaselineMetersForUi).coerceAtLeast(0)
+    }
+
+    private val _hrSeries = MutableStateFlow<List<TimedSample>>(emptyList())
+    val hrSeries: StateFlow<List<TimedSample>> = _hrSeries
+
+    private val _speedSeriesKph = MutableStateFlow<List<TimedSample>>(emptyList())
+    val speedSeriesKph: StateFlow<List<TimedSample>> = _speedSeriesKph
+
+    private val _cadenceSeriesSpm = MutableStateFlow<List<TimedSample>>(emptyList())
+    val cadenceSeriesSpm: StateFlow<List<TimedSample>> = _cadenceSeriesSpm
+
+    private val _powerSeriesW = MutableStateFlow<List<TimedSample>>(emptyList())
+    val powerSeriesW: StateFlow<List<TimedSample>> = _powerSeriesW
+
+    private val _inclineSeriesDeg = MutableStateFlow<List<TimedSample>>(emptyList())
+    val inclineSeriesDeg: StateFlow<List<TimedSample>> = _inclineSeriesDeg
+
+    private val _resistanceSeries = MutableStateFlow<List<TimedSample>>(emptyList())
+    val resistanceSeries: StateFlow<List<TimedSample>> = _resistanceSeries
+
+    private val _forceOnBeltSeries = MutableStateFlow<List<TimedSample>>(emptyList())
+    val forceOnBeltSeries: StateFlow<List<TimedSample>> = _forceOnBeltSeries
+
+    // Stroke-rate series (SPM). Alias of cadenceSeriesSpm.
+    val strokeRateSeriesSpm: StateFlow<List<TimedSample>> get() = _cadenceSeriesSpm
+
+    /** Append a belt-force sample (N). */
+    fun appendForceOnBeltSample(n: Int, tsMillis: Long = System.currentTimeMillis()) {
+        _forceOnBelt.value = n
+        _forceOnBeltSeries.value = _forceOnBeltSeries.value + TimedSample(tsMillis, n.toDouble())
+        Timber.tag(TAG).v(
+            "appendForceOnBeltSample N=%d seriesSize=%d",
+            n,
+            _forceOnBeltSeries.value.size
+        )
+    }
+
+
+    /* ───────────────────────────── lap & derived values ───────────────────────────── */
+
+    var lapStartDistanceMeters: Int = 0
+    var lapStartElapsedSec: Int = 0
+    var lapStartStrokeCount: Int = 0
+    var lapStartSteps: Int = 0
+
+    private val _lapCount = MutableStateFlow(0)
+    val lapCount: StateFlow<Int> = _lapCount
+    private val _lapElapsedTimeSec = MutableStateFlow<Int?>(null)
+    val lapElapsedTimeSec: StateFlow<Int?> = _lapElapsedTimeSec
+    private val _lapDistanceMeters = MutableStateFlow<Int?>(null)
+    val lapDistanceMeters: StateFlow<Int?> = _lapDistanceMeters
+    private val _lapDistanceDisplay = MutableStateFlow<Double?>(null) // km or mi
+    val lapDistanceDisplay: StateFlow<Double?> = _lapDistanceDisplay
+
+    private val _lapAvgSpeedMps = MutableStateFlow<Double?>(null)
+    val lapAvgSpeedMps: StateFlow<Double?> = _lapAvgSpeedMps
+    private val _lapAvgSpeedDisplay = MutableStateFlow<Double?>(null)
+    val lapAvgSpeedDisplay: StateFlow<Double?> = _lapAvgSpeedDisplay
+    private val _lapRunPaceMinPerUnit = MutableStateFlow<Double?>(null)
+    val lapRunPaceMinPerUnit: StateFlow<Double?> = _lapRunPaceMinPerUnit
+    private val _lapRowPaceMinPer500m = MutableStateFlow<Double?>(null)
+    val lapRowPaceMinPer500m: StateFlow<Double?> = _lapRowPaceMinPer500m
+
+    private val _lapStrokeCount = MutableStateFlow<Int?>(null)
+    val lapStrokeCount: StateFlow<Int?> = _lapStrokeCount
+    private val _lapSteps = MutableStateFlow<Int?>(null)
+    val lapSteps: StateFlow<Int?> = _lapSteps
+    private val _lapCadenceSpm = MutableStateFlow<Double?>(null)
+    val lapCadenceSpm: StateFlow<Double?> = _lapCadenceSpm
+
+    var lapAvgCadenceTotal = 0.0
+    var lapAvgCadenceCount = 0
+
+    /* ───────────────────────────── smoothing / running averages ───────────────────────────── */
+
+    // Power smoothing (existing)
+    var internalPowerSum = 0.0
+    var internalPowerCount = 0
+
+    // Running mean accumulators for HR/speed/cadence/power (kph/spm/watts).
+    private var hrSum = 0.0
+    private var hrCount = 0
+
+    private var speedKphSum = 0.0
+    private var speedCount = 0
+
+    private var cadenceSpmSum = 0.0
+    private var cadenceCount = 0
+
+    private var powerSum = 0.0
+    private var powerCount = 0
+
+    /* ───────────────────────────── HRM aggregation (Bluetooth only) ───────────────────────────── */
+
+    enum class HrSource { UNKNOWN, EXTERNAL_HRM }
+    enum class BodyLocation { OTHER, CHEST, WRIST, FINGER, HAND, EAR_LOBE, FOOT, UNKNOWN }
+
+    // Public HR outputs
+    private val _heartRate = MutableStateFlow<Int?>(null)
+    val heartRate: StateFlow<Int?> = _heartRate
+    private val _heartRateSource = MutableStateFlow(HrSource.UNKNOWN)
+    val heartRateSource: StateFlow<HrSource> = _heartRateSource
+    private val _heartRateZone = MutableStateFlow<Int?>(null) // 0..5
+    val heartRateZone: StateFlow<Int?> = _heartRateZone
+
+    // Average heart rate over session (simple running mean)
+    private val _averageHeartRate = MutableStateFlow<Int?>(null)
+    val averageHeartRate: StateFlow<Int?> = _averageHeartRate
+    // NEW: average HR zone (0..5) based on averageHeartRate
+    private val _averageHeartRateZone = MutableStateFlow<Int?>(null)
+    val averageHeartRateZone: StateFlow<Int?> = _averageHeartRateZone
+
+    private val _sensorContact = MutableStateFlow<Boolean?>(null)
+    val sensorContact: StateFlow<Boolean?> = _sensorContact
+    private val _energyExpended = MutableStateFlow<Int?>(null)
+    val energyExpended: StateFlow<Int?> = _energyExpended
+    private val _rrIntervalsMs = MutableStateFlow<List<Int>>(emptyList())
+    val rrIntervalsMs: StateFlow<List<Int>> = _rrIntervalsMs
+    private val _bodySensorLocation = MutableStateFlow<BodyLocation?>(null)
+    val bodySensorLocation: StateFlow<BodyLocation?> = _bodySensorLocation
+
+    // Inputs (Bluetooth only)
+    private val _externalHeartRate = MutableStateFlow<Int?>(null)
+    val externalHeartRate: StateFlow<Int?> = _externalHeartRate
+    var lastExternalAt: Long = 0L
+
+    // HR zone bindings (provided by App layer)
+    @Volatile var hrMaxFromApp: StateFlow<Int?>? = null
+    @Volatile var restingHrFromApp: StateFlow<Int?>? = null
+    @Volatile var hrZoneModeFromApp: StateFlow<HrZoneMode>? = null
+
+    // make actual backing flows:
+    private val _hrMaxFromApp = MutableStateFlow<Int?>(null)
+    private val _restingHrFromApp = MutableStateFlow<Int?>(null)
+    private val _hrZoneModeFromApp = MutableStateFlow(HrZoneMode.Off)
+
+    init {
+        // keep the old public Volatile vars pointing to these so older code
+        // that expects them to be non-null StateFlows will now get a value
+        hrMaxFromApp = _hrMaxFromApp
+        restingHrFromApp = _restingHrFromApp
+        hrZoneModeFromApp = _hrZoneModeFromApp
+    }
+
+    fun setHrMaxFromApp(value: Int?) {
+        Timber.tag(TAG).d("setHrMaxFromApp(%s)", value?.toString() ?: "null")
+        _hrMaxFromApp.value = value
+    }
+
+    fun setRestingHrFromApp(value: Int?) {
+        Timber.tag(TAG).d("setRestingHrFromApp(%s)", value?.toString() ?: "null")
+        _restingHrFromApp.value = value
+    }
+
+    fun setHrZoneModeFromApp(mode: HrZoneMode) {
+        Timber.tag(TAG).d("setHrZoneModeFromApp(%s)", mode)
+        _hrZoneModeFromApp.value = mode
+    }
+
+    /* ───────────────────────────── device helpers / mutation API ───────────────────────────── */
+
+    // Discovery -> machine feature
+    fun updateDeviceMachineFeatureByAddress(address: String, machineTypeOrdinal: Int) {
+        if (address.isBlank()) return
+        val map = _devices.value.toMutableMap()
+        val entry = map.entries.firstOrNull { it.value.address.equals(address, ignoreCase = true) } ?: return
+        val oldFeature = entry.value.machineFeature
+        if (oldFeature == machineTypeOrdinal) return
+        map[entry.key] = entry.value.copy(machineFeature = machineTypeOrdinal)
+        _devices.value = map
+        Timber.tag(TAG).i(
+            "updateDeviceMachineFeatureByAddress(%s): %s → %d",
+            address,
+            oldFeature?.toString() ?: "null",
+            machineTypeOrdinal
+        )
+    }
+
+    fun updateConnectedFtmsMachineFeature(machineTypeOrdinal: Int) {
+        val addr = gatt?.device?.address ?: return
+        Timber.tag(TAG).i(
+            "updateConnectedFtmsMachineFeature addr=%s machineFeature=%d",
+            addr,
+            machineTypeOrdinal
+        )
+        updateDeviceMachineFeatureByAddress(addr, machineTypeOrdinal)
+    }
+
+    // Scanning + lists
+    fun setCccdReady(v: Boolean) {
+        val old = _cccdReady.value
+        _cccdReady.value = v
+        Timber.tag(TAG).d("cccdReady %s → %s", old, v)
+    }
+
+    fun setScanning(v: Boolean) {
+        val old = _isScanning.value
+        _isScanning.value = v
+        Timber.tag(TAG).d("isScanning %s → %s", old, v)
+    }
+
+    fun putDevices(map: Map<String, DiscoveredDevice>) {
+        _devices.value = map
+        Timber.tag(TAG).d("putDevices(size=%d)", map.size)
+    }
+
+    fun putHrmDevices(map: Map<String, DiscoveredDevice>) {
+        _hrmDevices.value = map
+        Timber.tag(TAG).d("putHrmDevices(size=%d)", map.size)
+    }
+
+    // Connections
+    fun setConnectionState(state: Int) {
+        val old = _connectionState.value
+        _connectionState.value = state
+        Timber.tag(TAG).i("FTMS connectionState %d → %d", old, state)
+
+        when (state) {
+            BluetoothProfile.STATE_CONNECTED -> {
+                // Only stamp on first transition into CONNECTED (avoid re-stamping if we get spurious repeats)
+                if (old != BluetoothProfile.STATE_CONNECTED) {
+                    linkedAtMs = System.currentTimeMillis()
+                    Timber.tag(TAG).d("linkedAtMs set → %d", linkedAtMs)
+                }
+            }
+            BluetoothProfile.STATE_DISCONNECTED -> {
+                if (linkedAtMs != null) {
+                    Timber.tag(TAG).d("linkedAtMs cleared (was %d)", linkedAtMs)
+                }
+                linkedAtMs = null
+            }
+        }
+    }
+
+    fun setHrmConnectionState(state: Int) {
+        val old = _hrmConnectionState.value
+        _hrmConnectionState.value = state
+        Timber.tag(TAG).i("HRM connectionState %d → %d", old, state)
+    }
+
+    fun setHaveControl(v: Boolean) {
+        val old = _haveControl.value
+        _haveControl.value = v
+        Timber.tag(TAG).d("haveControl %s → %s", old, v)
+    }
+
+    // FTMS Status / Targets
+    fun setLastFtmsStatusCode(code: Byte?) {
+        val old = _lastFtmsStatusCode.value
+        _lastFtmsStatusCode.value = code
+        Timber.tag(TAG).d(
+            "lastFtmsStatusCode %s → %s",
+            old?.let { "0x%02X".format(it) } ?: "null",
+            code?.let { "0x%02X".format(it) } ?: "null"
+        )
+    }
+
+    fun setSafetyKeyEngaged(v: Boolean) {
+        val old = _safetyKeyEngaged.value
+        _safetyKeyEngaged.value = v
+        Timber.tag(TAG).w("safetyKeyEngaged %s → %s", old, v)
+    }
+
+    fun setTargetSpeedKmh(kmh: Float?) {
+        val old = _targetSpeedKmh.value
+        _targetSpeedKmh.value = kmh
+        Timber.tag(TAG).d("targetSpeedKmh %s → %s", old?.toString() ?: "null", kmh?.toString() ?: "null")
+    }
+
+    fun setTargetInclineDeg(deg: Float?) {
+        val old = _targetInclineDeg.value
+        _targetInclineDeg.value = deg
+        Timber.tag(TAG).d("targetInclineDeg %s → %s", old?.toString() ?: "null", deg?.toString() ?: "null")
+    }
+
+    fun setTargetResistanceLevel(level: Float?) {
+        val old = _targetResistanceLevel.value
+        _targetResistanceLevel.value = level
+        Timber.tag(TAG).d("targetResistanceLevel %s → %s", old?.toString() ?: "null", level?.toString() ?: "null")
+    }
+
+    fun setTargetPowerWatts(watts: Int?) {
+        val old = _targetPowerWatts.value
+        _targetPowerWatts.value = watts
+        Timber.tag(TAG).d("targetPowerWatts %s → %s", old?.toString() ?: "null", watts?.toString() ?: "null")
+    }
+
+    fun setTargetHeartRateBpm(bpm: Int?) {
+        val old = _targetHeartRateBpm.value
+        _targetHeartRateBpm.value = bpm
+        Timber.tag(TAG).d("targetHeartRateBpm %s → %s", old?.toString() ?: "null", bpm?.toString() ?: "null")
+    }
+
+    // Session & units (starting a new session clears time-series + averages)
+    fun setUnits(units: Int?) {
+        val old = _units.value
+        _units.value = units
+        Timber.tag(TAG).i("setUnits %s → %s", old?.toString() ?: "null", units?.toString() ?: "null")
+
+        // Re-emit pace in the newly selected units
+        lastInstantPaceMinPerKm?.let { emitInstantPaceForUnits(it, units) }
+        lastAvgPaceMinPerKm?.let { emitAvgPaceForUnits(it, units) }
+    }
+
+    fun setActiveSession(active: Boolean) {
+        val was = _activeSession.value
+        _activeSession.value = active
+        Timber.tag(TAG).i("setActiveSession %s → %s", was, active)
+
+        if (active && !was) {
+            Timber.tag(TAG).i("New active session started → reset averages, series and FTMS status/targets")
+            resetAveragesAndSeries()
+            // Reset FTMS status-related state when a new session starts
+            _lastFtmsStatusCode.value = null
+            _safetyKeyEngaged.value = false
+            _targetSpeedKmh.value = null
+            _targetInclineDeg.value = null
+            _targetResistanceLevel.value = null
+            _targetPowerWatts.value = null
+            _targetHeartRateBpm.value = null
+            _haveControl.value = false
+        }
+    }
+
+    fun setIsRunning(running: Boolean?) {
+        val old = _isRunning.value
+        _isRunning.value = running
+        Timber.tag(TAG).d("isRunning %s → %s", old?.toString() ?: "null", running?.toString() ?: "null")
+    }
+
+    fun setElapsedSeconds(sec: Int?) {
+        val old = _elapsedTimeSec.value
+        _elapsedTimeSec.value = sec
+        Timber.tag(TAG).v("elapsedTimeSec %s → %s", old?.toString() ?: "null", sec?.toString() ?: "null")
+    }
+
+    // Metrics setters (kept quiet to avoid log spam; still available if you want to instrument later)
+    fun setStrokeRate(v: Double?) { _strokeRate.value = v }
+    fun setPeakStrokeRate(v: Double?) { _peakStrokeRate.value = v }
+    fun setStrokeCount(v: Int?) { _strokeCount.value = v }
+
+    fun setTotalDistanceMeters(m: Int?) { _totalDistanceMeters.value = m }
+    fun setTotalDistanceDisplay(dist: Double?) { _totalDistanceDisplay.value = dist }
+
+    fun setSpeedKph(v: Double?) { _speedKph.value = v }
+    fun setSpeedMph(v: Double?) { _speedMph.value = v }
+    fun setAvgSpeedKph(v: Double?) { _avgSpeedKph.value = v }
+    fun setPeakSpeedKph(v: Double?) { _peakSpeedKph.value = v }
+    fun setPeakSpeedMph(v: Double?) { _peakSpeedMph.value = v }
+
+    fun setSpeedDisplay(v: Double?) { _speedDisplay.value = v }
+    fun setAvgSpeedDisplay(v: Double?) { _avgSpeedDisplay.value = v }
+    fun setPeakSpeedDisplay(v: Double?) { _peakSpeedDisplay.value = v }
+
+    // ─────────────────────────────────────────────────────────────
+    // PACE (now expects **minutes per km**)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * @param minPerKm canonical metric pace (minutes per kilometer)
+     */
+    fun setInstantPace(minPerKm: Double?) {
+        lastInstantPaceMinPerKm = minPerKm
+        Timber.tag(TAG).v("setInstantPace(minPerKm=%s)", minPerKm?.toString() ?: "null")
+        val units = _units.value
+        emitInstantPaceForUnits(minPerKm, units)
+    }
+
+    /**
+     * @param minPerKm canonical metric average pace (minutes per kilometer)
+     */
+    fun setAvgPace(minPerKm: Double?) {
+        lastAvgPaceMinPerKm = minPerKm
+        Timber.tag(TAG).v("setAvgPace(minPerKm=%s)", minPerKm?.toString() ?: "null")
+        val units = _units.value
+        emitAvgPaceForUnits(minPerKm, units)
+    }
+
+    private fun emitInstantPaceForUnits(minPerKm: Double?, units: Int?) {
+        if (minPerKm == null) {
+            _instPace.value = null
+            return
+        }
+        // 1 = imperial → min/mi
+        // else → min/km
+        val display = if (units == 1) {
+            // 1 mi = 1.609344 km
+            minPerKm * 1.609344
+        } else {
+            minPerKm
+        }
+        _instPace.value = display
+    }
+
+    private fun emitAvgPaceForUnits(minPerKm: Double?, units: Int?) {
+        if (minPerKm == null) {
+            _avgPace.value = null
+            return
+        }
+        val display = if (units == 1) {
+            minPerKm * 1.609344
+        } else {
+            minPerKm
+        }
+        _avgPace.value = display
+    }
+
+    fun setInstantPower(w: Int?) { _instantPower.value = w }
+    fun setAveragePower(w: Int?) { _averagePower.value = w }
+    fun setPeakPower(w: Int?) { _peakPower.value = w }
+
+    fun setResistance(r: Double?) { _resistance.value = r }
+
+    fun setExpEnergyTotal(kcal: Int?) { _expEnergyTotal.value = kcal }
+    fun setMetabolicEquivalent(met: Double?) { _metabolicEquivalent.value = met }
+
+    fun setInclination(v: Double?) { _inclination.value = v }
+    fun setRampAngle(v: Double?) { _rampAngle.value = v }
+    fun setElevationGainPos(v: Double?) { _elevationGainPos.value = v }
+    fun setElevationGainNeg(v: Double?) { _elevationGainNeg.value = v }
+
+    fun setForceOnBelt(n: Int?) { _forceOnBelt.value = n }
+
+    fun setInstantCadence(v: Double?) { _instantCadence.value = v }
+    fun setAverageCadence(v: Double?) { _averageCadence.value = v }
+    fun setTotalStrides(v: Double?) { _totalStrides.value = v }
+    fun setTotalFloors(v: Int?) { _totalFloors.value = v }
+    fun setTotalSteps(v: Int?) { _totalSteps.value = v }
+
+    fun setLapCount(v: Int) {
+        val old = _lapCount.value
+        _lapCount.value = v
+        Timber.tag(TAG).i("lapCount %d → %d", old, v)
+    }
+
+    fun setLapElapsedTimeSec(v: Int?) { _lapElapsedTimeSec.value = v }
+    fun setLapDistanceMeters(v: Int?) { _lapDistanceMeters.value = v }
+    fun setLapDistanceDisplay(v: Double?) { _lapDistanceDisplay.value = v }
+
+    fun setLapAvgSpeedMps(v: Double?) { _lapAvgSpeedMps.value = v }
+    fun setLapAvgSpeedDisplay(v: Double?) { _lapAvgSpeedDisplay.value = v }
+    fun setLapRunPaceMinPerUnit(v: Double?) { _lapRunPaceMinPerUnit.value = v }
+    fun setLapRowPaceMinPer500m(v: Double?) { _lapRowPaceMinPer500m.value = v }
+
+    fun setLapStrokeCount(v: Int?) { _lapStrokeCount.value = v }
+    fun setLapSteps(v: Int?) { _lapSteps.value = v }
+    fun setLapCadenceSpm(v: Double?) { _lapCadenceSpm.value = v }
+
+    // HR reporting
+    fun setHeartRate(bpm: Int?) {
+        val old = _heartRate.value
+        _heartRate.value = bpm
+        Timber.tag(TAG).v("heartRate %s → %s", old?.toString() ?: "null", bpm?.toString() ?: "null")
+    }
+
+    fun setHeartRateSource(src: HrSource) {
+        val old = _heartRateSource.value
+        _heartRateSource.value = src
+        Timber.tag(TAG).d("heartRateSource %s → %s", old, src)
+    }
+
+    fun setHeartRateZone(zone: Int?) {
+        val old = _heartRateZone.value
+        _heartRateZone.value = zone
+        Timber.tag(TAG).d("heartRateZone %s → %s", old?.toString() ?: "null", zone?.toString() ?: "null")
+    }
+
+    // NEW: zone derived from averageHeartRate
+    fun setAverageHeartRateZone(zone: Int?) {
+        val old = _averageHeartRateZone.value
+        _averageHeartRateZone.value = zone
+        Timber.tag(TAG).d(
+            "averageHeartRateZone %s → %s",
+            old?.toString() ?: "null",
+            zone?.toString() ?: "null"
+        )
+    }
+
+    fun setExternalHeartRate(bpm: Int?) {
+        val old = _externalHeartRate.value
+        _externalHeartRate.value = bpm
+        Timber.tag(TAG).v("externalHeartRate %s → %s", old?.toString() ?: "null", bpm?.toString() ?: "null")
+    }
+
+    fun updateLastExternalAt(ts: Long) {
+        val old = lastExternalAt
+        lastExternalAt = ts
+        Timber.tag(TAG).v("lastExternalAt %d → %d", old, ts)
+    }
+
+    /* ───────────────────────────── time-series helpers (append) ─────────────────────────────
+       NOTE: We no longer trim by a rolling time window here. All samples for a session are kept
+       until cleared (e.g. on new session start or explicit clearTimeSeries/clearAllTimeSeries).
+       Graphs decide what portion of the series to display.
+     */
+
+    /** Append a heart rate sample (bpm); updates averageHeartRate and series. */
+    fun appendHeartRateSample(bpm: Int, tsMillis: Long = System.currentTimeMillis()) {
+        _heartRate.value = bpm
+        hrSum += bpm
+        hrCount += 1
+        _averageHeartRate.value = (hrSum / hrCount).roundToInt()
+        _hrSeries.value = _hrSeries.value + TimedSample(tsMillis, bpm.toDouble())
+        Timber.tag(TAG).v(
+            "appendHeartRateSample bpm=%d avg=%s seriesSize=%d",
+            bpm,
+            _averageHeartRate.value?.toString() ?: "null",
+            _hrSeries.value.size
+        )
+    }
+
+    /** Append a speed sample (kph); updates avgSpeedKph and series. */
+    fun appendSpeedKphSample(kph: Double, tsMillis: Long = System.currentTimeMillis()) {
+        _speedKph.value = kph
+        speedKphSum += kph
+        speedCount += 1
+        _avgSpeedKph.value = speedKphSum / speedCount
+        _speedSeriesKph.value = _speedSeriesKph.value + TimedSample(tsMillis, kph)
+        Timber.tag(TAG).v(
+            "appendSpeedKphSample kph=%.2f avg=%.2f seriesSize=%d",
+            kph,
+            _avgSpeedKph.value ?: 0.0,
+            _speedSeriesKph.value.size
+        )
+    }
+
+    /** Append a cadence sample (spm = steps/strokes per minute); updates averageCadence and series. */
+    fun appendCadenceSpmSample(spm: Double, tsMillis: Long = System.currentTimeMillis()) {
+        _instantCadence.value = spm
+        cadenceSpmSum += spm
+        cadenceCount += 1
+        _averageCadence.value = cadenceSpmSum / cadenceCount
+        _cadenceSeriesSpm.value = _cadenceSeriesSpm.value + TimedSample(tsMillis, spm)
+        Timber.tag(TAG).v(
+            "appendCadenceSpmSample spm=%.1f avg=%.1f seriesSize=%d",
+            spm,
+            _averageCadence.value ?: 0.0,
+            _cadenceSeriesSpm.value.size
+        )
+    }
+
+    /** Append a power sample (watts); updates averagePower and series. */
+    fun appendPowerSample(watts: Int, tsMillis: Long = System.currentTimeMillis()) {
+        _instantPower.value = watts
+        powerSum += watts
+        powerCount += 1
+        _averagePower.value = (powerSum / powerCount).roundToInt()
+        _powerSeriesW.value = _powerSeriesW.value + TimedSample(tsMillis, watts.toDouble())
+        Timber.tag(TAG).v(
+            "appendPowerSample watts=%d avg=%s seriesSize=%d",
+            watts,
+            _averagePower.value?.toString() ?: "null",
+            _powerSeriesW.value.size
+        )
+    }
+
+    /** Append an incline sample (degrees). */
+    fun appendInclineDegSample(deg: Double, tsMillis: Long = System.currentTimeMillis()) {
+        _inclination.value = deg
+        _inclineSeriesDeg.value = _inclineSeriesDeg.value + TimedSample(tsMillis, deg)
+        Timber.tag(TAG).v(
+            "appendInclineDegSample deg=%.2f seriesSize=%d",
+            deg,
+            _inclineSeriesDeg.value.size
+        )
+    }
+
+    /** Append a resistance sample (device-specific level as Double). */
+    fun appendResistanceSample(level: Double, tsMillis: Long = System.currentTimeMillis()) {
+        _resistance.value = level
+        _resistanceSeries.value = _resistanceSeries.value + TimedSample(tsMillis, level)
+        Timber.tag(TAG).v(
+            "appendResistanceSample level=%.2f seriesSize=%d",
+            level,
+            _resistanceSeries.value.size
+        )
+    }
+
+    /** Clear all time-series (e.g., on new session start). */
+    fun clearAllSeries() {
+        Timber.tag(TAG).i("clearAllSeries()")
+        _hrSeries.value = emptyList()
+        _speedSeriesKph.value = emptyList()
+        _cadenceSeriesSpm.value = emptyList()
+        _powerSeriesW.value = emptyList()
+        _inclineSeriesDeg.value = emptyList()
+        _resistanceSeries.value = emptyList()
+        _forceOnBeltSeries.value = emptyList()
+    }
+
+    private fun resetAveragesAndSeries() {
+        Timber.tag(TAG).d("resetAveragesAndSeries()")
+        hrSum = 0.0
+        hrCount = 0
+        _averageHeartRate.value = null
+        _averageHeartRateZone.value = null
+
+        speedKphSum = 0.0
+        speedCount = 0
+        _avgSpeedKph.value = null
+
+        cadenceSpmSum = 0.0
+        cadenceCount = 0
+        _averageCadence.value = null
+
+        powerSum = 0.0
+        powerCount = 0
+        _averagePower.value = null
+
+        clearAllSeries()
+    }
+
+    /* ───────────────────────────── error routing ───────────────────────────── */
+
+    fun setGattErrorFor(target: BluetoothGatt, msg: String) {
+        if (target === gattHrm) {
+            _lastHrmError.value = msg
+            Timber.tag(TAG).w("HRM GATT error: %s", msg)
+        } else {
+            _lastGattError.value = msg
+            Timber.tag(TAG).w("FTMS GATT error: %s", msg)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // ADD: distance series for rower-derived speed
+    // ─────────────────────────────────────────────────────────────
+    private val _distanceSeriesM = MutableStateFlow<List<TimedSample>>(emptyList())
+    val distanceSeriesM: StateFlow<List<TimedSample>> = _distanceSeriesM
+
+    fun appendDistanceMetersSample(meters: Int, tsMillis: Long = System.currentTimeMillis()) {
+        val now = tsMillis
+        val curr = _distanceSeriesM.value
+        _distanceSeriesM.value = curr + TimedSample(now, meters.toDouble())
+        Timber.tag(TAG).v(
+            "appendDistanceMetersSample meters=%d seriesSize=%d",
+            meters,
+            _distanceSeriesM.value.size
+        )
+    }
+
+    fun updateRowingSpeed(nowMs: Long = System.currentTimeMillis()) {
+        // if we already have an FTMS/native speed, don't stomp it
+        val currentInstantKph = _speedKph.value
+        val currentAvgKph = _avgSpeedKph.value
+
+        // 3–5s window
+        val maxAgeMs = 5_000L
+        val minSpanMs = 2_000L
+        val windowStart = nowMs - maxAgeMs
+
+        val series = _distanceSeriesM.value
+        if (series.isEmpty()) {
+            if (currentInstantKph == null) {
+                _speedKph.value = null
+                _speedDisplay.value = null
+            }
+            if (currentAvgKph == null) {
+                _avgSpeedKph.value = null
+                _avgSpeedDisplay.value = null
+            }
+            Timber.tag(TAG).v("updateRowingSpeed: no distance samples")
+            return
+        }
+
+        // keep only last 5s *for the computation* (series itself is full-session)
+        val recent = series.filter { it.tMillis >= windowStart && it.tMillis <= nowMs }
+        if (recent.size < 2) {
+            if (currentInstantKph == null) {
+                _speedKph.value = null
+                _speedDisplay.value = null
+            }
+            Timber.tag(TAG).v("updateRowingSpeed: insufficient samples (recent=%d)", recent.size)
+            return
+        }
+
+        val newest = recent.last()
+        // pick the oldest sample that's at least 2s older than newest; else use the earliest in the window
+        val oldest = recent.firstOrNull { newest.tMillis - it.tMillis >= minSpanMs } ?: recent.first()
+        val dtMs = (newest.tMillis - oldest.tMillis).coerceAtLeast(0L)
+        if (dtMs < minSpanMs) {
+            if (currentInstantKph == null) {
+                _speedKph.value = null
+                _speedDisplay.value = null
+            }
+            Timber.tag(TAG).v("updateRowingSpeed: dtMs too small (%d)", dtMs)
+            return
+        }
+
+        // compute delta distance (m)
+        val dm = newest.v - oldest.v
+        if (dm <= 0.0) {
+            if (currentInstantKph == null) {
+                _speedKph.value = null
+                _speedDisplay.value = null
+            }
+            Timber.tag(TAG).v("updateRowingSpeed: non-positive delta distance dm=%.2f", dm)
+            return
+        }
+
+        val dtSec = dtMs / 1000.0
+        val mps = dm / dtSec
+        val kph = mps * 3.6
+
+        Timber.tag(TAG).v(
+            "updateRowingSpeed: dm=%.2f dtMs=%d → mps=%.2f kph=%.2f",
+            dm,
+            dtMs,
+            mps,
+            kph
+        )
+
+        // global instant speed (only if FTMS didn't already set one)
+        if (currentInstantKph == null || currentInstantKph <= 0.0) {
+            _speedKph.value = kph
+            _speedDisplay.value = when (_units.value) {
+                1    -> kph * 0.621371    // mi/h
+                else -> kph               // km/h
+            }
+        }
+
+        // global average speed (distance / elapsed) – only if missing
+        val totalDistM = _totalDistanceMeters.value
+        val elapsedSec = _elapsedTimeSec.value
+        if ((currentAvgKph == null || currentAvgKph <= 0.0) &&
+            totalDistM != null && elapsedSec != null && elapsedSec > 0
+        ) {
+            val avgMps = totalDistM.toDouble() / elapsedSec.toDouble()
+            val avgKph = avgMps * 3.6
+            _avgSpeedKph.value = avgKph
+            _avgSpeedDisplay.value = when (_units.value) {
+                1    -> avgKph * 0.621371
+                else -> avgKph
+            }
+            Timber.tag(TAG).v(
+                "updateRowingSpeed: derived avgKph=%.2f from totalDist=%d elapsedSec=%d",
+                avgKph,
+                totalDistM,
+                elapsedSec
+            )
+        }
+    }
+
+    fun updateLapRowingSpeed(nowMs: Long = System.currentTimeMillis()) {
+        val lapStart = lapStartDistanceMeters
+        val lapElapsed = _lapElapsedTimeSec.value
+
+        // If lap hasn't really started, clear and bail
+        if (lapElapsed == null || lapElapsed <= 0) {
+            _lapAvgSpeedMps.value = null
+            _lapAvgSpeedDisplay.value = null
+            Timber.tag(TAG).v("updateLapRowingSpeed: lap not started (lapElapsed=%s)", lapElapsed?.toString() ?: "null")
+            return
+        }
+
+        // 3–5s window on top of total distance → project to lap
+        val maxAgeMs = 5_000L
+        val minSpanMs = 2_000L
+        val windowStart = nowMs - maxAgeMs
+
+        val series = _distanceSeriesM.value
+        if (series.isEmpty()) {
+            _lapAvgSpeedMps.value = null
+            _lapAvgSpeedDisplay.value = null
+            Timber.tag(TAG).v("updateLapRowingSpeed: no distance samples")
+            return
+        }
+
+        val recent = series.filter { it.tMillis >= windowStart && it.tMillis <= nowMs }
+        if (recent.size < 2) {
+            _lapAvgSpeedMps.value = null
+            _lapAvgSpeedDisplay.value = null
+            Timber.tag(TAG).v("updateLapRowingSpeed: insufficient samples (recent=%d)", recent.size)
+            return
+        }
+
+        val newest = recent.last()
+        val oldest = recent.firstOrNull { newest.tMillis - it.tMillis >= minSpanMs } ?: recent.first()
+        val dtMs = (newest.tMillis - oldest.tMillis).coerceAtLeast(0L)
+        if (dtMs < minSpanMs) {
+            _lapAvgSpeedMps.value = null
+            _lapAvgSpeedDisplay.value = null
+            Timber.tag(TAG).v("updateLapRowingSpeed: dtMs too small (%d)", dtMs)
+            return
+        }
+
+        // project to lap
+        val newestLapM = (newest.v - lapStart).coerceAtLeast(0.0)
+        val oldestLapM = (oldest.v - lapStart).coerceAtLeast(0.0)
+        val dmLap = newestLapM - oldestLapM
+        if (dmLap <= 0.0) {
+            _lapAvgSpeedMps.value = null
+            _lapAvgSpeedDisplay.value = null
+            Timber.tag(TAG).v("updateLapRowingSpeed: non-positive dmLap=%.2f", dmLap)
+            return
+        }
+
+        val dtSec = dtMs / 1000.0
+        val lapMps = dmLap / dtSec
+
+        // 3–5s “instant” lap speed
+        _lapAvgSpeedMps.value = lapMps
+
+        // display (km/h or mi/h)
+        val lapKph = lapMps * 3.6
+        _lapAvgSpeedDisplay.value = when (_units.value) {
+            1    -> lapKph * 0.621371
+            else -> lapKph
+        }
+
+        Timber.tag(TAG).v(
+            "updateLapRowingSpeed: lapMps=%.2f lapKph=%.2f lapStart=%d lapElapsed=%d",
+            lapMps,
+            lapKph,
+            lapStart,
+            lapElapsed
+        )
+
+        // keep existing full-lap deriveds (distance / lapElapsed) if present;
+        // but if they are null, seed them from current lap totals
+        if (_lapRunPaceMinPerUnit.value == null) {
+            val lapDistM = _lapDistanceMeters.value
+            if (lapDistM != null && lapElapsed > 0) {
+                val mpsFull = lapDistM.toDouble() / lapElapsed.toDouble()
+                val kmhFull = mpsFull * 3.6
+                _lapAvgSpeedMps.value = mpsFull
+                _lapAvgSpeedDisplay.value = when (_units.value) {
+                    1    -> kmhFull * 0.621371
+                    else -> kmhFull
+                }
+                Timber.tag(TAG).v(
+                    "updateLapRowingSpeed: seeded full-lap avg from lapDist=%d lapElapsed=%d → kph=%.2f",
+                    lapDistM,
+                    lapElapsed,
+                    kmhFull
+                )
+            }
+        }
+    }
+
+    fun clearAllTimeSeries() {
+        Timber.tag(TAG).i("clearAllTimeSeries()")
+        // 1) clear series
+        _hrSeries.value = emptyList()
+        _speedSeriesKph.value = emptyList()
+        _cadenceSeriesSpm.value = emptyList()
+        _powerSeriesW.value = emptyList()
+        _inclineSeriesDeg.value = emptyList()
+        _resistanceSeries.value = emptyList()
+        _distanceSeriesM.value = emptyList()
+        _forceOnBeltSeries.value = emptyList()
+
+        // 2) reset running/rolling accumulators that feed the public averages
+        hrSum = 0.0
+        hrCount = 0
+        _averageHeartRate.value = null
+
+        speedKphSum = 0.0
+        speedCount = 0
+        _avgSpeedKph.value = null
+        _avgSpeedDisplay.value = null
+
+        cadenceSpmSum = 0.0
+        cadenceCount = 0
+        _averageCadence.value = null
+
+        powerSum = 0.0
+        powerCount = 0
+        _averagePower.value = null
+
+        // 3) clear lap projections derived from series
+        _lapAvgSpeedMps.value = null
+        _lapAvgSpeedDisplay.value = null
+    }
+
+    /* ───────────────────────────── HrmStateSink implementation ───────────────────────────── */
+
+    override fun setHrmSensorContact(contact: Boolean?) {
+        val old = _sensorContact.value
+        _sensorContact.value = contact
+        Timber.tag(TAG).d("HRM sensorContact %s → %s", old?.toString() ?: "null", contact?.toString() ?: "null")
+    }
+
+    override fun setHrmRrIntervals(rrMs: List<Int>) {
+        _rrIntervalsMs.value = rrMs
+        Timber.tag(TAG).v("HRM rrIntervals count=%d", rrMs.size)
+    }
+
+    override fun setHrmBodySensorLocation(loc: BodyLocation) {
+        val old = _bodySensorLocation.value
+        _bodySensorLocation.value = loc
+        Timber.tag(TAG).d("HRM bodySensorLocation %s → %s", old?.toString() ?: "null", loc)
+    }
+
+    override fun hrmRrCount(): Int = _rrIntervalsMs.value.size
+}
