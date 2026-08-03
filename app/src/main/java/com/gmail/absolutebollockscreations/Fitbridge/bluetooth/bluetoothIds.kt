@@ -343,21 +343,46 @@ object BtServiceProfiles {
     // ─────────────────────────────────────────────────────────────
     // Device names (advertised local name)
     // ─────────────────────────────────────────────────────────────
-    //
-    // Kept deliberately short. The advertised name occupies (2 + length) octets
-    // of the 31-octet legacy advertising payload, and we now also carry a 7-octet
-    // FTMS Service Data AD structure. Longest name below is "Elliptical" (10),
-    // giving 3 (Flags) + 4 (16-bit UUID list) + 12 (name) + 7 (service data)
-    // = 26 of 31. See ftmsServiceDataFor() and BtServiceAdvertiser.
-    const val DEVICE_NAME_FTMS_BIKE: String       = "Bike"
-    const val DEVICE_NAME_FTMS_ELLIPTICAL: String = "Elliptical"
-    const val DEVICE_NAME_FTMS_ROWER: String      = "Rower"
-    const val DEVICE_NAME_FTMS_CLIMBER: String    = "Climber"
-    const val DEVICE_NAME_FTMS_STEPPER: String    = "Stepper"
-    const val DEVICE_NAME_FTMS_TREAD: String      = "Treadmill"
-    const val DEVICE_NAME_CSC_CPS: String         = "Bike"
+    /**
+     * Prefix for every advertised local name, following the same convention as
+     * TrackMyIndoorWorkout's "TMIW-".
+     *
+     * The point is attribution on a crowded scan list: a bare "Bike" or
+     * "Treadmill" is indistinguishable from a real machine, and because Android
+     * publishes the *global adapter name* in the advertisement, an unprefixed
+     * persona is easily confused with the phone itself. "FBRG-" makes it obvious
+     * which entry is this bridge.
+     *
+     * Four characters, deliberately: see the budget note on the names below.
+     */
+    const val DEVICE_NAME_PREFIX: String = "FBRG-"
 
-    /** Advertised local name for an FTMS persona. */
+    const val DEVICE_NAME_FTMS_BIKE: String       = DEVICE_NAME_PREFIX + "Bike"
+    const val DEVICE_NAME_FTMS_ELLIPTICAL: String = DEVICE_NAME_PREFIX + "Elliptical"
+    const val DEVICE_NAME_FTMS_ROWER: String      = DEVICE_NAME_PREFIX + "Rower"
+    const val DEVICE_NAME_FTMS_CLIMBER: String    = DEVICE_NAME_PREFIX + "Climber"
+    const val DEVICE_NAME_FTMS_STEPPER: String    = DEVICE_NAME_PREFIX + "Stepper"
+    const val DEVICE_NAME_FTMS_TREAD: String      = DEVICE_NAME_PREFIX + "Treadmill"
+    const val DEVICE_NAME_CSC_CPS: String         = DEVICE_NAME_FTMS_BIKE
+
+    /**
+     * Advertised local name for an FTMS persona.
+     *
+     * ADVERTISING BUDGET — the reason these names cannot grow. A legacy
+     * advertisement is 31 octets and the name costs (2 + length):
+     *
+     *     3 Flags + (2 + name) + (2 + 2 per 16-bit UUID) + 7 Service Data
+     *
+     * The longest, "FBRG-Elliptical" at 15 characters, lands on exactly 31/31.
+     * Any longer name, or a second advertised UUID on a non-bike persona,
+     * overflows and Android rejects the whole advertisement asynchronously.
+     * [FtmsAdvertisingPlan] computes this before touching the radio so the
+     * failure is deterministic; FtmsAdvertisingPlanTest asserts the budget for
+     * every persona.
+     *
+     * The indoor bike is the only persona that advertises extra UUIDs (CSC and
+     * Cycling Power), and "FBRG-Bike" is short enough to absorb them at 29/31.
+     */
     fun deviceNameFor(machine: FtmsMachineProfile): String = when (machine) {
         FtmsMachineProfile.INDOOR_BIKE   -> DEVICE_NAME_FTMS_BIKE
         FtmsMachineProfile.ELLIPTICAL    -> DEVICE_NAME_FTMS_ELLIPTICAL

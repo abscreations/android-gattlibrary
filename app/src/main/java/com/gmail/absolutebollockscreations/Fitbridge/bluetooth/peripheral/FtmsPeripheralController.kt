@@ -161,7 +161,7 @@ class FtmsPeripheralController(
     private var cyclingConfig: CyclingSensorConfig = CyclingSensorConfig.DISABLED
 
     init {
-        // If the process died mid-session the phone is still named "Treadmill".
+        // If the process died mid-session the phone is still named "FBRG-Treadmill".
         // Put it back before doing anything else.
         restoreAdapterNameIfStranded()
         registerAdapterReceiver()
@@ -516,7 +516,7 @@ class FtmsPeripheralController(
      * and put it back afterwards.
      *
      * The original is persisted rather than held in memory because a process death
-     * would otherwise leave the user's phone permanently called "Treadmill" in
+     * would otherwise leave the user's phone permanently called "FBRG-Treadmill"
      * every Bluetooth context. The old advertiser set the name and never restored
      * it at all.
      */

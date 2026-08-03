@@ -15,6 +15,10 @@ class FtmsAdvertisingPlanTest {
         for (profile in FtmsMachineProfile.entries) {
             val plan = FtmsAdvertisingPlan.forProfile(profile)
             val expectedBytes = 3 + (2 + profile.advertisedName.toByteArray().size) + 4 + 7
+            assertTrue(
+                "$profile must be attributable to this bridge on a scan list",
+                profile.advertisedName.startsWith("FBRG-"),
+            )
             assertEquals(expectedBytes, plan.advertisingBytes)
             assertTrue(plan.advertisingBytes <= 31)
             assertEquals(0, plan.scanResponseBytes)
@@ -44,8 +48,8 @@ class FtmsAdvertisingPlanTest {
             ),
             plan.serviceUuids,
         )
-        // 3 (Flags) + 6 ("Bike" name) + 8 (three 16-bit UUIDs) + 7 (service data)
-        assertEquals(24, plan.advertisingBytes)
+        // 3 (Flags) + 11 ("FBRG-Bike" name) + 8 (three 16-bit UUIDs) + 7 (service data)
+        assertEquals(29, plan.advertisingBytes)
         assertTrue(plan.advertisingBytes <= FtmsAdvertisingPlan.MAX_LEGACY_BYTES)
     }
 
@@ -57,6 +61,18 @@ class FtmsAdvertisingPlanTest {
         )
 
         assertEquals(listOf(BluetoothIds.UUID_FTMS_SERVICE), plan.serviceUuids)
+    }
+
+    @Test
+    fun `the longest persona name still fits the legacy budget`() {
+        // "FBRG-Elliptical" lands on exactly 31/31. This is the constraint that
+        // stops the prefix or any persona name from growing: one more character
+        // overflows, and Android reports that only asynchronously.
+        val longest = FtmsMachineProfile.entries.maxBy { it.advertisedName.length }
+        val plan = FtmsAdvertisingPlan.forProfile(longest)
+        assertEquals(FtmsMachineProfile.ELLIPTICAL, longest)
+        assertEquals("FBRG-Elliptical", longest.advertisedName)
+        assertEquals(FtmsAdvertisingPlan.MAX_LEGACY_BYTES, plan.advertisingBytes)
     }
 
     @Test(expected = IllegalArgumentException::class)
