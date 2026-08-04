@@ -11,7 +11,7 @@
  *      • Immediate return codes (BluetoothStatusCodes on API 33+)
  *      • Legacy boolean-return APIs (< 33)
  *      • SecurityException safety around all GATT calls
- *  - Adds robust CCCD handling: retries, bonding, and “re-arm + request control”
+ *  - Adds robust CCCD handling: retries, bonding, and merged-plan re-arming
  *    flows when notification/indication enablement fails, including **re-bonding
  *    even when the OS reports the device as already bonded** (to recover from
  *    stale/invalid bonds).
@@ -37,7 +37,8 @@
  *      • Pre-33:
  *          - Uses legacy desc.value + writeDescriptor(desc) and, on failure,
  *            retries once after a short delay using a background IO coroutine.
- *      • CCCD writes are queued via enableNotifications(), which:
+ *      • CCCD plans from all handlers are merged by context and queued via
+ *        enableNotifications(), which:
  *          - Validates notify/indicate capability.
  *          - Calls setCharacteristicNotification(..., true).
  *          - Locates the CCCD descriptor (UUID_CCCD).
@@ -57,12 +58,9 @@
  *          - In a background IO coroutine:
  *              1. Perform (re)bonding if needed.
  *              2. Brief delay to allow pairing/encryption to settle.
- *              3. Calls BtEngine.enableFtmsNotificationsAndIndications(), which is
- *                 expected to be idempotent and to arm only the correct FTMS data
- *                 characteristics + control point.
- *              4. Waits (with timeout) for context.cccd.ready==true, then calls
- *                 requestControl() so the app regains FTMS control on the now
- *                 encrypted link.
+ *              3. Re-arms the context's complete merged CCCD plan.
+ *              4. Waits (with timeout) for context.cccd.ready==true. Protocol-specific
+ *                 follow-up is delivered by the callback's plan-ready lifecycle hook.
  *              5. Finally resumes that context's queue.
  *      • On any matching successful descriptor write, callback completion clears
  *        the owning context's recovery counter.
@@ -80,9 +78,7 @@
  *  - ConnectionContext:
  *      • Owns queue, busy, pending CCCD, readiness, and recovery state.
  *  - BtEngine:
- *      • Provides context, bonding helper (ensureBondOrPrompt), and FTMS helpers
- *        (enableFtmsNotificationsAndIndications, requestControl) referenced by
- *        the CCCD recovery path.
+ *      • Provides context and bonding helper (ensureBondOrPrompt) used by recovery.
  */
 
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
@@ -240,12 +236,41 @@ internal fun BtEngine.enableNotifications(
     context: ConnectionContext,
     ch: BluetoothGattCharacteristic,
 ) {
+    val serviceUuid = ch.service?.uuid ?: run {
+        Timber.tag(BtEngineState.TAG).e(
+            "Cannot plan CCCD for characteristic without service uuid=%s context=%s",
+            ch.uuid,
+            context.connectionId,
+        )
+        return
+    }
+    val target = CccdTarget(serviceUuid, ch.uuid)
+    val newlyPlanned = context.cccd.mergeEnablePlan(listOf(target))
+    if (newlyPlanned.isEmpty()) {
+        Timber.tag(BtEngineState.TAG).d(
+            "CCCD target already merged service=%s characteristic=%s context=%s",
+            serviceUuid,
+            ch.uuid,
+            context.connectionId,
+        )
+        return
+    }
+    if (!queueNotificationEnable(context, ch)) {
+        context.cccd.removeEnableTarget(target)
+    }
+}
+
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+private fun BtEngine.queueNotificationEnable(
+    context: ConnectionContext,
+    ch: BluetoothGattCharacteristic,
+): Boolean {
     val gatt = context.gatt ?: run {
         Timber.tag(BtEngineState.TAG).w(
             "enableNotifications: context %s has no GATT",
             context.connectionId,
         )
-        return
+        return false
     }
     val props = ch.properties
     val wantsIndicate =
@@ -256,7 +281,7 @@ internal fun BtEngine.enableNotifications(
         state.setGattErrorFor(gatt, "Char ${ch.uuid} has no notify/indicate")
         Timber.tag(BtEngineState.TAG)
             .w("enableNotifications: %s has no notify/indicate", ch.uuid)
-        return
+        return false
     }
 
     val ok = try {
@@ -268,14 +293,14 @@ internal fun BtEngine.enableNotifications(
         state.setGattErrorFor(gatt, "setCharacteristicNotification failed for ${ch.uuid}")
         Timber.tag(BtEngineState.TAG)
             .e("setCharacteristicNotification failed for %s", ch.uuid)
-        return
+        return false
     }
 
     val cccd = ch.getDescriptor(UUID_CCCD)
     if (cccd == null) {
         state.setGattErrorFor(gatt, "Missing CCCD for ${ch.uuid}")
         Timber.tag(BtEngineState.TAG).e("Missing CCCD for %s", ch.uuid)
-        return
+        return false
     }
 
     val payload =
@@ -294,6 +319,41 @@ internal fun BtEngine.enableNotifications(
         context.connectionId,
     )
     pushDescriptorWrite(context, cccd, payload)
+    return true
+}
+
+/** Re-arm every handler's merged CCCD request after a bounded write-recovery attempt. */
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+private fun BtEngine.rearmMergedCccdEnablePlan(context: ConnectionContext) {
+    val gatt = context.gatt ?: return
+    val plan = context.cccd.enablePlanSnapshot()
+    state.connectionRegistry.resetCccd(context, clearPlan = false)
+
+    var allTargetsQueued = true
+    plan.forEach { target ->
+        val characteristic = runCatching {
+            gatt.getService(target.serviceUuid)?.getCharacteristic(target.characteristicUuid)
+        }.getOrNull()
+        if (characteristic == null) {
+            allTargetsQueued = false
+            context.cccd.markEnablePlanFailed()
+            Timber.tag(BtEngineState.TAG).e(
+                "Merged CCCD target missing during recovery service=%s characteristic=%s context=%s",
+                target.serviceUuid,
+                target.characteristicUuid,
+                context.connectionId,
+            )
+        } else {
+            if (!queueNotificationEnable(context, characteristic)) {
+                allTargetsQueued = false
+                context.cccd.markEnablePlanFailed()
+            }
+        }
+    }
+
+    if (allTargetsQueued && context.cccd.pendingWrites == 0) {
+        state.setCccdReady(context, true)
+    }
 }
 
 /* ────────────────────────────────────────────────────────────────────────────── */
@@ -869,7 +929,7 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
             // Let the stack settle briefly (pairing/encryption propagation)
             delay(300)
 
-            // Re-run idempotent enable plan (MUST only arm the single correct FTMS data char)
+            // Re-arm the complete context plan contributed by every active handler.
             if (connection.gatt !== gatt) {
                 Timber.tag(BtEngineState.TAG).d(
                     "CCCD recovery cancelled for stale context %s",
@@ -878,7 +938,7 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
                 return@launch
             }
 
-            runCatching { enableFtmsNotificationsAndIndications(connection) }
+            runCatching { rearmMergedCccdEnablePlan(connection) }
                 .onFailure {
                     Timber.tag(BtEngineState.TAG)
                         .w(it, "Re-enable notifications failed")
@@ -891,8 +951,7 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
 
             if (ready) {
                 Timber.tag(BtEngineState.TAG)
-                    .i("CCCD recovery: cccdReady=true → requestControl()")
-                runCatching { requestControl() }
+                    .i("CCCD recovery: merged plan ready for context=%s", connection.connectionId)
             } else {
                 Timber.tag(BtEngineState.TAG)
                     .w("CCCD recovery: cccdReady not observed within timeout")

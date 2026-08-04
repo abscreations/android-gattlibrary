@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
+import java.util.UUID
 
 /** Identifies one physical-link lifetime, including reconnects to the same BLE address. */
 internal data class ConnectionId(
@@ -69,16 +70,45 @@ internal class GattQueue {
     }
 }
 
-/** CCCD readiness and recovery state owned by one physical GATT link. */
+/** Full service/characteristic identity for one CCCD enable request. */
+internal data class CccdTarget(
+    val serviceUuid: UUID,
+    val characteristicUuid: UUID,
+)
+
+/** CCCD enable plan, readiness, and recovery state owned by one physical GATT link. */
 internal class CccdState {
     private val lock = Any()
     val ready = MutableStateFlow(false)
+    private val enablePlan = linkedSetOf<CccdTarget>()
+    private var enablePlanFailed = false
 
     private var pendingWritesValue: Int = 0
     val pendingWrites: Int get() = synchronized(lock) { pendingWritesValue }
 
     private var recoveryAttemptsValue: Int = 0
     val recoveryAttempts: Int get() = synchronized(lock) { recoveryAttemptsValue }
+    val plannedEnableCount: Int get() = synchronized(lock) { enablePlan.size }
+
+    /** Merge in stable order and return only targets not already present in this context's plan. */
+    fun mergeEnablePlan(targets: Iterable<CccdTarget>): List<CccdTarget> = synchronized(lock) {
+        buildList {
+            targets.forEach { target ->
+                if (enablePlan.add(target)) add(target)
+            }
+        }
+    }
+
+    fun enablePlanSnapshot(): List<CccdTarget> = synchronized(lock) { enablePlan.toList() }
+
+    fun removeEnableTarget(target: CccdTarget) = synchronized(lock) {
+        enablePlan.remove(target)
+    }
+
+    fun markEnablePlanFailed() = synchronized(lock) {
+        enablePlanFailed = true
+        ready.value = false
+    }
 
     fun setReady(value: Boolean) = synchronized(lock) {
         ready.value = value
@@ -93,7 +123,7 @@ internal class CccdState {
     fun completePending(): Boolean = synchronized(lock) {
         if (pendingWritesValue <= 0) return@synchronized false
         pendingWritesValue -= 1
-        if (pendingWritesValue == 0) {
+        if (pendingWritesValue == 0 && !enablePlanFailed) {
             ready.value = true
             true
         } else {
@@ -101,9 +131,11 @@ internal class CccdState {
         }
     }
 
-    fun resetOrchestration() = synchronized(lock) {
+    fun resetOrchestration(clearPlan: Boolean = false) = synchronized(lock) {
         pendingWritesValue = 0
+        enablePlanFailed = false
         ready.value = false
+        if (clearPlan) enablePlan.clear()
     }
 
     fun nextRecoveryAttempt(): Int = synchronized(lock) {
@@ -118,7 +150,9 @@ internal class CccdState {
     fun reset() = synchronized(lock) {
         pendingWritesValue = 0
         recoveryAttemptsValue = 0
+        enablePlanFailed = false
         ready.value = false
+        enablePlan.clear()
     }
 }
 
@@ -253,8 +287,8 @@ internal class ConnectionRegistry {
         }
     }
 
-    fun resetCccd(context: ConnectionContext) = synchronized(lock) {
-        context.cccd.resetOrchestration()
+    fun resetCccd(context: ConnectionContext, clearPlan: Boolean = true) = synchronized(lock) {
+        context.cccd.resetOrchestration(clearPlan)
         if (contexts[LegacyConnectionRole.FTMS] === context) {
             _machineCccdReady.value = false
         }

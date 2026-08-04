@@ -74,7 +74,7 @@
 //   Characteristic routing:
 //     • routeToOwners(...) first looks for handlers that explicitly claim the characteristic
 //       in extraCharacteristics; if none, it finds handlers that own the *service* containing
-//       that characteristic; as a last resort, it fans out to all activeHandlers.
+//       that characteristic; an unowned callback is logged and not delivered.
 //
 //   Descriptor routing:
 //     • ownersByDescriptor(...) looks at both the parent service UUID and the characteristic
@@ -255,6 +255,10 @@ internal object BtEngineGattCore {
             desc: BluetoothGattDescriptor,
             status: Int
         ) {}
+
+        /** The complete merged CCCD plan for this physical connection is armed. */
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        fun onCccdPlanReady(engine: BtEngine, gatt: BluetoothGatt) {}
     }
 
     /** Build one routed callback bound to [context] identity. */
@@ -515,19 +519,19 @@ internal object BtEngineGattCore {
             }
             engine.state.connectionRegistry.replaceServices(context, services)
 
-            // Select handlers for present services
-            val matched = lifecycle.matchingHandlers(services.mapTo(linkedSetOf()) { it.uuid })
+            val discoveredServiceUuids = services.mapTo(linkedSetOf()) { it.uuid }
 
-            // Let matched handlers wire notifications/reads
-            matched.forEach { h ->
-                val handled = runCatching { h.onServicesDiscovered(engine, gatt, services) }
-                    .onFailure {
-                        Timber.tag(BtEngineState.TAG)
-                            .w(it, "handler.onServicesDiscovered failed")
-                    }
-                    .getOrDefault(false)
-                if (handled) activeHandlers.add(h)
-            }
+            // Offer every matching handler the full service list; several may activate.
+            activeHandlers.addAll(
+                activateMatchingProtocolHandlers(handlers, discoveredServiceUuids) { h ->
+                    runCatching { h.onServicesDiscovered(engine, gatt, services) }
+                        .onFailure {
+                            Timber.tag(BtEngineState.TAG)
+                                .w(it, "handler.onServicesDiscovered failed")
+                        }
+                        .getOrDefault(false)
+                }
+            )
             engine.state.connectionRegistry.replaceHandlers(context, activeHandlers)
 
             Timber.tag(BtEngineState.TAG)
@@ -696,21 +700,30 @@ internal object BtEngineGattCore {
             }
 
             // Decrement only for the matching successful CCCD completion on this context.
+            var cccdPlanBecameReady = false
             if (completionMatched && status == GATT_SUCCESS && descriptor.uuid == BluetoothIds.UUID_CCCD) {
-                val becameReady = engine.state.connectionRegistry.completeCccdWrite(context)
+                cccdPlanBecameReady = engine.state.connectionRegistry.completeCccdWrite(context)
                 val pending = context.cccd.pendingWrites
                 Timber.tag(BtEngineState.TAG).d("CCCD written for %s → pending=%d", charUuid, pending)
-                if (becameReady) {
-                    Timber.tag(BtEngineState.TAG).d(
-                        "All CCCDs armed → cccdReady=true context=%s",
-                        context.connectionId,
-                    )
-                }
             }
 
             // Route to owners
-            (ownersByDescriptor(descriptor) ?: activeHandlers).forEach {
+            ownersByDescriptor(descriptor).forEach {
                 it.onDescriptorWrite(engine, gatt, descriptor, status)
+            }
+
+            if (cccdPlanBecameReady) {
+                Timber.tag(BtEngineState.TAG).d(
+                    "All CCCDs armed → cccdReady=true context=%s",
+                    context.connectionId,
+                )
+                activeHandlers.forEach { handler ->
+                    runCatching { handler.onCccdPlanReady(engine, gatt) }
+                        .onFailure {
+                            Timber.tag(BtEngineState.TAG)
+                                .w(it, "handler.onCccdPlanReady failed")
+                        }
+                }
             }
         }
 
@@ -721,25 +734,42 @@ internal object BtEngineGattCore {
             charUuid: UUID,
             action: (ProtocolHandler) -> Unit
         ) {
-            val explicit = activeHandlers.filter { it.extraCharacteristics.contains(charUuid) }
-            if (explicit.isNotEmpty()) {
-                explicit.forEach(action); return
+            val serviceUuid = characteristicServiceUuidOrNull(gatt, charUuid)
+            val route = resolveProtocolHandlerRoute(activeHandlers, charUuid, serviceUuid)
+            if (route.owners.isEmpty()) {
+                Timber.tag(BtEngineState.TAG).e(
+                    "No active protocol handler owns characteristic=%s service=%s context=%s",
+                    charUuid,
+                    serviceUuid,
+                    context.connectionId,
+                )
+                return
             }
-            val ownerByService = activeHandlers.filter { handler ->
-                val sUuid = characteristicServiceUuidOrNull(gatt, charUuid)
-                sUuid != null && handler.primaryServices.contains(sUuid)
-            }
-            (ownerByService.ifEmpty { activeHandlers }).forEach(action)
+            route.owners.forEach(action)
         }
 
-        private fun ownersByDescriptor(desc: BluetoothGattDescriptor): Set<ProtocolHandler>? {
-            val sUuid = desc.characteristic?.service?.uuid ?: return null
-            val charUuid = desc.characteristic?.uuid
-            val matched = activeHandlers.filter { h ->
-                h.primaryServices.contains(sUuid) ||
-                        (charUuid != null && h.extraCharacteristics.contains(charUuid))
+        private fun ownersByDescriptor(desc: BluetoothGattDescriptor): List<ProtocolHandler> {
+            val characteristic = desc.characteristic
+            val charUuid = characteristic?.uuid
+            val serviceUuid = characteristic?.service?.uuid
+            if (charUuid == null) {
+                Timber.tag(BtEngineState.TAG).e(
+                    "Descriptor callback has no characteristic context=%s descriptor=%s",
+                    context.connectionId,
+                    safeUuid(desc),
+                )
+                return emptyList()
             }
-            return matched.toSet()
+            val route = resolveProtocolHandlerRoute(activeHandlers, charUuid, serviceUuid)
+            if (route.owners.isEmpty()) {
+                Timber.tag(BtEngineState.TAG).e(
+                    "No active protocol handler owns descriptor characteristic=%s service=%s context=%s",
+                    charUuid,
+                    serviceUuid,
+                    context.connectionId,
+                )
+            }
+            return route.owners
         }
 
         /** Best-effort lookup of the containing service UUID for a characteristic UUID. */

@@ -27,9 +27,9 @@
 //     • Sets state.cccdReady immediately if there are no CCCDs to arm on this device.
 // -------------------------------------------------------------------------------------------------
 // POST-CCCD BEHAVIOR
-//   onDescriptorWrite(...):
-//     • Watches FTMS CCCD writes (UUID_CCCD under UUID_FTMS_SERVICE).
-//     • When all FTMS CCCDs are successfully armed (pendingCccdWrites == 0) and the
+//   onCccdPlanReady(...):
+//     • Runs after the context-wide merged CCCD plan from every active handler is armed.
+//     • When the plan becomes ready and the
 //       one-shot “postCccdKick” has not yet been used, it enqueues a *single* safety
 //       re-read of Fitness Machine Feature (0x2ACC).
 //     • It **no longer** sends REQUEST_CONTROL or START/RESUME. Those are now solely
@@ -295,20 +295,18 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             status
         )
 
-        // When all FTMS CCCDs are armed, do a one-time safety re-read of FEATURES.
-        // Start/Resume and RequestControl are now driven only by higher layers via BtEngine.
-        val isFtmsCccd =
-            desc.uuid == UUID_CCCD && desc.characteristic?.service?.uuid == UUID_FTMS_SERVICE
+    }
 
-        if (status == BluetoothGatt.GATT_SUCCESS && isFtmsCccd) {
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onCccdPlanReady(engine: BtEngine, gatt: BluetoothGatt) {
+        // The final descriptor may belong to another handler on this connection, so the
+        // context-wide ready event is separate from descriptor ownership routing.
+        if (!postCccdKickDone) {
             val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
-            val pending = context.cccd.pendingWrites
-            if (!postCccdKickDone && pending == 0) {
-                postCccdKickDone = true
-                Timber.tag(BtEngineState.TAG)
-                    .i("All FTMS CCCDs armed → re-read FEATURES (0x2ACC)")
-                engine.pushRead(context, UUID_FITNESS_MACHINE_FEATURE)
-            }
+            postCccdKickDone = true
+            Timber.tag(BtEngineState.TAG)
+                .i("Merged CCCD plan armed → re-read FTMS FEATURES (0x2ACC)")
+            engine.pushRead(context, UUID_FITNESS_MACHINE_FEATURE)
         }
     }
 

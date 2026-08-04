@@ -127,7 +127,12 @@ import java.util.UUID
 const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
 const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
 
-class BtEngine(internal val context: Context) : BtServiceEngineFacade {
+class BtEngine internal constructor(
+    internal val context: Context,
+    private val handlerFactory: HandlerFactory,
+) : BtServiceEngineFacade {
+
+    constructor(context: Context) : this(context, HandlerFactory.standard())
 
     companion object {
         @Volatile private var isStarted = false
@@ -454,9 +459,6 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
 
     internal val adapter: BluetoothAdapter? = btManager?.adapter
 
-    private val ftmsHandler = FtmsProtocolHandler()
-    private val hrmHandler = HrmProtocolHandler()
-
     val devices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.devices
     val hrmDevices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.hrmDevices
 
@@ -655,7 +657,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         val connection = state.openConnectionContext(
             LegacyConnectionRole.FTMS,
             address,
-            handlers = listOf(ftmsHandler),
+            handlers = handlerFactory.createForConnection(ProtocolKey.FTMS),
         )
         val cb = BtEngineGattCore.build(this@BtEngine, connection)
         val connectedGatt = connectLeGatt(dev, cb)
@@ -749,7 +751,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             val connection = state.openConnectionContext(
                 LegacyConnectionRole.HRM,
                 address,
-                handlers = listOf(hrmHandler),
+                handlers = handlerFactory.createForConnection(ProtocolKey.HRM),
             )
             val cb = BtEngineGattCore.build(this@BtEngine, connection)
             val connectedGatt = connectLeGatt(dev, cb)
@@ -1407,9 +1409,8 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             return
         }
 
-        // Reset orchestration counters, then queue CCCDs for DATA (notify) and CP (indicate)
-        state.connectionRegistry.resetCccd(context)
-
+        // Merge this FTMS contribution into the context plan. Other handlers on the same
+        // physical link retain their targets and all writes share the context queue.
         // Order: some vendors prefer CP first; try DATA→CP by default.
         Timber.tag(BtEngineState.TAG).d(
             "enableFtmsNotificationsAndIndications(): Queue WRITE CCCD (NOTIFY) for data=%s",
