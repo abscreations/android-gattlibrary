@@ -3,6 +3,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 import android.content.Context
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.ConnectionContext
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.LegacyConnectionRole
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.Fitbridge.power.FitBridgeWakeLock
@@ -88,6 +90,7 @@ class FtmsSimulator(
     val state: StateFlow<State> = _state
 
     private var job: Job? = null
+    private var connectionContext: ConnectionContext? = null
 
     @Volatile
     private var engine: FtmsMockEngine? = null
@@ -217,7 +220,11 @@ class FtmsSimulator(
             return
         }
 
-        engineState.setConnectionState(SIMULATED_CONNECTED_STATE)
+        connectionContext = engineState.openConnectionContext(
+            LegacyConnectionRole.FTMS,
+            address = "SIMULATOR",
+            handlers = emptyList(),
+        ).also { engineState.setConnectionState(it, SIMULATED_CONNECTED_STATE) }
         engineState.setActiveSession(true)
         engineState.setIsRunning(true)
         engineState.setHaveControl(effectiveControls)
@@ -261,7 +268,11 @@ class FtmsSimulator(
         engineState.setHaveControl(false)
         engineState.setIsRunning(false)
         engineState.setActiveSession(false)
-        engineState.setConnectionState(SIMULATED_DISCONNECTED_STATE)
+        connectionContext?.let {
+            engineState.setConnectionState(it, SIMULATED_DISCONNECTED_STATE)
+            engineState.clearConnection(it)
+        }
+        connectionContext = null
         clearEngineMetrics()
 
         _state.value = State(controlsAvailable = _state.value.controlsAvailable)

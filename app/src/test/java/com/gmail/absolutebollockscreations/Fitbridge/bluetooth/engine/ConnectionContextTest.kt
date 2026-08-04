@@ -104,7 +104,7 @@ class ConnectionContextTest {
     }
 
     @Test
-    fun `legacy connection-state setters mirror into their owning contexts`() {
+    fun `legacy connection-state flows project their current owning contexts`() {
         val state = BtEngineState()
         val ftms = state.connectionRegistry.open(
             LegacyConnectionRole.FTMS,
@@ -119,12 +119,40 @@ class ConnectionContextTest {
             initialState = BluetoothProfile.STATE_CONNECTING,
         )
 
-        state.setConnectionState(BluetoothProfile.STATE_CONNECTED)
-        state.setHrmConnectionState(BluetoothProfile.STATE_DISCONNECTED)
+        state.setConnectionState(ftms, BluetoothProfile.STATE_CONNECTED)
+        state.setConnectionState(hrm, BluetoothProfile.STATE_DISCONNECTED)
 
         assertEquals(LinkState.CONNECTED, ftms.connectionState.value)
         assertEquals(LinkState.DISCONNECTED, hrm.connectionState.value)
         assertEquals(BluetoothProfile.STATE_CONNECTED, state.connectionState.value)
         assertEquals(BluetoothProfile.STATE_DISCONNECTED, state.hrmConnectionState.value)
+    }
+
+    @Test
+    fun `stale context state cannot replace current compatibility projection`() {
+        val state = BtEngineState()
+        val stale = state.connectionRegistry.open(
+            LegacyConnectionRole.FTMS,
+            "AA:BB:CC:DD:EE:01",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTING,
+        )
+        val current = state.connectionRegistry.open(
+            LegacyConnectionRole.FTMS,
+            "AA:BB:CC:DD:EE:02",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTING,
+        )
+
+        state.setConnectionState(current, BluetoothProfile.STATE_CONNECTED)
+        state.setConnectionState(stale, BluetoothProfile.STATE_DISCONNECTED)
+
+        assertFalse(stale.isActive)
+        assertFalse(state.connectionRegistry.isCurrent(stale))
+        assertTrue(state.connectionRegistry.isCurrent(current))
+        assertEquals(LinkState.DISCONNECTED, stale.connectionState.value)
+        assertEquals(LinkState.CONNECTED, current.connectionState.value)
+        assertEquals(BluetoothProfile.STATE_CONNECTED, state.connectionState.value)
+        assertSame(current, state.connectionRegistry.current(LegacyConnectionRole.FTMS))
     }
 }

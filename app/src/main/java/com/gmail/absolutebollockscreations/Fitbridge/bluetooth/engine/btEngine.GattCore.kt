@@ -26,9 +26,9 @@
 //         - onCharacteristicRead / onCharacteristicWrite
 //         - onDescriptorWrite (e.g., CCCD writes)
 //
-//   The [build] function takes a [BtEngine] and a list of handlers and returns a single
+//   The [build] function takes a [BtEngine] and one [ConnectionContext] and returns a single
 //   BluetoothGattCallback instance that:
-//     • Figures out whether it is an FTMS or HRM connection (based on handler.primaryServices).
+//     • Binds every callback to that context's link identity.
 //     • After discovery, populates an activeHandlers set with only the handlers whose primary
 //       services are present on that connection.
 //     • Routes all GATT I/O events to the appropriate handlers.
@@ -36,11 +36,9 @@
 // -------------------------------------------------------------------------------------------------
 // CONNECTION / DISCOVERY ORCHESTRATION
 //   onConnectionStateChange:
-//     • Updates the correct state flows in [BtEngineState]:
-//         - connectionState / gatt       for FTMS connections.
-//         - hrmConnectionState / gattHrm for HRM connections.
+//     • Updates the context's connection-state flow. Legacy FTMS/HRM flows are projections.
 //     • On CONNECTED:
-//         - Binds the GATT into the appropriate slot (gatt vs gattHrm).
+//         - Binds the GATT to the callback's pre-registered connection context.
 //         - For FTMS, resets:
 //             • Its context-owned CCCD orchestration state
 //             • FTMS capabilities snapshot (ftmsCapabilities + legacy range flags) so that
@@ -52,7 +50,7 @@
 //         - Calls handler.onDisconnected(...).
 //         - Clears handler-specific state (HRM chars, FTMS control, queue, CCCD flags).
 //         - For FTMS, also resets capabilities again as a safety net.
-//         - Nulls the appropriate GATT slot and updates connection state.
+//         - Clears that exact context and updates its compatibility projection, if any.
 //
 //   onServicesDiscovered:
 //     • For FTMS: resets CCCD orchestration counters again before handlers run.
@@ -83,16 +81,14 @@
 //       UUID (via primaryServices + extraCharacteristics) to find the right handlers.
 //
 //   FTMS CCCD tracking:
-//     • isFtmsCallback flags callbacks created for FTMS profiles.
-//     • isFtmsCccd(...) recognizes CCCD writes for FTMS data, status, and control point.
 //     • On successful descriptor writes for FTMS CCCDs:
 //         - Decrements context.cccd.pendingWrites.
 //         - When it reaches zero, flips context.cccd.ready to true and updates the machine projection.
 //
 // -------------------------------------------------------------------------------------------------
 // IMPLEMENTATION NOTES
-//   • This core is deliberately profile-agnostic: it only knows about FTMS/HRM identities via
-//     BluetoothIds constants and service UUIDs.
+//   • Protocol selection uses discovered services; legacy cleanup uses registry-slot identity,
+//     never handler UUIDs or a callback kind.
 //   • All state updates go through [BtEngineState]; no UI coupling.
 //   • All permission-sensitive calls are annotated with @RequiresPermission and guarded
 //     as needed by callers higher up in BtEngine.
@@ -168,22 +164,28 @@ internal data class LegacyConnectionSlots<T>(
     }
 }
 
-internal fun legacyConnectionRole(
-    handlers: List<BtEngineGattCore.ProtocolHandler>,
-): LegacyConnectionRole = if (
-    handlers.any { BluetoothIds.UUID_HRM_SERVICE in it.primaryServices }
-) {
-    LegacyConnectionRole.HRM
-} else {
-    // Current routing creates only FTMS or HRM callbacks and defaults to FTMS.
-    LegacyConnectionRole.FTMS
-}
-
 internal fun matchingProtocolHandlers(
     handlers: List<BtEngineGattCore.ProtocolHandler>,
     discoveredServiceUuids: Set<UUID>,
 ): List<BtEngineGattCore.ProtocolHandler> = handlers.filter { handler ->
     handler.primaryServices.any(discoveredServiceUuids::contains)
+}
+
+/** Pure identity lifecycle used by the Android callback and JVM characterization tests. */
+internal class ContextCallbackLifecycle(
+    private val state: BtEngineState,
+    val context: ConnectionContext,
+) {
+    private val candidateHandlers = context.handlers.toList()
+
+    fun publishConnectionState(newState: Int) {
+        state.setConnectionState(context, newState)
+    }
+
+    fun matchingHandlers(discoveredServiceUuids: Set<UUID>): List<BtEngineGattCore.ProtocolHandler> =
+        matchingProtocolHandlers(candidateHandlers, discoveredServiceUuids)
+
+    fun candidates(): List<BtEngineGattCore.ProtocolHandler> = candidateHandlers
 }
 
 internal object BtEngineGattCore {
@@ -255,20 +257,13 @@ internal object BtEngineGattCore {
         ) {}
     }
 
-    /** Build the routed callback over the provided protocol handlers. */
+    /** Build one routed callback bound to [context] identity. */
     fun build(
         engine: BtEngine,
-        handlers: List<ProtocolHandler>
+        context: ConnectionContext,
     ): BluetoothGattCallback = object : BluetoothGattCallback() {
-
-        private val connectionRole = legacyConnectionRole(handlers)
-
-        /** Is this callback instance for an HRM connection? (vs FTMS) */
-        private val isHrmCallback: Boolean = connectionRole == LegacyConnectionRole.HRM
-
-        /** Is this callback instance for an FTMS connection? */
-        private val isFtmsCallback: Boolean =
-            handlers.any { it.primaryServices.contains(BluetoothIds.UUID_FTMS_SERVICE) }
+        private val lifecycle = ContextCallbackLifecycle(engine.state, context)
+        private val handlers = lifecycle.candidates()
 
         /** Active handlers for this connection (populated post-discovery). */
         private val activeHandlers = LinkedHashSet<ProtocolHandler>()
@@ -278,6 +273,11 @@ internal object BtEngineGattCore {
         @Volatile private var activeGatt: BluetoothGatt? = null
         private var mtuFallback: Runnable? = null
         private var discoveryRetry: Runnable? = null
+
+        private fun ownsGatt(gatt: BluetoothGatt, allowUnbound: Boolean = false): Boolean {
+            if (!context.isActive) return false
+            return context.gatt === gatt || (allowUnbound && context.gatt == null)
+        }
 
         private fun cancelDiscoveryCallbacks() {
             mtuFallback?.let(discoveryHandler::removeCallbacks)
@@ -301,7 +301,7 @@ internal object BtEngineGattCore {
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         private fun startServiceDiscovery(gatt: BluetoothGatt, reason: String) {
-            if (activeGatt !== gatt) {
+            if (activeGatt !== gatt || !ownsGatt(gatt)) {
                 Timber.tag(BtEngineState.TAG)
                     .d("Ignoring service discovery for stale GATT (%s)", reason)
                 return
@@ -327,12 +327,12 @@ internal object BtEngineGattCore {
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         private fun retryServiceDiscovery(gatt: BluetoothGatt, failure: String) {
-            if (activeGatt !== gatt) return
+            if (activeGatt !== gatt || !ownsGatt(gatt)) return
 
             if (!discoveryGate.releaseForRetry()) {
                 val msg = "Service discovery failed after $MAX_DISCOVERY_ATTEMPTS attempts: $failure"
                 Timber.tag(BtEngineState.TAG).e(msg)
-                cancelDiscoveryCallbacks()
+                clearDiscovery(gatt)
                 engine.setGattErrorFor(gatt, msg)
                 return
             }
@@ -348,7 +348,7 @@ internal object BtEngineGattCore {
             mtuFallback?.let(discoveryHandler::removeCallbacks)
             mtuFallback = Runnable {
                 mtuFallback = null
-                if (activeGatt === gatt) {
+                if (activeGatt === gatt && ownsGatt(gatt)) {
                     Timber.tag(BtEngineState.TAG)
                         .w("MTU callback timed out; falling back to service discovery")
                     startServiceDiscovery(gatt, "MTU callback timeout")
@@ -362,26 +362,27 @@ internal object BtEngineGattCore {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             Timber.tag(BtEngineState.TAG)
                 .i(
-                    "Gatt:onConnectionStateChange status=%d newState=%d (isHrm=%s isFtms=%s)",
-                    status, newState, isHrmCallback, isFtmsCallback
+                    "Gatt:onConnectionStateChange context=%s status=%d newState=%d",
+                    context.connectionId, status, newState,
                 )
 
-            val slots = LegacyConnectionSlots(engine.state.gatt, engine.state.gattHrm)
-            val ownsCurrentConnection = slots.current(connectionRole) === gatt
-
-            // A late disconnect from an older GATT must not overwrite a newer connection.
-            if (newState != STATE_DISCONNECTED || ownsCurrentConnection) {
-                if (isHrmCallback) {
-                    engine.state.setHrmConnectionState(newState)
-                } else {
-                    // default to FTMS (current code only creates FTMS or HRM callbacks)
-                    engine.state.setConnectionState(newState)
-                }
+            if (!ownsGatt(gatt, allowUnbound = true)) {
+                Timber.tag(BtEngineState.TAG)
+                    .d("Ignoring callback for inactive or mismatched context=%s", context.connectionId)
+                clearDiscovery(gatt)
+                activeHandlers.clear()
+                if (newState == STATE_DISCONNECTED) runCatching { gatt.close() }
+                return
             }
 
+            // The callback owns this context regardless of the protocols it may activate.
+            context.gatt = gatt
+            engine.state.attachGatt(context, gatt)
+            lifecycle.publishConnectionState(newState)
+            val compatibilityRole = engine.state.connectionRegistry.roleOf(context)
+
             if (status != GATT_SUCCESS &&
-                newState == STATE_DISCONNECTED &&
-                ownsCurrentConnection
+                newState == STATE_DISCONNECTED
             ) {
                 engine.state.setGattErrorFor(gatt, "Disconnect status=$status")
             }
@@ -390,16 +391,10 @@ internal object BtEngineGattCore {
                 STATE_CONNECTED -> {
                     resetDiscovery(gatt)
 
-                    // Bind the correct gatt slot
-                    if (connectionRole == LegacyConnectionRole.HRM) {
-                        engine.state.gattHrm = gatt
-                    } else if (isFtmsCallback) {
-                        engine.state.gatt = gatt
-                        val context = engine.state.connectionRegistry.contextForGatt(gatt)
-
+                    if (compatibilityRole == LegacyConnectionRole.FTMS) {
                         // Only FTMS path manipulates these orchestration flags.
                         // Also reset FTMS capabilities snapshot at the start of a new link.
-                        if (context != null) engine.state.connectionRegistry.resetCccd(context)
+                        engine.state.connectionRegistry.resetCccd(context)
                         engine.state.resetFtmsCapabilities()
                         Timber.tag(BtEngineState.TAG)
                             .d("FTMS connected → reset CCCD flags and capabilities snapshot")
@@ -441,33 +436,17 @@ internal object BtEngineGattCore {
                 STATE_DISCONNECTED -> {
                     clearDiscovery(gatt)
 
-                    if (!ownsCurrentConnection) {
-                        activeHandlers.clear()
-                        Timber.tag(BtEngineState.TAG)
-                            .d("Closing stale GATT without clearing the active connection")
-                        runCatching { gatt.close() }
-                            .onFailure {
-                                Timber.tag(BtEngineState.TAG)
-                                    .w(it, "Stale BluetoothGatt.close() failed")
-                            }
-                        return
-                    }
-
                     // Notify handlers, then clear local state
                     activeHandlers.toList().forEach { runCatching { it.onDisconnected(engine) } }
                     activeHandlers.clear()
 
-                    val remainingSlots = slots.without(connectionRole)
-                    if (connectionRole == LegacyConnectionRole.HRM) {
-                        engine.state.gattHrm = remainingSlots.hrm
+                    if (compatibilityRole == LegacyConnectionRole.HRM) {
                         engine.state.hrmMeasurementChar = null
                         engine.state.hrmCtrlPointChar = null
                         engine.state.hrmBodyLocChar = null
-                        engine.state.setHrmConnectionState(STATE_DISCONNECTED)
                         engine.state.setExternalHeartRate(null)
                         HrmArbitration.reselect(engine)
-                    } else if (isFtmsCallback) {
-                        engine.state.gatt = remainingSlots.ftms
+                    } else if (compatibilityRole == LegacyConnectionRole.FTMS) {
                         engine.state.setHaveControl(false)
 
                         // Reset FTMS capabilities snapshot + legacy range flags so a future
@@ -476,6 +455,8 @@ internal object BtEngineGattCore {
                         Timber.tag(BtEngineState.TAG)
                             .d("FTMS disconnected → reset queue, CCCD flags, and capabilities")
                     }
+
+                    engine.state.clearConnection(context)
 
                     runCatching { gatt.close() }
                         .onFailure {
@@ -487,7 +468,7 @@ internal object BtEngineGattCore {
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
-            if (activeGatt !== gatt) {
+            if (activeGatt !== gatt || !ownsGatt(gatt)) {
                 Timber.tag(BtEngineState.TAG)
                     .d("Ignoring MTU callback for stale GATT (mtu=%d status=%d)", mtu, status)
                 return
@@ -505,7 +486,7 @@ internal object BtEngineGattCore {
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            if (activeGatt !== gatt) {
+            if (activeGatt !== gatt || !ownsGatt(gatt)) {
                 Timber.tag(BtEngineState.TAG)
                     .d("Ignoring service discovery callback for stale GATT (status=%d)", status)
                 return
@@ -520,11 +501,9 @@ internal object BtEngineGattCore {
             cancelDiscoveryCallbacks()
             discoveryGate.complete()
 
-            // Reset CCCD readiness only for FTMS path
-            if (isFtmsCallback) {
-                engine.state.connectionRegistry.contextForGatt(gatt)?.let {
-                    engine.state.connectionRegistry.resetCccd(it)
-                }
+            // Reset CCCD readiness only for the current machine compatibility context.
+            if (engine.state.connectionRegistry.roleOf(context) == LegacyConnectionRole.FTMS) {
+                engine.state.connectionRegistry.resetCccd(context)
                 Timber.tag(BtEngineState.TAG)
                     .d("onServicesDiscovered(FTMS) → reset CCCD orchestration counters")
             }
@@ -534,13 +513,10 @@ internal object BtEngineGattCore {
             } catch (_: SecurityException) {
                 emptyList()
             }
-            engine.state.connectionRegistry.replaceServices(gatt, services)
+            engine.state.connectionRegistry.replaceServices(context, services)
 
             // Select handlers for present services
-            val matched = matchingProtocolHandlers(
-                handlers,
-                services.mapTo(linkedSetOf()) { it.uuid },
-            )
+            val matched = lifecycle.matchingHandlers(services.mapTo(linkedSetOf()) { it.uuid })
 
             // Let matched handlers wire notifications/reads
             matched.forEach { h ->
@@ -552,7 +528,7 @@ internal object BtEngineGattCore {
                     .getOrDefault(false)
                 if (handled) activeHandlers.add(h)
             }
-            engine.state.connectionRegistry.replaceHandlers(gatt, activeHandlers)
+            engine.state.connectionRegistry.replaceHandlers(context, activeHandlers)
 
             Timber.tag(BtEngineState.TAG)
                 .i("Services discovered: total=%d, activeHandlers=%d", services.size, activeHandlers.size)
@@ -566,7 +542,8 @@ internal object BtEngineGattCore {
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            engine.state.connectionRegistry.contextForGatt(gatt)?.let(engine::handleStack)
+            if (!ownsGatt(gatt)) return
+            engine.handleStack(context)
             routeToOwners(gatt, characteristic.uuid) {
                 it.onCharacteristicChanged(engine, gatt, characteristic, value)
             }
@@ -587,15 +564,13 @@ internal object BtEngineGattCore {
             value: ByteArray,
             status: Int
         ) {
-            val context = engine.state.connectionRegistry.contextForGatt(gatt)
+            if (!ownsGatt(gatt)) return
             if (status != GATT_SUCCESS) {
                 val msg = "read failed status=$status uuid=${safeUuid(characteristic)}"
                 engine.state.setGattErrorFor(gatt, msg)
                 Timber.tag(BtEngineState.TAG).w(msg)
             }
-            if (context == null) {
-                Timber.tag(BtEngineState.TAG).w("Ignoring read completion from unregistered GATT")
-            } else if (status == GATT_SUCCESS) {
+            if (status == GATT_SUCCESS) {
                 engine.queueSucceed(context, gatt, StackEntry.Op.READ, characteristic.uuid)
             } else {
                 engine.queueFail(
@@ -632,15 +607,13 @@ internal object BtEngineGattCore {
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
-            val context = engine.state.connectionRegistry.contextForGatt(gatt)
+            if (!ownsGatt(gatt)) return
             if (status != GATT_SUCCESS) {
                 val msg = "write failed status=$status uuid=${safeUuid(characteristic)}"
                 engine.state.setGattErrorFor(gatt, msg)
                 Timber.tag(BtEngineState.TAG).w(msg)
             }
-            if (context == null) {
-                Timber.tag(BtEngineState.TAG).w("Ignoring write completion from unregistered GATT")
-            } else if (status == GATT_SUCCESS) {
+            if (status == GATT_SUCCESS) {
                 engine.queueSucceed(context, gatt, StackEntry.Op.WRITE, characteristic.uuid)
             } else {
                 engine.queueFail(
@@ -664,6 +637,7 @@ internal object BtEngineGattCore {
             status: Int,
             value: ByteArray
         ) {
+            if (!ownsGatt(gatt)) return
             if (status != GATT_SUCCESS) {
                 val msg = "descriptor read failed status=$status uuid=${safeUuid(descriptor)}"
                 engine.state.setGattErrorFor(gatt, msg)
@@ -696,7 +670,7 @@ internal object BtEngineGattCore {
             descriptor: BluetoothGattDescriptor,
             status: Int
         ) {
-            val context = engine.state.connectionRegistry.contextForGatt(gatt)
+            if (!ownsGatt(gatt)) return
             if (status != GATT_SUCCESS) {
                 val msg = "descriptor write failed status=$status uuid=${safeUuid(descriptor)}"
                 engine.state.setGattErrorFor(gatt, msg)
@@ -704,11 +678,6 @@ internal object BtEngineGattCore {
             }
             val charUuid = descriptor.characteristic?.uuid
             val completionMatched = when {
-                context == null -> {
-                    Timber.tag(BtEngineState.TAG)
-                        .w("Ignoring descriptor completion from unregistered GATT")
-                    false
-                }
                 status == GATT_SUCCESS -> engine.queueSucceed(
                     context,
                     gatt,
@@ -728,7 +697,7 @@ internal object BtEngineGattCore {
 
             // Decrement only for the matching successful CCCD completion on this context.
             if (completionMatched && status == GATT_SUCCESS && descriptor.uuid == BluetoothIds.UUID_CCCD) {
-                val becameReady = engine.state.connectionRegistry.completeCccdWrite(context!!)
+                val becameReady = engine.state.connectionRegistry.completeCccdWrite(context)
                 val pending = context.cccd.pendingWrites
                 Timber.tag(BtEngineState.TAG).d("CCCD written for %s → pending=%d", charUuid, pending)
                 if (becameReady) {
@@ -783,26 +752,7 @@ internal object BtEngineGattCore {
                 svc.characteristics.firstOrNull { it.uuid == charUuid }?.let { svc.uuid }
             }?.let { return it }
 
-            // Fallback: check the other slot (helps if some stacks delay services list)
-            fun from(other: BluetoothGatt?): UUID? =
-                other?.services?.firstNotNullOfOrNull { svc ->
-                    svc.characteristics.firstOrNull { it.uuid == charUuid }?.let { svc.uuid }
-                }
-
-            return from(engine.state.gatt) ?: from(engine.state.gattHrm)
-        }
-
-        private fun isFtmsCccd(desc: BluetoothGattDescriptor): Boolean {
-            if (desc.uuid != BluetoothIds.UUID_CCCD) return false
-            val u = desc.characteristic?.uuid ?: return false
-            return u == BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT ||
-                    u == BluetoothIds.UUID_TREADMILL_DATA ||
-                    u == BluetoothIds.UUID_ELLIPTICAL_DATA ||
-                    u == BluetoothIds.UUID_STAIR_STEPPER_DATA ||
-                    u == BluetoothIds.UUID_STAIR_CLIMBER_DATA ||
-                    u == BluetoothIds.UUID_ROWING_MACHINE_DATA ||
-                    u == BluetoothIds.UUID_BIKING_DATA ||
-                    u == BluetoothIds.UUID_FITNESS_MACHINE_STATUS
+            return null
         }
 
         private fun safeUuid(ch: BluetoothGattCharacteristic): String =

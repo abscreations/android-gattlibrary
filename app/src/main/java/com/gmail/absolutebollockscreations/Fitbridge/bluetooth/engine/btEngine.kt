@@ -454,20 +454,8 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
 
     internal val adapter: BluetoothAdapter? = btManager?.adapter
 
-    internal enum class ConnectionKind { FTMS, HRM }
-    internal interface Router { fun callbackFor(kind: ConnectionKind): BluetoothGattCallback }
-
-    internal val gattRouter: Router = object : Router {
-        private val ftmsHandler = FtmsProtocolHandler()
-        private val hrmHandler  = HrmProtocolHandler()
-        override fun callbackFor(kind: ConnectionKind): BluetoothGattCallback {
-            val handlers = when (kind) {
-                ConnectionKind.FTMS -> listOf(ftmsHandler)
-                ConnectionKind.HRM  -> listOf(hrmHandler)
-            }
-            return BtEngineGattCore.build(this@BtEngine, handlers)
-        }
-    }
+    private val ftmsHandler = FtmsProtocolHandler()
+    private val hrmHandler = HrmProtocolHandler()
 
     val devices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.devices
     val hrmDevices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.hrmDevices
@@ -661,14 +649,20 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         desiredAddress = address
         desiredActivity = activity
 
-        state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_CONNECTING)
         state.resetFtmsControl()
         earlyBondScheduled = false
 
-        val cb = gattRouter.callbackFor(ConnectionKind.FTMS)
-        state.bindFtmsGatt(address, connectLeGatt(dev, cb))
+        val connection = state.openConnectionContext(
+            LegacyConnectionRole.FTMS,
+            address,
+            handlers = listOf(ftmsHandler),
+        )
+        val cb = BtEngineGattCore.build(this@BtEngine, connection)
+        val connectedGatt = connectLeGatt(dev, cb)
+        val attached = connectedGatt?.let { state.attachGatt(connection, it) } == true
+        if (!attached) state.clearConnection(connection)
 
-        val created = (state.gatt != null)
+        val created = attached
         if (created && preBondIfNeeded) {
             // Only when bonding was explicitly asked for. This used to run on
             // every connect and is what produced the TERMINATE_LOCAL_HOST
@@ -712,11 +706,14 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun disconnectFtms() {
+        val connection = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
         if (!hasConnectPermission()) {
             Timber.tag(BtEngineState.TAG).w("disconnectFtms skipped: BLUETOOTH_CONNECT not granted — clearing local state only")
-            state.gatt = null
+            connection?.let {
+                state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                state.clearConnection(it)
+            }
             state.resetFtmsControl()
-            state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
             featureReadRetryScheduled = false
             earlyBondScheduled = false
             stopProviderAdvertising("disconnectFtms() without BLUETOOTH_CONNECT")
@@ -724,11 +721,13 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             return
         }
         guardConnectPerm(op = "disconnectFtms()", default = Unit) {
-            runCatching { state.gatt?.disconnect() }
-            runCatching { state.gatt?.close() }
-            state.gatt = null
+            runCatching { connection?.gatt?.disconnect() }
+            runCatching { connection?.gatt?.close() }
+            connection?.let {
+                state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                state.clearConnection(it)
+            }
             state.resetFtmsControl()
-            state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
             featureReadRetryScheduled = false
             earlyBondScheduled = false
             stopProviderAdvertising("disconnectFtms() explicit FTMS disconnect")
@@ -742,38 +741,49 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             Timber.tag(BtEngineState.TAG).i("connectHrm %s", address)
             if (address.isBlank()) return@guardConnectPerm false
             stopScan()
-            state.setHrmConnectionState(android.bluetooth.BluetoothProfile.STATE_CONNECTING)
             val dev = try { adapter?.getRemoteDevice(address) } catch (_: IllegalArgumentException) { null }
             if (dev == null) {
                 Timber.tag(BtEngineState.TAG).w("connectHrm: invalid address %s", address)
                 return@guardConnectPerm false
             }
-            val cb = gattRouter.callbackFor(ConnectionKind.HRM)
-            state.bindHrmGatt(address, connectLeGatt(dev, cb))
-            (state.gattHrm != null)
+            val connection = state.openConnectionContext(
+                LegacyConnectionRole.HRM,
+                address,
+                handlers = listOf(hrmHandler),
+            )
+            val cb = BtEngineGattCore.build(this@BtEngine, connection)
+            val connectedGatt = connectLeGatt(dev, cb)
+            val attached = connectedGatt?.let { state.attachGatt(connection, it) } == true
+            if (!attached) state.clearConnection(connection)
+            attached
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun disconnectHrm() {
+        val connection = state.connectionRegistry.current(LegacyConnectionRole.HRM)
         if (!hasConnectPermission()) {
             Timber.tag(BtEngineState.TAG).w("disconnectHrm skipped: BLUETOOTH_CONNECT not granted — clearing local HRM state only")
-            state.gattHrm = null
+            connection?.let {
+                state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                state.clearConnection(it)
+            }
             state.hrmMeasurementChar = null
             state.hrmCtrlPointChar = null
             state.hrmBodyLocChar = null
-            state.setHrmConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
             state.setExternalHeartRate(null)
             HrmArbitration.reselect(this)
             return
         }
         guardConnectPerm(op = "disconnectHrm()", default = Unit) {
-            runCatching { state.gattHrm?.disconnect() }
-            runCatching { state.gattHrm?.close() }
-            state.gattHrm = null
+            runCatching { connection?.gatt?.disconnect() }
+            runCatching { connection?.gatt?.close() }
+            connection?.let {
+                state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                state.clearConnection(it)
+            }
             state.hrmMeasurementChar = null
             state.hrmCtrlPointChar = null
             state.hrmBodyLocChar = null
-            state.setHrmConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
             state.setExternalHeartRate(null)
             HrmArbitration.reselect(this)
         }
@@ -1445,6 +1455,9 @@ private fun BtEngine.stopProviderAdvertising(reason: String) {
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
+    val connection = state.connectionRegistry.contextForGatt(gatt)
+    val role = connection?.let(state.connectionRegistry::roleOf)
+
     // Pre-31 BLUETOOTH_CONNECT does not exist; BLUETOOTH is install-time, so the
     // platform calls below are always permitted there.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
@@ -1453,15 +1466,14 @@ internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
     ) {
         Timber.tag(BtEngineState.TAG).w("setGattErrorFor skipped platform calls: BLUETOOTH_CONNECT not granted")
         state.setGattErrorFor(gatt, msg)
-        if (gatt === state.gatt) {
-            state.gatt = null
-            state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+        if (connection != null) {
+            state.setConnectionState(connection, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+            state.clearConnection(connection)
+        }
+        if (role == LegacyConnectionRole.FTMS) {
             featureReadRetryScheduled = false
             earlyBondScheduled = false
             stopProviderAdvertising("FTMS GATT error / remote disconnect (no BLUETOOTH_CONNECT)")
-        } else if (gatt === state.gattHrm) {
-            state.gattHrm = null
-            state.setHrmConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
         }
         return
     }
@@ -1469,15 +1481,14 @@ internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
     state.setGattErrorFor(gatt, msg)
     runCatching { gatt.disconnect() }
     runCatching { gatt.close() }
-    if (gatt === state.gatt) {
-        state.gatt = null
-        state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+    if (connection != null) {
+        state.setConnectionState(connection, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+        state.clearConnection(connection)
+    }
+    if (role == LegacyConnectionRole.FTMS) {
         featureReadRetryScheduled = false
         earlyBondScheduled = false
         stopProviderAdvertising("FTMS GATT error / remote disconnect")
-    } else if (gatt === state.gattHrm) {
-        state.gattHrm = null
-        state.setHrmConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
     }
 }
 

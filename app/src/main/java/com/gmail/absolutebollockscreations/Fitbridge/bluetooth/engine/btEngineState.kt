@@ -292,8 +292,7 @@ class BtEngineState : HrmStateSink {
         get() = connectionRegistry.current(LegacyConnectionRole.FTMS)?.gatt
         set(value) = bindFtmsGatt(value?.safeAddress().orEmpty(), value)
 
-    private val _connectionState = MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
-    val connectionState: StateFlow<Int> = _connectionState
+    val connectionState: StateFlow<Int> = connectionRegistry.machineConnectionState
 
     /** Wall-clock when the FTMS link *first* became CONNECTED (ms since epoch). Cleared on disconnect. */
     @Volatile
@@ -308,8 +307,7 @@ class BtEngineState : HrmStateSink {
         get() = connectionRegistry.current(LegacyConnectionRole.HRM)?.gatt
         set(value) = bindHrmGatt(value?.safeAddress().orEmpty(), value)
 
-    private val _hrmConnectionState = MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
-    val hrmConnectionState: StateFlow<Int> = _hrmConnectionState
+    val hrmConnectionState: StateFlow<Int> = connectionRegistry.hrmConnectionState
     private val _lastHrmError = MutableStateFlow<String?>(null)
     val lastHrmError: StateFlow<String?> = _lastHrmError
 
@@ -788,34 +786,62 @@ class BtEngineState : HrmStateSink {
     }
 
     // Connections
-    fun setConnectionState(state: Int) {
-        val old = _connectionState.value
-        _connectionState.value = state
-        connectionRegistry.updateState(LegacyConnectionRole.FTMS, state)
-        Timber.tag(TAG).i("FTMS connectionState %d → %d", old, state)
+    internal fun openConnectionContext(
+        role: LegacyConnectionRole,
+        address: String,
+        handlers: Collection<BtEngineGattCore.ProtocolHandler>,
+        initialState: Int = BluetoothProfile.STATE_CONNECTING,
+    ): ConnectionContext {
+        val context = connectionRegistry.open(role, address, gatt = null, initialState)
+        context.handlers.addAll(handlers)
+        if (role == LegacyConnectionRole.FTMS) linkedAtMs = null
+        Timber.tag(TAG).i("Opened %s context %s", role, context.connectionId)
+        return context
+    }
 
-        when (state) {
-            BluetoothProfile.STATE_CONNECTED -> {
-                // Only stamp on first transition into CONNECTED (avoid re-stamping if we get spurious repeats)
-                if (old != BluetoothProfile.STATE_CONNECTED) {
-                    linkedAtMs = System.currentTimeMillis()
-                    Timber.tag(TAG).d("linkedAtMs set → %d", linkedAtMs)
+    internal fun attachGatt(context: ConnectionContext, gatt: BluetoothGatt): Boolean {
+        val attached = connectionRegistry.attach(context, gatt)
+        Timber.tag(TAG).d("Attach GATT context=%s accepted=%s", context.connectionId, attached)
+        return attached
+    }
+
+    /** Publish state by physical-link identity; legacy flows are registry projections. */
+    internal fun setConnectionState(context: ConnectionContext, state: Int) {
+        val old = context.connectionState.value.bluetoothProfileState
+        val role = connectionRegistry.roleOf(context)
+        connectionRegistry.updateState(context, state)
+        Timber.tag(TAG).i(
+            "Connection state context=%s role=%s %d → %d",
+            context.connectionId,
+            role ?: "none",
+            old,
+            state,
+        )
+
+        if (role == LegacyConnectionRole.FTMS) {
+            when (state) {
+                BluetoothProfile.STATE_CONNECTED -> {
+                    if (old != BluetoothProfile.STATE_CONNECTED) {
+                        linkedAtMs = System.currentTimeMillis()
+                        Timber.tag(TAG).d("linkedAtMs set → %d", linkedAtMs)
+                    }
                 }
-            }
-            BluetoothProfile.STATE_DISCONNECTED -> {
-                if (linkedAtMs != null) {
-                    Timber.tag(TAG).d("linkedAtMs cleared (was %d)", linkedAtMs)
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    if (linkedAtMs != null) {
+                        Timber.tag(TAG).d("linkedAtMs cleared (was %d)", linkedAtMs)
+                    }
+                    linkedAtMs = null
                 }
-                linkedAtMs = null
             }
         }
     }
 
-    fun setHrmConnectionState(state: Int) {
-        val old = _hrmConnectionState.value
-        _hrmConnectionState.value = state
-        connectionRegistry.updateState(LegacyConnectionRole.HRM, state)
-        Timber.tag(TAG).i("HRM connectionState %d → %d", old, state)
+    internal fun clearConnection(context: ConnectionContext): Boolean {
+        val role = connectionRegistry.roleOf(context)
+        val cleared = connectionRegistry.clear(context)
+        if (cleared && role == LegacyConnectionRole.FTMS) linkedAtMs = null
+        Timber.tag(TAG).d("Clear context=%s accepted=%s", context.connectionId, cleared)
+        return cleared
     }
 
     internal fun bindFtmsGatt(address: String, value: BluetoothGatt?) {
@@ -824,7 +850,7 @@ class BtEngineState : HrmStateSink {
             label = "FTMS",
             address = address,
             value = value,
-            initialState = _connectionState.value,
+            initialState = connectionState.value,
         )
     }
 
@@ -834,7 +860,7 @@ class BtEngineState : HrmStateSink {
             label = "HRM",
             address = address,
             value = value,
-            initialState = _hrmConnectionState.value,
+            initialState = hrmConnectionState.value,
         )
     }
 

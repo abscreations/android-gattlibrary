@@ -2,6 +2,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothProfile
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -73,11 +75,25 @@ class LegacyGattCharacterizationTest {
     }
 
     @Test
-    fun `legacy callbacks retain their FTMS and HRM roles`() {
-        val ftms = RecordingHandler(setOf(BluetoothIds.UUID_FTMS_SERVICE))
-        val hrm = RecordingHandler(setOf(BluetoothIds.UUID_HRM_SERVICE))
+    fun `synthetic context reports state and discovery without touching legacy projections`() {
+        val syntheticService = UUID.randomUUID()
+        val syntheticHandler = RecordingHandler(setOf(syntheticService))
+        val state = BtEngineState()
+        val context = ConnectionContext(
+            connectionId = ConnectionId("SYNTHETIC", 1L),
+            address = "SYNTHETIC",
+            gatt = null,
+            connectionState = MutableStateFlow(LinkState.CONNECTING),
+            handlers = mutableListOf(syntheticHandler),
+        )
+        val lifecycle = ContextCallbackLifecycle(state, context)
 
-        assertEquals(LegacyConnectionRole.FTMS, legacyConnectionRole(listOf(ftms)))
-        assertEquals(LegacyConnectionRole.HRM, legacyConnectionRole(listOf(hrm)))
+        lifecycle.publishConnectionState(BluetoothProfile.STATE_CONNECTED)
+        val matched = lifecycle.matchingHandlers(setOf(syntheticService))
+
+        assertEquals(LinkState.CONNECTED, context.connectionState.value)
+        assertEquals(listOf(syntheticHandler), matched)
+        assertEquals(BluetoothProfile.STATE_DISCONNECTED, state.connectionState.value)
+        assertEquals(BluetoothProfile.STATE_DISCONNECTED, state.hrmConnectionState.value)
     }
 }

@@ -136,7 +136,11 @@ internal class ConnectionContext(
     val queue: GattQueue = GattQueue(),
     val cccd: CccdState = CccdState(),
     var linkRecovery: LinkRecoveryState? = null,
-)
+) {
+    @Volatile
+    var isActive: Boolean = true
+        internal set
+}
 
 internal fun canonicalConnectionAddress(address: String): String =
     address.trim().uppercase(Locale.ROOT)
@@ -146,13 +150,19 @@ internal fun BluetoothGatt.safeAddress(): String = runCatching {
 }.getOrDefault("")
 
 /**
- * Two-slot compatibility registry for Phase 0.2. The roles preserve current FTMS/HRM behavior;
- * later phases replace role-based callback routing with [ConnectionId] identity.
+ * Compatibility registry for the two existing public connection APIs. Callbacks are bound to
+ * [ConnectionContext] identity; roles only select the legacy UI projections.
  */
 internal class ConnectionRegistry {
     private val lock = Any()
     private val contexts = mutableMapOf<LegacyConnectionRole, ConnectionContext>()
     private var nextLinkGeneration = 1L
+    private val _machineConnectionState =
+        MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
+    val machineConnectionState: StateFlow<Int> = _machineConnectionState
+    private val _hrmConnectionState =
+        MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
+    val hrmConnectionState: StateFlow<Int> = _hrmConnectionState
     private val _machineCccdReady = MutableStateFlow(false)
     val machineCccdReady: StateFlow<Boolean> = _machineCccdReady
 
@@ -162,6 +172,14 @@ internal class ConnectionRegistry {
 
     fun contextForGatt(gatt: BluetoothGatt): ConnectionContext? = synchronized(lock) {
         contexts.values.firstOrNull { it.gatt === gatt }
+    }
+
+    fun roleOf(context: ConnectionContext): LegacyConnectionRole? = synchronized(lock) {
+        contexts.entries.firstOrNull { it.value === context }?.key
+    }
+
+    fun isCurrent(context: ConnectionContext): Boolean = synchronized(lock) {
+        context.isActive && contexts.values.any { it === context }
     }
 
     fun open(
@@ -178,6 +196,7 @@ internal class ConnectionRegistry {
             connectionState = MutableStateFlow(LinkState.fromBluetoothProfileState(initialState)),
         )
         contexts.put(role, context)?.deactivate()
+        connectionProjection(role).value = initialState
         if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
         context
     }
@@ -193,15 +212,38 @@ internal class ConnectionRegistry {
         open(role, address, gatt, initialState)
     }
 
+    /** Attach the platform GATT returned after a callback was created for [context]. */
+    fun attach(context: ConnectionContext, gatt: BluetoothGatt): Boolean = synchronized(lock) {
+        if (!context.isActive || contexts.values.none { it === context }) return@synchronized false
+        context.gatt = gatt
+        true
+    }
+
     fun clear(role: LegacyConnectionRole): ConnectionContext? = synchronized(lock) {
         contexts.remove(role)?.also { context ->
             context.deactivate()
+            connectionProjection(role).value = BluetoothProfile.STATE_DISCONNECTED
             if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
         }
     }
 
-    fun updateState(role: LegacyConnectionRole, state: Int) = synchronized(lock) {
-        contexts[role]?.connectionState?.value = LinkState.fromBluetoothProfileState(state)
+    /** Clear only if [context] is still the context occupying its compatibility slot. */
+    fun clear(context: ConnectionContext): Boolean = synchronized(lock) {
+        val role = contexts.entries.firstOrNull { it.value === context }?.key
+            ?: return@synchronized false
+        contexts.remove(role)
+        context.deactivate()
+        connectionProjection(role).value = BluetoothProfile.STATE_DISCONNECTED
+        if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
+        true
+    }
+
+    /** Always update the context; update a legacy projection only for the current slot owner. */
+    fun updateState(context: ConnectionContext, state: Int) = synchronized(lock) {
+        context.connectionState.value = LinkState.fromBluetoothProfileState(state)
+        contexts.entries.firstOrNull { it.value === context }?.key?.let { role ->
+            connectionProjection(role).value = state
+        }
     }
 
     fun setCccdReady(context: ConnectionContext, ready: Boolean) = synchronized(lock) {
@@ -226,25 +268,34 @@ internal class ConnectionRegistry {
         becameReady
     }
 
-    fun replaceServices(gatt: BluetoothGatt, services: List<BluetoothGattService>) =
+    fun replaceServices(context: ConnectionContext, services: List<BluetoothGattService>) =
         synchronized(lock) {
-            contextForGatt(gatt)?.discoveredServices?.apply {
+            if (!context.isActive) return@synchronized
+            context.discoveredServices.apply {
                 clear()
                 addAll(services)
             }
         }
 
     fun replaceHandlers(
-        gatt: BluetoothGatt,
+        context: ConnectionContext,
         handlers: Collection<BtEngineGattCore.ProtocolHandler>,
     ) = synchronized(lock) {
-        contextForGatt(gatt)?.handlers?.apply {
+        if (!context.isActive) return@synchronized
+        context.handlers.apply {
             clear()
             addAll(handlers)
         }
     }
 
+    private fun connectionProjection(role: LegacyConnectionRole): MutableStateFlow<Int> =
+        when (role) {
+            LegacyConnectionRole.FTMS -> _machineConnectionState
+            LegacyConnectionRole.HRM -> _hrmConnectionState
+        }
+
     private fun ConnectionContext.deactivate() {
+        isActive = false
         connectionState.value = LinkState.DISCONNECTED
         queue.clear()
         cccd.reset()
