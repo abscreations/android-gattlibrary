@@ -147,6 +147,56 @@ internal class GattDiscoveryAttemptGate(
     }
 }
 
+/**
+ * The two connection roles supported before Phase 0 introduces connection contexts.
+ * Kept explicit so characterization tests can lock the current slot behavior.
+ */
+internal enum class LegacyConnectionRole { FTMS, HRM }
+
+internal data class LegacyConnectionSlots<T>(
+    val ftms: T?,
+    val hrm: T?,
+) {
+    fun current(role: LegacyConnectionRole): T? = when (role) {
+        LegacyConnectionRole.FTMS -> ftms
+        LegacyConnectionRole.HRM -> hrm
+    }
+
+    fun without(role: LegacyConnectionRole): LegacyConnectionSlots<T> = when (role) {
+        LegacyConnectionRole.FTMS -> copy(ftms = null)
+        LegacyConnectionRole.HRM -> copy(hrm = null)
+    }
+}
+
+internal fun legacyConnectionRole(
+    handlers: List<BtEngineGattCore.ProtocolHandler>,
+): LegacyConnectionRole = if (
+    handlers.any { BluetoothIds.UUID_HRM_SERVICE in it.primaryServices }
+) {
+    LegacyConnectionRole.HRM
+} else {
+    // Current routing creates only FTMS or HRM callbacks and defaults to FTMS.
+    LegacyConnectionRole.FTMS
+}
+
+internal fun matchingProtocolHandlers(
+    handlers: List<BtEngineGattCore.ProtocolHandler>,
+    discoveredServiceUuids: Set<UUID>,
+): List<BtEngineGattCore.ProtocolHandler> = handlers.filter { handler ->
+    handler.primaryServices.any(discoveredServiceUuids::contains)
+}
+
+/** Returns true only for the successful write that makes the FTMS CCCD set ready. */
+internal fun BtEngineState.completeLegacyFtmsCccdWrite(): Boolean = synchronized(lock) {
+    if (pendingCccdWrites > 0) pendingCccdWrites--
+    if (pendingCccdWrites == 0) {
+        setCccdReady(true)
+        true
+    } else {
+        false
+    }
+}
+
 internal object BtEngineGattCore {
 
     private const val PREFERRED_ATT_MTU = 512
@@ -222,9 +272,10 @@ internal object BtEngineGattCore {
         handlers: List<ProtocolHandler>
     ): BluetoothGattCallback = object : BluetoothGattCallback() {
 
+        private val connectionRole = legacyConnectionRole(handlers)
+
         /** Is this callback instance for an HRM connection? (vs FTMS) */
-        private val isHrmCallback: Boolean =
-            handlers.any { it.primaryServices.contains(BluetoothIds.UUID_HRM_SERVICE) }
+        private val isHrmCallback: Boolean = connectionRole == LegacyConnectionRole.HRM
 
         /** Is this callback instance for an FTMS connection? */
         private val isFtmsCallback: Boolean =
@@ -326,11 +377,8 @@ internal object BtEngineGattCore {
                     status, newState, isHrmCallback, isFtmsCallback
                 )
 
-            val ownsCurrentConnection = if (isHrmCallback) {
-                engine.state.gattHrm === gatt
-            } else {
-                engine.state.gatt === gatt
-            }
+            val slots = LegacyConnectionSlots(engine.state.gatt, engine.state.gattHrm)
+            val ownsCurrentConnection = slots.current(connectionRole) === gatt
 
             // A late disconnect from an older GATT must not overwrite a newer connection.
             if (newState != STATE_DISCONNECTED || ownsCurrentConnection) {
@@ -354,7 +402,7 @@ internal object BtEngineGattCore {
                     resetDiscovery(gatt)
 
                     // Bind the correct gatt slot
-                    if (isHrmCallback) {
+                    if (connectionRole == LegacyConnectionRole.HRM) {
                         engine.state.gattHrm = gatt
                     } else if (isFtmsCallback) {
                         engine.state.gatt = gatt
@@ -420,8 +468,9 @@ internal object BtEngineGattCore {
                     activeHandlers.toList().forEach { runCatching { it.onDisconnected(engine) } }
                     activeHandlers.clear()
 
-                    if (isHrmCallback) {
-                        engine.state.gattHrm = null
+                    val remainingSlots = slots.without(connectionRole)
+                    if (connectionRole == LegacyConnectionRole.HRM) {
+                        engine.state.gattHrm = remainingSlots.hrm
                         engine.state.hrmMeasurementChar = null
                         engine.state.hrmCtrlPointChar = null
                         engine.state.hrmBodyLocChar = null
@@ -429,7 +478,7 @@ internal object BtEngineGattCore {
                         engine.state.setExternalHeartRate(null)
                         HrmArbitration.reselect(engine)
                     } else if (isFtmsCallback) {
-                        engine.state.gatt = null
+                        engine.state.gatt = remainingSlots.ftms
                         engine.state.setHaveControl(false)
 
                         // Clear write queue
@@ -507,9 +556,10 @@ internal object BtEngineGattCore {
             }
 
             // Select handlers for present services
-            val matched = handlers.filter { handler ->
-                services.any { s -> handler.primaryServices.contains(s.uuid) }
-            }
+            val matched = matchingProtocolHandlers(
+                handlers,
+                services.mapTo(linkedSetOf()) { it.uuid },
+            )
 
             // Let matched handlers wire notifications/reads
             matched.forEach { h ->
@@ -652,16 +702,8 @@ internal object BtEngineGattCore {
 
             // Robust CCCD readiness: decrement only on successful FTMS CCCDs; flip ready when counter hits zero.
             if (isFtmsCallback && status == GATT_SUCCESS && isFtmsCccd(descriptor)) {
-                var pending: Int
-                var becameReady = false
-                synchronized(engine.state.lock) {
-                    if (engine.state.pendingCccdWrites > 0) engine.state.pendingCccdWrites--
-                    pending = engine.state.pendingCccdWrites
-                    if (pending == 0) {
-                        engine.state.setCccdReady(true)
-                        becameReady = true
-                    }
-                }
+                val becameReady = engine.state.completeLegacyFtmsCccdWrite()
+                val pending = engine.state.pendingCccdWrites
                 val ch = descriptor.characteristic?.uuid
                 Timber.tag(BtEngineState.TAG).d("CCCD written for %s → pending=%d", ch, pending)
                 if (becameReady) {

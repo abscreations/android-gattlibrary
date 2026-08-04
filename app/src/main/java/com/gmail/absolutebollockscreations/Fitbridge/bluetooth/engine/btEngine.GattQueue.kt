@@ -135,6 +135,9 @@ internal data class StackEntry(
     enum class Op { READ, WRITE, DESC_WRITE }
 }
 
+internal fun <T> resolveGattTarget(explicitTarget: T?, defaultTarget: T?): T? =
+    explicitTarget ?: defaultTarget
+
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.pushRead(uuid: UUID, targetGatt: BluetoothGatt? = null) {
     synchronized(state.lock) {
@@ -291,7 +294,7 @@ internal fun BtEngine.handleStack() {
             "Deque head → op=%s uuid=%s on=%s size=%d",
             entry.op,
             entry.charUuid,
-            gattLabel(entry.targetGatt ?: defaultGatt),
+            gattLabel(resolveGattTarget(entry.targetGatt, defaultGatt)),
             state.queue.size
         )
     }
@@ -299,7 +302,7 @@ internal fun BtEngine.handleStack() {
     try {
         when (entry.op) {
             StackEntry.Op.DESC_WRITE -> {
-                val tgtGatt = entry.targetGatt ?: defaultGatt
+                val tgtGatt = resolveGattTarget(entry.targetGatt, defaultGatt)
                 val desc = entry.descriptor
                 val payload = entry.data
                 if (tgtGatt == null || desc == null || payload == null) {
@@ -461,7 +464,7 @@ internal fun BtEngine.handleStack() {
 
             StackEntry.Op.READ, StackEntry.Op.WRITE -> {
                 val uuid = entry.charUuid
-                val gatt = entry.targetGatt ?: defaultGatt
+                val gatt = resolveGattTarget(entry.targetGatt, defaultGatt)
                 if (uuid == null) {
                     failAndContinue("Missing charUuid"); return
                 }

@@ -55,18 +55,31 @@ class FtmsServiceDataParserTest {
     }
 
     @Test
-    fun `multiple advertised types follow connected discovery priority`() {
-        val treadmillAndBike =
-            BtServiceProfiles.FM_TYPE_TREADMILL or BtServiceProfiles.FM_TYPE_INDOOR_BIKE
-        val payload = byteArrayOf(
-            BtServiceProfiles.FM_FLAG_MACHINE_AVAILABLE.toByte(),
-            treadmillAndBike.toByte(),
-            (treadmillAndBike ushr 8).toByte(),
+    fun `multiple advertised types follow full connected discovery priority`() {
+        val priority = listOf(
+            BtServiceProfiles.FM_TYPE_TREADMILL to ActivityType.TREADMILL,
+            BtServiceProfiles.FM_TYPE_ROWER to ActivityType.ROWING,
+            BtServiceProfiles.FM_TYPE_INDOOR_BIKE to ActivityType.BIKING,
+            BtServiceProfiles.FM_TYPE_CROSS_TRAINER to ActivityType.ELLIPTICAL,
+            BtServiceProfiles.FM_TYPE_STEP_CLIMBER to ActivityType.STAIRSTEPPER,
+            BtServiceProfiles.FM_TYPE_STAIR_CLIMBER to ActivityType.STAIRCLIMBER,
         )
 
-        assertEquals(
-            ActivityType.TREADMILL,
-            BtServiceProfiles.activityTypeFromFtmsServiceData(payload),
-        )
+        priority.indices.forEach { expectedIndex ->
+            val advertisedTypes = priority
+                .drop(expectedIndex)
+                .fold(0) { bits, (typeBit, _) -> bits or typeBit }
+            val payload = byteArrayOf(
+                BtServiceProfiles.FM_FLAG_MACHINE_AVAILABLE.toByte(),
+                advertisedTypes.toByte(),
+                (advertisedTypes ushr 8).toByte(),
+            )
+
+            assertEquals(
+                "priority index $expectedIndex",
+                priority[expectedIndex].second,
+                BtServiceProfiles.activityTypeFromFtmsServiceData(payload),
+            )
+        }
     }
 }

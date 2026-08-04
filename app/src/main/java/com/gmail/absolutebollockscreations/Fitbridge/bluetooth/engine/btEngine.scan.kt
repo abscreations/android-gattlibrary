@@ -337,23 +337,31 @@ private fun toServiceType(u: UUID): BtEngineState.BtServiceType? = when (u) {
     else -> null
 }
 
+private val supportedAdvertisementServiceUuids = listOf(
+    BluetoothIds.UUID_FTMS_SERVICE,
+    BluetoothIds.UUID_HRM_SERVICE,
+    BluetoothIds.UUID_RSC_SERVICE,
+    BluetoothIds.UUID_CSC_SERVICE,
+    BluetoothIds.UUID_POWER_SERVICE,
+    BluetoothIds.UUID_GLUCOSE_SERVICE,
+)
+
+internal fun advertisedServiceTypes(
+    advertisedUuids: Set<UUID>,
+    serviceDataUuids: Set<UUID> = emptySet(),
+): Set<BtEngineState.BtServiceType> =
+    supportedAdvertisementServiceUuids.mapNotNullTo(linkedSetOf()) { uuid ->
+        if (uuid in advertisedUuids || uuid in serviceDataUuids) toServiceType(uuid) else null
+    }
+
 /** Preserve every supported service in an advertisement, not only its scan-list category. */
 private fun advertisedServiceTypes(result: ScanResult): Set<BtEngineState.BtServiceType> {
     val record = result.scanRecord ?: return emptySet()
-    val advertisedUuids = record.serviceUuids.orEmpty().mapTo(mutableSetOf()) { it.uuid }
-    val supportedUuids = listOf(
-        BluetoothIds.UUID_FTMS_SERVICE,
-        BluetoothIds.UUID_HRM_SERVICE,
-        BluetoothIds.UUID_RSC_SERVICE,
-        BluetoothIds.UUID_CSC_SERVICE,
-        BluetoothIds.UUID_POWER_SERVICE,
-        BluetoothIds.UUID_GLUCOSE_SERVICE,
-    )
-    return supportedUuids.mapNotNullTo(linkedSetOf()) { uuid ->
-        val advertised = uuid in advertisedUuids ||
-            record.getServiceData(ParcelUuidCompat(uuid)) != null
-        if (advertised) toServiceType(uuid) else null
+    val advertisedUuids = record.serviceUuids.orEmpty().mapTo(linkedSetOf()) { it.uuid }
+    val serviceDataUuids = supportedAdvertisementServiceUuids.filterTo(linkedSetOf()) { uuid ->
+        record.getServiceData(ParcelUuidCompat(uuid)) != null
     }
+    return advertisedServiceTypes(advertisedUuids, serviceDataUuids)
 }
 
 /* ───────────────────────────── upsert ───────────────────────────── */

@@ -141,7 +141,10 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 "Queue READ Body Sensor Location (0x2A38) on %s",
                 gatt.device?.address
             )
-            engine.pushRead(UUID_BODY_SENSOR_LOCATION)
+            engine.pushRead(
+                UUID_BODY_SENSOR_LOCATION,
+                legacyBodySensorLocationReadTarget(gatt),
+            )
         } ?: Timber.tag(BtEngineState.TAG).d(
             "Body Sensor Location (0x2A38) not present on %s",
             gatt.device?.address
@@ -421,6 +424,13 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
             joinToString(" ") { b -> "%02X".format(b) }
     }
 }
+
+/**
+ * Known Phase 0.1 baseline defect P0.1-D1: the optional HRM body-location read is
+ * untargeted and therefore falls back to the FTMS GATT when both links exist.
+ */
+@Suppress("UNUSED_PARAMETER")
+internal fun <T> legacyBodySensorLocationReadTarget(hrmGatt: T): T? = null
 
 /**
  * Optional sink interface: if your EngineState implements this, HRM data will be populated.

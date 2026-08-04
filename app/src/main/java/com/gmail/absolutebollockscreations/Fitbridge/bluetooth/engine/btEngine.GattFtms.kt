@@ -536,117 +536,7 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         engine: BtEngine,
         value: ByteArray
     ) {
-        if (value.isEmpty()) {
-            Timber.tag(BtEngineState.TAG).w("FTMS Status: empty payload")
-            return
-        }
-
-        val status = value[0]
-        engine.state.setLastFtmsStatusCode(status)
-
-        fun u16LE(offset: Int): Int {
-            if (value.size < offset + 2) return 0
-            val b0 = value[offset].toInt() and 0xFF
-            val b1 = value[offset + 1].toInt() and 0xFF
-            return b0 or (b1 shl 8)
-        }
-
-        Timber.tag(BtEngineState.TAG).d(
-            "FTMS Status opcode=0x%02X payload=%s",
-            status,
-            value.toHex()
-        )
-
-        when (status) {
-            STATUS_MACHINE_RESET -> {
-                Timber.tag(BtEngineState.TAG).i("FTMS Status: MACHINE_RESET")
-                // reset safety key + control
-                engine.state.setSafetyKeyEngaged(false)
-                engine.state.setHaveControl(false)
-            }
-
-            STATUS_USER_STARTED_OR_RESUMED -> {
-                Timber.tag(BtEngineState.TAG).i("FTMS Status: USER_STARTED_OR_RESUMED")
-                engine.state.setIsRunning(true)
-            }
-
-            STATUS_USER_STOPPED_OR_PAUSED -> {
-                Timber.tag(BtEngineState.TAG).i("FTMS Status: USER_STOPPED_OR_PAUSED")
-                engine.state.setIsRunning(false)
-            }
-
-            STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY -> {
-                Timber.tag(BtEngineState.TAG).w("FTMS Status: STOPPED_BY_SAFETY_KEY")
-                engine.state.setSafetyKeyEngaged(true)
-                engine.state.setIsRunning(false)
-                engine.serviceControlSink?.onSafetyKeyPulled()
-            }
-
-            STATUS_CONTROL_PERMISSION_LOST -> {
-                Timber.tag(BtEngineState.TAG).w("FTMS Status: CONTROL_PERMISSION_LOST")
-                engine.state.setHaveControl(false)
-                engine.serviceControlSink?.onControlPermissionLost()
-            }
-
-            STATUS_TARGET_SPEED_CHANGED -> {
-                val raw = u16LE(1) // 0.01 km/h
-                val kmh = raw / FTMS_SPEED_SCALE
-                engine.state.setTargetSpeedKmh(kmh)
-                engine.serviceControlSink?.onTargetSpeedChangedKmh(kmh)
-                Timber.tag(BtEngineState.TAG)
-                    .i("FTMS Status: TARGET_SPEED_CHANGED → %.2f km/h", kmh)
-            }
-
-            STATUS_TARGET_INCLINE_CHANGED -> {
-                val raw = u16LE(1) // 0.1 deg (spec uses SInt16; we treat as positive range)
-                val deg = raw / FTMS_INCLINE_SCALE
-                engine.state.setTargetInclineDeg(deg)
-                engine.serviceControlSink?.onTargetInclineChangedDeg(deg)
-                Timber.tag(BtEngineState.TAG)
-                    .i("FTMS Status: TARGET_INCLINE_CHANGED → %.1f deg", deg)
-            }
-
-            STATUS_TARGET_RESISTANCE_LEVEL_CHANGED -> {
-                val level = decodeTargetResistanceStatus(value)
-                if (level == null) {
-                    Timber.tag(BtEngineState.TAG).w(
-                        "FTMS Status: malformed TARGET_RESISTANCE_CHANGED payload=%s",
-                        value.toHex(),
-                    )
-                    return
-                }
-                engine.state.setTargetResistanceLevel(level)
-                engine.serviceControlSink?.onTargetResistanceLevelChanged(level)
-                Timber.tag(BtEngineState.TAG)
-                    .i("FTMS Status: TARGET_RESISTANCE_CHANGED → %.1f", level)
-            }
-
-            STATUS_TARGET_POWER_CHANGED -> {
-                val raw = u16LE(1) // watts
-                val watts = (raw / FTMS_POWER_SCALE).toInt()
-                engine.state.setTargetPowerWatts(watts)
-                engine.serviceControlSink?.onTargetPowerChangedWatts(watts)
-                Timber.tag(BtEngineState.TAG)
-                    .i("FTMS Status: TARGET_POWER_CHANGED → %d W", watts)
-            }
-
-            STATUS_TARGET_HEART_RATE_CHANGED -> {
-                // Spec: UInt8 bpm at offset 1
-                val bpm = if (value.size > 1) value[1].toInt() and 0xFF else 0
-                engine.state.setTargetHeartRateBpm(if (bpm == 0) null else bpm)
-                engine.serviceControlSink?.onTargetHeartRateChangedBpm(bpm)
-                Timber.tag(BtEngineState.TAG)
-                    .i("FTMS Status: TARGET_HEART_RATE_CHANGED → %d bpm", bpm)
-            }
-
-            else -> {
-                Timber.tag(BtEngineState.TAG).d(
-                    "FTMS Status: unhandled opcode=0x%02X payload=%s",
-                    status,
-                    value.toHex()
-                )
-            }
-        }
+        applyFitnessMachineStatus(engine.state, engine.serviceControlSink, value)
     }
 
     // ───────────────────────── helpers ─────────────────────────
@@ -713,6 +603,118 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     private fun ByteArray.toHex(): String =
         joinToString(" ") { b -> "%02X".format(b) }
+}
+
+/** Applies the observable state and provider callbacks produced by upstream FTMS 0x2ADA. */
+internal fun applyFitnessMachineStatus(
+    state: BtEngineState,
+    serviceControlSink: BtServiceControlSink?,
+    value: ByteArray,
+) {
+    if (value.isEmpty()) {
+        Timber.tag(BtEngineState.TAG).w("FTMS Status: empty payload")
+        return
+    }
+
+    val status = value[0]
+    state.setLastFtmsStatusCode(status)
+
+    fun u16LE(offset: Int): Int {
+        if (value.size < offset + 2) return 0
+        val b0 = value[offset].toInt() and 0xFF
+        val b1 = value[offset + 1].toInt() and 0xFF
+        return b0 or (b1 shl 8)
+    }
+
+    Timber.tag(BtEngineState.TAG).d(
+        "FTMS Status opcode=0x%02X payload=%s",
+        status,
+        value.joinToString(" ") { b -> "%02X".format(b) },
+    )
+
+    when (status) {
+        STATUS_MACHINE_RESET -> {
+            Timber.tag(BtEngineState.TAG).i("FTMS Status: MACHINE_RESET")
+            state.setSafetyKeyEngaged(false)
+            state.setHaveControl(false)
+        }
+
+        STATUS_USER_STARTED_OR_RESUMED -> {
+            Timber.tag(BtEngineState.TAG).i("FTMS Status: USER_STARTED_OR_RESUMED")
+            state.setIsRunning(true)
+        }
+
+        STATUS_USER_STOPPED_OR_PAUSED -> {
+            Timber.tag(BtEngineState.TAG).i("FTMS Status: USER_STOPPED_OR_PAUSED")
+            state.setIsRunning(false)
+        }
+
+        STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY -> {
+            Timber.tag(BtEngineState.TAG).w("FTMS Status: STOPPED_BY_SAFETY_KEY")
+            state.setSafetyKeyEngaged(true)
+            state.setIsRunning(false)
+            serviceControlSink?.onSafetyKeyPulled()
+        }
+
+        STATUS_CONTROL_PERMISSION_LOST -> {
+            Timber.tag(BtEngineState.TAG).w("FTMS Status: CONTROL_PERMISSION_LOST")
+            state.setHaveControl(false)
+            serviceControlSink?.onControlPermissionLost()
+        }
+
+        STATUS_TARGET_SPEED_CHANGED -> {
+            val kmh = u16LE(1) / FTMS_SPEED_SCALE
+            state.setTargetSpeedKmh(kmh)
+            serviceControlSink?.onTargetSpeedChangedKmh(kmh)
+            Timber.tag(BtEngineState.TAG)
+                .i("FTMS Status: TARGET_SPEED_CHANGED → %.2f km/h", kmh)
+        }
+
+        STATUS_TARGET_INCLINE_CHANGED -> {
+            val deg = u16LE(1) / FTMS_INCLINE_SCALE
+            state.setTargetInclineDeg(deg)
+            serviceControlSink?.onTargetInclineChangedDeg(deg)
+            Timber.tag(BtEngineState.TAG)
+                .i("FTMS Status: TARGET_INCLINE_CHANGED → %.1f deg", deg)
+        }
+
+        STATUS_TARGET_RESISTANCE_LEVEL_CHANGED -> {
+            val level = decodeTargetResistanceStatus(value)
+            if (level == null) {
+                Timber.tag(BtEngineState.TAG).w(
+                    "FTMS Status: malformed TARGET_RESISTANCE_CHANGED payload=%s",
+                    value.joinToString(" ") { b -> "%02X".format(b) },
+                )
+                return
+            }
+            state.setTargetResistanceLevel(level)
+            serviceControlSink?.onTargetResistanceLevelChanged(level)
+            Timber.tag(BtEngineState.TAG)
+                .i("FTMS Status: TARGET_RESISTANCE_CHANGED → %.1f", level)
+        }
+
+        STATUS_TARGET_POWER_CHANGED -> {
+            val watts = (u16LE(1) / FTMS_POWER_SCALE).toInt()
+            state.setTargetPowerWatts(watts)
+            serviceControlSink?.onTargetPowerChangedWatts(watts)
+            Timber.tag(BtEngineState.TAG)
+                .i("FTMS Status: TARGET_POWER_CHANGED → %d W", watts)
+        }
+
+        STATUS_TARGET_HEART_RATE_CHANGED -> {
+            val bpm = if (value.size > 1) value[1].toInt() and 0xFF else 0
+            state.setTargetHeartRateBpm(if (bpm == 0) null else bpm)
+            serviceControlSink?.onTargetHeartRateChangedBpm(bpm)
+            Timber.tag(BtEngineState.TAG)
+                .i("FTMS Status: TARGET_HEART_RATE_CHANGED → %d bpm", bpm)
+        }
+
+        else -> Timber.tag(BtEngineState.TAG).d(
+            "FTMS Status: unhandled opcode=0x%02X payload=%s",
+            status,
+            value.joinToString(" ") { b -> "%02X".format(b) },
+        )
+    }
 }
 
 /**
