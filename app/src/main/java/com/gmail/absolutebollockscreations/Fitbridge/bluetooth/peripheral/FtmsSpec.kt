@@ -69,7 +69,7 @@ object FtmsSpec {
         const val RESET: Byte = 0x01
         const val SET_TARGET_SPEED: Byte = 0x02          // uint16, 0.01 km/h
         const val SET_TARGET_INCLINATION: Byte = 0x03    // sint16, 0.1 %
-        const val SET_TARGET_RESISTANCE: Byte = 0x04     // uint8,  0.1 units
+        const val SET_TARGET_RESISTANCE: Byte = 0x04     // uint8/sint16, 0.1 units
         const val SET_TARGET_POWER: Byte = 0x05          // sint16, W
         const val SET_TARGET_HEART_RATE: Byte = 0x06     // uint8,  bpm
         const val START_RESUME: Byte = 0x07
@@ -137,8 +137,8 @@ object FtmsControlPointSchema {
         FtmsSpec.Opcode.SET_TARGET_HEART_RATE,
         -> 2
 
-        // The Control Point operand is UINT8 at 0.1 resolution. The Supported
-        // Resistance Level Range characteristic separately uses SINT16 values.
+        // Legacy FTMS uses UINT8 at 0.1 resolution. The handler additionally
+        // accepts the newer SINT16 form when a range exceeds 25.5.
         FtmsSpec.Opcode.SET_TARGET_RESISTANCE -> 2
 
         FtmsSpec.Opcode.SET_TARGET_SPEED,

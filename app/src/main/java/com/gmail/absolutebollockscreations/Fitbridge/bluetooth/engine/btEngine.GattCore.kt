@@ -46,8 +46,8 @@
 //             • FTMS capabilities snapshot (ftmsCapabilities + legacy range flags) so that
 //               a new link always starts “capability-blank” until range reads complete.
 //         - Calls handler.onConnected(...).
-//         - Requests HIGH connection priority and MTU=185 (best-effort).
-//         - Starts service discovery.
+//         - Requests HIGH connection priority and MTU=512 (best-effort).
+//         - Starts service discovery only after MTU completion, with a timeout fallback.
 //     • On DISCONNECTED:
 //         - Calls handler.onDisconnected(...).
 //         - Clears handler-specific state (HRM chars, FTMS control, queue, CCCD flags).
@@ -109,11 +109,50 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile.STATE_CONNECTED
 import android.bluetooth.BluetoothProfile.STATE_DISCONNECTED
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.RequiresPermission
 import timber.log.Timber
 import java.util.UUID
 
+internal class GattDiscoveryAttemptGate(
+    private val maxAttempts: Int,
+) {
+    private val lock = Any()
+    private var attempts = 0
+    private var inFlight = false
+    private var completed = false
+
+    fun tryStartAttempt(): Int? = synchronized(lock) {
+        if (completed || inFlight || attempts >= maxAttempts) return@synchronized null
+        attempts += 1
+        inFlight = true
+        attempts
+    }
+
+    fun releaseForRetry(): Boolean = synchronized(lock) {
+        inFlight = false
+        !completed && attempts < maxAttempts
+    }
+
+    fun complete() = synchronized(lock) {
+        completed = true
+        inFlight = false
+    }
+
+    fun reset() = synchronized(lock) {
+        attempts = 0
+        inFlight = false
+        completed = false
+    }
+}
+
 internal object BtEngineGattCore {
+
+    private const val PREFERRED_ATT_MTU = 512
+    private const val MTU_DISCOVERY_FALLBACK_MS = 2_000L
+    private const val DISCOVERY_RETRY_DELAY_MS = 300L
+    private const val MAX_DISCOVERY_ATTEMPTS = 3
 
     /** Minimal protocol contract implemented per profile (FTMS, HRM, ...). */
     internal interface ProtocolHandler {
@@ -194,6 +233,89 @@ internal object BtEngineGattCore {
         /** Active handlers for this connection (populated post-discovery). */
         private val activeHandlers = LinkedHashSet<ProtocolHandler>()
 
+        private val discoveryHandler = Handler(Looper.getMainLooper())
+        private val discoveryGate = GattDiscoveryAttemptGate(MAX_DISCOVERY_ATTEMPTS)
+        @Volatile private var activeGatt: BluetoothGatt? = null
+        private var mtuFallback: Runnable? = null
+        private var discoveryRetry: Runnable? = null
+
+        private fun cancelDiscoveryCallbacks() {
+            mtuFallback?.let(discoveryHandler::removeCallbacks)
+            discoveryRetry?.let(discoveryHandler::removeCallbacks)
+            mtuFallback = null
+            discoveryRetry = null
+        }
+
+        private fun resetDiscovery(gatt: BluetoothGatt) {
+            cancelDiscoveryCallbacks()
+            discoveryGate.reset()
+            activeGatt = gatt
+        }
+
+        private fun clearDiscovery(gatt: BluetoothGatt) {
+            if (activeGatt !== gatt) return
+            cancelDiscoveryCallbacks()
+            activeGatt = null
+            discoveryGate.reset()
+        }
+
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        private fun startServiceDiscovery(gatt: BluetoothGatt, reason: String) {
+            if (activeGatt !== gatt) {
+                Timber.tag(BtEngineState.TAG)
+                    .d("Ignoring service discovery for stale GATT (%s)", reason)
+                return
+            }
+
+            val attempt = discoveryGate.tryStartAttempt() ?: return
+            val accepted = runCatching { gatt.discoverServices() }
+                .onFailure {
+                    Timber.tag(BtEngineState.TAG)
+                        .w(it, "discoverServices() threw (attempt=%d, reason=%s)", attempt, reason)
+                }
+                .getOrDefault(false)
+
+            Timber.tag(BtEngineState.TAG).i(
+                "discoverServices() accepted=%s attempt=%d reason=%s",
+                accepted,
+                attempt,
+                reason,
+            )
+
+            if (!accepted) retryServiceDiscovery(gatt, "discoverServices() returned false")
+        }
+
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        private fun retryServiceDiscovery(gatt: BluetoothGatt, failure: String) {
+            if (activeGatt !== gatt) return
+
+            if (!discoveryGate.releaseForRetry()) {
+                val msg = "Service discovery failed after $MAX_DISCOVERY_ATTEMPTS attempts: $failure"
+                Timber.tag(BtEngineState.TAG).e(msg)
+                cancelDiscoveryCallbacks()
+                engine.setGattErrorFor(gatt, msg)
+                return
+            }
+
+            discoveryRetry?.let(discoveryHandler::removeCallbacks)
+            discoveryRetry = Runnable {
+                discoveryRetry = null
+                startServiceDiscovery(gatt, "retry after $failure")
+            }.also { discoveryHandler.postDelayed(it, DISCOVERY_RETRY_DELAY_MS) }
+        }
+
+        private fun scheduleMtuFallback(gatt: BluetoothGatt) {
+            mtuFallback?.let(discoveryHandler::removeCallbacks)
+            mtuFallback = Runnable {
+                mtuFallback = null
+                if (activeGatt === gatt) {
+                    Timber.tag(BtEngineState.TAG)
+                        .w("MTU callback timed out; falling back to service discovery")
+                    startServiceDiscovery(gatt, "MTU callback timeout")
+                }
+            }.also { discoveryHandler.postDelayed(it, MTU_DISCOVERY_FALLBACK_MS) }
+        }
+
         // ───────────────────────────────── Connection lifecycle ─────────────────────────────────
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -204,20 +326,33 @@ internal object BtEngineGattCore {
                     status, newState, isHrmCallback, isFtmsCallback
                 )
 
-            // Reflect state on the correct flow
-            if (isHrmCallback) {
-                engine.state.setHrmConnectionState(newState)
+            val ownsCurrentConnection = if (isHrmCallback) {
+                engine.state.gattHrm === gatt
             } else {
-                // default to FTMS (current code only creates FTMS or HRM callbacks)
-                engine.state.setConnectionState(newState)
+                engine.state.gatt === gatt
             }
 
-            if (status != GATT_SUCCESS && newState == STATE_DISCONNECTED) {
+            // A late disconnect from an older GATT must not overwrite a newer connection.
+            if (newState != STATE_DISCONNECTED || ownsCurrentConnection) {
+                if (isHrmCallback) {
+                    engine.state.setHrmConnectionState(newState)
+                } else {
+                    // default to FTMS (current code only creates FTMS or HRM callbacks)
+                    engine.state.setConnectionState(newState)
+                }
+            }
+
+            if (status != GATT_SUCCESS &&
+                newState == STATE_DISCONNECTED &&
+                ownsCurrentConnection
+            ) {
                 engine.state.setGattErrorFor(gatt, "Disconnect status=$status")
             }
 
             when (newState) {
                 STATE_CONNECTED -> {
+                    resetDiscovery(gatt)
+
                     // Bind the correct gatt slot
                     if (isHrmCallback) {
                         engine.state.gattHrm = gatt
@@ -236,13 +371,51 @@ internal object BtEngineGattCore {
                     // Allow handlers to prep
                     handlers.forEach { runCatching { it.onConnected(engine, gatt) } }
 
-                    // Boost link & MTU, then discover
-                    runCatching { gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH) }
-                    runCatching { gatt.requestMtu(185) }
-                    gatt.discoverServices()
+                    // Connection priority is independent of ATT traffic. MTU exchange and
+                    // service discovery are not: wait for onMtuChanged before discovering so
+                    // Android 11-era stacks do not silently drop the discovery request.
+                    val priorityAccepted = runCatching {
+                        gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
+                    }.onFailure {
+                        Timber.tag(BtEngineState.TAG).w(it, "requestConnectionPriority() threw")
+                    }.getOrDefault(false)
+                    Timber.tag(BtEngineState.TAG)
+                        .d("requestConnectionPriority() accepted=%s", priorityAccepted)
+
+                    val mtuAccepted = runCatching { gatt.requestMtu(PREFERRED_ATT_MTU) }
+                        .onFailure {
+                            Timber.tag(BtEngineState.TAG)
+                                .w(it, "requestMtu(%d) threw", PREFERRED_ATT_MTU)
+                        }
+                        .getOrDefault(false)
+                    Timber.tag(BtEngineState.TAG).d(
+                        "requestMtu(%d) accepted=%s",
+                        PREFERRED_ATT_MTU,
+                        mtuAccepted,
+                    )
+
+                    if (mtuAccepted) {
+                        scheduleMtuFallback(gatt)
+                    } else {
+                        startServiceDiscovery(gatt, "MTU request was not accepted")
+                    }
                 }
 
                 STATE_DISCONNECTED -> {
+                    clearDiscovery(gatt)
+
+                    if (!ownsCurrentConnection) {
+                        activeHandlers.clear()
+                        Timber.tag(BtEngineState.TAG)
+                            .d("Closing stale GATT without clearing the active connection")
+                        runCatching { gatt.close() }
+                            .onFailure {
+                                Timber.tag(BtEngineState.TAG)
+                                    .w(it, "Stale BluetoothGatt.close() failed")
+                            }
+                        return
+                    }
+
                     // Notify handlers, then clear local state
                     activeHandlers.toList().forEach { runCatching { it.onDisconnected(engine) } }
                     activeHandlers.clear()
@@ -275,13 +448,49 @@ internal object BtEngineGattCore {
                         Timber.tag(BtEngineState.TAG)
                             .d("FTMS disconnected → reset queue, CCCD flags, and capabilities")
                     }
+
+                    runCatching { gatt.close() }
+                        .onFailure {
+                            Timber.tag(BtEngineState.TAG).w(it, "BluetoothGatt.close() failed")
+                        }
                 }
             }
         }
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            if (activeGatt !== gatt) {
+                Timber.tag(BtEngineState.TAG)
+                    .d("Ignoring MTU callback for stale GATT (mtu=%d status=%d)", mtu, status)
+                return
+            }
+
+            mtuFallback?.let(discoveryHandler::removeCallbacks)
+            mtuFallback = null
+            Timber.tag(BtEngineState.TAG)
+                .i("onMtuChanged(mtu=%d status=%d) → starting service discovery", mtu, status)
+            startServiceDiscovery(
+                gatt,
+                if (status == GATT_SUCCESS) "MTU configured to $mtu" else "MTU failed with status=$status",
+            )
+        }
+
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            if (status != GATT_SUCCESS) return
+            if (activeGatt !== gatt) {
+                Timber.tag(BtEngineState.TAG)
+                    .d("Ignoring service discovery callback for stale GATT (status=%d)", status)
+                return
+            }
+            if (status != GATT_SUCCESS) {
+                Timber.tag(BtEngineState.TAG)
+                    .w("onServicesDiscovered failed status=%d", status)
+                retryServiceDiscovery(gatt, "onServicesDiscovered status=$status")
+                return
+            }
+
+            cancelDiscoveryCallbacks()
+            discoveryGate.complete()
 
             // Reset CCCD readiness only for FTMS path
             if (isFtmsCallback) {

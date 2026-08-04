@@ -25,6 +25,14 @@ data class FtmsTargetRange(
     fun contains(value: Int): Boolean =
         isValid && value in minimum..maximum && (value - minimum) % increment == 0
 
+    /** Clamp to the machine limits, then snap to the nearest advertised step. */
+    fun clampAndSnap(value: Int): Int {
+        require(isValid)
+        val clamped = value.coerceIn(minimum, maximum)
+        val steps = ((clamped - minimum).toDouble() / increment).roundToInt()
+        return (minimum + steps * increment).coerceIn(minimum, maximum)
+    }
+
     fun encodeU16(): ByteArray {
         require(isValidU16)
         return u16le(minimum) + u16le(maximum) + u16le(increment)

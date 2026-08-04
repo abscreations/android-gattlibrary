@@ -131,8 +131,9 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.speedRange,
                 FtmsSpec.Status.TARGET_SPEED_CHANGED,
                 rawValue = { u16(value, 1) },
-            ) {
-                val t = u16(value, 1) / 100.0
+                statusOperand = { u16le(it) },
+            ) { raw ->
+                val t = raw!! / 100.0
                 if (!sink.setTargetSpeedKph(t)) return@target false
                 session.acceptedTargets.speedKph = t
                 true
@@ -143,8 +144,9 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.inclinationRange,
                 FtmsSpec.Status.TARGET_INCLINE_CHANGED,
                 rawValue = { s16(value, 1) },
-            ) {
-                val t = s16(value, 1) / 10.0
+                statusOperand = { s16le(it) },
+            ) { raw ->
+                val t = raw!! / 10.0
                 if (!sink.setTargetInclinationPercent(t)) return@target false
                 session.acceptedTargets.inclinationPercent = t
                 true
@@ -154,9 +156,25 @@ class FtmsControlPointHandler(
                 op, value, sink.targetCapabilities.supportsResistance,
                 sink.targetCapabilities.resistanceRange,
                 FtmsSpec.Status.TARGET_RESISTANCE_CHANGED,
-                rawValue = { value[1].toInt() and 0xFF },
-            ) {
-                val t = (value[1].toInt() and 0xFF) / 10.0
+                rawValue = {
+                    if (value.size == LEGACY_RESISTANCE_PROCEDURE_LENGTH) {
+                        value[1].toInt() and 0xFF
+                    } else {
+                        s16(value, 1)
+                    }
+                },
+                // FTMS permits the legacy UINT8 form and the newer SINT16 form.
+                // Preserve legacy status framing when the normalized value fits;
+                // SINT16 is required for the simulator's advertised 30.0 maximum.
+                statusOperand = {
+                    if (value.size == LEGACY_RESISTANCE_PROCEDURE_LENGTH && it <= 0xFF) {
+                        u8(it)
+                    } else {
+                        s16le(it)
+                    }
+                },
+            ) { raw ->
+                val t = raw!! / 10.0
                 if (!sink.setTargetResistance(t)) return@target false
                 session.acceptedTargets.resistance = t
                 true
@@ -167,8 +185,9 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.powerRange,
                 FtmsSpec.Status.TARGET_POWER_CHANGED,
                 rawValue = { s16(value, 1) },
-            ) {
-                val t = s16(value, 1)
+                statusOperand = { s16le(it) },
+            ) { raw ->
+                val t = raw!!
                 if (!sink.setTargetPowerWatts(t)) return@target false
                 session.acceptedTargets.powerWatts = t
                 true
@@ -179,8 +198,9 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.heartRateRange,
                 FtmsSpec.Status.TARGET_HEART_RATE_CHANGED,
                 rawValue = { value[1].toInt() and 0xFF },
-            ) {
-                val t = value[1].toInt() and 0xFF
+                statusOperand = { u8(it) },
+            ) { raw ->
+                val t = raw!!
                 if (!sink.setTargetHeartRate(t)) return@target false
                 session.acceptedTargets.heartRateBpm = t
                 true
@@ -191,6 +211,7 @@ class FtmsControlPointHandler(
                 null,
                 FtmsSpec.Status.INDOOR_BIKE_SIMULATION_PARAMETERS_CHANGED,
                 rawValue = null,
+                statusOperand = null,
             ) {
                 val t = FtmsProcedureSession.IndoorBikeSimulation(
                     windMps = s16(value, 1) / 1000.0,
@@ -216,23 +237,44 @@ class FtmsControlPointHandler(
         range: FtmsTargetRange?,
         statusOpcode: Byte,
         rawValue: (() -> Int)?,
-        apply: () -> Boolean,
+        statusOperand: ((Int) -> ByteArray)?,
+        apply: (Int?) -> Boolean,
     ): Outcome {
-        // Validate capability, wire shape, and range before touching the sink.
-        // Session targets are updated inside apply() only after the downstream
-        // command succeeds, so the advertised state can never get ahead of the
-        // machine we are controlling.
+        // Validate capability and wire shape before touching the sink. Values
+        // are normalized in wire units from the same advertised range used by
+        // the GATT characteristic, then converted to public units by the caller.
         if (!sink.canControl || !supported) {
             return Outcome(response(op, FtmsSpec.Result.OPCODE_NOT_SUPPORTED))
         }
         if (!hasExactLength(op, value)) {
             return Outcome(response(op, FtmsSpec.Result.INVALID_PARAMETER))
         }
-        if (rawValue != null && (range == null || !range.contains(rawValue()))) {
-            return Outcome(response(op, FtmsSpec.Result.INVALID_PARAMETER))
+        val normalizedRaw = if (rawValue == null) {
+            null
+        } else {
+            val targetRange = range
+                ?: return Outcome(response(op, FtmsSpec.Result.OPCODE_NOT_SUPPORTED))
+            val requested = rawValue()
+            if (sink.clampsTargetsToAdvertisedRange) {
+                targetRange.clampAndSnap(requested)
+            } else if (targetRange.contains(requested)) {
+                requested
+            } else {
+                return Outcome(response(op, FtmsSpec.Result.INVALID_PARAMETER))
+            }
         }
-        val status = byteArrayOf(statusOpcode) + value.copyOfRange(1, value.size)
-        return if (apply()) {
+        return if (apply(normalizedRaw)) {
+            val status = if (sink.reportsTargetChangesAsynchronously) {
+                null
+            } else {
+                val operand = if (normalizedRaw == null) {
+                    value.copyOfRange(1, value.size)
+                } else {
+                    statusOperand?.invoke(normalizedRaw)
+                        ?: return Outcome(response(op, FtmsSpec.Result.OPERATION_FAILED))
+                }
+                byteArrayOf(statusOpcode) + operand
+            }
             Outcome(response(op, FtmsSpec.Result.SUCCESS), status = status)
         } else {
             Outcome(response(op, FtmsSpec.Result.OPERATION_FAILED))
@@ -240,7 +282,12 @@ class FtmsControlPointHandler(
     }
 
     private fun hasExactLength(op: Byte, value: ByteArray): Boolean =
-        FtmsControlPointSchema.expectedLength(op) == value.size
+        if (op == FtmsSpec.Opcode.SET_TARGET_RESISTANCE) {
+            value.size == LEGACY_RESISTANCE_PROCEDURE_LENGTH ||
+                value.size == SINT16_RESISTANCE_PROCEDURE_LENGTH
+        } else {
+            FtmsControlPointSchema.expectedLength(op) == value.size
+        }
 
     private fun response(requestOp: Byte, result: Byte): ByteArray =
         byteArrayOf(FtmsSpec.Opcode.RESPONSE_CODE, requestOp, result)
@@ -251,6 +298,9 @@ class FtmsControlPointHandler(
     private fun s16(b: ByteArray, off: Int): Int = u16(b, off).toShort().toInt()
 
     companion object {
+        private const val LEGACY_RESISTANCE_PROCEDURE_LENGTH = 2
+        private const val SINT16_RESISTANCE_PROCEDURE_LENGTH = 3
+
         fun opcodeName(op: Int): String = when (op.toByte()) {
             FtmsSpec.Opcode.REQUEST_CONTROL -> "REQUEST_CONTROL"
             FtmsSpec.Opcode.RESET -> "RESET"

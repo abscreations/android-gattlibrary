@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FtmsMockControlProfile
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -36,6 +37,8 @@ class FtmsControlPointTest {
             heartRateRange = FtmsTargetRange(1, 254, 1),
         ),
         private val succeed: Boolean = true,
+        override val reportsTargetChangesAsynchronously: Boolean = false,
+        override val clampsTargetsToAdvertisedRange: Boolean = false,
     ) : FtmsControlSink {
         var speed: Double? = null
         var inclination: Double? = null
@@ -146,6 +149,50 @@ class FtmsControlPointTest {
     }
 
     @Test
+    fun `local target sink publishes accepted resistance status immediately`() {
+        val cp = FtmsControlPointHandler(RecordingSink())
+        val out = cp.handle(byteArrayOf(O.SET_TARGET_RESISTANCE, 75), hasControl = true)
+
+        assertArrayEquals(
+            byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED, 75),
+            out.status,
+        )
+    }
+
+    @Test
+    fun `machine backed target sink waits for authoritative resistance status`() {
+        val cp = FtmsControlPointHandler(
+            RecordingSink(reportsTargetChangesAsynchronously = true),
+        )
+        val out = cp.handle(byteArrayOf(O.SET_TARGET_RESISTANCE, 75), hasControl = true)
+
+        assertEquals(R.SUCCESS, result(out))
+        assertNull(out.status)
+    }
+
+    @Test
+    fun `engine pass through declares asynchronous status and strict range validation`() {
+        val passThrough = EngineFtmsControlSink { null }
+        assertTrue(passThrough.reportsTargetChangesAsynchronously)
+        assertTrue(!passThrough.clampsTargetsToAdvertisedRange)
+
+        val sink = RecordingSink(
+            reportsTargetChangesAsynchronously = true,
+            targetCapabilities = TargetCapabilities(
+                power = true,
+                powerRange = FtmsTargetRange(1, 1_000, 1),
+            ),
+        )
+        val out = FtmsControlPointHandler(sink).handle(
+            byteArrayOf(O.SET_TARGET_POWER) + s16le(1_001),
+            hasControl = true,
+        )
+        assertEquals(R.INVALID_PARAMETER, result(out))
+        assertNull(out.status)
+        assertNull(sink.power)
+    }
+
+    @Test
     fun `set target resistance rejects a one octet write`() {
         val cp = FtmsControlPointHandler(RecordingSink())
         val out = cp.handle(byteArrayOf(O.SET_TARGET_RESISTANCE), hasControl = true)
@@ -153,12 +200,21 @@ class FtmsControlPointTest {
     }
 
     @Test
-    fun `resistance control point rejects the range characteristic width`() {
-        val cp = FtmsControlPointHandler(RecordingSink())
+    fun `resistance control point accepts sint16 framing through level 30`() {
+        val sink = RecordingSink(
+            targetCapabilities = FtmsMockControlProfile.forMachine(FtmsMachineProfile.INDOOR_BIKE),
+        )
+        val cp = FtmsControlPointHandler(sink)
         val session = FtmsProcedureSession().apply { hasControl = true }
-        assertEquals(
-            R.INVALID_PARAMETER,
-            result(cp.handle(byteArrayOf(O.SET_TARGET_RESISTANCE, 75, 0), session)),
+        val out = cp.handle(
+            byteArrayOf(O.SET_TARGET_RESISTANCE) + s16le(300),
+            session,
+        )
+        assertEquals(R.SUCCESS, result(out))
+        assertEquals(30.0, sink.resistance!!, 0.001)
+        assertArrayEquals(
+            byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED) + s16le(300),
+            out.status,
         )
     }
 
@@ -373,7 +429,7 @@ class FtmsControlPointTest {
             byteArrayOf(O.START_RESUME, 0),
             byteArrayOf(O.STOP_PAUSE, 1, 0),
             byteArrayOf(O.SET_TARGET_SPEED, 0, 0, 0),
-            byteArrayOf(O.SET_TARGET_RESISTANCE, 0, 0),
+            byteArrayOf(O.SET_TARGET_RESISTANCE, 0, 0, 0),
         )
 
         for (write in oversized) {
@@ -413,21 +469,81 @@ class FtmsControlPointTest {
     }
 
     @Test
-    fun `target range validates boundaries and increments before sink call`() {
+    fun `target range clamps boundaries and snaps increments before sink call`() {
         val sink = RecordingSink(
             targetCapabilities = TargetCapabilities(
                 speed = true,
                 speedRange = FtmsTargetRange(100, 200, 10),
             ),
+            clampsTargetsToAdvertisedRange = true,
         )
         val cp = FtmsControlPointHandler(sink)
         val session = FtmsProcedureSession().apply { hasControl = true }
 
         assertEquals(R.SUCCESS, result(cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 100, 0), session)))
         assertEquals(R.SUCCESS, result(cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 200.toByte(), 0), session)))
-        assertEquals(R.INVALID_PARAMETER, result(cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 99, 0), session)))
-        assertEquals(R.INVALID_PARAMETER, result(cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 201.toByte(), 0), session)))
-        assertEquals(R.INVALID_PARAMETER, result(cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 105, 0), session)))
+        assertEquals(R.SUCCESS, result(cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 99, 0), session)))
+        assertEquals(1.0, sink.speed!!, 0.001)
+        assertEquals(R.SUCCESS, result(cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 201.toByte(), 0), session)))
+        assertEquals(2.0, sink.speed!!, 0.001)
+        val snapped = cp.handle(byteArrayOf(O.SET_TARGET_SPEED, 105, 0), session)
+        assertEquals(R.SUCCESS, result(snapped))
+        assertEquals(1.1, sink.speed!!, 0.001)
+        assertArrayEquals(
+            byteArrayOf(FtmsSpec.Status.TARGET_SPEED_CHANGED, 110, 0),
+            snapped.status,
+        )
+    }
+
+    @Test
+    fun `standardized target boundaries and clamping flow through control point`() {
+        val sink = RecordingSink(
+            targetCapabilities = FtmsMockControlProfile.forMachine(FtmsMachineProfile.ELLIPTICAL),
+            clampsTargetsToAdvertisedRange = true,
+        )
+        val cp = FtmsControlPointHandler(sink)
+        val session = FtmsProcedureSession().apply { hasControl = true }
+
+        fun apply(opcode: Byte, operand: ByteArray) =
+            cp.handle(byteArrayOf(opcode) + operand, session).also {
+                assertEquals(R.SUCCESS, result(it))
+                assertArrayEquals(byteArrayOf(0x80.toByte(), opcode, R.SUCCESS), it.response)
+            }
+
+        apply(O.SET_TARGET_SPEED, u16le(0))
+        assertEquals(0.0, sink.speed!!, 0.001)
+        apply(O.SET_TARGET_SPEED, u16le(3_000))
+        assertEquals(30.0, sink.speed!!, 0.001)
+
+        apply(O.SET_TARGET_INCLINATION, s16le(-100))
+        assertEquals(-10.0, sink.inclination!!, 0.001)
+        apply(O.SET_TARGET_INCLINATION, s16le(300))
+        assertEquals(30.0, sink.inclination!!, 0.001)
+
+        apply(O.SET_TARGET_RESISTANCE, s16le(10))
+        assertEquals(1.0, sink.resistance!!, 0.001)
+        apply(O.SET_TARGET_RESISTANCE, s16le(300))
+        assertEquals(30.0, sink.resistance!!, 0.001)
+
+        apply(O.SET_TARGET_POWER, s16le(1))
+        assertEquals(1, sink.power)
+        apply(O.SET_TARGET_POWER, s16le(1_000))
+        assertEquals(1_000, sink.power)
+        val exactPower = apply(O.SET_TARGET_POWER, s16le(237))
+        assertEquals(237, sink.power)
+        assertArrayEquals(
+            byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED) + s16le(237),
+            exactPower.status,
+        )
+
+        apply(O.SET_TARGET_SPEED, u16le(65_535))
+        assertEquals(30.0, sink.speed!!, 0.001)
+        apply(O.SET_TARGET_INCLINATION, s16le(Short.MIN_VALUE.toInt()))
+        assertEquals(-10.0, sink.inclination!!, 0.001)
+        apply(O.SET_TARGET_RESISTANCE, s16le(2_000))
+        assertEquals(30.0, sink.resistance!!, 0.001)
+        apply(O.SET_TARGET_POWER, s16le(Short.MAX_VALUE.toInt()))
+        assertEquals(1_000, sink.power)
     }
 
     @Test

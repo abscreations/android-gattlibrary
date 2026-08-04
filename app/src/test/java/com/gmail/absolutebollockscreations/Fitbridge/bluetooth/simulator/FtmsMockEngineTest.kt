@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
@@ -76,6 +77,51 @@ class FtmsMockEngineTest {
                 "$machine heart rate ${s.heartRate} out of range",
                 s.heartRate.toDouble() in profile.heartRate.min..profile.heartRate.max,
             )
+        }
+    }
+
+    @Test
+    fun `autonomous profiles retain the ordinary workout bands`() {
+        fun assertRange(expectedMin: Double, expectedMax: Double, actual: FtmsMockRange?) =
+            assertEquals(FtmsMockRange(expectedMin, expectedMax), actual)
+
+        FtmsMockProfile.forMachine(FtmsMachineProfile.INDOOR_BIKE).also {
+            assertRange(24.0, 38.0, it.speed)
+            assertRange(75.0, 95.0, it.cadence)
+            assertRange(100.0, 260.0, it.power)
+            assertRange(105.0, 160.0, it.heartRate)
+            assertRange(3.0, 12.0, it.resistance)
+        }
+        FtmsMockProfile.forMachine(FtmsMachineProfile.TREADMILL).also {
+            assertRange(8.0, 13.0, it.speed)
+            assertRange(170.0, 330.0, it.power)
+            assertRange(110.0, 168.0, it.heartRate)
+            assertRange(0.0, 4.0, it.inclination)
+        }
+        FtmsMockProfile.forMachine(FtmsMachineProfile.ELLIPTICAL).also {
+            assertRange(7.0, 11.0, it.speed)
+            assertRange(110.0, 150.0, it.cadence)
+            assertRange(90.0, 240.0, it.power)
+            assertRange(105.0, 165.0, it.heartRate)
+            assertRange(3.0, 12.0, it.resistance)
+            assertRange(2.0, 10.0, it.inclination)
+        }
+        FtmsMockProfile.forMachine(FtmsMachineProfile.INDOOR_ROWER).also {
+            assertRange(11.0, 15.0, it.speed)
+            assertRange(20.0, 32.0, it.cadence)
+            assertRange(80.0, 280.0, it.power)
+            assertRange(105.0, 168.0, it.heartRate)
+            assertRange(3.0, 8.0, it.resistance)
+        }
+        FtmsMockProfile.forMachine(FtmsMachineProfile.STAIR_STEPPER).also {
+            assertRange(50.0, 80.0, it.cadence)
+            assertRange(90.0, 190.0, it.power)
+            assertRange(110.0, 165.0, it.heartRate)
+        }
+        FtmsMockProfile.forMachine(FtmsMachineProfile.STAIR_CLIMBER).also {
+            assertRange(45.0, 75.0, it.cadence)
+            assertRange(90.0, 180.0, it.power)
+            assertRange(110.0, 165.0, it.heartRate)
         }
     }
 
@@ -160,6 +206,53 @@ class FtmsMockEngineTest {
     }
 
     @Test
+    fun `every applicable persona uses the standardized advertised ranges`() {
+        val speed = FtmsMockControlProfile.speedRange
+        val inclination = FtmsMockControlProfile.inclinationRange
+        val resistance = FtmsMockControlProfile.resistanceRange
+        val power = FtmsMockControlProfile.powerRange
+
+        assertEquals(Triple(0, 3_000, 10), speed.asTriple())
+        assertEquals(Triple(-100, 300, 5), inclination.asTriple())
+        assertEquals(Triple(10, 300, 10), resistance.asTriple())
+        assertEquals(Triple(1, 1_000, 1), power.asTriple())
+
+        for (machine in FtmsMockEngine.supportedMachines) {
+            val caps = FtmsMockControlProfile.forMachine(machine)
+            caps.speedRange?.let { assertSame("$machine speed", speed, it) }
+            caps.inclinationRange?.let { assertSame("$machine inclination", inclination, it) }
+            caps.resistanceRange?.let { assertSame("$machine resistance", resistance, it) }
+            caps.powerRange?.let { assertSame("$machine power", power, it) }
+        }
+    }
+
+    @Test
+    fun `persona controls are present only where supported`() {
+        fun capabilities(machine: FtmsMachineProfile) = FtmsMockControlProfile.forMachine(machine)
+
+        val bike = capabilities(FtmsMachineProfile.INDOOR_BIKE)
+        assertTrue(bike.supportsSpeed && bike.supportsResistance && bike.supportsPower)
+        assertFalse(bike.supportsInclination)
+
+        val treadmill = capabilities(FtmsMachineProfile.TREADMILL)
+        assertTrue(treadmill.supportsSpeed && treadmill.supportsInclination && treadmill.supportsPower)
+        assertFalse(treadmill.supportsResistance)
+
+        val cross = capabilities(FtmsMachineProfile.ELLIPTICAL)
+        assertTrue(
+            cross.supportsSpeed && cross.supportsInclination &&
+                cross.supportsResistance && cross.supportsPower,
+        )
+
+        val rower = capabilities(FtmsMachineProfile.INDOOR_ROWER)
+        assertTrue(rower.supportsSpeed && rower.supportsResistance && rower.supportsPower)
+        assertFalse(rower.supportsInclination)
+
+        assertFalse(capabilities(FtmsMachineProfile.STAIR_STEPPER).any)
+        assertFalse(capabilities(FtmsMachineProfile.STAIR_CLIMBER).any)
+    }
+
+    @Test
     fun `target setting feature bits follow the advertised ranges`() {
         val bits = FtmsMockControlProfile.forMachine(FtmsMachineProfile.TREADMILL)
             .toTargetFeatureBits()
@@ -172,14 +265,14 @@ class FtmsMockEngineTest {
     }
 
     @Test
-    fun `controlled metrics start at the advertised minimum`() {
+    fun `enabling controls starts in the autonomous workout bands with no overrides`() {
         val e = engine(FtmsMachineProfile.INDOOR_BIKE, controls = true)
         val s = e.snapshot()
-        // Wire 500 = 5.00 km/h, 50 W, resistance wire 10 = level 1.0.
-        assertEquals(5.0, s.speedKph!!, 0.001)
-        assertEquals(50, s.powerWatts)
-        assertEquals(1, s.resistance)
-        assertEquals(5.0, e.controlTargets()[FtmsMockTarget.SPEED]!!, 0.001)
+        val profile = FtmsMockProfile.forMachine(FtmsMachineProfile.INDOOR_BIKE)
+        assertTrue(s.speedKph!! in profile.speed!!.min..profile.speed.max)
+        assertTrue(s.powerWatts!!.toDouble() in profile.power.min..profile.power.max)
+        assertTrue(s.resistance!!.toDouble() in profile.resistance!!.min..profile.resistance.max)
+        assertTrue(e.controlTargets().isEmpty())
     }
 
     @Test
@@ -198,9 +291,61 @@ class FtmsMockEngineTest {
     fun `out of range targets are clamped, not rejected outright`() {
         val e = engine(FtmsMachineProfile.INDOOR_BIKE, controls = true)
         assertTrue(e.setTarget(FtmsMockTarget.POWER, 5_000.0))
-        assertEquals(600, e.snapshot().powerWatts)
+        assertEquals(1_000, e.snapshot().powerWatts)
         assertTrue(e.setTarget(FtmsMockTarget.POWER, -100.0))
-        assertEquals(50, e.snapshot().powerWatts)
+        assertEquals(1, e.snapshot().powerWatts)
+    }
+
+    @Test
+    fun `resistance and power targets retain the requested precision`() {
+        // The rower's autonomous resistance is only 3..8, but its full machine
+        // range is the standardized 1..30 and must not leak the old max of 10.
+        val e = engine(FtmsMachineProfile.INDOOR_ROWER, controls = true)
+        for (level in listOf(12.0, 15.0, 13.0, 16.0)) {
+            assertTrue(e.setTarget(FtmsMockTarget.RESISTANCE, level))
+            assertEquals(level.toInt(), e.snapshot().resistance)
+            assertEquals(level, e.controlTargets()[FtmsMockTarget.RESISTANCE]!!, 0.001)
+        }
+
+        assertTrue(e.setTarget(FtmsMockTarget.POWER, 237.0))
+        assertEquals(237, e.snapshot().powerWatts)
+        assertEquals(237.0, e.controlTargets()[FtmsMockTarget.POWER]!!, 0.001)
+    }
+
+    @Test
+    fun `all advertised target boundaries are accepted`() {
+        val e = engine(FtmsMachineProfile.ELLIPTICAL, controls = true)
+        val cases = listOf(
+            Triple(FtmsMockTarget.SPEED, 0.0, 30.0),
+            Triple(FtmsMockTarget.INCLINATION, -10.0, 30.0),
+            Triple(FtmsMockTarget.RESISTANCE, 1.0, 30.0),
+            Triple(FtmsMockTarget.POWER, 1.0, 1_000.0),
+        )
+        for ((target, minimum, maximum) in cases) {
+            assertTrue(e.setTarget(target, minimum))
+            assertEquals(minimum, e.controlTargets()[target]!!, 0.001)
+            assertTrue(e.setTarget(target, maximum))
+            assertEquals(maximum, e.controlTargets()[target]!!, 0.001)
+        }
+    }
+
+    @Test
+    fun `targets clamp and snap in advertised wire units`() {
+        val e = engine(FtmsMachineProfile.ELLIPTICAL, controls = true)
+        assertTrue(e.setTarget(FtmsMockTarget.SPEED, 40.0))
+        assertEquals(30.0, e.controlTargets()[FtmsMockTarget.SPEED]!!, 0.001)
+        assertTrue(e.setTarget(FtmsMockTarget.SPEED, 12.34))
+        assertEquals(12.3, e.controlTargets()[FtmsMockTarget.SPEED]!!, 0.001)
+
+        assertTrue(e.setTarget(FtmsMockTarget.INCLINATION, -20.0))
+        assertEquals(-10.0, e.controlTargets()[FtmsMockTarget.INCLINATION]!!, 0.001)
+        assertTrue(e.setTarget(FtmsMockTarget.INCLINATION, 1.26))
+        assertEquals(1.5, e.controlTargets()[FtmsMockTarget.INCLINATION]!!, 0.001)
+
+        assertTrue(e.setTarget(FtmsMockTarget.RESISTANCE, 99.0))
+        assertEquals(30.0, e.controlTargets()[FtmsMockTarget.RESISTANCE]!!, 0.001)
+        assertTrue(e.setTarget(FtmsMockTarget.POWER, -5.0))
+        assertEquals(1.0, e.controlTargets()[FtmsMockTarget.POWER]!!, 0.001)
     }
 
     @Test
@@ -220,12 +365,69 @@ class FtmsMockEngineTest {
     fun `uncontrolled metrics keep moving while controlled ones are pinned`() {
         val e = engine(FtmsMachineProfile.INDOOR_BIKE, controls = true)
         e.setTarget(FtmsMockTarget.POWER, 200.0)
-        val firstCadence = e.tick(1.0).cadence!!
+        val first = e.tick(1.0)
         repeat(60) { e.tick(1.0) }
-        val laterCadence = e.snapshot().cadence!!
+        val later = e.snapshot()
 
-        assertEquals(200, e.snapshot().powerWatts)
-        assertTrue("cadence should still drift", firstCadence != laterCadence)
+        assertEquals(200, later.powerWatts)
+        assertTrue("speed should still drift", first.speedKph != later.speedKph)
+        assertTrue("cadence should still drift", first.cadence != later.cadence)
+        assertTrue("resistance should still drift", first.resistance != later.resistance)
+        assertTrue("heart rate should still drift", first.heartRate != later.heartRate)
+        assertTrue("elapsed time should advance", later.elapsedSeconds > first.elapsedSeconds)
+        assertTrue("distance should advance", later.distanceMeters!! > first.distanceMeters!!)
+    }
+
+    @Test
+    fun `multiple overrides coexist and replacing one preserves the others`() {
+        val e = engine(FtmsMachineProfile.ELLIPTICAL, controls = true)
+        assertTrue(e.setTarget(FtmsMockTarget.SPEED, 10.0))
+        assertTrue(e.setTarget(FtmsMockTarget.INCLINATION, 7.5))
+        assertTrue(e.setTarget(FtmsMockTarget.RESISTANCE, 16.0))
+        assertTrue(e.setTarget(FtmsMockTarget.POWER, 237.0))
+        repeat(60) { e.tick(0.5) }
+
+        assertEquals(
+            mapOf(
+                FtmsMockTarget.SPEED to 10.0,
+                FtmsMockTarget.INCLINATION to 7.5,
+                FtmsMockTarget.RESISTANCE to 16.0,
+                FtmsMockTarget.POWER to 237.0,
+            ),
+            e.controlTargets(),
+        )
+
+        assertTrue(e.setTarget(FtmsMockTarget.RESISTANCE, 13.0))
+        assertEquals(10.0, e.controlTargets()[FtmsMockTarget.SPEED]!!, 0.001)
+        assertEquals(7.5, e.controlTargets()[FtmsMockTarget.INCLINATION]!!, 0.001)
+        assertEquals(13.0, e.controlTargets()[FtmsMockTarget.RESISTANCE]!!, 0.001)
+        assertEquals(237.0, e.controlTargets()[FtmsMockTarget.POWER]!!, 0.001)
+    }
+
+    @Test
+    fun `derived distance average speed and rower pace use overridden speed`() {
+        val e = engine(FtmsMachineProfile.INDOOR_ROWER, controls = true)
+        assertTrue(e.setTarget(FtmsMockTarget.SPEED, 18.0))
+        val s = e.tick(10.0)
+
+        assertEquals(18.0, s.speedKph!!, 0.001)
+        assertEquals(50, s.distanceMeters)
+        assertEquals(18.0, s.averageSpeedKph!!, 0.001)
+        assertEquals(60.0 / 18.0, s.instantPaceMinPerKm!!, 0.001)
+        assertEquals(60.0 / 18.0, s.averagePaceMinPerKm!!, 0.001)
+    }
+
+    @Test
+    fun `derived calories and belt force use overridden power and speed`() {
+        val lowPower = engine(FtmsMachineProfile.TREADMILL, controls = true)
+        val highPower = engine(FtmsMachineProfile.TREADMILL, controls = true)
+        assertTrue(lowPower.setTarget(FtmsMockTarget.SPEED, 10.0))
+        assertTrue(highPower.setTarget(FtmsMockTarget.SPEED, 10.0))
+        assertTrue(lowPower.setTarget(FtmsMockTarget.POWER, 100.0))
+        assertTrue(highPower.setTarget(FtmsMockTarget.POWER, 250.0))
+
+        assertEquals(90, highPower.snapshot().forceOnBeltNewtons)
+        assertTrue(highPower.tick(600.0).caloriesTotal > lowPower.tick(600.0).caloriesTotal)
     }
 
     @Test
@@ -240,7 +442,12 @@ class FtmsMockEngineTest {
         assertEquals(0, s.elapsedSeconds)
         assertEquals(0, s.distanceMeters)
         assertEquals(0, s.caloriesTotal)
-        assertEquals(50, s.powerWatts) // back to the advertised minimum
+        assertTrue(e.controlTargets().isEmpty())
+        assertTrue(s.powerWatts!!.toDouble() in e.profile.power.min..e.profile.power.max)
+
+        val initialPower = s.powerWatts
+        repeat(60) { e.tick(1.0) }
+        assertTrue("autonomous power should resume after reset", e.snapshot().powerWatts != initialPower)
     }
 
     @Test
@@ -285,4 +492,7 @@ class FtmsMockEngineTest {
             assertEquals(a.tick(0.5), b.tick(0.5))
         }
     }
+
+    private fun com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsTargetRange.asTriple() =
+        Triple(minimum, maximum, increment)
 }

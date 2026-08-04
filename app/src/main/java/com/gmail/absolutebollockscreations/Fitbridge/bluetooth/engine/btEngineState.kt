@@ -41,6 +41,14 @@ import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import kotlin.math.roundToInt
 
+internal fun netElevationChangeMeters(
+    positiveMeters: Double?,
+    negativeMeters: Double?,
+): Double? = if (positiveMeters == null && negativeMeters == null) {
+    null
+} else {
+    (positiveMeters ?: 0.0) - (negativeMeters ?: 0.0)
+}
 
 class BtEngineState : HrmStateSink {
 
@@ -70,8 +78,10 @@ class BtEngineState : HrmStateSink {
         val lastSeenMs: Long,
         val scanResult: ScanResult?,
         val services: Set<BtServiceType> = emptySet(),
-        // Filled after connect/feature reads (e.g., treadmill/rower)
-        val machineFeature: Int? = null
+        // Authoritative type inferred from GATT characteristics after connecting.
+        val machineFeature: Int? = null,
+        // Optimistic ActivityType ordinal decoded from advertised FTMS Service Data.
+        val advertisedMachineFeature: Int? = null,
     )
 
     // ⬇️ Container types for provider-side capabilities snapshot
@@ -454,9 +464,11 @@ class BtEngineState : HrmStateSink {
     private val _avgPace = MutableStateFlow<Double?>(null)
     val avgPace: StateFlow<Double?> = _avgPace
 
-    // Keep last canonical (metric) pace so we can re-convert on unit change
-    private var lastInstantPaceMinPerKm: Double? = null
-    private var lastAvgPaceMinPerKm: Double? = null
+    // Canonical metric pace remains available for unit-independent consumers such as rowing.
+    private val _instantPaceMinPerKm = MutableStateFlow<Double?>(null)
+    val instantPaceMinPerKm: StateFlow<Double?> = _instantPaceMinPerKm
+    private val _averagePaceMinPerKm = MutableStateFlow<Double?>(null)
+    val averagePaceMinPerKm: StateFlow<Double?> = _averagePaceMinPerKm
 
     // Power (W)
     private val _instantPower = MutableStateFlow<Int?>(null)
@@ -473,6 +485,8 @@ class BtEngineState : HrmStateSink {
     // Energy / METs
     private val _expEnergyTotal = MutableStateFlow<Int?>(null)
     val expEnergyTotal: StateFlow<Int?> = _expEnergyTotal
+    private val _expEnergyRateKcalPerHour = MutableStateFlow<Int?>(null)
+    val expEnergyRateKcalPerHour: StateFlow<Int?> = _expEnergyRateKcalPerHour
     private val _metabolicEquivalent = MutableStateFlow<Double?>(null)
     val metabolicEquivalent: StateFlow<Double?> = _metabolicEquivalent
 
@@ -580,6 +594,9 @@ class BtEngineState : HrmStateSink {
     private val _forceOnBeltSeries = MutableStateFlow<List<TimedSample>>(emptyList())
     val forceOnBeltSeries: StateFlow<List<TimedSample>> = _forceOnBeltSeries
 
+    private val _elevationNetSeries = MutableStateFlow<List<TimedSample>>(emptyList())
+    val elevationNetSeries: StateFlow<List<TimedSample>> = _elevationNetSeries
+
     // Stroke-rate series (SPM). Alias of cadenceSeriesSpm.
     val strokeRateSeriesSpm: StateFlow<List<TimedSample>> get() = _cadenceSeriesSpm
 
@@ -592,6 +609,20 @@ class BtEngineState : HrmStateSink {
             n,
             _forceOnBeltSeries.value.size
         )
+    }
+
+    /** Update cumulative elevation gains and append their signed net change. */
+    fun setElevationGains(
+        positiveMeters: Double?,
+        negativeMeters: Double?,
+        tsMillis: Long = System.currentTimeMillis(),
+    ) {
+        _elevationGainPos.value = positiveMeters
+        _elevationGainNeg.value = negativeMeters
+        netElevationChangeMeters(positiveMeters, negativeMeters)?.let { net ->
+            _elevationNetSeries.value =
+                _elevationNetSeries.value + TimedSample(tsMillis, net)
+        }
     }
 
 
@@ -857,8 +888,8 @@ class BtEngineState : HrmStateSink {
         Timber.tag(TAG).i("setUnits %s → %s", old?.toString() ?: "null", units?.toString() ?: "null")
 
         // Re-emit pace in the newly selected units
-        lastInstantPaceMinPerKm?.let { emitInstantPaceForUnits(it, units) }
-        lastAvgPaceMinPerKm?.let { emitAvgPaceForUnits(it, units) }
+        _instantPaceMinPerKm.value?.let { emitInstantPaceForUnits(it, units) }
+        _averagePaceMinPerKm.value?.let { emitAvgPaceForUnits(it, units) }
     }
 
     fun setActiveSession(active: Boolean) {
@@ -919,7 +950,7 @@ class BtEngineState : HrmStateSink {
      * @param minPerKm canonical metric pace (minutes per kilometer)
      */
     fun setInstantPace(minPerKm: Double?) {
-        lastInstantPaceMinPerKm = minPerKm
+        _instantPaceMinPerKm.value = minPerKm
         Timber.tag(TAG).v("setInstantPace(minPerKm=%s)", minPerKm?.toString() ?: "null")
         val units = _units.value
         emitInstantPaceForUnits(minPerKm, units)
@@ -929,7 +960,7 @@ class BtEngineState : HrmStateSink {
      * @param minPerKm canonical metric average pace (minutes per kilometer)
      */
     fun setAvgPace(minPerKm: Double?) {
-        lastAvgPaceMinPerKm = minPerKm
+        _averagePaceMinPerKm.value = minPerKm
         Timber.tag(TAG).v("setAvgPace(minPerKm=%s)", minPerKm?.toString() ?: "null")
         val units = _units.value
         emitAvgPaceForUnits(minPerKm, units)
@@ -971,6 +1002,9 @@ class BtEngineState : HrmStateSink {
     fun setResistance(r: Double?) { _resistance.value = r }
 
     fun setExpEnergyTotal(kcal: Int?) { _expEnergyTotal.value = kcal }
+    fun setExpEnergyRateKcalPerHour(kcalPerHour: Int?) {
+        _expEnergyRateKcalPerHour.value = kcalPerHour
+    }
     fun setMetabolicEquivalent(met: Double?) { _metabolicEquivalent.value = met }
 
     fun setInclination(v: Double?) { _inclination.value = v }
@@ -1098,6 +1132,13 @@ class BtEngineState : HrmStateSink {
         )
     }
 
+    /** Append a rower stroke-rate sample and keep its graph/average cadence series in sync. */
+    fun appendStrokeRateSample(spm: Double, tsMillis: Long = System.currentTimeMillis()) {
+        _strokeRate.value = spm
+        _peakStrokeRate.value = maxOf(_peakStrokeRate.value ?: spm, spm)
+        appendCadenceSpmSample(spm, tsMillis)
+    }
+
     /** Append a power sample (watts); updates averagePower and series. */
     fun appendPowerSample(watts: Int, tsMillis: Long = System.currentTimeMillis()) {
         _instantPower.value = watts
@@ -1145,6 +1186,7 @@ class BtEngineState : HrmStateSink {
         _inclineSeriesDeg.value = emptyList()
         _resistanceSeries.value = emptyList()
         _forceOnBeltSeries.value = emptyList()
+        _elevationNetSeries.value = emptyList()
     }
 
     private fun resetAveragesAndSeries() {
@@ -1199,10 +1241,6 @@ class BtEngineState : HrmStateSink {
     }
 
     fun updateRowingSpeed(nowMs: Long = System.currentTimeMillis()) {
-        // if we already have an FTMS/native speed, don't stomp it
-        val currentInstantKph = _speedKph.value
-        val currentAvgKph = _avgSpeedKph.value
-
         // 3–5s window
         val maxAgeMs = 5_000L
         val minSpanMs = 2_000L
@@ -1210,14 +1248,11 @@ class BtEngineState : HrmStateSink {
 
         val series = _distanceSeriesM.value
         if (series.isEmpty()) {
-            if (currentInstantKph == null) {
-                _speedKph.value = null
-                _speedDisplay.value = null
-            }
-            if (currentAvgKph == null) {
-                _avgSpeedKph.value = null
-                _avgSpeedDisplay.value = null
-            }
+            _speedKph.value = null
+            _speedMph.value = null
+            _speedDisplay.value = null
+            _avgSpeedKph.value = null
+            _avgSpeedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: no distance samples")
             return
         }
@@ -1225,10 +1260,9 @@ class BtEngineState : HrmStateSink {
         // keep only last 5s *for the computation* (series itself is full-session)
         val recent = series.filter { it.tMillis >= windowStart && it.tMillis <= nowMs }
         if (recent.size < 2) {
-            if (currentInstantKph == null) {
-                _speedKph.value = null
-                _speedDisplay.value = null
-            }
+            _speedKph.value = null
+            _speedMph.value = null
+            _speedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: insufficient samples (recent=%d)", recent.size)
             return
         }
@@ -1238,10 +1272,9 @@ class BtEngineState : HrmStateSink {
         val oldest = recent.firstOrNull { newest.tMillis - it.tMillis >= minSpanMs } ?: recent.first()
         val dtMs = (newest.tMillis - oldest.tMillis).coerceAtLeast(0L)
         if (dtMs < minSpanMs) {
-            if (currentInstantKph == null) {
-                _speedKph.value = null
-                _speedDisplay.value = null
-            }
+            _speedKph.value = null
+            _speedMph.value = null
+            _speedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: dtMs too small (%d)", dtMs)
             return
         }
@@ -1249,10 +1282,9 @@ class BtEngineState : HrmStateSink {
         // compute delta distance (m)
         val dm = newest.v - oldest.v
         if (dm <= 0.0) {
-            if (currentInstantKph == null) {
-                _speedKph.value = null
-                _speedDisplay.value = null
-            }
+            _speedKph.value = null
+            _speedMph.value = null
+            _speedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: non-positive delta distance dm=%.2f", dm)
             return
         }
@@ -1269,21 +1301,28 @@ class BtEngineState : HrmStateSink {
             kph
         )
 
-        // global instant speed (only if FTMS didn't already set one)
-        if (currentInstantKph == null || currentInstantKph <= 0.0) {
-            _speedKph.value = kph
-            _speedDisplay.value = when (_units.value) {
-                1    -> kph * 0.621371    // mi/h
-                else -> kph               // km/h
-            }
+        // Rower Data has no native speed field, so every distance window replaces
+        // the previous derived value. Guarding on non-null froze the first value.
+        _speedKph.value = kph
+        _speedMph.value = kph * 0.621371
+        _speedDisplay.value = when (_units.value) {
+            1    -> kph * 0.621371    // mi/h
+            else -> kph               // km/h
+        }
+        _speedSeriesKph.value = _speedSeriesKph.value + TimedSample(nowMs, kph)
+
+        val peakKph = maxOf(_peakSpeedKph.value ?: 0.0, kph)
+        _peakSpeedKph.value = peakKph
+        _peakSpeedMph.value = peakKph * 0.621371
+        _peakSpeedDisplay.value = when (_units.value) {
+            1 -> peakKph * 0.621371
+            else -> peakKph
         }
 
-        // global average speed (distance / elapsed) – only if missing
+        // Global average speed is distance / elapsed and must refresh continuously.
         val totalDistM = _totalDistanceMeters.value
         val elapsedSec = _elapsedTimeSec.value
-        if ((currentAvgKph == null || currentAvgKph <= 0.0) &&
-            totalDistM != null && elapsedSec != null && elapsedSec > 0
-        ) {
+        if (totalDistM != null && elapsedSec != null && elapsedSec > 0) {
             val avgMps = totalDistM.toDouble() / elapsedSec.toDouble()
             val avgKph = avgMps * 3.6
             _avgSpeedKph.value = avgKph
@@ -1408,6 +1447,7 @@ class BtEngineState : HrmStateSink {
         _resistanceSeries.value = emptyList()
         _distanceSeriesM.value = emptyList()
         _forceOnBeltSeries.value = emptyList()
+        _elevationNetSeries.value = emptyList()
 
         // 2) reset running/rolling accumulators that feed the public averages
         hrSum = 0.0

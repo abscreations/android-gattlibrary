@@ -92,6 +92,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattConnectionSettings
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanResult
@@ -307,7 +308,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
                     }
 
                     val capabilities = state.ftmsCapabilities
-                    if (capabilities == null || !capabilities.isReadyForProviderAdvertising()) {
+                    if (!capabilities.isReadyForProviderAdvertising()) {
                         Timber.tag(BtEngineState.TAG).d(
                             "Provider advertising retry: capabilities not ready yet (caps=%s); waiting",
                             capabilities
@@ -394,6 +395,44 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         ActivityType.STAIRCLIMBER -> FtmsMachineProfile.STAIR_CLIMBER
         ActivityType.STAIRSTEPPER -> FtmsMachineProfile.STAIR_STEPPER
         ActivityType.HEARTRATE    -> null // HR-only, no FTMS persona
+    }
+
+    /** Apply a user-selected session mode to the downstream FTMS persona. */
+    @RequiresPermission(
+        allOf = [Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT]
+    )
+    fun overrideProviderActivityForSession(activity: ActivityType) {
+        val profile = activity.toFtmsProfile()
+        if (profile == null) {
+            Timber.tag(BtEngineState.TAG).i(
+                "Session mode override is HRM-only; no FTMS persona override applied"
+            )
+            return
+        }
+
+        providerAdvertProfile = profile
+        if (connectionState.value != android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
+            Timber.tag(BtEngineState.TAG).i(
+                "Session mode override=%s recorded without an upstream FTMS connection",
+                profile,
+            )
+            return
+        }
+        if (advertisingStarted && advertisedProfile == profile) return
+
+        if (advertisingStarted) {
+            scope.launch {
+                stopProviderAdvertising("session mode override to $profile")
+                advertisingStarted = false
+                advertisedProfile = null
+                while (providerAdvertLoopRunning) delay(25)
+                maybeStartProviderAdvertisingAfterFeatures(profile)
+            }
+        } else {
+            // An active retry loop reads providerAdvertProfile on each attempt; this call is
+            // otherwise responsible for starting a new loop.
+            maybeStartProviderAdvertisingAfterFeatures(profile)
+        }
     }
 
     // Public flows (read-only)
@@ -547,6 +586,22 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
      * in at the call site, and so [promptPairing] remains available as an
      * explicit user action.
      */
+    @Suppress("DEPRECATION")
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun connectLeGatt(
+        device: BluetoothDevice,
+        callback: BluetoothGattCallback,
+    ): BluetoothGatt? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+        val settings = BluetoothGattConnectionSettings.Builder()
+            .setAutoConnectEnabled(false)
+            .setTransport(BluetoothDevice.TRANSPORT_LE)
+            .build()
+        device.connectGatt(settings, context.mainExecutor, callback)
+    } else {
+        // API 30-36 compatibility path; all context-based overloads are deprecated in API 37.
+        device.connectGatt(context, /* autoConnect = */ false, callback, BluetoothDevice.TRANSPORT_LE)
+    }
+
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun connectFtms(
         address: String,
@@ -613,7 +668,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         earlyBondScheduled = false
 
         val cb = gattRouter.callbackFor(ConnectionKind.FTMS)
-        state.gatt = dev.connectGatt(context, /*autoConnect=*/false, cb, BluetoothDevice.TRANSPORT_LE)
+        state.gatt = connectLeGatt(dev, cb)
 
         val created = (state.gatt != null)
         if (created && preBondIfNeeded) {
@@ -702,7 +757,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
                 return@guardConnectPerm false
             }
             val cb = gattRouter.callbackFor(ConnectionKind.HRM)
-            state.gattHrm = dev.connectGatt(context, /*autoConnect=*/false, cb, BluetoothDevice.TRANSPORT_LE)
+            state.gattHrm = connectLeGatt(dev, cb)
             (state.gattHrm != null)
         }
 
@@ -1132,7 +1187,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
                     Timber.tag(BtEngineState.TAG).d(
                         "scheduleFeatureReadRetryAfterControl(): retry path finished (haveControl=%s, featuresRead=%s)",
                         haveControlFlow.value,
-                        state.ftmsCapabilities?.featuresRead
+                        state.ftmsCapabilities.featuresRead
                     )
                 }
             }

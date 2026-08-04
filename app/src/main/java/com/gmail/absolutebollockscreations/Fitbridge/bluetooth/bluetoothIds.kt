@@ -444,6 +444,28 @@ object BtServiceProfiles {
         )
     }
 
+    /**
+     * Decode the optimistic activity hint carried in FTMS Service Data.
+     *
+     * Android returns only the three bytes following the 0x1826 UUID:
+     * Flags + little-endian Fitness Machine Type. If a device sets multiple
+     * known type bits, use the same priority as connected GATT discovery.
+     */
+    fun activityTypeFromFtmsServiceData(payload: ByteArray?): ActivityType? {
+        if (payload == null || payload.size < 3) return null
+        val machineTypes = (payload[1].toInt() and 0xFF) or
+            ((payload[2].toInt() and 0xFF) shl 8)
+        return when {
+            machineTypes and FM_TYPE_TREADMILL != 0 -> ActivityType.TREADMILL
+            machineTypes and FM_TYPE_ROWER != 0 -> ActivityType.ROWING
+            machineTypes and FM_TYPE_INDOOR_BIKE != 0 -> ActivityType.BIKING
+            machineTypes and FM_TYPE_CROSS_TRAINER != 0 -> ActivityType.ELLIPTICAL
+            machineTypes and FM_TYPE_STEP_CLIMBER != 0 -> ActivityType.STAIRSTEPPER
+            machineTypes and FM_TYPE_STAIR_CLIMBER != 0 -> ActivityType.STAIRCLIMBER
+            else -> null
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Connection / timing
     // ─────────────────────────────────────────────────────────────

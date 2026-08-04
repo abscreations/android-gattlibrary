@@ -144,7 +144,7 @@ class AdapterNameCoordinatorTest {
 
         assertTrue("must fail rather than advertise under the wrong name", result!!.isFailure)
         assertTrue(
-            result!!.exceptionOrNull()!!.message!!.contains("FBRG-Rower"),
+            result.exceptionOrNull()!!.message!!.contains("FBRG-Rower"),
         )
     }
 

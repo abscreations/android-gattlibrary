@@ -579,8 +579,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  * CALLBACK LIFECYCLE
  *  - onConnectionStateChange(CONNECTED):
  *      • requestConnectionPriority(HIGH).
- *      • requestMtu(185).
- *      • discoverServices().
+ *      • requestMtu(512).
+ *      • Start discoverServices() after onMtuChanged, or after a timeout fallback.
  *
  *  - onServicesDiscovered:
  *      • Activates handlers whose primaryServices intersect the discovered set.

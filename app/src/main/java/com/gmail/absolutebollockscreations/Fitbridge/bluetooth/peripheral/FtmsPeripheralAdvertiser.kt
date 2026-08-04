@@ -1049,13 +1049,14 @@ class FtmsPeripheralAdvertiser(
             val conn = admit(device)
             if (FTMS_CONNECT_TRACE) {
                 Timber.tag(TAG).i(
-                    "att-trace charWrite t=%d %s char=%s matched=%s respNeeded=%s len=%d",
+                    "att-trace charWrite t=%d %s char=%s matched=%s respNeeded=%s len=%d value=%s",
                     SystemClock.elapsedRealtime(),
                     deviceLabel(device),
                     shortUuidLabel(characteristic.uuid),
                     conn != null,
                     responseNeeded,
                     value.size,
+                    value.toHexString(),
                 )
             }
             if (conn == null) {

@@ -178,8 +178,12 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.ROW_MORE) == 0) off = readStrokes(engine, value, off)
         if ((flags and Flags.ROW_AVGSTROKE) != 0) off = readAvgStrokes(engine, value, off)
         if ((flags and Flags.ROW_TOTALDIST) != 0) off = readDistance(engine, value, off, rower = true)
-        if ((flags and Flags.ROW_INSTPACE) != 0) off = readPace(engine, value, off, times10 = false)
-        if ((flags and Flags.ROW_AVGPACE) != 0) off = readAvgPace(engine, value, off, times10 = false)
+        if ((flags and Flags.ROW_INSTPACE) != 0) {
+            off = readPace(engine, value, off, times10 = false, per500m = true)
+        }
+        if ((flags and Flags.ROW_AVGPACE) != 0) {
+            off = readAvgPace(engine, value, off, times10 = false, per500m = true)
+        }
         if ((flags and Flags.ROW_INSTPOWER) != 0) off = readPower(engine, value, off)
         if ((flags and Flags.ROW_AVGPOWER) != 0) off = readAvgPower(engine, value, off)
         if ((flags and Flags.ROW_RESISTANCE) != 0) off = readResistance(engine, value, off, div10 = false)
@@ -325,12 +329,8 @@ internal object BtEngineFtmsParsers {
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("Rower strokeRate (spm): %.1f", sr)
             }
-            logSet("strokeRate", engine.state.strokeRate.value, sr, engine.state::setStrokeRate)
+            engine.state.appendStrokeRateSample(sr)
             off += 1
-            val peak = engine.state.peakStrokeRate.value ?: Double.MIN_VALUE
-            if (sr > peak) {
-                logSet("peakStrokeRate", engine.state.peakStrokeRate.value, sr, engine.state::setPeakStrokeRate)
-            }
         }
         if (has(b, off, 2)) {
             val count = u16(b, off)
@@ -395,11 +395,18 @@ internal object BtEngineFtmsParsers {
         return off
     }
 
-    private fun readPace(engine: BtEngine, b: ByteArray, off0: Int, times10: Boolean): Int {
+    private fun readPace(
+        engine: BtEngine,
+        b: ByteArray,
+        off0: Int,
+        times10: Boolean,
+        per500m: Boolean = false,
+    ): Int {
         var off = off0
         if (has(b, off, 2)) {
             var pSecPerKm = u16(b, off).toDouble()
             if (times10) pSecPerKm /= 10.0
+            if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
             // Native instant pace goes through PaceArbitration (sec/km)
             PaceArbitration.setNativePace(engine, pSecPerKm)
@@ -413,11 +420,18 @@ internal object BtEngineFtmsParsers {
         return off
     }
 
-    private fun readAvgPace(engine: BtEngine, b: ByteArray, off0: Int, times10: Boolean): Int {
+    private fun readAvgPace(
+        engine: BtEngine,
+        b: ByteArray,
+        off0: Int,
+        times10: Boolean,
+        per500m: Boolean = false,
+    ): Int {
         var off = off0
         if (has(b, off, 2)) {
             var pSecPerKm = u16(b, off).toDouble()
             if (times10) pSecPerKm /= 10.0
+            if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
             // Native **average** pace uses the dedicated average pace endpoint
             PaceArbitration.setNativeAvgPace(engine, pSecPerKm)
@@ -500,17 +514,24 @@ internal object BtEngineFtmsParsers {
     private fun readEnergy(engine: BtEngine, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 5)) {
-            // Per FTMS spec: total energy (kcal) is 2 bytes,
-            // followed by 1 byte of energy per hour and 1 byte per minute (often ignored),
-            // and 1 reserved byte. We advance past all 5.
+            // Per FTMS spec: total energy (kcal) is uint16, followed by
+            // energy per hour (uint16) and energy per minute (uint8).
             val machineKcal = u16(b, off)
+            val perHourRaw = u16(b, off + 2)
+            val perMinuteRaw = u8(b, off + 4)
             off += 5
 
-            // NEW: send via EnergyArbitration instead of directly setting in state
             EnergyArbitration.setFtmsEnergy(engine, machineKcal.toDouble())
+            engine.state.setExpEnergyRateKcalPerHour(
+                ftmsEnergyRateKcalPerHour(perHourRaw, perMinuteRaw)
+            )
 
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS energy (kcal) → EnergyArbitration: %d", machineKcal)
+                Timber.tag(TAG).d(
+                    "FTMS energy: total=%d kcal rate=%s kcal/h",
+                    machineKcal,
+                    engine.state.expEnergyRateKcalPerHour.value?.toString() ?: "unavailable"
+                )
             }
         }
         return off
@@ -669,7 +690,7 @@ internal object BtEngineFtmsParsers {
                     if (canLogMetrics()) {
                         Timber.tag(TAG).d("FTMS elevation gain + (m): %.1f", pos)
                     }
-                    logSet("elevationGainPos", engine.state.elevationGainPos.value, pos, engine.state::setElevationGainPos)
+                    engine.state.setElevationGains(pos, null)
                 }
             }
             2 -> { // +gain/10 and -gain/10
@@ -679,8 +700,7 @@ internal object BtEngineFtmsParsers {
                     if (canLogMetrics()) {
                         Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
                     }
-                    logSet("elevationGainPos", engine.state.elevationGainPos.value, pos, engine.state::setElevationGainPos)
-                    logSet("elevationGainNeg", engine.state.elevationGainNeg.value, neg, engine.state::setElevationGainNeg)
+                    engine.state.setElevationGains(pos, neg)
                 }
             }
             3 -> { // +gain and -gain
@@ -690,8 +710,7 @@ internal object BtEngineFtmsParsers {
                     if (canLogMetrics()) {
                         Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
                     }
-                    logSet("elevationGainPos", engine.state.elevationGainPos.value, pos, engine.state::setElevationGainPos)
-                    logSet("elevationGainNeg", engine.state.elevationGainNeg.value, neg, engine.state::setElevationGainNeg)
+                    engine.state.setElevationGains(pos, neg)
                 }
             }
         }
@@ -708,7 +727,8 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS beltForce (N-ish): %d, derived power (W): %d", force, inst)
             }
 
-            logSet("forceOnBelt", engine.state.forceOnBelt.value, force, engine.state::setForceOnBelt)
+            // Keep the instantaneous value and graph series in sync.
+            engine.state.appendForceOnBeltSample(force)
 
             // Power sample derived from belt force: feed time-series path
             engine.state.appendPowerSample(inst)
@@ -951,4 +971,15 @@ internal object BtEngineFtmsParsers {
         }
         setter(new)
     }
+}
+
+/** FTMS Rower Data carries pace in seconds per 500 m; engine pace is seconds per km. */
+internal fun rowerSecondsPer500mToSecondsPerKm(secondsPer500m: Double): Double =
+    secondsPer500m * 2.0
+
+/** Prefer FTMS energy-per-hour; fall back to the per-minute field when necessary. */
+internal fun ftmsEnergyRateKcalPerHour(perHourRaw: Int, perMinuteRaw: Int): Int? = when {
+    perHourRaw != 0xFFFF -> perHourRaw
+    perMinuteRaw != 0xFF -> perMinuteRaw * 60
+    else -> null
 }

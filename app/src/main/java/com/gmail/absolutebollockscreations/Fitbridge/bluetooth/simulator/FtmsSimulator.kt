@@ -106,10 +106,17 @@ class FtmsSimulator(
         override val targetCapabilities: TargetCapabilities
             get() = engine?.controlCapabilities ?: TargetCapabilities.NONE
 
+        // This local sink is authoritative; no upstream machine will echo a
+        // target status later, so the Control Point handler publishes it now.
+        override val reportsTargetChangesAsynchronously: Boolean = false
+        override val clampsTargetsToAdvertisedRange: Boolean = true
+
         override fun requestControl(): Boolean = true
 
         override fun reset(): Boolean {
-            engine?.reset()
+            val e = engine ?: return false
+            e.reset()
+            publish(e.snapshot())
             publishTargets()
             return true
         }
@@ -290,6 +297,7 @@ class FtmsSimulator(
         engineState.setElapsedSeconds(sample.elapsedSeconds)
         engineState.setHeartRate(sample.heartRate)
         engineState.setExpEnergyTotal(sample.caloriesTotal)
+        engineState.setExpEnergyRateKcalPerHour(sample.caloriesPerHour)
 
         sample.speedKph?.let {
             engineState.setSpeedKph(it)
@@ -301,10 +309,10 @@ class FtmsSimulator(
         sample.resistance?.let { engineState.setResistance(it.toDouble()) }
         sample.inclinationPercent?.let { engineState.setInclination(it) }
         sample.powerWatts?.let { engineState.setInstantPower(it) }
-        sample.forceOnBeltNewtons?.let { engineState.setForceOnBelt(it) }
+        sample.forceOnBeltNewtons?.let { engineState.appendForceOnBeltSample(it) }
         sample.instantPaceMinPerKm?.let { engineState.setInstantPace(it) }
         sample.averagePaceMinPerKm?.let { engineState.setAvgPace(it) }
-        sample.positiveElevationMeters?.let { engineState.setElevationGainPos(it) }
+        sample.positiveElevationMeters?.let { engineState.setElevationGains(it, null) }
         sample.floors?.let { engineState.setTotalFloors(it) }
 
         // The count field means a different thing per persona, so it is routed
@@ -348,13 +356,14 @@ class FtmsSimulator(
         engineState.setForceOnBelt(null)
         engineState.setInstantPace(null)
         engineState.setAvgPace(null)
-        engineState.setElevationGainPos(null)
+        engineState.setElevationGains(null, null)
         engineState.setTotalFloors(null)
         engineState.setTotalSteps(null)
         engineState.setTotalStrides(null)
         engineState.setStrokeCount(null)
         engineState.setStrokeRate(null)
         engineState.setExpEnergyTotal(null)
+        engineState.setExpEnergyRateKcalPerHour(null)
         engineState.setHeartRate(null)
     }
 

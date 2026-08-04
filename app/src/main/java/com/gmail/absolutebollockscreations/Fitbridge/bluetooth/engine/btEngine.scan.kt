@@ -41,12 +41,11 @@
  *
  *  - Upsert helpers (device catalog):
  *      • upsertDeviceFTMS(...)   → updates state.devices for FTMS machines:
- *          - Maintains last RSSI and lastSeenMs.
- *          - Minimizes churn by only updating when name improves or RSSI
- *            changes significantly.
+ *          - Refreshes RSSI and monotonic lastSeenMs for every packet.
+ *          - Collapses entries that share a nonblank MAC address.
  *          - Migrates tmp: keys to real addresses when available.
- *          - Sets services to a single BtServiceType, machineFeature left null
- *            (to be filled after FTMS feature discovery).
+ *          - Decodes an optimistic machine-type hint from FTMS Service Data;
+ *            machineFeature remains reserved for connected GATT discovery.
  *      • upsertDeviceSensor(...) → same pattern for HRM/other sensors, backing
  *        state.hrmDevices (reused bucket for non-FTMS peripherals).
  *
@@ -59,7 +58,8 @@
  *            upsert helper.
  *          - Invokes an optional onDevice(name, address, result) hook.
  *      • stopScanImpl() looks up and unregisters the callback, and updates
- *        state.isScanning.
+ *        state.isScanning. A session-scoped maintenance task removes entries
+ *        unseen for more than five seconds while scanning remains active.
  */
 
 
@@ -73,13 +73,23 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import timber.log.Timber
+import java.util.Locale
 import java.util.WeakHashMap
 import java.util.UUID
-import kotlin.math.abs
 
-// Keep per-engine scan callbacks without extending BtEngineState
-private val scanCallbacks = WeakHashMap<BtEngine, ScanCallback>()
+private data class ScanSession(
+    val callback: ScanCallback,
+    val handler: Handler,
+    val cleanup: Runnable,
+)
+
+// Keep per-engine scan work without extending BtEngineState.
+private val scanSessions = WeakHashMap<BtEngine, ScanSession>()
+
+private const val SCAN_ENTRY_STALE_AFTER_MS = 5_000L
+private const val SCAN_CLEANUP_INTERVAL_MS = 1_000L
 
 internal fun BtEngine.startScanImpl(
     useFtmsHardwareFilter: Boolean = true,
@@ -115,7 +125,7 @@ internal fun BtEngine.startScanImpl(
     val cb = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val name = safeDeviceName(result)
-            val address = safeDeviceAddress(result)
+            val address = canonicalScanAddress(safeDeviceAddress(result))
             val key = address.ifBlank { "tmp:${result.device.hashCode()}" }
 
             // When software filtering, keep only supported service types (ftms/hrm/csc/rsc/power/glucose)
@@ -154,20 +164,33 @@ internal fun BtEngine.startScanImpl(
         }
     }
 
+    val handler = Handler(Looper.getMainLooper())
+    val cleanup = object : Runnable {
+        override fun run() {
+            val active = scanSessions[this@startScanImpl]
+            if (active?.callback !== cb || !state.isScanning.value) return
+            pruneStaleScanEntries(SystemClock.elapsedRealtime())
+            handler.postDelayed(this, SCAN_CLEANUP_INTERVAL_MS)
+        }
+    }
+
     try {
         scanner.startScan(filters, settings, cb)
-        scanCallbacks[this] = cb
+        scanSessions[this] = ScanSession(cb, handler, cleanup)
         state.setScanning(true)
+        handler.postDelayed(cleanup, SCAN_CLEANUP_INTERVAL_MS)
         Timber.tag(BtEngineState.TAG).i("Scanning… useHWFilter=%s", useFtmsHardwareFilter)
 
         // If hardware filters find nothing in 5s, restart with software filtering
         if (useFtmsHardwareFilter) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                val empty = state.devices.value.isEmpty() && state.hrmDevices.value.isEmpty()
-                if (empty && state.isScanning.value) {
-                    Timber.tag(BtEngineState.TAG).w("No supported services w/ HW filter → restarting with SW filter")
-                    stopScanImpl()
-                    startScanImpl(useFtmsHardwareFilter = false, onDevice = onDevice)
+            handler.postDelayed({
+                if (scanSessions[this@startScanImpl]?.callback === cb) {
+                    val empty = state.devices.value.isEmpty() && state.hrmDevices.value.isEmpty()
+                    if (empty && state.isScanning.value) {
+                        Timber.tag(BtEngineState.TAG).w("No supported services w/ HW filter → restarting with SW filter")
+                        stopScanImpl()
+                        startScanImpl(useFtmsHardwareFilter = false, onDevice = onDevice)
+                    }
                 }
             }, 5_000)
         }
@@ -177,17 +200,82 @@ internal fun BtEngine.startScanImpl(
 }
 
 internal fun BtEngine.stopScanImpl() {
-    if (!state.isScanning.value) return
+    val session = scanSessions.remove(this)
+    if (!state.isScanning.value && session == null) return
     try {
         Timber.tag(BtEngineState.TAG).i("stopScan")
         val scanner: BluetoothLeScanner? = adapter?.bluetoothLeScanner
-        scanCallbacks.remove(this)?.let { cb -> scanner?.stopScan(cb) }
+        session?.handler?.removeCallbacks(session.cleanup)
+        session?.callback?.let { cb -> scanner?.stopScan(cb) }
     } catch (_: SecurityException) {
         Timber.tag(BtEngineState.TAG).w("stopScan: SecurityException ignored")
     } finally {
         state.setScanning(false)
     }
 }
+
+@SuppressLint("MissingPermission")
+private fun BtEngine.pruneStaleScanEntries(nowMs: Long) {
+    val connectedFtmsAddress = runCatching { state.gatt?.device?.address }.getOrNull()
+    val connectedSensorAddress = runCatching { state.gattHrm?.device?.address }.getOrNull()
+
+    val freshFtms = retainFreshScanEntries(
+        entries = state.devices.value,
+        nowMs = nowMs,
+        staleAfterMs = SCAN_ENTRY_STALE_AFTER_MS,
+        lastSeenMs = { it.lastSeenMs },
+        alwaysRetain = { it.address.equals(connectedFtmsAddress, ignoreCase = true) },
+    )
+    val freshSensors = retainFreshScanEntries(
+        entries = state.hrmDevices.value,
+        nowMs = nowMs,
+        staleAfterMs = SCAN_ENTRY_STALE_AFTER_MS,
+        lastSeenMs = { it.lastSeenMs },
+        alwaysRetain = { it.address.equals(connectedSensorAddress, ignoreCase = true) },
+    )
+
+    val removedFtms = state.devices.value.size - freshFtms.size
+    val removedSensors = state.hrmDevices.value.size - freshSensors.size
+    if (removedFtms > 0) state.putDevices(freshFtms)
+    if (removedSensors > 0) state.putHrmDevices(freshSensors)
+    if (removedFtms > 0 || removedSensors > 0) {
+        Timber.tag(BtEngineState.TAG).d(
+            "Pruned stale scan entries: ftms=%d sensors=%d",
+            removedFtms,
+            removedSensors,
+        )
+    }
+}
+
+internal fun <K, V> retainFreshScanEntries(
+    entries: Map<K, V>,
+    nowMs: Long,
+    staleAfterMs: Long,
+    lastSeenMs: (V) -> Long,
+    alwaysRetain: (V) -> Boolean = { false },
+): Map<K, V> = entries.filterValues { entry ->
+    alwaysRetain(entry) || nowMs - lastSeenMs(entry) <= staleAfterMs
+}
+
+internal fun <K, V> duplicateAddressKeys(
+    entries: Map<K, V>,
+    keepKey: K,
+    address: String,
+    addressOf: (V) -> String,
+): Set<K> {
+    val canonicalAddress = canonicalScanAddress(address)
+    if (canonicalAddress.isBlank()) return emptySet()
+    return entries.entries
+        .asSequence()
+        .filter { (key, value) ->
+            key != keepKey && canonicalScanAddress(addressOf(value)) == canonicalAddress
+        }
+        .map { it.key }
+        .toSet()
+}
+
+internal fun canonicalScanAddress(address: String): String =
+    address.trim().uppercase(Locale.US)
 
 /* ───────────────────────────── helpers ───────────────────────────── */
 
@@ -249,6 +337,25 @@ private fun toServiceType(u: UUID): BtEngineState.BtServiceType? = when (u) {
     else -> null
 }
 
+/** Preserve every supported service in an advertisement, not only its scan-list category. */
+private fun advertisedServiceTypes(result: ScanResult): Set<BtEngineState.BtServiceType> {
+    val record = result.scanRecord ?: return emptySet()
+    val advertisedUuids = record.serviceUuids.orEmpty().mapTo(mutableSetOf()) { it.uuid }
+    val supportedUuids = listOf(
+        BluetoothIds.UUID_FTMS_SERVICE,
+        BluetoothIds.UUID_HRM_SERVICE,
+        BluetoothIds.UUID_RSC_SERVICE,
+        BluetoothIds.UUID_CSC_SERVICE,
+        BluetoothIds.UUID_POWER_SERVICE,
+        BluetoothIds.UUID_GLUCOSE_SERVICE,
+    )
+    return supportedUuids.mapNotNullTo(linkedSetOf()) { uuid ->
+        val advertised = uuid in advertisedUuids ||
+            record.getServiceData(ParcelUuidCompat(uuid)) != null
+        if (advertised) toServiceType(uuid) else null
+    }
+}
+
 /* ───────────────────────────── upsert ───────────────────────────── */
 
 private fun BtEngine.upsertDeviceFTMS(
@@ -258,34 +365,62 @@ private fun BtEngine.upsertDeviceFTMS(
     result: ScanResult,
     serviceUuid: UUID
 ) {
-    val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
+    synchronized(state) {
+        val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
+        val advertisedMachineFeature = BtServiceProfiles.activityTypeFromFtmsServiceData(
+            result.scanRecord?.getServiceData(BluetoothIds.FTMS_SERVICE_PARCEL)
+        )?.ordinal
+        val map = state.devices.value.toMutableMap()
+        val current = map[key] ?: map.values.firstOrNull { device ->
+            address.isNotBlank() && canonicalScanAddress(device.address) == address
+        }
+        val retainedServices = if (
+            advertisedMachineFeature != null &&
+            current?.advertisedMachineFeature != null &&
+            advertisedMachineFeature != current.advertisedMachineFeature
+        ) {
+            // A simulator can switch personas without changing its address. Do not carry
+            // bike-only services such as CSC/CPS into a newly advertised rower persona.
+            emptySet()
+        } else {
+            current?.services.orEmpty()
+        }
+        val dev = BtEngineState.DiscoveredDevice(
+            name = display.ifBlank { current?.name.orEmpty() },
+            address = address,
+            rssi = result.rssi,
+            lastSeenMs = SystemClock.elapsedRealtime(),
+            scanResult = result,
+            services = retainedServices +
+                advertisedServiceTypes(result) +
+                setOfNotNull(toServiceType(serviceUuid)),
+            machineFeature = current?.machineFeature,
+            advertisedMachineFeature =
+                advertisedMachineFeature ?: current?.advertisedMachineFeature,
+        )
 
-    state.devices.value[key]?.let { current ->
-        val nameImproved = current.name.isBlank() && display.isNotBlank()
-        val rssiChanged = abs(current.rssi - result.rssi) >= 6
-        if (!nameImproved && !rssiChanged) return
+        if (address.isNotBlank()) {
+            duplicateAddressKeys(map, key, address) { it.address }.forEach(map::remove)
+            map.entries
+                .filter { (candidateKey, device) ->
+                    candidateKey != key && candidateKey.startsWith("tmp:") &&
+                        device.scanResult?.device == result.device
+                }
+                .map { it.key }
+                .forEach(map::remove)
+        }
+
+        map[key] = dev
+        if (address.isNotBlank()) {
+            val sensorMap = state.hrmDevices.value.toMutableMap()
+            duplicateAddressKeys(sensorMap, keepKey = "", address = address) { it.address }
+                .forEach(sensorMap::remove)
+            if (sensorMap.size != state.hrmDevices.value.size) {
+                state.putHrmDevices(sensorMap)
+            }
+        }
+        state.putDevices(map)
     }
-
-    val map = state.devices.value.toMutableMap()
-    val dev = BtEngineState.DiscoveredDevice(
-        name = display,
-        address = address,
-        rssi = result.rssi,
-        lastSeenMs = System.currentTimeMillis(),
-        scanResult = result,
-        services = setOfNotNull(toServiceType(serviceUuid)), // <<< changed
-        machineFeature = null // placeholder: will be filled after FTMS feature read
-    )
-
-    if (address.isNotBlank()) {
-        val tmpKey = map.entries.firstOrNull { (k, v) ->
-            k.startsWith("tmp:") && v.scanResult?.device == result.device
-        }?.key
-        if (tmpKey != null) map.remove(tmpKey)
-    }
-
-    map[key] = dev
-    if (map != state.devices.value) state.putDevices(map)
 }
 
 private fun BtEngine.upsertDeviceSensor(
@@ -295,32 +430,51 @@ private fun BtEngine.upsertDeviceSensor(
     result: ScanResult,
     serviceUuid: UUID
 ) {
-    val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
+    synchronized(state) {
+        if (address.isNotBlank()) {
+            val matchingFtms = state.devices.value.values.any { device ->
+                canonicalScanAddress(device.address) == address
+            }
+            if (matchingFtms) {
+                val sensorMap = state.hrmDevices.value.toMutableMap()
+                duplicateAddressKeys(sensorMap, keepKey = "", address = address) { it.address }
+                    .forEach(sensorMap::remove)
+                if (sensorMap.size != state.hrmDevices.value.size) {
+                    state.putHrmDevices(sensorMap)
+                }
+                return@synchronized
+            }
+        }
+        val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
+        val map = state.hrmDevices.value.toMutableMap()
+        val current = map[key] ?: map.values.firstOrNull { device ->
+            address.isNotBlank() && canonicalScanAddress(device.address) == address
+        }
+        val dev = BtEngineState.DiscoveredDevice(
+            name = display.ifBlank { current?.name.orEmpty() },
+            address = address,
+            rssi = result.rssi,
+            lastSeenMs = SystemClock.elapsedRealtime(),
+            scanResult = result,
+            services = current?.services.orEmpty() +
+                advertisedServiceTypes(result) +
+                setOfNotNull(toServiceType(serviceUuid)),
+            machineFeature = null,
+            advertisedMachineFeature = null,
+        )
 
-    state.hrmDevices.value[key]?.let { current ->
-        val nameImproved = current.name.isBlank() && display.isNotBlank()
-        val rssiChanged = abs(current.rssi - result.rssi) >= 6
-        if (!nameImproved && !rssiChanged) return
+        if (address.isNotBlank()) {
+            duplicateAddressKeys(map, key, address) { it.address }.forEach(map::remove)
+            map.entries
+                .filter { (candidateKey, device) ->
+                    candidateKey != key && candidateKey.startsWith("tmp:") &&
+                        device.scanResult?.device == result.device
+                }
+                .map { it.key }
+                .forEach(map::remove)
+        }
+
+        map[key] = dev
+        state.putHrmDevices(map)
     }
-
-    val map = state.hrmDevices.value.toMutableMap()
-    val dev = BtEngineState.DiscoveredDevice(
-        name = display,
-        address = address,
-        rssi = result.rssi,
-        lastSeenMs = System.currentTimeMillis(),
-        scanResult = result,
-        services = setOfNotNull(toServiceType(serviceUuid)), // <<< changed
-        machineFeature = null // not applicable for non-FTMS; keep null
-    )
-
-    if (address.isNotBlank()) {
-        val tmpKey = map.entries.firstOrNull { (k, v) ->
-            k.startsWith("tmp:") && v.scanResult?.device == result.device
-        }?.key
-        if (tmpKey != null) map.remove(tmpKey)
-    }
-
-    map[key] = dev
-    if (map != state.hrmDevices.value) state.putHrmDevices(map)
 }

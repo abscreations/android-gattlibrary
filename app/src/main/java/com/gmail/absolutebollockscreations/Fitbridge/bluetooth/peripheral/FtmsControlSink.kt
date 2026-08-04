@@ -21,6 +21,25 @@ interface FtmsControlSink {
     /** What the downstream can actually be asked to change. */
     val targetCapabilities: TargetCapabilities
 
+    /**
+     * True when accepted targets are followed by an authoritative asynchronous
+     * Fitness Machine Status event from the controlled machine.
+     *
+     * The Control Point handler then sends only the procedure response and lets
+     * that event publish the target. Otherwise a pass-through session would
+     * publish an optimistic status and then publish the machine's echo again.
+     */
+    val reportsTargetChangesAsynchronously: Boolean
+        get() = false
+
+    /**
+     * True for a local sink that normalizes requested targets itself. Real
+     * machine pass-through keeps strict range validation and lets the upstream
+     * machine remain authoritative.
+     */
+    val clampsTargetsToAdvertisedRange: Boolean
+        get() = false
+
     fun requestControl(): Boolean
 
     fun reset(): Boolean
@@ -122,6 +141,10 @@ class SwitchableFtmsControlSink(private val default: FtmsControlSink) : FtmsCont
 
     override val canControl: Boolean get() = active.canControl
     override val targetCapabilities: TargetCapabilities get() = active.targetCapabilities
+    override val reportsTargetChangesAsynchronously: Boolean
+        get() = active.reportsTargetChangesAsynchronously
+    override val clampsTargetsToAdvertisedRange: Boolean
+        get() = active.clampsTargetsToAdvertisedRange
 
     override fun requestControl(): Boolean = active.requestControl()
     override fun reset(): Boolean = active.reset()
@@ -172,6 +195,11 @@ class EngineFtmsControlSink(
 
     override val targetCapabilities: TargetCapabilities
         get() = capabilities
+
+    // The upstream FTMS machine reports accepted targets through 0x2ADA. That
+    // event is parsed by BtEngine and mirrored back through BtServiceManager.
+    override val reportsTargetChangesAsynchronously: Boolean
+        get() = true
 
     /**
      * Refresh the advertised target capability from what the machine reported.

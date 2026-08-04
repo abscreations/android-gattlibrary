@@ -139,22 +139,34 @@ data class FtmsMockProfile(
  */
 object FtmsMockControlProfile {
 
+    /**
+     * One shared set of full machine limits for every simulator persona.
+     *
+     * [FtmsMockProfile] remains the source of ordinary autonomous workout
+     * values. These ranges are deliberately wider and are the only limits used
+     * for advertised target features and externally requested targets.
+     */
+    val speedRange = FtmsTargetRange(0, 3_000, 10)
+    val inclinationRange = FtmsTargetRange(-100, 300, 5)
+    val resistanceRange = FtmsTargetRange(10, 300, 10)
+    val powerRange = FtmsTargetRange(1, 1_000, 1)
+
     private val bike = TargetCapabilities(
         speed = true,
         resistance = true,
         power = true,
-        speedRange = FtmsTargetRange(500, 6_000, 10),
-        resistanceRange = FtmsTargetRange(10, 200, 10),
-        powerRange = FtmsTargetRange(50, 600, 5),
+        speedRange = speedRange,
+        resistanceRange = resistanceRange,
+        powerRange = powerRange,
     )
 
     private val treadmill = TargetCapabilities(
         speed = true,
         inclination = true,
         power = true,
-        speedRange = FtmsTargetRange(100, 2_200, 10),
-        inclinationRange = FtmsTargetRange(0, 150, 5),
-        powerRange = FtmsTargetRange(50, 600, 5),
+        speedRange = speedRange,
+        inclinationRange = inclinationRange,
+        powerRange = powerRange,
     )
 
     private val crossTrainer = TargetCapabilities(
@@ -162,19 +174,19 @@ object FtmsMockControlProfile {
         inclination = true,
         resistance = true,
         power = true,
-        speedRange = FtmsTargetRange(200, 1_800, 10),
-        inclinationRange = FtmsTargetRange(0, 200, 5),
-        resistanceRange = FtmsTargetRange(10, 200, 10),
-        powerRange = FtmsTargetRange(25, 500, 5),
+        speedRange = speedRange,
+        inclinationRange = inclinationRange,
+        resistanceRange = resistanceRange,
+        powerRange = powerRange,
     )
 
     private val rower = TargetCapabilities(
         speed = true,
         resistance = true,
         power = true,
-        speedRange = FtmsTargetRange(500, 2_500, 10),
-        resistanceRange = FtmsTargetRange(10, 100, 10),
-        powerRange = FtmsTargetRange(25, 600, 5),
+        speedRange = speedRange,
+        resistanceRange = resistanceRange,
+        powerRange = powerRange,
     )
 
     fun forMachine(machine: FtmsMachineProfile): TargetCapabilities = when (machine) {
@@ -253,9 +265,11 @@ class FtmsMockEngine(
         reset()
     }
 
-    /** Accepted targets, in the same public units the Control Point decoded. */
+    /** Accepted targets, normalized to the advertised range and increment. */
+    @Synchronized
     fun controlTargets(): Map<FtmsMockTarget, Double> = targets.toMap()
 
+    @Synchronized
     fun reset() {
         elapsedSeconds = 0.0
         distanceMeters = 0.0
@@ -272,16 +286,6 @@ class FtmsMockEngine(
         heartRate = profile.heartRate.at(INITIAL_EFFORT)
         resistance = profile.resistance?.at(INITIAL_EFFORT)
         inclination = profile.inclination?.at(INITIAL_EFFORT)
-        if (controlsEnabled) {
-            // Every externally controllable metric begins at the advertised
-            // minimum, so a watch taking control sees the machine actually move
-            // when it sets its first target. Metrics with no target procedure are
-            // held at their profile minimum rather than continuing to wander.
-            speed = initialControlledValue(FtmsMockTarget.SPEED, profile.speed)
-            power = initialControlledValue(FtmsMockTarget.POWER, profile.power) ?: profile.power.min
-            resistance = initialControlledValue(FtmsMockTarget.RESISTANCE, profile.resistance)
-            inclination = initialControlledValue(FtmsMockTarget.INCLINATION, profile.inclination)
-        }
     }
 
     /**
@@ -291,44 +295,47 @@ class FtmsMockEngine(
      * as decoded by the Control Point.
      * @return false when this persona does not advertise the requested target.
      */
+    @Synchronized
     fun setTarget(type: FtmsMockTarget, value: Double): Boolean {
         val range = rangeFor(type) ?: return false
         if (!controlsEnabled) return false
-        val clamped = value.coerceIn(publicOf(type, range.minimum), publicOf(type, range.maximum))
-        targets[type] = clamped
+        val normalized = normalize(type, value, range)
+        targets[type] = normalized
         when (type) {
-            FtmsMockTarget.SPEED -> speed = clamped
-            FtmsMockTarget.INCLINATION -> inclination = clamped
-            FtmsMockTarget.RESISTANCE -> resistance = clamped
-            FtmsMockTarget.POWER -> power = clamped
+            FtmsMockTarget.SPEED -> speed = normalized
+            FtmsMockTarget.INCLINATION -> inclination = normalized
+            FtmsMockTarget.RESISTANCE -> resistance = normalized
+            FtmsMockTarget.POWER -> power = normalized
         }
         return true
     }
 
     /** Advance the workout by [dtSeconds] and return the new sample. */
+    @Synchronized
     fun tick(dtSeconds: Double): FtmsMockSample {
         if (dtSeconds <= 0.0) return snapshot()
 
         elapsedSeconds += dtSeconds
         advanceEffort(dtSeconds)
 
-        // Under control the watch owns speed, power, resistance and inclination;
-        // only cadence and heart rate keep drifting, so the machine still looks
-        // alive without fighting the target that was just set.
-        if (!controlsEnabled) {
+        // Each target is independent. A client-owned metric is held while every
+        // non-overridden metric continues its normal autonomous workout walk.
+        if (FtmsMockTarget.SPEED !in targets) {
             speed = advanceMetric(speed, profile.speed, dtSeconds, timeConstant = 5.0, noise = 0.025)
         }
         cadence = advanceMetric(cadence, profile.cadence, dtSeconds, timeConstant = 4.0, noise = 0.02)
-        if (!controlsEnabled) {
+        if (FtmsMockTarget.POWER !in targets) {
             power = advanceMetric(power, profile.power, dtSeconds, timeConstant = 3.0, noise = 0.035)
                 ?: power
         }
         heartRate =
             advanceMetric(heartRate, profile.heartRate, dtSeconds, timeConstant = 25.0, noise = 0.005)
                 ?: heartRate
-        if (!controlsEnabled) {
+        if (FtmsMockTarget.RESISTANCE !in targets) {
             resistance =
                 advanceMetric(resistance, profile.resistance, dtSeconds, timeConstant = 18.0, noise = 0.01)
+        }
+        if (FtmsMockTarget.INCLINATION !in targets) {
             inclination =
                 advanceMetric(inclination, profile.inclination, dtSeconds, timeConstant = 20.0, noise = 0.01)
         }
@@ -347,6 +354,7 @@ class FtmsMockEngine(
         return snapshot()
     }
 
+    @Synchronized
     fun snapshot(): FtmsMockSample {
         val caloriesPerHour = (kcalPerSecond() * 3600.0).roundToInt()
         val s = speed
@@ -419,17 +427,22 @@ class FtmsMockEngine(
         FtmsMockTarget.POWER -> wire.toDouble()     // W
     }
 
-    private fun initialControlledValue(
+    /** Public units -> wire units using the FTMS resolution for this target. */
+    private fun wireOf(type: FtmsMockTarget, value: Double): Int = when (type) {
+        FtmsMockTarget.SPEED -> (value * 100.0).roundToInt()
+        FtmsMockTarget.INCLINATION,
+        FtmsMockTarget.RESISTANCE,
+        -> (value * 10.0).roundToInt()
+        FtmsMockTarget.POWER -> value.roundToInt()
+    }
+
+    private fun normalize(
         type: FtmsMockTarget,
-        metricRange: FtmsMockRange?,
-    ): Double? {
-        val range = rangeFor(type)
-        if (range != null) {
-            val value = publicOf(type, range.minimum)
-            targets[type] = value
-            return value
-        }
-        return metricRange?.min
+        value: Double,
+        range: FtmsTargetRange,
+    ): Double {
+        val snappedWire = range.clampAndSnap(wireOf(type, value))
+        return publicOf(type, snappedWire)
     }
 
     private fun advanceEffort(dt: Double) {

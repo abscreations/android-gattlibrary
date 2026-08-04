@@ -592,7 +592,7 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 val raw = u16LE(1) // 0.01 km/h
                 val kmh = raw / FTMS_SPEED_SCALE
                 engine.state.setTargetSpeedKmh(kmh)
-                engine.serviceControlSink?.onTargetSpeedChangedKmh(kmh.toFloat())
+                engine.serviceControlSink?.onTargetSpeedChangedKmh(kmh)
                 Timber.tag(BtEngineState.TAG)
                     .i("FTMS Status: TARGET_SPEED_CHANGED → %.2f km/h", kmh)
             }
@@ -601,16 +601,22 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 val raw = u16LE(1) // 0.1 deg (spec uses SInt16; we treat as positive range)
                 val deg = raw / FTMS_INCLINE_SCALE
                 engine.state.setTargetInclineDeg(deg)
-                engine.serviceControlSink?.onTargetInclineChangedDeg(deg.toFloat())
+                engine.serviceControlSink?.onTargetInclineChangedDeg(deg)
                 Timber.tag(BtEngineState.TAG)
                     .i("FTMS Status: TARGET_INCLINE_CHANGED → %.1f deg", deg)
             }
 
             STATUS_TARGET_RESISTANCE_LEVEL_CHANGED -> {
-                val raw = u16LE(1) // 0.1 level
-                val level = raw / FTMS_RESISTANCE_SCALE
+                val level = decodeTargetResistanceStatus(value)
+                if (level == null) {
+                    Timber.tag(BtEngineState.TAG).w(
+                        "FTMS Status: malformed TARGET_RESISTANCE_CHANGED payload=%s",
+                        value.toHex(),
+                    )
+                    return
+                }
                 engine.state.setTargetResistanceLevel(level)
-                engine.serviceControlSink?.onTargetResistanceLevelChanged(level.toFloat())
+                engine.serviceControlSink?.onTargetResistanceLevelChanged(level)
                 Timber.tag(BtEngineState.TAG)
                     .i("FTMS Status: TARGET_RESISTANCE_CHANGED → %.1f", level)
             }
@@ -707,4 +713,26 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     private fun ByteArray.toHex(): String =
         joinToString(" ") { b -> "%02X".format(b) }
+}
+
+/**
+ * Decode Fitness Machine Status 0x07 across both FTMS wire definitions.
+ *
+ * Older/conformant devices use a UINT8 target (opcode + one byte). Newer FTMS
+ * revisions also define a SINT16 target (opcode + two little-endian bytes).
+ * Reject every other shape instead of silently converting a truncated value to
+ * zero, which would be mirrored back to a connected peripheral client.
+ */
+internal fun decodeTargetResistanceStatus(value: ByteArray): Float? {
+    if (value.firstOrNull() != STATUS_TARGET_RESISTANCE_LEVEL_CHANGED) return null
+    val raw = when (value.size) {
+        2 -> value[1].toInt() and 0xFF
+        3 -> {
+            val bits = (value[1].toInt() and 0xFF) or
+                ((value[2].toInt() and 0xFF) shl 8)
+            bits.toShort().toInt()
+        }
+        else -> return null
+    }
+    return raw / FTMS_RESISTANCE_SCALE
 }
