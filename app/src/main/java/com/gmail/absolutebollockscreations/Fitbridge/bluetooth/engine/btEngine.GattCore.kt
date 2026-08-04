@@ -148,8 +148,8 @@ internal class GattDiscoveryAttemptGate(
 }
 
 /**
- * The two connection roles supported before Phase 0 introduces connection contexts.
- * Kept explicit so characterization tests can lock the current slot behavior.
+ * Compatibility roles for the two public connection slots retained during Phase 0.
+ * Connection identity is carried by ConnectionContext rather than by this role.
  */
 internal enum class LegacyConnectionRole { FTMS, HRM }
 
@@ -554,6 +554,7 @@ internal object BtEngineGattCore {
             } catch (_: SecurityException) {
                 emptyList()
             }
+            engine.state.connectionRegistry.replaceServices(gatt, services)
 
             // Select handlers for present services
             val matched = matchingProtocolHandlers(
@@ -571,6 +572,7 @@ internal object BtEngineGattCore {
                     .getOrDefault(false)
                 if (handled) activeHandlers.add(h)
             }
+            engine.state.connectionRegistry.replaceHandlers(gatt, activeHandlers)
 
             Timber.tag(BtEngineState.TAG)
                 .i("Services discovered: total=%d, activeHandlers=%d", services.size, activeHandlers.size)

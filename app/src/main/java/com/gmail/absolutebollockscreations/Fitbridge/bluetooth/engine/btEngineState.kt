@@ -285,14 +285,12 @@ class BtEngineState : HrmStateSink {
 
     /* ───────────────────────────── connections & characteristics ───────────────────────────── */
 
-    // FTMS connection (primary)
-    var gatt: BluetoothGatt? = null
-        set(value) {
-            val oldAddr = field?.device?.address
-            val newAddr = value?.device?.address
-            Timber.tag(TAG).d("FTMS GATT reference change %s → %s", oldAddr, newAddr)
-            field = value
-        }
+    internal val connectionRegistry = ConnectionRegistry()
+
+    // FTMS connection (primary). Compatibility accessor over the Phase 0 registry.
+    var gatt: BluetoothGatt?
+        get() = connectionRegistry.current(LegacyConnectionRole.FTMS)?.gatt
+        set(value) = bindFtmsGatt(value?.safeAddress().orEmpty(), value)
 
     private val _connectionState = MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
     val connectionState: StateFlow<Int> = _connectionState
@@ -305,14 +303,10 @@ class BtEngineState : HrmStateSink {
     private val _lastGattError = MutableStateFlow<String?>(null)
     val lastGattError: StateFlow<String?> = _lastGattError
 
-    // HRM connection (separate GATT)
-    var gattHrm: BluetoothGatt? = null
-        set(value) {
-            val oldAddr = field?.device?.address
-            val newAddr = value?.device?.address
-            Timber.tag(TAG).d("HRM GATT reference change %s → %s", oldAddr, newAddr)
-            field = value
-        }
+    // HRM connection (separate GATT). Compatibility accessor over the Phase 0 registry.
+    var gattHrm: BluetoothGatt?
+        get() = connectionRegistry.current(LegacyConnectionRole.HRM)?.gatt
+        set(value) = bindHrmGatt(value?.safeAddress().orEmpty(), value)
 
     private val _hrmConnectionState = MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
     val hrmConnectionState: StateFlow<Int> = _hrmConnectionState
@@ -803,6 +797,7 @@ class BtEngineState : HrmStateSink {
     fun setConnectionState(state: Int) {
         val old = _connectionState.value
         _connectionState.value = state
+        connectionRegistry.updateState(LegacyConnectionRole.FTMS, state)
         Timber.tag(TAG).i("FTMS connectionState %d → %d", old, state)
 
         when (state) {
@@ -825,7 +820,45 @@ class BtEngineState : HrmStateSink {
     fun setHrmConnectionState(state: Int) {
         val old = _hrmConnectionState.value
         _hrmConnectionState.value = state
+        connectionRegistry.updateState(LegacyConnectionRole.HRM, state)
         Timber.tag(TAG).i("HRM connectionState %d → %d", old, state)
+    }
+
+    internal fun bindFtmsGatt(address: String, value: BluetoothGatt?) {
+        bindGatt(
+            role = LegacyConnectionRole.FTMS,
+            label = "FTMS",
+            address = address,
+            value = value,
+            initialState = _connectionState.value,
+        )
+    }
+
+    internal fun bindHrmGatt(address: String, value: BluetoothGatt?) {
+        bindGatt(
+            role = LegacyConnectionRole.HRM,
+            label = "HRM",
+            address = address,
+            value = value,
+            initialState = _hrmConnectionState.value,
+        )
+    }
+
+    private fun bindGatt(
+        role: LegacyConnectionRole,
+        label: String,
+        address: String,
+        value: BluetoothGatt?,
+        initialState: Int,
+    ) {
+        val oldAddr = connectionRegistry.current(role)?.address
+        val newAddr = value?.safeAddress()?.ifBlank { address }?.let(::canonicalConnectionAddress)
+        Timber.tag(TAG).d("%s GATT reference change %s → %s", label, oldAddr, newAddr)
+        if (value == null) {
+            connectionRegistry.clear(role)
+        } else {
+            connectionRegistry.bind(role, newAddr.orEmpty(), value, initialState)
+        }
     }
 
     fun setHaveControl(v: Boolean) {

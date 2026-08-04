@@ -668,7 +668,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         earlyBondScheduled = false
 
         val cb = gattRouter.callbackFor(ConnectionKind.FTMS)
-        state.gatt = connectLeGatt(dev, cb)
+        state.bindFtmsGatt(address, connectLeGatt(dev, cb))
 
         val created = (state.gatt != null)
         if (created && preBondIfNeeded) {
@@ -757,7 +757,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
                 return@guardConnectPerm false
             }
             val cb = gattRouter.callbackFor(ConnectionKind.HRM)
-            state.gattHrm = connectLeGatt(dev, cb)
+            state.bindHrmGatt(address, connectLeGatt(dev, cb))
             (state.gattHrm != null)
         }
 
