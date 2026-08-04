@@ -349,12 +349,8 @@ class BtEngineState : HrmStateSink {
     private val _haveControl = MutableStateFlow(false)
     val haveControlFlow: StateFlow<Boolean> = _haveControl
 
-    // CCCD readiness for FTMS
-    private val _cccdReady = MutableStateFlow(false)
-    val cccdReady: StateFlow<Boolean> = _cccdReady
-
-    // Number of pending CCCD writes (FTMS)
-    var pendingCccdWrites: Int = 0
+    // Stable projection of the current machine context's per-link CCCD readiness.
+    val cccdReady: StateFlow<Boolean> = connectionRegistry.machineCccdReady
 
     // ─────────────────────────────────────────────────────────────
     // FTMS Fitness Machine Status + Targets (0x2ADA)
@@ -394,13 +390,6 @@ class BtEngineState : HrmStateSink {
     /** Current target heart rate in bpm. */
     private val _targetHeartRateBpm = MutableStateFlow<Int?>(null)
     val targetHeartRateBpm: StateFlow<Int?> = _targetHeartRateBpm
-
-    /* ───────────────────────────── GATT operation queue ─────────────────────────────
-       Uses StackEntry defined in btEngine.GattQueue.kt to avoid duplication. */
-
-    val lock = Any()
-    internal val queue = ArrayDeque<StackEntry>()
-    var writeBusy: Boolean = false
 
     /* ───────────────────────────── units / session flags ───────────────────────────── */
 
@@ -771,10 +760,15 @@ class BtEngineState : HrmStateSink {
     }
 
     // Scanning + lists
-    fun setCccdReady(v: Boolean) {
-        val old = _cccdReady.value
-        _cccdReady.value = v
-        Timber.tag(TAG).d("cccdReady %s → %s", old, v)
+    internal fun setCccdReady(context: ConnectionContext, value: Boolean) {
+        val old = context.cccd.ready.value
+        connectionRegistry.setCccdReady(context, value)
+        Timber.tag(TAG).d(
+            "cccdReady[%s] %s → %s",
+            context.connectionId,
+            old,
+            value,
+        )
     }
 
     fun setScanning(v: Boolean) {

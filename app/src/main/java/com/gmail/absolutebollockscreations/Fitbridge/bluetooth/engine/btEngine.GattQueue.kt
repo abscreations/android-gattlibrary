@@ -18,18 +18,15 @@
  *
  *  KEY FEATURES
  *  - Queue model:
- *      • [StackEntry] defines a small command object (Op + UUID/payload/descriptor/GATT).
+ *      • [StackEntry] defines a small command object (Op + UUID/payload/descriptor).
  *      • BtEngine exposes helpers:
- *          - pushRead(uuid, targetGatt?)
- *          - pushWrite(bytes, uuid, targetGatt?)
- *          - pushDescriptorWrite(gatt, descriptor, payload)
- *      • All operations are serialized via:
- *          - state.queue (ArrayDeque<StackEntry>)
- *          - state.lock (synchronization)
- *          - state.writeBusy flag
- *      • handleStack() pulls the head, dispatches the correct GATT call, and
+ *          - pushRead(context, uuid)
+ *          - pushWrite(context, bytes, uuid)
+ *          - pushDescriptorWrite(context, descriptor, payload)
+ *      • Each ConnectionContext owns an independent GattQueue.
+ *      • handleStack(context) pulls that link's head, dispatches it, and
  *        leaves completion to the corresponding BluetoothGattCallback, which must
- *        call queueSucceed()/queueFail() (via BtEngineGattCore).
+ *        present matching GATT, operation, and UUID identity before the head is popped.
  *
  *  - Descriptor / CCCD writes:
  *      • API 33+:
@@ -44,13 +41,13 @@
  *          - Validates notify/indicate capability.
  *          - Calls setCharacteristicNotification(..., true).
  *          - Locates the CCCD descriptor (UUID_CCCD).
- *          - Increments state.pendingCccdWrites and enqueues a DESC_WRITE entry.
+ *          - Increments context.cccd.pendingWrites and enqueues a DESC_WRITE entry.
  *
  *  - CCCD recovery / bonding workflow:
  *      • On CCCD write failure, handleCccdWriteFailureRecovery(...) is invoked:
  *          - Consumes the failed queue head and clears writeBusy (pauses queue).
- *          - Looks up a per-device attempt counter (keyed by MAC) and caps
- *            retries at MAX_CCCD_RECOVERY_ATTEMPTS.
+ *          - Uses the owning context's recovery counter and caps retries at
+ *            MAX_CCCD_RECOVERY_ATTEMPTS.
  *          - On **unbonded** devices:
  *              → attempts a bond via ensureBondOrPrompt(...).
  *          - On **bonded** devices:
@@ -63,12 +60,12 @@
  *              3. Calls BtEngine.enableFtmsNotificationsAndIndications(), which is
  *                 expected to be idempotent and to arm only the correct FTMS data
  *                 characteristics + control point.
- *              4. Waits (with timeout) for state.cccdReady==true, then calls
+ *              4. Waits (with timeout) for context.cccd.ready==true, then calls
  *                 requestControl() so the app regains FTMS control on the now
  *                 encrypted link.
- *              5. Finally resumes the queue via handleStack().
- *      • On any successful descriptor write, succeedAndContinue() clears the
- *        per-MAC recovery counters via resetCccdRecoveryAttemptsFor(...).
+ *              5. Finally resumes that context's queue.
+ *      • On any matching successful descriptor write, callback completion clears
+ *        the owning context's recovery counter.
  *
  *  - GATT routing helpers:
  *      • BluetoothGatt.getServiceFor(charUuid) performs a best-effort lookup of
@@ -80,9 +77,8 @@
  *  - BtEngineGattCore:
  *      • Calls queueSucceed()/queueFail() from characteristic/descriptor callbacks
  *        to advance the queue.
- *  - BtEngineState:
- *      • Owns the queue, lock, writeBusy flag, pendingCccdWrites, and cccdReady
- *        flow used by the recovery logic.
+ *  - ConnectionContext:
+ *      • Owns queue, busy, pending CCCD, readiness, and recovery state.
  *  - BtEngine:
  *      • Provides context, bonding helper (ensureBondOrPrompt), and FTMS helpers
  *        (enableFtmsNotificationsAndIndications, requestControl) referenced by
@@ -109,14 +105,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /* ────────────────────────────────────────────────────────────────────────────── */
 /* Internal state for recovery attempts                                          */
 /* ────────────────────────────────────────────────────────────────────────────── */
 
 private const val MAX_CCCD_RECOVERY_ATTEMPTS = 2
-private val cccdRecoveryAttemptsByMac = ConcurrentHashMap<String, Int>()
 
 // Simple IO scope for background retries in the queue
 private val queueIoScope = CoroutineScope(Dispatchers.IO)
@@ -130,85 +124,102 @@ internal data class StackEntry(
     val charUuid: UUID? = null,
     val data: ByteArray? = null,
     val descriptor: BluetoothGattDescriptor? = null,
-    val targetGatt: BluetoothGatt? = null
 ) {
     enum class Op { READ, WRITE, DESC_WRITE }
 }
 
-internal fun <T> resolveGattTarget(explicitTarget: T?, defaultTarget: T?): T? =
-    explicitTarget ?: defaultTarget
+internal fun <T> queueCompletionMatches(
+    contextGatt: T?,
+    callbackGatt: T,
+    head: StackEntry?,
+    callbackOp: StackEntry.Op,
+    callbackCharUuid: UUID?,
+    callbackDescriptorUuid: UUID? = null,
+): Boolean {
+    if (contextGatt !== callbackGatt || head == null || head.op != callbackOp) return false
+    if (head.charUuid != callbackCharUuid) return false
+    return callbackOp != StackEntry.Op.DESC_WRITE ||
+        head.descriptor?.uuid == callbackDescriptorUuid
+}
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.pushRead(uuid: UUID, targetGatt: BluetoothGatt? = null) {
-    synchronized(state.lock) {
-        state.queue.addLast(
-            StackEntry(
-                StackEntry.Op.READ,
-                charUuid = uuid,
-                targetGatt = targetGatt
-            )
+internal fun BtEngine.pushRead(context: ConnectionContext, uuid: UUID) {
+    val size = context.queue.enqueue(
+        StackEntry(
+            StackEntry.Op.READ,
+            charUuid = uuid,
         )
-        Timber.tag(BtEngineState.TAG).d("Queue READ %s  size=%d", uuid, state.queue.size)
-    }
-    handleStack()
+    )
+    Timber.tag(BtEngineState.TAG).d(
+        "Queue READ %s size=%d context=%s",
+        uuid,
+        size,
+        context.connectionId,
+    )
+    handleStack(context)
 }
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.pushWrite(
+    context: ConnectionContext,
     bytes: ByteArray,
     uuid: UUID,
-    targetGatt: BluetoothGatt? = null
 ) {
-    synchronized(state.lock) {
-        state.queue.addLast(
-            StackEntry(
-                StackEntry.Op.WRITE,
-                charUuid = uuid,
-                data = bytes,
-                targetGatt = targetGatt
-            )
+    val size = context.queue.enqueue(
+        StackEntry(
+            StackEntry.Op.WRITE,
+            charUuid = uuid,
+            data = bytes,
         )
-        Timber.tag(BtEngineState.TAG)
-            .d("Queue WRITE %s  len=%d  size=%d", uuid, bytes.size, state.queue.size)
-    }
-    handleStack()
+    )
+    Timber.tag(BtEngineState.TAG).d(
+        "Queue WRITE %s len=%d size=%d context=%s",
+        uuid,
+        bytes.size,
+        size,
+        context.connectionId,
+    )
+    handleStack(context)
 }
 
 // Pre-API 33 overload
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.pushWrite(
+    context: ConnectionContext,
     uuid: UUID,
     bytes: ByteArray,
-    targetGatt: BluetoothGatt? = null
 ) {
     Timber.tag(BtEngineState.TAG).d(
-        "Queue WRITE (overload) %s  len=%d  target=%s",
-        uuid, bytes.size, gattLabel(targetGatt)
+        "Queue WRITE (overload) %s len=%d context=%s",
+        uuid,
+        bytes.size,
+        context.connectionId,
     )
-    pushWrite(bytes, uuid, targetGatt)
+    pushWrite(context, bytes, uuid)
 }
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.pushDescriptorWrite(
-    targetGatt: BluetoothGatt,
+    context: ConnectionContext,
     descriptor: BluetoothGattDescriptor,
     payload: ByteArray
 ) {
-    synchronized(state.lock) {
-        state.queue.addLast(
-            StackEntry(
-                op = StackEntry.Op.DESC_WRITE,
-                descriptor = descriptor,
-                data = payload,
-                targetGatt = targetGatt
-            )
+    val size = context.queue.enqueue(
+        StackEntry(
+            op = StackEntry.Op.DESC_WRITE,
+            charUuid = descriptor.characteristic?.uuid,
+            descriptor = descriptor,
+            data = payload,
         )
-        Timber.tag(BtEngineState.TAG).d(
-            "Queue DESC_WRITE %s  len=%d  size=%d  on=%s",
-            descriptor.uuid, payload.size, state.queue.size, gattLabel(targetGatt)
-        )
-    }
-    handleStack()
+    )
+    Timber.tag(BtEngineState.TAG).d(
+        "Queue DESC_WRITE %s len=%d size=%d context=%s",
+        descriptor.uuid,
+        payload.size,
+        size,
+        context.connectionId,
+    )
+    handleStack(context)
 }
 
 /* ────────────────────────────────────────────────────────────────────────────── */
@@ -216,9 +227,8 @@ internal fun BtEngine.pushDescriptorWrite(
 /* ────────────────────────────────────────────────────────────────────────────── */
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.resetCccdRecoveryAttemptsFor(gatt: BluetoothGatt?) {
-    val mac = gatt?.device?.address ?: return
-    cccdRecoveryAttemptsByMac.remove(mac)
+internal fun BtEngine.resetCccdRecoveryAttemptsFor(context: ConnectionContext) {
+    context.cccd.resetRecoveryAttempts()
 }
 
 /* ────────────────────────────────────────────────────────────────────────────── */
@@ -226,7 +236,17 @@ internal fun BtEngine.resetCccdRecoveryAttemptsFor(gatt: BluetoothGatt?) {
 /* ────────────────────────────────────────────────────────────────────────────── */
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.enableNotifications(gatt: BluetoothGatt, ch: BluetoothGattCharacteristic) {
+internal fun BtEngine.enableNotifications(
+    context: ConnectionContext,
+    ch: BluetoothGattCharacteristic,
+) {
+    val gatt = context.gatt ?: run {
+        Timber.tag(BtEngineState.TAG).w(
+            "enableNotifications: context %s has no GATT",
+            context.connectionId,
+        )
+        return
+    }
     val props = ch.properties
     val wantsIndicate =
         (props and BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0
@@ -266,15 +286,14 @@ internal fun BtEngine.enableNotifications(gatt: BluetoothGatt, ch: BluetoothGatt
         "Queue CCCD %s → %s (indicate=%s notify=%s) on %s",
         cccd.uuid, ch.uuid, wantsIndicate, wantsNotify, gattLabel(gatt)
     )
-    synchronized(state.lock) {
-        state.pendingCccdWrites += 1
-        Timber.tag(BtEngineState.TAG).d(
-            "CCCD pending +=1 → %d for %s",
-            state.pendingCccdWrites,
-            ch.uuid
-        )
-    }
-    pushDescriptorWrite(gatt, cccd, payload)
+    val pending = context.cccd.incrementPending()
+    Timber.tag(BtEngineState.TAG).d(
+        "CCCD pending +=1 → %d for %s context=%s",
+        pending,
+        ch.uuid,
+        context.connectionId,
+    )
+    pushDescriptorWrite(context, cccd, payload)
 }
 
 /* ────────────────────────────────────────────────────────────────────────────── */
@@ -282,31 +301,27 @@ internal fun BtEngine.enableNotifications(gatt: BluetoothGatt, ch: BluetoothGatt
 /* ────────────────────────────────────────────────────────────────────────────── */
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.handleStack() {
-    val entry: StackEntry
-    val defaultGatt = state.gatt
-    synchronized(state.lock) {
-        if (state.queue.isEmpty() || state.writeBusy) return
-        state.writeBusy = true
-        entry = state.queue.first()
-
-        Timber.tag(BtEngineState.TAG).d(
-            "Deque head → op=%s uuid=%s on=%s size=%d",
-            entry.op,
-            entry.charUuid,
-            gattLabel(resolveGattTarget(entry.targetGatt, defaultGatt)),
-            state.queue.size
-        )
-    }
+internal fun BtEngine.handleStack(context: ConnectionContext) {
+    val entry = context.queue.beginDispatch() ?: return
+    val contextGatt = context.gatt
+    Timber.tag(BtEngineState.TAG).d(
+        "Deque head → op=%s uuid=%s on=%s size=%d context=%s",
+        entry.op,
+        entry.charUuid,
+        gattLabel(contextGatt),
+        context.queue.size,
+        context.connectionId,
+    )
 
     try {
         when (entry.op) {
             StackEntry.Op.DESC_WRITE -> {
-                val tgtGatt = resolveGattTarget(entry.targetGatt, defaultGatt)
+                val tgtGatt = contextGatt
                 val desc = entry.descriptor
                 val payload = entry.data
                 if (tgtGatt == null || desc == null || payload == null) {
                     failAndContinue(
+                        context,
                         "Descriptor entry incomplete (gatt=${tgtGatt != null} desc=${desc != null} data=${payload != null})"
                     )
                     return
@@ -341,6 +356,13 @@ internal fun BtEngine.handleStack() {
                     if (rc == BluetoothStatusCodes.ERROR_GATT_WRITE_REQUEST_BUSY) {
                         queueIoScope.launch {
                             delay(200)
+                            if (context.gatt !== tgtGatt || !context.queue.isInFlight(entry)) {
+                                Timber.tag(BtEngineState.TAG).d(
+                                    "DESC_WRITE retry cancelled for stale context %s",
+                                    context.connectionId,
+                                )
+                                return@launch
+                            }
                             val rcRetry = try {
                                 Timber.tag(BtEngineState.TAG).d(
                                     "DESC_WRITE retry (API33) %s on %s",
@@ -371,6 +393,7 @@ internal fun BtEngine.handleStack() {
                                 }
                                 if (!legacyOk) {
                                     handleCccdWriteFailureRecovery(
+                                        context,
                                         tgtGatt,
                                         desc,
                                         rcApi33 = rcRetry,
@@ -401,6 +424,7 @@ internal fun BtEngine.handleStack() {
 
                     if (!legacyOk) {
                         handleCccdWriteFailureRecovery(
+                            context,
                             tgtGatt,
                             desc,
                             rcApi33 = rc,
@@ -432,6 +456,13 @@ internal fun BtEngine.handleStack() {
                             // one short backoff then retry once — keep head pending
                             queueIoScope.launch {
                                 delay(150)
+                                if (context.gatt !== tgtGatt || !context.queue.isInFlight(entry)) {
+                                    Timber.tag(BtEngineState.TAG).d(
+                                        "DESC_WRITE retry cancelled for stale context %s",
+                                        context.connectionId,
+                                    )
+                                    return@launch
+                                }
                                 val okRetry = try {
                                     Timber.tag(BtEngineState.TAG).d(
                                         "DESC_WRITE retry (legacy) %s on %s",
@@ -446,6 +477,7 @@ internal fun BtEngine.handleStack() {
 
                                 if (!okRetry) {
                                     handleCccdWriteFailureRecovery(
+                                        context,
                                         tgtGatt,
                                         desc,
                                         rcApi33 = null,
@@ -464,12 +496,12 @@ internal fun BtEngine.handleStack() {
 
             StackEntry.Op.READ, StackEntry.Op.WRITE -> {
                 val uuid = entry.charUuid
-                val gatt = resolveGattTarget(entry.targetGatt, defaultGatt)
+                val gatt = contextGatt
                 if (uuid == null) {
-                    failAndContinue("Missing charUuid"); return
+                    failAndContinue(context, "Missing charUuid"); return
                 }
                 if (gatt == null) {
-                    failAndContinue("No GATT available for $uuid"); return
+                    failAndContinue(context, "No GATT available for $uuid"); return
                 }
 
                 val svc: BluetoothGattService? = gatt.getServiceFor(uuid)
@@ -477,14 +509,14 @@ internal fun BtEngine.handleStack() {
                     val msg =
                         "Service for char $uuid not found on ${gattLabel(gatt)}"
                     state.setGattErrorFor(gatt, msg)
-                    failAndContinue(msg); return
+                    failAndContinue(context, msg); return
                 }
                 val ch = svc.getCharacteristic(uuid)
                 if (ch == null) {
                     val msg =
                         "Characteristic $uuid not found on ${gattLabel(gatt)}"
                     state.setGattErrorFor(gatt, msg)
-                    failAndContinue(msg); return
+                    failAndContinue(context, msg); return
                 }
 
                 if (entry.op == StackEntry.Op.READ) {
@@ -506,7 +538,7 @@ internal fun BtEngine.handleStack() {
                             val msg =
                                 "readCharacteristic rc=$rc $uuid on ${gattLabel(gatt)}"
                             state.setGattErrorFor(gatt, msg)
-                            failAndContinue(msg); return
+                            failAndContinue(context, msg); return
                         }
                         // accepted; wait for onCharacteristicRead
                     } else {
@@ -526,7 +558,7 @@ internal fun BtEngine.handleStack() {
                                 val msg =
                                     "readCharacteristic=false $uuid on ${gattLabel(gatt)}"
                                 state.setGattErrorFor(gatt, msg)
-                                failAndContinue(msg); return
+                                failAndContinue(context, msg); return
                             }
                             // accepted; wait for onCharacteristicRead
                         }
@@ -566,6 +598,13 @@ internal fun BtEngine.handleStack() {
                             // Backoff + single retry without popping the queue
                             queueIoScope.launch {
                                 delay(200)
+                                if (context.gatt !== gatt || !context.queue.isInFlight(entry)) {
+                                    Timber.tag(BtEngineState.TAG).d(
+                                        "WRITE retry cancelled for stale context %s",
+                                        context.connectionId,
+                                    )
+                                    return@launch
+                                }
                                 val rcRetry = try {
                                     Timber.tag(BtEngineState.TAG).d(
                                         "WRITE retry (API33) %s on %s",
@@ -583,7 +622,7 @@ internal fun BtEngine.handleStack() {
                                 if (rcRetry != BluetoothStatusCodes.SUCCESS) {
                                     val msg = "writeCharacteristic retry rc=$rcRetry $uuid on ${gattLabel(gatt)}"
                                     state.setGattErrorFor(gatt, msg)
-                                    failAndContinue(msg)
+                                    failAndContinue(context, msg)
                                 } // else: wait for onCharacteristicWrite
                             }
                             return
@@ -592,7 +631,7 @@ internal fun BtEngine.handleStack() {
                         val msg =
                             "writeCharacteristic rc=$rc $uuid on ${gattLabel(gatt)}"
                         state.setGattErrorFor(gatt, msg)
-                        failAndContinue(msg); return
+                        failAndContinue(context, msg); return
                     } else {
                         @Suppress("DEPRECATION")
                         run {
@@ -613,6 +652,13 @@ internal fun BtEngine.handleStack() {
                                 // backoff + one retry on legacy path
                                 queueIoScope.launch {
                                     delay(150)
+                                    if (context.gatt !== gatt || !context.queue.isInFlight(entry)) {
+                                        Timber.tag(BtEngineState.TAG).d(
+                                            "WRITE retry cancelled for stale context %s",
+                                            context.connectionId,
+                                        )
+                                        return@launch
+                                    }
                                     val okRetry = try {
                                         Timber.tag(BtEngineState.TAG).d(
                                             "WRITE retry (legacy) %s on %s",
@@ -628,7 +674,7 @@ internal fun BtEngine.handleStack() {
                                         val msg =
                                             "writeCharacteristic=false $uuid on ${gattLabel(gatt)}"
                                         state.setGattErrorFor(gatt, msg)
-                                        failAndContinue(msg)
+                                        failAndContinue(context, msg)
                                     } // else: wait for onCharacteristicWrite
                                 }
                                 return
@@ -641,60 +687,104 @@ internal fun BtEngine.handleStack() {
         }
     } catch (t: Throwable) {
         Timber.tag(BtEngineState.TAG).e(t, "Exception in handleStack")
-        failAndContinue("Exception: ${t.message ?: "unknown"}")
+        failAndContinue(context, "Exception: ${t.message ?: "unknown"}")
     }
 }
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.succeedAndContinue() {
-    val justFinished: StackEntry?
-    synchronized(state.lock) {
-        justFinished = state.queue.firstOrNull()
-        if (state.queue.isNotEmpty()) state.queue.removeFirst()
-        state.writeBusy = false
-    }
-    // If success was a DESC_WRITE, clear recovery attempt counter for this connection
-    resetCccdRecoveryAttemptsFor(state.gatt)
-    resetCccdRecoveryAttemptsFor(state.gattHrm)
-
-    Timber.tag(BtEngineState.TAG).d(
-        "Queue OK (%s %s) → next (size=%d)",
+internal fun BtEngine.failAndContinue(context: ConnectionContext, reason: String) {
+    val justFinished = context.queue.finishHead()
+    Timber.tag(BtEngineState.TAG).w(
+        "Queue FAIL (%s %s): %s → next (size=%d context=%s)",
         justFinished?.op,
         justFinished?.charUuid,
-        state.queue.size
+        reason,
+        context.queue.size,
+        context.connectionId,
     )
-    handleStack()
+    handleStack(context)
 }
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.failAndContinue(reason: String) {
-    Timber.tag(BtEngineState.TAG).w("Queue FAIL: %s", reason)
+internal fun BtEngine.queueSucceed(
+    context: ConnectionContext,
+    callbackGatt: BluetoothGatt,
+    callbackOp: StackEntry.Op,
+    callbackCharUuid: UUID?,
+    callbackDescriptorUuid: UUID? = null,
+): Boolean = completeQueueCallback(
+    context,
+    callbackGatt,
+    callbackOp,
+    callbackCharUuid,
+    callbackDescriptorUuid,
+    failureReason = null,
+)
 
-    val justFinished: StackEntry?
-    val remainingSize: Int
-    synchronized(state.lock) {
-        justFinished = state.queue.firstOrNull()
-        if (state.queue.isNotEmpty()) state.queue.removeFirst()
-        state.writeBusy = false
-        remainingSize = state.queue.size
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+internal fun BtEngine.queueFail(
+    context: ConnectionContext,
+    callbackGatt: BluetoothGatt,
+    callbackOp: StackEntry.Op,
+    callbackCharUuid: UUID?,
+    callbackDescriptorUuid: UUID? = null,
+    reason: String,
+): Boolean = completeQueueCallback(
+    context,
+    callbackGatt,
+    callbackOp,
+    callbackCharUuid,
+    callbackDescriptorUuid,
+    failureReason = reason,
+)
+
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+private fun BtEngine.completeQueueCallback(
+    context: ConnectionContext,
+    callbackGatt: BluetoothGatt,
+    callbackOp: StackEntry.Op,
+    callbackCharUuid: UUID?,
+    callbackDescriptorUuid: UUID?,
+    failureReason: String?,
+): Boolean {
+    val head = context.queue.head()
+    if (!context.queue.isBusy || !queueCompletionMatches(
+            context.gatt,
+            callbackGatt,
+            head,
+            callbackOp,
+            callbackCharUuid,
+            callbackDescriptorUuid,
+        )
+    ) {
+        Timber.tag(BtEngineState.TAG).w(
+            "Ignoring mismatched GATT completion context=%s callbackOp=%s callbackChar=%s " +
+                "callbackDesc=%s headOp=%s headChar=%s",
+            context.connectionId,
+            callbackOp,
+            callbackCharUuid,
+            callbackDescriptorUuid,
+            head?.op,
+            head?.charUuid,
+        )
+        return false
     }
 
+    val finished = context.queue.finishIfHead(head!!) ?: return false
+    if (failureReason == null && finished.op == StackEntry.Op.DESC_WRITE) {
+        resetCccdRecoveryAttemptsFor(context)
+    }
     Timber.tag(BtEngineState.TAG).d(
-        "Queue FAIL (%s %s) → next (size=%d)",
-        justFinished?.op,
-        justFinished?.charUuid,
-        remainingSize
+        "Queue %s (%s %s) → next (size=%d context=%s)",
+        if (failureReason == null) "OK" else "FAIL: $failureReason",
+        finished.op,
+        finished.charUuid,
+        context.queue.size,
+        context.connectionId,
     )
-
-    handleStack()
+    handleStack(context)
+    return true
 }
-
-/* For callers still using old names (e.g., BtEngineGattCore) */
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.queueSucceed() = succeedAndContinue()
-
-@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.queueFail(reason: String) = failAndContinue(reason)
 
 /* ────────────────────────────────────────────────────────────────────────────── */
 /* CCCD failure → recovery (bond if needed, re-enable, request control)          */
@@ -702,6 +792,7 @@ internal fun BtEngine.queueFail(reason: String) = failAndContinue(reason)
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 private fun BtEngine.handleCccdWriteFailureRecovery(
+    connection: ConnectionContext,
     gatt: BluetoothGatt,
     desc: BluetoothGattDescriptor,
     rcApi33: Int? = null,
@@ -716,15 +807,12 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
         .w("CCCD write failed %s on %s (%s)", desc.uuid, gattLabel(gatt), rcText)
 
     // Pause queue by consuming the failed head
-    synchronized(state.lock) {
-        if (state.queue.isNotEmpty()) state.queue.removeFirst()
-        state.writeBusy = false
-    }
+    connection.queue.finishHead()
 
     val dev = gatt.device
     val mac = dev.address ?: "?"
 
-    val previousAttempts = cccdRecoveryAttemptsByMac.getOrDefault(mac, 0)
+    val previousAttempts = connection.cccd.recoveryAttempts
     if (previousAttempts >= MAX_CCCD_RECOVERY_ATTEMPTS) {
         Timber.tag(BtEngineState.TAG).w(
             "CCCD recovery: reached max attempts (%d) for %s → giving up",
@@ -732,14 +820,14 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
             mac
         )
         // Continue the queue without further intervention
-        handleStack()
+        handleStack(connection)
         return
     }
-    val attemptsNow = previousAttempts + 1
-    cccdRecoveryAttemptsByMac[mac] = attemptsNow
+    val attemptsNow = connection.cccd.nextRecoveryAttempt()
 
     queueIoScope.launch {
         try {
+            if (connection.gatt !== gatt) return@launch
             val wasBonded = (dev.bondState == BluetoothDevice.BOND_BONDED)
 
             // Bonding policy (see connectFtms in btEngine.kt): never bond
@@ -782,7 +870,15 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
             delay(300)
 
             // Re-run idempotent enable plan (MUST only arm the single correct FTMS data char)
-            runCatching { enableFtmsNotificationsAndIndications() }
+            if (connection.gatt !== gatt) {
+                Timber.tag(BtEngineState.TAG).d(
+                    "CCCD recovery cancelled for stale context %s",
+                    connection.connectionId,
+                )
+                return@launch
+            }
+
+            runCatching { enableFtmsNotificationsAndIndications(connection) }
                 .onFailure {
                     Timber.tag(BtEngineState.TAG)
                         .w(it, "Re-enable notifications failed")
@@ -790,7 +886,7 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
 
             // Wait for CCCD orchestration to complete
             val ready: Boolean = withTimeoutOrNull(6_000) {
-                state.cccdReady.first { it }
+                connection.cccd.ready.first { it }
             } != null
 
             if (ready) {
@@ -803,7 +899,7 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
             }
         } finally {
             // Resume any remaining queue work
-            handleStack()
+            handleStack(connection)
         }
     }
 }

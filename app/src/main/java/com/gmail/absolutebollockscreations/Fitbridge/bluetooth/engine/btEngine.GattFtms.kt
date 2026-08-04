@@ -200,6 +200,10 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             )
             return false
         }
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
+            Timber.tag(BtEngineState.TAG).w("FTMS discovery ignored for unregistered GATT")
+            return false
+        }
 
         // Reset per-connection flags on fresh discovery.
         postCccdKickDone = false
@@ -245,7 +249,7 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // ---------- IMPORTANT: Read FEATURES FIRST ----------
         ftms.getCharacteristic(UUID_FITNESS_MACHINE_FEATURE)?.let {
             Timber.tag(BtEngineState.TAG).d("Queue READ 2ACC FIRST (features)")
-            engine.pushRead(UUID_FITNESS_MACHINE_FEATURE)
+            engine.pushRead(context, UUID_FITNESS_MACHINE_FEATURE)
         } ?: Timber.tag(BtEngineState.TAG).w("Features char (0x2ACC) missing")
 
         // NOTE: We DO NOT enable CCCDs here anymore.
@@ -297,13 +301,13 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             desc.uuid == UUID_CCCD && desc.characteristic?.service?.uuid == UUID_FTMS_SERVICE
 
         if (status == BluetoothGatt.GATT_SUCCESS && isFtmsCccd) {
-            // Optional rigor: snapshot pending under the shared lock (GattCore already decrements there).
-            val pending = synchronized(engine.state.lock) { engine.state.pendingCccdWrites }
+            val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+            val pending = context.cccd.pendingWrites
             if (!postCccdKickDone && pending == 0) {
                 postCccdKickDone = true
                 Timber.tag(BtEngineState.TAG)
                     .i("All FTMS CCCDs armed → re-read FEATURES (0x2ACC)")
-                engine.pushRead(UUID_FITNESS_MACHINE_FEATURE)
+                engine.pushRead(context, UUID_FITNESS_MACHINE_FEATURE)
             }
         }
     }
@@ -355,6 +359,10 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         }
         when (ch.uuid) {
             UUID_FITNESS_MACHINE_FEATURE -> {
+                val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
+                    Timber.tag(BtEngineState.TAG).w("FTMS feature read ignored for unregistered GATT")
+                    return
+                }
                 // Parse features (sets engine.state.supportsSpeed/Inclination/Resistance/Power + may infer type internally)
                 BtEngineCapabilities.parseFitnessMachineFeatures(engine, value)
 
@@ -391,17 +399,17 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
                                     short(u), wantsInd, wantsNot
                                 )
                                 // This goes through the serialized GATT queue.
-                                engine.enableNotifications(gatt, c)
+                                engine.enableNotifications(context, c)
                             }
                         }
                     }
 
                     // If there was nothing to enable, mark ready; otherwise GattCore will flip ready when pending hits 0.
                     if (!willEnableAny) {
-                        engine.state.setCccdReady(true)
+                        engine.state.setCccdReady(context, true)
                         Timber.tag(BtEngineState.TAG).w("No FTMS CCCDs to enable → cccdReady=true")
                     } else {
-                        engine.state.setCccdReady(false)
+                        engine.state.setCccdReady(context, false)
                     }
                 }
 

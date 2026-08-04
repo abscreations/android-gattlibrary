@@ -118,8 +118,7 @@ internal object BtEngineControlPoint {
         // For requestControl we do NOT require haveControl, but we still ensure CCCDs are ready.
         if (!ensureCccdReady(engine, opName = "requestControl", requireControl = false)) return false
         Timber.tag(BtEngineState.TAG).i("CP: requestControl() → enqueue")
-        engine.pushWrite(byteArrayOf(OPCODE_REQUEST_CONTROL), UUID_FITNESS_MACHINE_CONTROL_POINT)
-        return true
+        return enqueueControlPointWrite(engine, byteArrayOf(OPCODE_REQUEST_CONTROL))
     }
 
     /** Start or resume the workout on the machine (requires control). */
@@ -165,8 +164,7 @@ internal object BtEngineControlPoint {
         val payload = byteArrayOf(OPCODE_SET_TARGET_SPEED) + u16le(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set speed → %.2f km/h (scaled=%d)", value, scaled)
-        engine.pushWrite(payload, UUID_FITNESS_MACHINE_CONTROL_POINT)
-        return true
+        return enqueueControlPointWrite(engine, payload)
     }
 
     /** Set target incline (degrees). Device step/min/max applied when known. */
@@ -184,8 +182,7 @@ internal object BtEngineControlPoint {
         val payload = byteArrayOf(OPCODE_SET_TARGET_INCLINATION) + s16le(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set incline → %.1f° (scaled=%d)", value, scaled)
-        engine.pushWrite(payload, UUID_FITNESS_MACHINE_CONTROL_POINT)
-        return true
+        return enqueueControlPointWrite(engine, payload)
     }
 
     /** Set target resistance level. Device step/min/max applied when known. */
@@ -205,8 +202,7 @@ internal object BtEngineControlPoint {
         val payload = byteArrayOf(OPCODE_SET_TARGET_RESISTANCE, scaled.toByte())
 
         Timber.tag(BtEngineState.TAG).i("CP: set resistance → %.1f (scaled=%d, uint8)", value, scaled)
-        engine.pushWrite(payload, UUID_FITNESS_MACHINE_CONTROL_POINT)
-        return true
+        return enqueueControlPointWrite(engine, payload)
     }
 
     /** Set target power in watts. Device step/min/max applied when known. */
@@ -223,8 +219,7 @@ internal object BtEngineControlPoint {
         val payload = byteArrayOf(OPCODE_SET_TARGET_POWER) + u16le(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set power → %d W (scaled=%d)", snapped, scaled)
-        engine.pushWrite(payload, UUID_FITNESS_MACHINE_CONTROL_POINT)
-        return true
+        return enqueueControlPointWrite(engine, payload)
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -275,7 +270,13 @@ internal object BtEngineControlPoint {
             Timber.tag(BtEngineState.TAG).w("CP write ignored: CCCDs not ready")
             return false
         }
-        engine.pushWrite(payload, UUID_FITNESS_MACHINE_CONTROL_POINT)
+        return enqueueControlPointWrite(engine, payload)
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun enqueueControlPointWrite(engine: BtEngine, payload: ByteArray): Boolean {
+        val context = engine.machineContext("FTMS control-point write") ?: return false
+        engine.pushWrite(context, payload, UUID_FITNESS_MACHINE_CONTROL_POINT)
         return true
     }
 

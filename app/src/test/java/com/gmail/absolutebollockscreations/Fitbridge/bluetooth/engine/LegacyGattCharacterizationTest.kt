@@ -45,14 +45,22 @@ class LegacyGattCharacterizationTest {
         )
 
         val state = BtEngineState().apply {
-            pendingCccdWrites = 2
-            setCccdReady(false)
+            connectionRegistry.open(
+                LegacyConnectionRole.FTMS,
+                "AA:BB:CC:DD:EE:01",
+                gatt = null,
+                initialState = android.bluetooth.BluetoothProfile.STATE_CONNECTED,
+            ).cccd.apply {
+                incrementPending()
+                incrementPending()
+            }
         }
-        assertFalse(state.completeLegacyFtmsCccdWrite())
-        assertEquals(1, state.pendingCccdWrites)
+        val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)!!
+        assertFalse(state.connectionRegistry.completeCccdWrite(context))
+        assertEquals(1, context.cccd.pendingWrites)
         assertFalse(state.cccdReady.value)
-        assertTrue(state.completeLegacyFtmsCccdWrite())
-        assertEquals(0, state.pendingCccdWrites)
+        assertTrue(state.connectionRegistry.completeCccdWrite(context))
+        assertEquals(0, context.cccd.pendingWrites)
         assertTrue(state.cccdReady.value)
 
         val afterHrmDisconnect = connected.without(LegacyConnectionRole.HRM)

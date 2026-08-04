@@ -245,8 +245,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *
  * FTMS CONTROL & STATUS
  *  - haveControlFlow: StateFlow<Boolean>
- *  - cccdReady: StateFlow<Boolean>
- *  - pendingCccdWrites: Int
+ *  - cccdReady: StateFlow<Boolean>           // current machine-context projection
  *  - fitnessMachineStatus: StateFlow<Byte>   // last STATUS_* code from 0x2ADA
  *
  *  - Target snapshot (what we last requested via CP):
@@ -257,9 +256,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *        push state into the engine when it is the **source** of FTMS data.
  *
  * GATT OP QUEUE (see btEngine.GattQueue.kt)
- *  - lock: Any
- *  - queue: ArrayDeque<StackEntry>
- *  - writeBusy: Boolean
+ *  - Each ConnectionContext owns its GattQueue and CccdState.
+ *  - No engine-global queue or untargeted GATT fallback remains.
  *
  * CAPABILITIES / SUPPORTED RANGES
  *  - featuresRead: Boolean
@@ -778,26 +776,27 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 * ───────────────────────────────────────────────────────────────────────────────
 *
 * PURPOSE
-*  - Serialize all GATT operations so only one is in flight at a time.
+*  - Serialize GATT operations per connection so each link may have one in flight.
 *  - Hide API-level differences (API 33+ vs pre-33) for characteristic/descriptor
 *    writes.
 *  - Provide a reusable helper for enabling notifications/indications (CCCD).
 *
 * PUBLIC API ON BtEngine (all @RequiresPermission(BLUETOOTH_CONNECT))
-*  - pushRead(uuid, targetGatt?)
-*  - pushWrite(bytes, uuid, targetGatt?)
-*  - pushDescriptorWrite(targetGatt, descriptor, payload)
-*  - enableNotifications(gatt, characteristic)
+*  - pushRead(context, uuid)
+*  - pushWrite(context, bytes, uuid)
+*  - pushDescriptorWrite(context, descriptor, payload)
+*  - enableNotifications(context, characteristic)
 *
 * INTERNAL DRIVER
-*  - handleStack()
-*      • Dispatches the head operation if none is in flight.
-*      • Resolves the correct BluetoothGatt and target characteristic/descriptor.
+*  - handleStack(context)
+*      • Dispatches that context's head operation if none is in flight.
+*      • Uses only the BluetoothGatt owned by the supplied context.
 *      • On immediate failure or missing service/char, calls failAndContinue(...).
+*      • Callback completion must match GATT identity, operation, and UUID.
 *
-*  - succeedAndContinue() / failAndContinue(reason)
+*  - queueSucceed(context, callback identity...) / queueFail(...)
 *      • Update lastGattError/lastHrmError appropriately.
-*      • Pop queue head and schedule the next operation.
+*      • Pop only a matching queue head and schedule that context's next operation.
 *
 *
 * ───────────────────────────────────────────────────────────────────────────────

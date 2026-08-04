@@ -42,7 +42,7 @@
 //     • On CONNECTED:
 //         - Binds the GATT into the appropriate slot (gatt vs gattHrm).
 //         - For FTMS, resets:
-//             • CCCD orchestration flags (cccdReady=false, pendingCccdWrites=0)
+//             • Its context-owned CCCD orchestration state
 //             • FTMS capabilities snapshot (ftmsCapabilities + legacy range flags) so that
 //               a new link always starts “capability-blank” until range reads complete.
 //         - Calls handler.onConnected(...).
@@ -63,12 +63,12 @@
 //
 // -------------------------------------------------------------------------------------------------
 // GATT QUEUE INTEGRATION
-//   All read/write/descriptor callbacks integrate with BtEngine’s serialized GATT queue:
-//     • On success → engine.queueSucceed() to advance the queue.
+//   All read/write/descriptor callbacks integrate with the owning context's serialized queue:
+//     • Completion advances only when GATT identity, operation, and UUID match the queue head.
 //     • On failure →
 //         - Logs and records a GATT error via BtEngineState.setGattErrorFor(...).
-//         - Calls engine.queueFail(...) to let the queue decide recovery.
-//     • onCharacteristicChanged(...) calls engine.handleStack() to allow the queue to
+//         - Calls engine.queueFail(context, ...) to let that queue decide recovery.
+//     • onCharacteristicChanged(...) calls engine.handleStack(context) to allow the queue to
 //       make progress on notifications/indications as well.
 //
 // -------------------------------------------------------------------------------------------------
@@ -86,8 +86,8 @@
 //     • isFtmsCallback flags callbacks created for FTMS profiles.
 //     • isFtmsCccd(...) recognizes CCCD writes for FTMS data, status, and control point.
 //     • On successful descriptor writes for FTMS CCCDs:
-//         - Decrements state.pendingCccdWrites under a lock.
-//         - When it reaches zero, flips state.cccdReady to true and logs the transition.
+//         - Decrements context.cccd.pendingWrites.
+//         - When it reaches zero, flips context.cccd.ready to true and updates the machine projection.
 //
 // -------------------------------------------------------------------------------------------------
 // IMPLEMENTATION NOTES
@@ -184,17 +184,6 @@ internal fun matchingProtocolHandlers(
     discoveredServiceUuids: Set<UUID>,
 ): List<BtEngineGattCore.ProtocolHandler> = handlers.filter { handler ->
     handler.primaryServices.any(discoveredServiceUuids::contains)
-}
-
-/** Returns true only for the successful write that makes the FTMS CCCD set ready. */
-internal fun BtEngineState.completeLegacyFtmsCccdWrite(): Boolean = synchronized(lock) {
-    if (pendingCccdWrites > 0) pendingCccdWrites--
-    if (pendingCccdWrites == 0) {
-        setCccdReady(true)
-        true
-    } else {
-        false
-    }
 }
 
 internal object BtEngineGattCore {
@@ -406,11 +395,11 @@ internal object BtEngineGattCore {
                         engine.state.gattHrm = gatt
                     } else if (isFtmsCallback) {
                         engine.state.gatt = gatt
+                        val context = engine.state.connectionRegistry.contextForGatt(gatt)
 
                         // Only FTMS path manipulates these orchestration flags.
                         // Also reset FTMS capabilities snapshot at the start of a new link.
-                        engine.state.setCccdReady(false)
-                        engine.state.pendingCccdWrites = 0
+                        if (context != null) engine.state.connectionRegistry.resetCccd(context)
                         engine.state.resetFtmsCapabilities()
                         Timber.tag(BtEngineState.TAG)
                             .d("FTMS connected → reset CCCD flags and capabilities snapshot")
@@ -481,16 +470,6 @@ internal object BtEngineGattCore {
                         engine.state.gatt = remainingSlots.ftms
                         engine.state.setHaveControl(false)
 
-                        // Clear write queue
-                        synchronized(engine.state.lock) {
-                            engine.state.queue.clear()
-                            engine.state.writeBusy = false
-                        }
-
-                        // Reset FTMS CCCD orchestration flags
-                        engine.state.setCccdReady(false)
-                        engine.state.pendingCccdWrites = 0
-
                         // Reset FTMS capabilities snapshot + legacy range flags so a future
                         // connection always starts from a clean capability state.
                         engine.state.resetFtmsCapabilities()
@@ -543,8 +522,9 @@ internal object BtEngineGattCore {
 
             // Reset CCCD readiness only for FTMS path
             if (isFtmsCallback) {
-                engine.state.setCccdReady(false)
-                engine.state.pendingCccdWrites = 0
+                engine.state.connectionRegistry.contextForGatt(gatt)?.let {
+                    engine.state.connectionRegistry.resetCccd(it)
+                }
                 Timber.tag(BtEngineState.TAG)
                     .d("onServicesDiscovered(FTMS) → reset CCCD orchestration counters")
             }
@@ -586,7 +566,7 @@ internal object BtEngineGattCore {
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            engine.handleStack() // advance queue on notify/indicate
+            engine.state.connectionRegistry.contextForGatt(gatt)?.let(engine::handleStack)
             routeToOwners(gatt, characteristic.uuid) {
                 it.onCharacteristicChanged(engine, gatt, characteristic, value)
             }
@@ -607,13 +587,24 @@ internal object BtEngineGattCore {
             value: ByteArray,
             status: Int
         ) {
-            if (status == GATT_SUCCESS) {
-                engine.queueSucceed()
-            } else {
+            val context = engine.state.connectionRegistry.contextForGatt(gatt)
+            if (status != GATT_SUCCESS) {
                 val msg = "read failed status=$status uuid=${safeUuid(characteristic)}"
                 engine.state.setGattErrorFor(gatt, msg)
                 Timber.tag(BtEngineState.TAG).w(msg)
-                engine.queueFail(msg)
+            }
+            if (context == null) {
+                Timber.tag(BtEngineState.TAG).w("Ignoring read completion from unregistered GATT")
+            } else if (status == GATT_SUCCESS) {
+                engine.queueSucceed(context, gatt, StackEntry.Op.READ, characteristic.uuid)
+            } else {
+                engine.queueFail(
+                    context,
+                    gatt,
+                    StackEntry.Op.READ,
+                    characteristic.uuid,
+                    reason = "read failed status=$status uuid=${safeUuid(characteristic)}",
+                )
             }
             routeToOwners(gatt, characteristic.uuid) {
                 it.onCharacteristicRead(engine, gatt, characteristic, value, status)
@@ -641,13 +632,24 @@ internal object BtEngineGattCore {
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
-            if (status == GATT_SUCCESS) {
-                engine.queueSucceed()
-            } else {
+            val context = engine.state.connectionRegistry.contextForGatt(gatt)
+            if (status != GATT_SUCCESS) {
                 val msg = "write failed status=$status uuid=${safeUuid(characteristic)}"
                 engine.state.setGattErrorFor(gatt, msg)
                 Timber.tag(BtEngineState.TAG).w(msg)
-                engine.queueFail(msg)
+            }
+            if (context == null) {
+                Timber.tag(BtEngineState.TAG).w("Ignoring write completion from unregistered GATT")
+            } else if (status == GATT_SUCCESS) {
+                engine.queueSucceed(context, gatt, StackEntry.Op.WRITE, characteristic.uuid)
+            } else {
+                engine.queueFail(
+                    context,
+                    gatt,
+                    StackEntry.Op.WRITE,
+                    characteristic.uuid,
+                    reason = "write failed status=$status uuid=${safeUuid(characteristic)}",
+                )
             }
             routeToOwners(gatt, characteristic.uuid) {
                 it.onCharacteristicWrite(engine, gatt, characteristic, status)
@@ -662,14 +664,15 @@ internal object BtEngineGattCore {
             status: Int,
             value: ByteArray
         ) {
-            if (status == GATT_SUCCESS) {
-                engine.queueSucceed()
-            } else {
+            if (status != GATT_SUCCESS) {
                 val msg = "descriptor read failed status=$status uuid=${safeUuid(descriptor)}"
                 engine.state.setGattErrorFor(gatt, msg)
                 Timber.tag(BtEngineState.TAG).w(msg)
-                engine.queueFail(msg)
             }
+            Timber.tag(BtEngineState.TAG).d(
+                "Descriptor read has no queued operation to complete: %s",
+                safeUuid(descriptor),
+            )
             // No handler routing for descriptor reads; extend ProtocolHandler if needed.
         }
 
@@ -693,23 +696,46 @@ internal object BtEngineGattCore {
             descriptor: BluetoothGattDescriptor,
             status: Int
         ) {
-            if (status == GATT_SUCCESS) {
-                engine.queueSucceed()
-            } else {
+            val context = engine.state.connectionRegistry.contextForGatt(gatt)
+            if (status != GATT_SUCCESS) {
                 val msg = "descriptor write failed status=$status uuid=${safeUuid(descriptor)}"
                 engine.state.setGattErrorFor(gatt, msg)
                 Timber.tag(BtEngineState.TAG).w(msg)
-                engine.queueFail(msg)
+            }
+            val charUuid = descriptor.characteristic?.uuid
+            val completionMatched = when {
+                context == null -> {
+                    Timber.tag(BtEngineState.TAG)
+                        .w("Ignoring descriptor completion from unregistered GATT")
+                    false
+                }
+                status == GATT_SUCCESS -> engine.queueSucceed(
+                    context,
+                    gatt,
+                    StackEntry.Op.DESC_WRITE,
+                    charUuid,
+                    descriptor.uuid,
+                )
+                else -> engine.queueFail(
+                    context,
+                    gatt,
+                    StackEntry.Op.DESC_WRITE,
+                    charUuid,
+                    descriptor.uuid,
+                    "descriptor write failed status=$status uuid=${safeUuid(descriptor)}",
+                )
             }
 
-            // Robust CCCD readiness: decrement only on successful FTMS CCCDs; flip ready when counter hits zero.
-            if (isFtmsCallback && status == GATT_SUCCESS && isFtmsCccd(descriptor)) {
-                val becameReady = engine.state.completeLegacyFtmsCccdWrite()
-                val pending = engine.state.pendingCccdWrites
-                val ch = descriptor.characteristic?.uuid
-                Timber.tag(BtEngineState.TAG).d("CCCD written for %s → pending=%d", ch, pending)
+            // Decrement only for the matching successful CCCD completion on this context.
+            if (completionMatched && status == GATT_SUCCESS && descriptor.uuid == BluetoothIds.UUID_CCCD) {
+                val becameReady = engine.state.connectionRegistry.completeCccdWrite(context!!)
+                val pending = context.cccd.pendingWrites
+                Timber.tag(BtEngineState.TAG).d("CCCD written for %s → pending=%d", charUuid, pending)
                 if (becameReady) {
-                    Timber.tag(BtEngineState.TAG).d("All FTMS CCCDs armed → cccdReady=true")
+                    Timber.tag(BtEngineState.TAG).d(
+                        "All CCCDs armed → cccdReady=true context=%s",
+                        context.connectionId,
+                    )
                 }
             }
 

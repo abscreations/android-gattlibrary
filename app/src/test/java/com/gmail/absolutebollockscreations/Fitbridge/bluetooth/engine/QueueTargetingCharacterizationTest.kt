@@ -1,31 +1,87 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
-import org.junit.Ignore
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.UUID
 
 class QueueTargetingCharacterizationTest {
 
     @Test
-    fun `explicit HRM target wins while an FTMS default exists`() {
+    fun `two contexts can each hold an in-flight operation without cross-completion`() {
         val ftmsGatt = Any()
         val hrmGatt = Any()
+        val ftmsUuid = UUID.randomUUID()
+        val hrmUuid = UUID.randomUUID()
+        val ftmsQueue = GattQueue()
+        val hrmQueue = GattQueue()
+        ftmsQueue.enqueue(StackEntry(StackEntry.Op.WRITE, charUuid = ftmsUuid))
+        hrmQueue.enqueue(StackEntry(StackEntry.Op.READ, charUuid = hrmUuid))
 
-        assertSame(hrmGatt, resolveGattTarget(hrmGatt, ftmsGatt))
-        assertSame(ftmsGatt, resolveGattTarget(null, ftmsGatt))
+        val ftmsHead = ftmsQueue.beginDispatch()
+        val hrmHead = hrmQueue.beginDispatch()
+
+        assertTrue(ftmsQueue.isBusy)
+        assertTrue(hrmQueue.isBusy)
+        assertFalse(
+            queueCompletionMatches(
+                ftmsGatt,
+                hrmGatt,
+                ftmsHead,
+                StackEntry.Op.READ,
+                hrmUuid,
+            ),
+        )
+        assertFalse(
+            queueCompletionMatches(
+                ftmsGatt,
+                ftmsGatt,
+                ftmsHead,
+                StackEntry.Op.WRITE,
+                hrmUuid,
+            ),
+        )
+        assertTrue(
+            queueCompletionMatches(
+                hrmGatt,
+                hrmGatt,
+                hrmHead,
+                StackEntry.Op.READ,
+                hrmUuid,
+            ),
+        )
+
+        hrmQueue.finishIfHead(hrmHead!!)
+
+        assertEquals(1, ftmsQueue.size)
+        assertTrue(ftmsQueue.isBusy)
+        assertEquals(0, hrmQueue.size)
+        assertFalse(hrmQueue.isBusy)
     }
 
     @Test
-    fun `body sensor location read is untargeted in the known baseline defect`() {
-        assertNull(legacyBodySensorLocationReadTarget(Any()))
+    fun `body sensor location read retains its HRM context`() {
+        val hrmContext = Any()
+
+        assertSame(hrmContext, bodySensorLocationReadContext(hrmContext))
     }
 
-    @Ignore("P0.1-D1: Body Sensor Location read must target HRM; scheduled for Phase 0.3")
     @Test
-    fun `body sensor location read should target HRM`() {
-        val hrmGatt = Any()
+    fun `completion operation must match the in-flight queue head`() {
+        val gatt = Any()
+        val uuid = UUID.randomUUID()
+        val head = StackEntry(StackEntry.Op.WRITE, charUuid = uuid)
 
-        assertSame(hrmGatt, legacyBodySensorLocationReadTarget(hrmGatt))
+        assertFalse(
+            queueCompletionMatches(
+                gatt,
+                gatt,
+                head,
+                StackEntry.Op.READ,
+                uuid,
+            ),
+        )
     }
 }

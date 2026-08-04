@@ -108,6 +108,10 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
             )
             return false
         }
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
+            Timber.tag(BtEngineState.TAG).w("HRM discovery ignored for unregistered GATT")
+            return false
+        }
 
         // Log HRM characteristics inventory for debug
         runCatching {
@@ -129,7 +133,7 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 short(UUID_HEART_RATE_MEASUREMENT),
                 gatt.device?.address
             )
-            engine.enableNotifications(gatt, ch)
+            engine.enableNotifications(context, ch)
         } ?: Timber.tag(BtEngineState.TAG).w(
             "HRM Measurement char (0x2A37) missing on %s",
             gatt.device?.address
@@ -141,10 +145,7 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 "Queue READ Body Sensor Location (0x2A38) on %s",
                 gatt.device?.address
             )
-            engine.pushRead(
-                UUID_BODY_SENSOR_LOCATION,
-                legacyBodySensorLocationReadTarget(gatt),
-            )
+            engine.pushRead(bodySensorLocationReadContext(context), UUID_BODY_SENSOR_LOCATION)
         } ?: Timber.tag(BtEngineState.TAG).d(
             "Body Sensor Location (0x2A38) not present on %s",
             gatt.device?.address
@@ -425,12 +426,8 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
     }
 }
 
-/**
- * Known Phase 0.1 baseline defect P0.1-D1: the optional HRM body-location read is
- * untargeted and therefore falls back to the FTMS GATT when both links exist.
- */
-@Suppress("UNUSED_PARAMETER")
-internal fun <T> legacyBodySensorLocationReadTarget(hrmGatt: T): T? = null
+/** Phase 0.3 migration seam: the HRM body-location read retains its owning context. */
+internal fun <T> bodySensorLocationReadContext(hrmContext: T): T = hrmContext
 
 /**
  * Optional sink interface: if your EngineState implements this, HRM data will be populated.

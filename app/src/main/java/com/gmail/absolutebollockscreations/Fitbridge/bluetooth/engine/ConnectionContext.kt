@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 
 /** Identifies one physical-link lifetime, including reconnects to the same BLE address. */
@@ -25,20 +26,100 @@ internal enum class LinkState(val bluetoothProfileState: Int) {
     }
 }
 
-/**
- * Per-link queue owner introduced in Phase 0.2. The legacy engine queue remains authoritative
- * until Phase 0.3 moves dispatch and completion into this holder.
- */
+/** Serialized operation state owned by one physical GATT link. */
 internal class GattQueue {
-    val lock: Any = Any()
-    val entries: ArrayDeque<StackEntry> = ArrayDeque()
-    var writeBusy: Boolean = false
+    private val lock: Any = Any()
+    private val entries: ArrayDeque<StackEntry> = ArrayDeque()
+    private var writeBusy: Boolean = false
+
+    val size: Int get() = synchronized(lock) { entries.size }
+    val isBusy: Boolean get() = synchronized(lock) { writeBusy }
+
+    fun enqueue(entry: StackEntry): Int = synchronized(lock) {
+        entries.addLast(entry)
+        entries.size
+    }
+
+    fun beginDispatch(): StackEntry? = synchronized(lock) {
+        if (entries.isEmpty() || writeBusy) return@synchronized null
+        writeBusy = true
+        entries.first()
+    }
+
+    fun head(): StackEntry? = synchronized(lock) { entries.firstOrNull() }
+
+    fun isInFlight(entry: StackEntry): Boolean = synchronized(lock) {
+        writeBusy && entries.firstOrNull() === entry
+    }
+
+    fun finishHead(): StackEntry? = synchronized(lock) {
+        val finished = entries.removeFirstOrNull()
+        writeBusy = false
+        finished
+    }
+
+    fun finishIfHead(expected: StackEntry): StackEntry? = synchronized(lock) {
+        if (!writeBusy || entries.firstOrNull() !== expected) return@synchronized null
+        entries.removeFirst().also { writeBusy = false }
+    }
+
+    fun clear() = synchronized(lock) {
+        entries.clear()
+        writeBusy = false
+    }
 }
 
-/** Per-link CCCD state reserved for the Phase 0.3 migration. */
+/** CCCD readiness and recovery state owned by one physical GATT link. */
 internal class CccdState {
+    private val lock = Any()
     val ready = MutableStateFlow(false)
-    var pendingWrites: Int = 0
+
+    private var pendingWritesValue: Int = 0
+    val pendingWrites: Int get() = synchronized(lock) { pendingWritesValue }
+
+    private var recoveryAttemptsValue: Int = 0
+    val recoveryAttempts: Int get() = synchronized(lock) { recoveryAttemptsValue }
+
+    fun setReady(value: Boolean) = synchronized(lock) {
+        ready.value = value
+    }
+
+    fun incrementPending(): Int = synchronized(lock) {
+        pendingWritesValue += 1
+        pendingWritesValue
+    }
+
+    /** Returns true only when this completion transitions the context to ready. */
+    fun completePending(): Boolean = synchronized(lock) {
+        if (pendingWritesValue <= 0) return@synchronized false
+        pendingWritesValue -= 1
+        if (pendingWritesValue == 0) {
+            ready.value = true
+            true
+        } else {
+            false
+        }
+    }
+
+    fun resetOrchestration() = synchronized(lock) {
+        pendingWritesValue = 0
+        ready.value = false
+    }
+
+    fun nextRecoveryAttempt(): Int = synchronized(lock) {
+        recoveryAttemptsValue += 1
+        recoveryAttemptsValue
+    }
+
+    fun resetRecoveryAttempts() = synchronized(lock) {
+        recoveryAttemptsValue = 0
+    }
+
+    fun reset() = synchronized(lock) {
+        pendingWritesValue = 0
+        recoveryAttemptsValue = 0
+        ready.value = false
+    }
 }
 
 /** In-session link recovery state; intentionally empty until recovery moves in Phase 0.3. */
@@ -72,6 +153,8 @@ internal class ConnectionRegistry {
     private val lock = Any()
     private val contexts = mutableMapOf<LegacyConnectionRole, ConnectionContext>()
     private var nextLinkGeneration = 1L
+    private val _machineCccdReady = MutableStateFlow(false)
+    val machineCccdReady: StateFlow<Boolean> = _machineCccdReady
 
     fun current(role: LegacyConnectionRole): ConnectionContext? = synchronized(lock) {
         contexts[role]
@@ -94,7 +177,8 @@ internal class ConnectionRegistry {
             gatt = gatt,
             connectionState = MutableStateFlow(LinkState.fromBluetoothProfileState(initialState)),
         )
-        contexts[role] = context
+        contexts.put(role, context)?.deactivate()
+        if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
         context
     }
 
@@ -110,14 +194,36 @@ internal class ConnectionRegistry {
     }
 
     fun clear(role: LegacyConnectionRole): ConnectionContext? = synchronized(lock) {
-        contexts.remove(role)?.also {
-            it.connectionState.value = LinkState.DISCONNECTED
-            it.gatt = null
+        contexts.remove(role)?.also { context ->
+            context.deactivate()
+            if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
         }
     }
 
     fun updateState(role: LegacyConnectionRole, state: Int) = synchronized(lock) {
         contexts[role]?.connectionState?.value = LinkState.fromBluetoothProfileState(state)
+    }
+
+    fun setCccdReady(context: ConnectionContext, ready: Boolean) = synchronized(lock) {
+        context.cccd.setReady(ready)
+        if (contexts[LegacyConnectionRole.FTMS] === context) {
+            _machineCccdReady.value = ready
+        }
+    }
+
+    fun resetCccd(context: ConnectionContext) = synchronized(lock) {
+        context.cccd.resetOrchestration()
+        if (contexts[LegacyConnectionRole.FTMS] === context) {
+            _machineCccdReady.value = false
+        }
+    }
+
+    fun completeCccdWrite(context: ConnectionContext): Boolean = synchronized(lock) {
+        val becameReady = context.cccd.completePending()
+        if (contexts[LegacyConnectionRole.FTMS] === context) {
+            _machineCccdReady.value = context.cccd.ready.value
+        }
+        becameReady
     }
 
     fun replaceServices(gatt: BluetoothGatt, services: List<BluetoothGattService>) =
@@ -136,5 +242,12 @@ internal class ConnectionRegistry {
             clear()
             addAll(handlers)
         }
+    }
+
+    private fun ConnectionContext.deactivate() {
+        connectionState.value = LinkState.DISCONNECTED
+        queue.clear()
+        cccd.reset()
+        gatt = null
     }
 }

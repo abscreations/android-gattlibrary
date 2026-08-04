@@ -663,8 +663,6 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
 
         state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_CONNECTING)
         state.resetFtmsControl()
-        state.setCccdReady(false)
-        state.pendingCccdWrites = 0
         earlyBondScheduled = false
 
         val cb = gattRouter.callbackFor(ConnectionKind.FTMS)
@@ -719,9 +717,6 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             state.gatt = null
             state.resetFtmsControl()
             state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
-            synchronized(state.lock) { state.queue.clear(); state.writeBusy = false }
-            state.setCccdReady(false)
-            state.pendingCccdWrites = 0
             featureReadRetryScheduled = false
             earlyBondScheduled = false
             stopProviderAdvertising("disconnectFtms() without BLUETOOTH_CONNECT")
@@ -734,9 +729,6 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             state.gatt = null
             state.resetFtmsControl()
             state.setConnectionState(android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
-            synchronized(state.lock) { state.queue.clear(); state.writeBusy = false }
-            state.setCccdReady(false)
-            state.pendingCccdWrites = 0
             featureReadRetryScheduled = false
             earlyBondScheduled = false
             stopProviderAdvertising("disconnectFtms() explicit FTMS disconnect")
@@ -1062,8 +1054,9 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             Timber.tag(BtEngineState.TAG).w("readSupportedSpeedRange() skipped: BLUETOOTH_CONNECT not granted")
             return
         }
+        val context = machineContext("readSupportedSpeedRange") ?: return
         try {
-            pushRead(UUID_SUPPORTED_SPEED_RANGE)
+            pushRead(context, UUID_SUPPORTED_SPEED_RANGE)
         } catch (se: SecurityException) {
             Timber.tag(BtEngineState.TAG).w(se, "readSupportedSpeedRange() rejected by platform")
         }
@@ -1075,8 +1068,9 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             Timber.tag(BtEngineState.TAG).w("readSupportedInclinationRange() skipped: BLUETOOTH_CONNECT not granted")
             return
         }
+        val context = machineContext("readSupportedInclinationRange") ?: return
         try {
-            pushRead(UUID_SUPPORTED_INCLINATION_RANGE)
+            pushRead(context, UUID_SUPPORTED_INCLINATION_RANGE)
         } catch (se: SecurityException) {
             Timber.tag(BtEngineState.TAG).w(se, "readSupportedInclinationRange() rejected by platform")
         }
@@ -1088,8 +1082,9 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             Timber.tag(BtEngineState.TAG).w("readSupportedResistanceRange() skipped: BLUETOOTH_CONNECT not granted")
             return
         }
+        val context = machineContext("readSupportedResistanceRange") ?: return
         try {
-            pushRead(UUID_SUPPORTED_RESISTANCE_RANGE)
+            pushRead(context, UUID_SUPPORTED_RESISTANCE_RANGE)
         } catch (se: SecurityException) {
             Timber.tag(BtEngineState.TAG).w(se, "readSupportedResistanceRange() rejected by platform")
         }
@@ -1101,8 +1096,9 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             Timber.tag(BtEngineState.TAG).w("readSupportedPowerRange() skipped: BLUETOOTH_CONNECT not granted")
             return
         }
+        val context = machineContext("readSupportedPowerRange") ?: return
         try {
-            pushRead(UUID_SUPPORTED_POWER_RANGE)
+            pushRead(context, UUID_SUPPORTED_POWER_RANGE)
         } catch (se: SecurityException) {
             Timber.tag(BtEngineState.TAG).w(se, "readSupportedPowerRange() rejected by platform")
         }
@@ -1171,7 +1167,9 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
 
                     // Step 3: retry the FEATURES read (best-effort; non-fatal).
                     try {
-                        pushRead(UUID_FITNESS_MACHINE_FEATURE)
+                        val context = machineContext("scheduleFeatureReadRetryAfterControl")
+                            ?: return@launch
+                        pushRead(context, UUID_FITNESS_MACHINE_FEATURE)
                     } catch (se: SecurityException) {
                         Timber.tag(BtEngineState.TAG).w(
                             se,
@@ -1292,8 +1290,9 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     internal fun onFtmsServicesDiscovered() {
+        val context = machineContext("onFtmsServicesDiscovered") ?: return
         // Step 1: arm notifications/indications for DATA + CP first.
-        enableFtmsNotificationsAndIndications()
+        enableFtmsNotificationsAndIndications(context)
 
         // Step 2: best-effort REQUEST_CONTROL; non-fatal on failure.
         scope.launch {
@@ -1317,7 +1316,7 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
             Timber.tag(BtEngineState.TAG).d(
                 "onFtmsServicesDiscovered: queueing FEATURES (0x2ACC) read as optional enrichment"
             )
-            pushRead(UUID_FITNESS_MACHINE_FEATURE)
+            pushRead(context, UUID_FITNESS_MACHINE_FEATURE)
         } catch (se: SecurityException) {
             Timber.tag(BtEngineState.TAG).w(
                 se,
@@ -1342,8 +1341,8 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
      * for devices that expect DATA+CP armed before advanced Control Point operations.
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    internal fun BtEngine.enableFtmsNotificationsAndIndications() {
-        val gatt = state.gatt ?: run {
+    internal fun BtEngine.enableFtmsNotificationsAndIndications(context: ConnectionContext) {
+        val gatt = context.gatt ?: run {
             Timber.tag(BtEngineState.TAG)
                 .w("enableFtmsNotificationsAndIndications(): no FTMS GATT")
             return
@@ -1399,32 +1398,35 @@ class BtEngine(internal val context: Context) : BtServiceEngineFacade {
         }
 
         // Reset orchestration counters, then queue CCCDs for DATA (notify) and CP (indicate)
-        synchronized(state.lock) {
-            state.pendingCccdWrites = 0
-        }
-        state.setCccdReady(false)
+        state.connectionRegistry.resetCccd(context)
 
         // Order: some vendors prefer CP first; try DATA→CP by default.
         Timber.tag(BtEngineState.TAG).d(
             "enableFtmsNotificationsAndIndications(): Queue WRITE CCCD (NOTIFY) for data=%s",
             dataChar.uuid
         )
-        enableNotifications(gatt, dataChar) // DATA → NOTIFY
+        enableNotifications(context, dataChar) // DATA → NOTIFY
 
         Timber.tag(BtEngineState.TAG).d(
             "enableFtmsNotificationsAndIndications(): Queue WRITE CCCD (INDICATE) for CP=%s",
             cpChar.uuid
         )
-        enableNotifications(gatt, cpChar)   // CP   → INDICATE
+        enableNotifications(context, cpChar)   // CP   → INDICATE
 
         Timber.tag(BtEngineState.TAG).i(
             "enableFtmsNotificationsAndIndications(): queued CCCDs for data=%s and CP=%s on FTMS (pending=%d)",
             dataChar.uuid,
             cpChar.uuid,
-            state.pendingCccdWrites
+            context.cccd.pendingWrites
         )
     }
 }
+
+internal fun BtEngine.machineContext(operation: String): ConnectionContext? =
+    state.connectionRegistry.current(LegacyConnectionRole.FTMS) ?: run {
+        Timber.tag(BtEngineState.TAG).w("%s skipped: no machine connection context", operation)
+        null
+    }
 
 /* ───────────────────────────── provider-side advertising helpers ───────────────────────────── */
 
