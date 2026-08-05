@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -128,6 +129,12 @@ internal enum class FusionSubmission { ACCEPTED, REJECTED_STALE, REJECTED_INVALI
 
 internal enum class FusionPersona { RIDE, RUN, ROW_PADDLE }
 
+private data class MetricCandidateKey(
+    val sourceId: MetricSourceId,
+    val sourceClass: MetricSourceClass,
+    val quality: MetricQuality,
+)
+
 /** Packet-scoped source binding. Every field decoded from one packet shares [arrivalMs]. */
 internal class MetricEmitter(
     private val fusion: MetricFusion,
@@ -172,24 +179,28 @@ internal class MetricFusion(
     private val clock: MonotonicMetricClock = MonotonicMetricClock.SYSTEM,
 ) {
     private val lock = Any()
-    private val candidates = mutableMapOf<MetricKind, MutableMap<MetricSourceId, MetricSample>>()
+    private val candidates = mutableMapOf<MetricKind, MutableMap<MetricCandidateKey, MetricSample>>()
     private val selectedByMetric = mutableMapOf<MetricKind, MetricSample>()
     private val manualAssignments = mutableMapOf<MetricKind, MetricSourceId>()
     private val cumulativeTotals = mutableMapOf<MetricKind, Double>()
     private val cumulativeActiveSource = mutableMapOf<MetricKind, MetricSourceId>()
     private val cumulativeLastNative = mutableMapOf<MetricKind, Double>()
+    private val heartRateFilters = mutableMapOf<MetricSourceId, HeartRateJumpEmaFilter>()
+    private val distancePaceBuffer = ArrayDeque<Pair<Long, Double>>()
     private var persona: FusionPersona = FusionPersona.RIDE
     private var machineConnectionId: ConnectionId? = null
 
     fun submit(sample: MetricSample): FusionSubmission = synchronized(lock) {
         if (!isDomainValid(sample)) return@synchronized FusionSubmission.REJECTED_INVALID
         val bySource = candidates.getOrPut(sample.metric) { mutableMapOf() }
-        val previous = bySource[sample.sourceId]
+        val candidateKey = sample.candidateKey()
+        val previous = bySource[candidateKey]
         if (previous != null && sample.arrivalMs < previous.arrivalMs) {
             return@synchronized FusionSubmission.REJECTED_STALE
         }
-        bySource[sample.sourceId] = sample
-        reselect(sample.metric, sample.arrivalMs)
+        val filtered = filter(sample)
+        bySource[candidateKey] = filtered
+        reselect(filtered.metric, filtered.arrivalMs)
         FusionSubmission.ACCEPTED
     }
 
@@ -245,7 +256,7 @@ internal class MetricFusion(
     fun onDisconnected(connectionId: ConnectionId, nowMs: Long = clock.nowMs()) = synchronized(lock) {
         val affected = mutableSetOf<MetricKind>()
         candidates.forEach { (metric, bySource) ->
-            if (bySource.keys.removeAll { it.connectionId == connectionId }) affected += metric
+            if (bySource.keys.removeAll { it.sourceId.connectionId == connectionId }) affected += metric
         }
         manualAssignments.entries.removeAll { (metric, source) ->
             val clear = source.connectionId == connectionId
@@ -253,6 +264,7 @@ internal class MetricFusion(
             clear
         }
         if (machineConnectionId == connectionId) machineConnectionId = null
+        heartRateFilters.keys.removeAll { it.connectionId == connectionId }
         affected.forEach { reselect(it, nowMs) }
     }
 
@@ -287,27 +299,46 @@ internal class MetricFusion(
             arrivalMs = arrivalMs,
             value = totalSeconds.toDouble(),
         )
-        candidates.getOrPut(MetricKind.ELAPSED) { mutableMapOf() }[source] = sample
+        candidates.getOrPut(MetricKind.ELAPSED) { mutableMapOf() }[sample.candidateKey()] = sample
         val previous = selectedByMetric.put(MetricKind.ELAPSED, sample)
         if (previous != sample) projectPassThrough(sample)
     }
 
     private fun resetSessionState(clearMachine: Boolean) {
+        selectedByMetric.keys.toList().forEach(::clearProjection)
         candidates.clear()
         selectedByMetric.clear()
         manualAssignments.clear()
         cumulativeTotals.clear()
         cumulativeActiveSource.clear()
         cumulativeLastNative.clear()
+        heartRateFilters.clear()
+        distancePaceBuffer.clear()
         if (clearMachine) machineConnectionId = null
     }
+
+    fun recalculateHeartRateZones() = synchronized(lock) {
+        publishHeartRateZones()
+    }
+
+    private fun filter(sample: MetricSample): MetricSample {
+        if (sample.metric != MetricKind.HEART_RATE || sample.sourceClass != MetricSourceClass.HRM) {
+            return sample
+        }
+        return heartRateFilters.getOrPut(sample.sourceId) { HeartRateJumpEmaFilter() }.filter(sample)
+    }
+
+    private fun MetricSample.candidateKey() = MetricCandidateKey(sourceId, sourceClass, quality)
 
     private fun reselect(metric: MetricKind, nowMs: Long) {
         if (metric == MetricKind.ELAPSED) return
         val bySource = candidates[metric].orEmpty()
         val pinned = manualAssignments[metric]
         val winner = if (pinned != null) {
-            bySource[pinned]
+            bySource.values
+                .asSequence()
+                .filter { it.sourceId == pinned }
+                .minWithOrNull(sampleComparator(metric))
         } else {
             bySource.values
                 .asSequence()
@@ -354,9 +385,8 @@ internal class MetricFusion(
         if (metric == MetricKind.HEART_RATE) HEART_RATE_FRESHNESS_MS else DEFAULT_FRESHNESS_MS
 
     private fun sampleComparator(metric: MetricKind): Comparator<MetricSample> =
-        compareBy<MetricSample> { if (it.quality == MetricQuality.NATIVE) 0 else 100 }
+        compareBy<MetricSample> { qualityRank(it.quality) }
             .thenBy { priorityRank(metric, it.sourceClass) }
-            .thenBy { qualityRank(it.quality) }
             .thenByDescending { it.confidence }
             .thenByDescending { it.arrivalMs }
             .thenBy { it.sourceId.connectionId.address }
@@ -418,6 +448,7 @@ internal class MetricFusion(
                 state.setHeartRate(null)
                 state.setExternalHeartRate(null)
                 state.setHeartRateSource(BtEngineState.HrSource.UNKNOWN)
+                publishHeartRateZones()
             }
             MetricKind.SPEED -> {
                 state.setSpeedKph(null)
@@ -462,6 +493,7 @@ internal class MetricFusion(
                     state.setHeartRateSource(BtEngineState.HrSource.UNKNOWN)
                 }
                 state.appendHeartRateSample(bpm, at)
+                publishHeartRateZones()
             }
 
             MetricKind.SPEED -> {
@@ -472,11 +504,13 @@ internal class MetricFusion(
                 state.setPeakSpeedKph(peak)
                 state.setPeakSpeedMph(peak / 1.609344)
                 state.setPeakSpeedDisplay(if (state.units.value == 1) peak / 1.609344 else peak)
+                if (value > 0.0) emitDerivedPace(MetricKind.INSTANT_PACE, 60.0 / value, sample)
             }
 
             MetricKind.AVERAGE_SPEED -> {
                 state.setAvgSpeedKph(value)
                 state.setAvgSpeedDisplay(if (state.units.value == 1) value / 1.609344 else value)
+                if (value > 0.0) emitDerivedPace(MetricKind.AVERAGE_PACE, 60.0 / value, sample)
             }
 
             MetricKind.CADENCE -> state.appendCadenceSpmSample(value, at)
@@ -499,6 +533,7 @@ internal class MetricFusion(
                     state.updateLapRowingSpeed(at)
                     state.updateRowingSpeed(at)
                 }
+                updateDistanceDerivedPace(sample)
             }
             MetricKind.ENERGY -> state.setExpEnergyTotal(value.roundToInt())
             MetricKind.ENERGY_RATE -> state.setExpEnergyRateKcalPerHour(value.roundToInt())
@@ -510,6 +545,7 @@ internal class MetricFusion(
                 state.setElapsedSeconds(seconds)
                 updateLapElapsed(seconds)
                 state.strokeCount.value?.let(::updateLapStrokes)
+                updateAveragePaceFromSessionDistance(sample)
             }
             MetricKind.STROKE_RATE -> state.appendStrokeRateSample(value, at)
             MetricKind.STROKE_COUNT -> {
@@ -531,6 +567,92 @@ internal class MetricFusion(
             }
             MetricKind.TOTAL_STRIDES -> state.setTotalStrides(value)
             MetricKind.LAP_CADENCE_SAMPLE -> updateLapCadence(value)
+        }
+    }
+
+    private fun emitDerivedPace(metric: MetricKind, minutesPerKilometer: Double, base: MetricSample) {
+        if (minutesPerKilometer <= 0.0 || !minutesPerKilometer.isFinite()) return
+        submit(
+            MetricSample(
+                connectionId = base.connectionId,
+                sourceId = base.sourceId,
+                protocol = base.protocol,
+                sourceClass = MetricSourceClass.DERIVED,
+                metric = metric,
+                arrivalMs = base.arrivalMs,
+                eventMs = base.eventMs,
+                value = minutesPerKilometer,
+                quality = MetricQuality.DERIVED,
+                confidence = DERIVED_PACE_CONFIDENCE,
+            ),
+        )
+    }
+
+    private fun updateDistanceDerivedPace(sample: MetricSample) {
+        val at = sample.arrivalMs
+        distancePaceBuffer.addLast(at to sample.value)
+        val cutoff = at - DISTANCE_PACE_BUFFER_MS
+        while (distancePaceBuffer.isNotEmpty() && distancePaceBuffer.first().first < cutoff) {
+            distancePaceBuffer.removeFirst()
+        }
+        val target = at - DISTANCE_PACE_TARGET_MS
+        val oldest = distancePaceBuffer.lastOrNull { it.first <= target }
+            ?: distancePaceBuffer.firstOrNull()
+        if (oldest != null) {
+            val elapsedMs = at - oldest.first
+            val deltaMeters = sample.value - oldest.second
+            if (elapsedMs >= DISTANCE_PACE_MIN_MS && deltaMeters > 0.0) {
+                val minutesPerKm = elapsedMs.toDouble() / 60_000.0 * 1_000.0 / deltaMeters
+                emitDerivedPace(MetricKind.INSTANT_PACE, minutesPerKm, sample)
+            }
+        }
+        updateAveragePaceFromSessionDistance(sample)
+    }
+
+    private fun updateAveragePaceFromSessionDistance(base: MetricSample) {
+        val distanceMeters = state.totalDistanceMeters.value ?: return
+        val elapsedSeconds = state.elapsedTimeSec.value ?: return
+        if (distanceMeters <= 0 || elapsedSeconds <= 0) return
+        val minutesPerKm = elapsedSeconds.toDouble() / 60.0 * 1_000.0 / distanceMeters.toDouble()
+        emitDerivedPace(MetricKind.AVERAGE_PACE, minutesPerKm, base)
+    }
+
+    private fun publishHeartRateZones() {
+        val mode = state.hrZoneModeFromApp?.value
+        val max = state.hrMaxFromApp?.value
+        val rest = state.restingHrFromApp?.value
+        state.setHeartRateZone(state.heartRate.value?.let { computeHeartRateZone(it, mode, max, rest) })
+        state.setAverageHeartRateZone(
+            state.averageHeartRate.value?.let { computeHeartRateZone(it, mode, max, rest) },
+        )
+    }
+
+    private fun computeHeartRateZone(
+        bpm: Int,
+        mode: HrZoneMode?,
+        maxHeartRate: Int?,
+        restingHeartRate: Int?,
+    ): Int? {
+        val ratio = when (mode) {
+            null, HrZoneMode.Off -> return null
+            HrZoneMode.MaxPercent -> {
+                if (maxHeartRate == null || maxHeartRate <= 0) return null
+                bpm.toDouble() / maxHeartRate.toDouble()
+            }
+            HrZoneMode.HeartRateReserve -> {
+                if (maxHeartRate == null || restingHeartRate == null || maxHeartRate <= restingHeartRate) {
+                    return null
+                }
+                (bpm - restingHeartRate).toDouble() / (maxHeartRate - restingHeartRate).toDouble()
+            }
+        }.coerceIn(0.0, 1.0)
+        return when {
+            ratio < 0.50 -> 0
+            ratio < 0.60 -> 1
+            ratio < 0.70 -> 2
+            ratio < 0.80 -> 3
+            ratio < 0.90 -> 4
+            else -> 5
         }
     }
 
@@ -618,6 +740,10 @@ internal class MetricFusion(
     private companion object {
         const val HEART_RATE_FRESHNESS_MS = 4_000L
         const val DEFAULT_FRESHNESS_MS = 3_000L
+        const val DERIVED_PACE_CONFIDENCE = 0.75
+        const val DISTANCE_PACE_MIN_MS = 5_000L
+        const val DISTANCE_PACE_TARGET_MS = 10_000L
+        const val DISTANCE_PACE_BUFFER_MS = 30_000L
         val SESSION_SOURCE = MetricSourceId(
             connectionId = ConnectionId("FITBRIDGE_SESSION", 0L),
             protocol = MetricProtocol.SESSION,

@@ -398,7 +398,6 @@ internal object BtEngineGattCore {
                 engine.state.hrmCtrlPointChar = null
                 engine.state.hrmBodyLocChar = null
                 engine.state.setExternalHeartRate(null)
-                HrmArbitration.reselect(engine)
             } else if (compatibilityRole == LegacyConnectionRole.FTMS) {
                 engine.state.setHaveControl(false)
                 engine.state.resetFtmsCapabilities()

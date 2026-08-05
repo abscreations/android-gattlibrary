@@ -20,7 +20,7 @@
 //   • Trigger capability reads (supported speed / incline / resistance / power ranges) and
 //       populate BtEngineState.
 //   • Bind app-supplied HR configuration (max HR, resting HR, zone mode) and kick HR zone
-//       recomputation via HrmArbitration.
+//       recomputation via MetricFusion.
 //   • Optionally talk to a provider-side btService layer via BtServiceControlSink so that events
 //       from a *remote* FTMS can be mirrored back out over local GATT services (FTMS / CSC / CPS).
 //
@@ -714,6 +714,7 @@ class BtEngine internal constructor(
             Timber.tag(BtEngineState.TAG).w("disconnectFtms skipped: BLUETOOTH_CONNECT not granted — clearing local state only")
             connection?.let {
                 state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                metricFusion.onDisconnected(it.connectionId)
                 state.clearConnection(it)
             }
             state.resetFtmsControl()
@@ -732,6 +733,7 @@ class BtEngine internal constructor(
                 runCatching { connection?.gatt?.close() }
                 connection?.let {
                     state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                    metricFusion.onDisconnected(it.connectionId)
                     state.clearConnection(it)
                 }
             }
@@ -779,7 +781,7 @@ class BtEngine internal constructor(
             state.hrmCtrlPointChar = null
             state.hrmBodyLocChar = null
             state.setExternalHeartRate(null)
-            HrmArbitration.reselect(this)
+            connection?.let { metricFusion.onDisconnected(it.connectionId) }
             return
         }
         guardConnectPerm(op = "disconnectHrm()", default = Unit) {
@@ -797,7 +799,7 @@ class BtEngine internal constructor(
                 state.hrmCtrlPointChar = null
                 state.hrmBodyLocChar = null
                 state.setExternalHeartRate(null)
-                HrmArbitration.reselect(this)
+                connection?.let { metricFusion.onDisconnected(it.connectionId) }
             }
         }
     }
@@ -1272,32 +1274,32 @@ class BtEngine internal constructor(
 
     fun setHrMaxFromApp(value: Int?) {
         state.setHrMaxFromApp(value)
-        HrmArbitration.recalcZone(this)
+        metricFusion.recalculateHeartRateZones()
     }
 
     fun setRestingHrFromApp(value: Int?) {
         state.setRestingHrFromApp(value)
-        HrmArbitration.recalcZone(this)
+        metricFusion.recalculateHeartRateZones()
     }
 
     fun setHrZoneModeFromApp(mode: HrZoneMode) {
         state.setHrZoneModeFromApp(mode)
-        HrmArbitration.recalcZone(this)
+        metricFusion.recalculateHeartRateZones()
     }
 
     fun bindHrMax(flow: StateFlow<Int?>) {
         state.hrMaxFromApp = flow
-        HrmArbitration.recalcZone(this)
+        metricFusion.recalculateHeartRateZones()
     }
 
     fun bindRestingHr(flow: StateFlow<Int?>) {
         state.restingHrFromApp = flow
-        HrmArbitration.recalcZone(this)
+        metricFusion.recalculateHeartRateZones()
     }
 
     fun bindHrZoneMode(flow: StateFlow<HrZoneMode>) {
         state.hrZoneModeFromApp = flow
-        HrmArbitration.recalcZone(this)
+        metricFusion.recalculateHeartRateZones()
     }
 
     /* ───────────────────────────── Retry enable plan hook (used by GATT queue) ───────────────────────────── */
@@ -1483,6 +1485,7 @@ internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
         state.setGattErrorFor(gatt, msg)
         if (connection != null) {
             state.setConnectionState(connection, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+            metricFusion.onDisconnected(connection.connectionId)
             state.clearConnection(connection)
         }
         if (role == LegacyConnectionRole.FTMS) {
@@ -1498,6 +1501,7 @@ internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
     runCatching { gatt.close() }
     if (connection != null) {
         state.setConnectionState(connection, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+        metricFusion.onDisconnected(connection.connectionId)
         state.clearConnection(connection)
     }
     if (role == LegacyConnectionRole.FTMS) {

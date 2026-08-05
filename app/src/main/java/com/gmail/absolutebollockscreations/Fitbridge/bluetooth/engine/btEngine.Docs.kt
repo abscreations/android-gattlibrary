@@ -176,12 +176,11 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *  - bindCalorieMode(...)
  *  - bindWearCalories(...)
  *  - bindHrMax(...), bindRestingHr(...), bindHrZoneMode(...)
- *      Wire up app-level flows to HrmArbitration for heart-rate zones and to
- *      EnergyArbitration for calories.
+ *      Wire up app-level flows to MetricFusion for heart-rate zones and calories.
  *
  *  - setPreferExternalHrm(Boolean)
  *  - setWearHeartRate(bpm: Int?)
- *      Feed arbitration surfaces (HrmArbitration / EnergyArbitration) and update
+ *      Feed MetricFusion and update
  *      timestamps used for freshness.
  *
  * ERROR SURFACES & ROUTING
@@ -347,7 +346,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *  - Each append*Sample(...) call:
  *      • Maintains a fixed-duration window (seriesWindowMinutes).
  *      • Updates rolling averages (avgSpeedKph, etc.).
- *      • Feeds PaceArbitration / HrmArbitration / EnergyArbitration where relevant.
+ *      • Emits source-tagged samples to MetricFusion where relevant.
  *
  * ROWING-SPECIFIC DERIVED SPEED
  *  - appendDistanceMetersSample(...) + updateRowingSpeed()
@@ -676,7 +675,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *      • Instant & average speed arrive as 0.01 km/h (u16).
 *      • appendSpeedKphSample(kph) updates speed series and running averages.
 *      • Derived mph, display speed, and peak speed are updated.
-*      • PaceArbitration.setSpeedMetersPerSecond(...) is fed from speed for
+*      • MetricFusion derives lower-quality pace candidates from speed for
 *        pace-from-speed fallback.
 *
 *  - Distance:
@@ -684,13 +683,13 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *      • Updates totalDistanceMeters / totalDistanceDisplay.
 *      • appendDistanceMetersSample(...) keeps a distance series for:
 *          - rowing speed derivation, and
-*          - PaceArbitration distance-derived pace.
+*          - MetricFusion distance-derived pace.
 *      • Lap metrics updated via updateLapDistance(...).
 *
 *  - Pace:
 *      • Some FTMS char variants encode pace as seconds per km (optionally ×10).
 *      • Native pace is **not** written directly to state; instead:
-*          PaceArbitration.setNativePace(engine, secPerKm)
+*          MetricFusion receives a native instant-pace sample.
 *        is called and state receives the canonical pace through arbitration.
 *
 *  - Power:
@@ -707,7 +706,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *
 *  - Energy:
 *      • FTMS energy fields are not written directly to expEnergyTotal.
-*        Instead, EnergyArbitration.setFtmsEnergy(...) is called so that
+*        Instead, a source-tagged energy sample is emitted so that MetricFusion
 *        calories from HRM/Wear can override when appropriate.
 *
 *  - Elapsed time:
@@ -718,16 +717,15 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *
 * ARBITRATION INTEGRATION
 *  - Heart-rate:
-*      • FTMS HR fields are routed through HrmArbitration.setFtmsHeartRate(...).
+*      • FTMS HR fields are routed through MetricFusion.
 *
 *  - Pace:
-*      • Native pace → PaceArbitration.setNativePace(...).
-*      • Speed      → PaceArbitration.setSpeedMetersPerSecond(...).
+*      • Native pace and speed are emitted as source-tagged samples.
 *      • Distance   → BtEngineState.appendDistanceMetersSample(...), which
-*        PaceArbitration reads for distance-derived pace.
+*        MetricFusion reads for distance-derived pace.
 *
 *  - Energy:
-*      • Machine kcal → EnergyArbitration.setFtmsEnergy(...).
+*      • Machine kcal → MetricFusion cumulative energy sample.
 *
 * IMPLEMENTATION NOTES
 *  - Uses small byte helpers (has/u8/u16/s16/skip) and logSet(...) to reduce
@@ -743,7 +741,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 * PURPOSE
 *  - Handle the Bluetooth SIG Heart Rate Service (0x180D) on top of the shared
 *    GATT callback.
-*  - Parse HRM frames, forward BPM to HrmArbitration as an **external HRM**
+*  - Parse HRM frames, emit BPM to MetricFusion as an **external HRM**
 *    source, and optionally enrich BtEngineState with HRV and sensor metadata.
 *
 * CONNECTION SETUP
@@ -762,7 +760,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *      • Presence of RR-intervals.
 *
 *  - BPM:
-*      • Extracted as Int and passed to HrmArbitration.setExternalHeartRate(...).
+*      • Extracted as Int and emitted as a source-tagged heart-rate sample.
 *
 *  - Optional fields (when BtEngineState implements HrmStateSink):
 *      • Sensor contact → setHrmSensorContact(...)
@@ -811,7 +809,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *  - Runs as pure singleton objects (`object`) with small internal caches.
 *  - Only reads/writes BtEngineState; no direct Bluetooth API access.
 *
-* HEART-RATE ARBITRATION (HrmArbitration)
+* HEART-RATE SELECTION (MetricFusion)
 *  - Sources:
 *      • FTMS-native HR (from FtmsParsers).
 *      • External HRM (from HrmProtocolHandler).
@@ -836,7 +834,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *      • reselect(engine)
 *      • recalcZone(engine)
 *
-* PACE ARBITRATION (PaceArbitration)
+* PACE SELECTION (MetricFusion)
 *  - Sources (all expressed as seconds per km internally):
 *      1) Native FTMS pace (treadmill/rower).
 *      2) Pace derived from instantaneous speed (m/s).
@@ -859,7 +857,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 *      • setSpeedMetersPerSecond(engine, speedMps)
 *      • setDistanceSnapshot(engine, distanceMeters, atMs)
 *
-* ENERGY ARBITRATION (EnergyArbitration)
+* ENERGY SELECTION (MetricFusion)
 *  - Sources:
 *      • HRM-derived energy (highest priority).
 *      • Wear OS / Health Services energy (medium).

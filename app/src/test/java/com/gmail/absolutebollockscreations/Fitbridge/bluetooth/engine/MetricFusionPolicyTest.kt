@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -75,6 +76,11 @@ class MetricFusionPolicyTest {
         assertEquals(ftmsA, fusion.selectedSource(MetricKind.POWER))
         fusion.submit(sample(MetricKind.POWER, 202.0, 103, ftmsB, MetricSourceClass.FTMS))
         assertEquals(ftmsB, fusion.selectedSource(MetricKind.POWER))
+
+        val nonNativeFusion = MetricFusion(BtEngineState())
+        nonNativeFusion.submit(sample(MetricKind.POWER, 180.0, 200, ftmsA, MetricSourceClass.FTMS, MetricQuality.DERIVED))
+        nonNativeFusion.submit(sample(MetricKind.POWER, 220.0, 201, cps, MetricSourceClass.CPS, MetricQuality.ESTIMATED))
+        assertEquals(ftmsA, nonNativeFusion.selectedSource(MetricKind.POWER))
     }
 
     @Test
@@ -166,9 +172,12 @@ class MetricFusionPolicyTest {
 
         fusion.submit(sample(MetricKind.ENERGY, 50.0, 200, first, MetricSourceClass.FTMS))
         fusion.submit(sample(MetricKind.ENERGY, 55.0, 201, first, MetricSourceClass.FTMS))
-        fusion.startSession(FusionPersona.RIDE, 202)
+        fusion.refresh(3_202)
+        assertNull(fusion.selectedSource(MetricKind.ENERGY))
+        assertEquals(55, state.expEnergyTotal.value)
+        fusion.startSession(FusionPersona.RIDE, 3_203)
         assertEquals(0, state.expEnergyTotal.value)
-        fusion.submit(sample(MetricKind.ENERGY, 80.0, 203, first, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.ENERGY, 80.0, 3_204, first, MetricSourceClass.FTMS))
         assertEquals(80, state.expEnergyTotal.value)
     }
 
@@ -195,5 +204,60 @@ class MetricFusionPolicyTest {
         assertEquals(FusionSubmission.REJECTED_INVALID, fusion.submit(sample(MetricKind.HEART_RATE, 0.0, 101, ftms, MetricSourceClass.FTMS)))
         assertEquals(FusionSubmission.REJECTED_INVALID, fusion.submit(sample(MetricKind.INSTANT_PACE, 0.0, 102, ftms, MetricSourceClass.FTMS)))
         assertNull(fusion.selectedSource(MetricKind.HEART_RATE))
+    }
+
+    @Test
+    fun `HR jump filter is independent per source and zones follow canonical HR`() {
+        val state = BtEngineState().apply {
+            setHrMaxFromApp(200)
+            setHrZoneModeFromApp(HrZoneMode.MaxPercent)
+        }
+        val fusion = MetricFusion(state)
+        val first = source(sensorConnection, MetricProtocol.HRM, 90)
+        val second = source(otherConnection, MetricProtocol.HRM, 91)
+        fusion.submit(sample(MetricKind.HEART_RATE, 100.0, 0, first, MetricSourceClass.HRM))
+        fusion.submit(sample(MetricKind.HEART_RATE, 200.0, 1_000, first, MetricSourceClass.HRM))
+        assertEquals(106, state.heartRate.value)
+        fusion.submit(sample(MetricKind.HEART_RATE, 150.0, 1_001, second, MetricSourceClass.HRM))
+        assertEquals(150, state.heartRate.value)
+        assertEquals(3, state.heartRateZone.value)
+
+        state.setHrMaxFromApp(150)
+        fusion.recalculateHeartRateZones()
+        assertEquals(5, state.heartRateZone.value)
+    }
+
+    @Test
+    fun `native pace wins then speed-derived pace takes over and expires`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val native = source(ftmsConnection, MetricProtocol.FTMS, 100)
+        val speed = source(sensorConnection, MetricProtocol.RSC, 101)
+        fusion.setPersona(FusionPersona.RUN, 100)
+        fusion.submit(sample(MetricKind.INSTANT_PACE, 5.0, 100, native, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.SPEED, 10.0, 101, speed, MetricSourceClass.RSC))
+        assertEquals(5.0, state.instantPaceMinPerKm.value!!, 0.0)
+
+        fusion.refresh(3_101)
+        assertEquals(6.0, state.instantPaceMinPerKm.value!!, 0.0)
+        assertEquals(MetricQuality.DERIVED, fusion.latestSample(MetricKind.INSTANT_PACE)?.quality)
+        fusion.refresh(3_102)
+        assertNull(state.instantPaceMinPerKm.value)
+    }
+
+    @Test
+    fun `distance-derived pace is session scoped`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 110)
+        fusion.startSession(FusionPersona.RUN, 0)
+        fusion.submit(sample(MetricKind.DISTANCE, 0.0, 100, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.DISTANCE, 100.0, 6_100, ftms, MetricSourceClass.FTMS))
+        assertEquals(1.0, state.instantPaceMinPerKm.value!!, 0.0)
+
+        fusion.startSession(FusionPersona.RUN, 6_101)
+        assertNull(state.instantPaceMinPerKm.value)
+        fusion.submit(sample(MetricKind.DISTANCE, 10.0, 6_102, ftms, MetricSourceClass.FTMS))
+        assertNull(state.instantPaceMinPerKm.value)
     }
 }

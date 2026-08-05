@@ -87,18 +87,18 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *          - Core metrics:
  *              · Distance: `setTotalDistanceMeters(...)`
  *              · Speed:    `appendSpeedKphSample(...)`, peak/avg from series
- *              · Pace:     via `PaceArbitration` (canonical min/km)
+ *              · Pace:     via `MetricFusion` (canonical min/km)
  *              · Power:    `appendPowerSample(...)` and smoothed averages
  *              · Cadence:  `appendCadenceSpmSample(...)`
  *              · Steps/strides/floors/strokes: set* totals and stroke metrics
  *              · Incline/ramp/elevation/force: `appendInclineDegSample(...)`,
  *                `setRampAngle`, `setElevationGainPos/Neg`, `setForceOnBelt`
  *          - Energy:
- *              · Machine calories are passed into `EnergyArbitration`, which
+ *              · Machine calories are passed into `MetricFusion`, which
  *                decides whether FTMS, HRM or Wear energy becomes
  *                `expEnergyTotal`.
  *          - Heart rate:
- *              · FTMS-native HR (when present) goes into `HrmArbitration` as
+ *              · FTMS-native HR (when present) goes into `MetricFusion` as
  *                an additional HR source.
  *          - Elapsed:
  *              · FTMS elapsed seconds → `setElapsedSeconds(sec)`.
@@ -111,7 +111,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *      • `HrmProtocolHandler` handles the Heart Rate Service (0x180D):
  *          - Decodes BPM, sensor contact, energy expended, RR intervals, and
  *            body sensor location.
- *          - BPM is sent to `HrmArbitration.setExternalHeartRate(...)`.
+ *          - BPM is emitted to `MetricFusion` as an external-HRM sample.
  *          - Metadata is applied via `HrmStateSink`, implemented by
  *            `BtEngineState`:
  *              · `sensorContact`
@@ -122,7 +122,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *        keep a time-series and running average for `averageHeartRate`.
  *
  *  - **Arbitration modules (HR / pace / energy)**
- *      • `HrmArbitration`:
+ *      • Heart-rate fusion:
  *          - Inputs:
  *              · FTMS HR
  *              · External HRM (`externalHeartRate` + `lastExternalAt`)
@@ -134,7 +134,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *              · `heartRateSource`
  *              · `heartRateZone`
  *              · Smoothed `externalHeartRate` and updated timestamps
- *      • `PaceArbitration`:
+ *      • Pace fusion:
  *          - Inputs:
  *              · Native FTMS pace (sec/km)
  *              · Speed-derived pace (from `appendSpeedKphSample`)
@@ -143,7 +143,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *              · `setInstantPace(minPerKm)` and `setAvgPace(minPerKm)`,
  *                which `BtEngineState` converts to min/km or min/mi based on
  *                `units`.
- *      • `EnergyArbitration`:
+ *      • Energy fusion:
  *          - Inputs:
  *              · HRM-derived energy
  *              · Wear calories
