@@ -5,7 +5,7 @@
  *  - Protocol handler for the standard Heart Rate Service (UUID 0x180D).
  *  - Plugged into [BtEngineGattCore] as the HRM profile implementation.
  *  - Discovers HRM characteristics, enables notifications, and parses incoming
- *    Heart Rate Measurement frames into [BtEngineState] / HR arbitration.
+ *    Heart Rate Measurement frames into source-tagged [MetricSample] values.
  *
  * SERVICE & CHARACTERISTICS
  *  - Primary service:
@@ -29,18 +29,11 @@
  *
  * DATA FLOW & INTEGRATION
  *  - Heart rate:
- *      • Parsed BPM is fed into [HrmArbitration.setExternalHeartRate], which merges
- *        HRM and FTMS-native heart rate and updates:
- *          - state.heartRate
- *          - state.averageHeartRate
- *          - state.hrSeries
- *          - state.heartRateSource / heartRateZone (via arbitration logic).
+ *      • Parsed BPM is emitted through [MetricEmitter] for centralized fusion.
  *
  *  - Energy:
  *      • When Energy Expended is present, reads UInt16 in **kiloJoules**,
- *        converts to kcal (via KJ_TO_KCAL), and forwards to
- *        [EnergyArbitration.setHrmEnergy] so HRM becomes the top-priority
- *        energy source vs FTMS/Wear.
+ *        converts to kcal and emits a cumulative energy sample.
  *
  *  - RR-intervals & contact:
  *      • RR-intervals are converted from 1/1024s to milliseconds and passed to
@@ -55,8 +48,7 @@
  * STATE SINK CONTRACT
  *  - [BtEngineState] implements [HrmStateSink] so HRM-specific fields can be
  *    populated without tying this handler to a concrete state type.
- *  - Consolidated kcal / energy display should always come from
- *    [EnergyArbitration] rather than any raw HRM field.
+ *  - Consolidated workout metrics are projected only by [MetricFusion].
  */
 
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
@@ -169,7 +161,15 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
         )
 
         when (ch.uuid) {
-            UUID_HEART_RATE_MEASUREMENT -> handleHeartRateMeasurement(engine, value)
+            UUID_HEART_RATE_MEASUREMENT -> {
+                val emitter = engine.metricEmitterFor(
+                    gatt = gatt,
+                    characteristicUuid = ch.uuid,
+                    protocol = MetricProtocol.HRM,
+                    sourceClass = MetricSourceClass.HRM,
+                ) ?: return
+                handleHeartRateMeasurement(engine, emitter, value)
+            }
             UUID_HEART_RATE_CONTROL_POINT -> {
                 // We don't actively use CP, but log for debugging if a device sends something.
                 if (Debugging && DebugLevel > 4) {
@@ -238,132 +238,33 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
      *  [?] Energy Expended (opt, uint16, **kJ**)
      *  [?] RR-Intervals (opt, 1..n, uint16 each, unit = 1/1024 s)
      */
-    private fun handleHeartRateMeasurement(engine: BtEngine, value: ByteArray) {
-        if (value.isEmpty()) {
-            Timber.tag(BtEngineState.TAG).w("HRM meas: empty payload")
+    private fun handleHeartRateMeasurement(
+        engine: BtEngine,
+        emitter: MetricEmitter,
+        value: ByteArray,
+    ) {
+        val decoded = decodeHrmMeasurement(value)
+        if (decoded == null) {
+            Timber.tag(BtEngineState.TAG).w("HRM measurement truncated before heart rate")
             return
         }
 
-        var offset = 0
-        val flags = value[offset].toInt() and 0xFF
-        offset += 1
+        (engine.state as HrmStateSink).apply {
+            setHrmSensorContact(decoded.sensorContact)
+            if (decoded.rrIntervalsMs.isNotEmpty()) setHrmRrIntervals(decoded.rrIntervalsMs)
+        }
+        emitHrmMetrics(decoded, emitter)
 
-        val hrIs16           = (flags and 0x01) != 0
-        val contactSupported = (flags and 0x02) != 0
-        val contactDetected  = (flags and 0x04) != 0
-        val energyPresent    = (flags and 0x08) != 0
-        val rrPresent        = (flags and 0x10) != 0
-
+        if (decoded.optionalFieldTruncated) {
+            Timber.tag(BtEngineState.TAG).w("HRM measurement ended inside an optional field")
+        }
         if (Debugging && DebugLevel > 4) {
             Timber.tag(BtEngineState.TAG).d(
-                "HRM meas flags=0x%02X hrIs16=%s contactSupported=%s contactDetected=%s energyPresent=%s rrPresent=%s raw=%s",
-                flags,
-                hrIs16,
-                contactSupported,
-                contactDetected,
-                energyPresent,
-                rrPresent,
-                value.toHex()
-            )
-        }
-
-        // ─── Heart Rate (8 or 16) ────────────────────────────────
-        val bpm: Int? = if (hrIs16 && value.size >= offset + 2) {
-            ((value[offset].toInt() and 0xFF) or ((value[offset + 1].toInt() and 0xFF) shl 8))
-                .coerceAtLeast(0).also { offset += 2 }
-        } else if (!hrIs16 && value.size >= offset + 1) {
-            (value[offset].toInt() and 0xFF).also { offset += 1 }
-        } else {
-            Timber.tag(BtEngineState.TAG).w(
-                "HRM meas: insufficient bytes for HR (hrIs16=%s, size=%d, offset=%d)",
-                hrIs16,
-                value.size,
-                offset
-            )
-            null
-        }
-
-        if (Debugging && DebugLevel > 4) {
-            Timber.tag(BtEngineState.TAG).d(
-                "HRM meas decoded bpm=%s",
-                bpm?.toString() ?: "∅"
-            )
-        }
-
-        // ─── Sensor Contact (bits 1..2) ──────────────────────────
-        (engine.state as? HrmStateSink)?.let { sink ->
-            val contact = if (contactSupported) contactDetected else null
-            sink.setHrmSensorContact(contact)
-            if (Debugging && DebugLevel > 4) {
-                Timber.tag(BtEngineState.TAG).d(
-                    "HRM sensor contact: supported=%s detected=%s → %s",
-                    contactSupported,
-                    contactDetected,
-                    contact
-                )
-            }
-        }
-
-        // ─── Energy Expended (uint16, **kiloJoules** per spec) ───
-        if (energyPresent && value.size >= offset + 2) {
-            val energyKj =
-                (value[offset].toInt() and 0xFF) or ((value[offset + 1].toInt() and 0xFF) shl 8)
-            offset += 2
-
-            // Convert kJ → kcal for our consolidated energy slot
-            // 1 kJ = 0.239006 kcal (keep a simple factor)
-            val energyKcal = energyKj * KJ_TO_KCAL
-            if (Debugging && DebugLevel > 4) {
-                Timber.tag(BtEngineState.TAG).d(
-                    "HRM energy: raw=%d kJ → %.1f kcal",
-                    energyKj,
-                    energyKcal
-                )
-            }
-
-            // 1) Publish to arbitration so HRM is top priority source
-            EnergyArbitration.setHrmEnergy(engine, energyKcal)
-        } else if (energyPresent) {
-            Timber.tag(BtEngineState.TAG).w(
-                "HRM energyPresent=TRUE but not enough bytes (size=%d, offset=%d)",
-                value.size,
-                offset
-            )
-        }
-
-        // ─── RR-Intervals (1/1024s → ms) ─────────────────────────
-        if (rrPresent) {
-            val rr = ArrayList<Int>(4)
-            while (value.size >= offset + 2) {
-                val rr1024 =
-                    (value[offset].toInt() and 0xFF) or ((value[offset + 1].toInt() and 0xFF) shl 8)
-                offset += 2
-                // 1/1024s → ms
-                val rrMs = ((rr1024 * 1000.0) / 1024.0).roundToInt()
-                rr.add(rrMs)
-            }
-            if (rr.isNotEmpty()) {
-                (engine.state as? HrmStateSink)?.setHrmRrIntervals(rr)
-                if (Debugging && DebugLevel > 4) {
-                    Timber.tag(BtEngineState.TAG).d(
-                        "HRM RR intervals count=%d values=%s",
-                        rr.size,
-                        rr.joinToString(",")
-                    )
-                }
-            } else {
-                Timber.tag(BtEngineState.TAG).v("HRM RR flag set but no intervals decoded")
-            }
-        }
-
-        // ─── Feed arbitration as External HRM input (bpm) ─────────
-        HrmArbitration.setExternalHeartRate(engine, bpm)
-
-        if (Debugging && DebugLevel > 4) {
-            Timber.tag(BtEngineState.TAG).d(
-                "HRM meas final bpm=%s rrCount=%d",
-                bpm?.toString() ?: "∅",
-                (engine.state as? HrmStateSink)?.hrmRrCount() ?: 0
+                "HRM decoded bpm=%d contact=%s energyKj=%s rrCount=%d",
+                decoded.bpm,
+                decoded.sensorContact,
+                decoded.energyKiloJoules?.toString() ?: "none",
+                decoded.rrIntervalsMs.size,
             )
         }
     }
@@ -394,9 +295,6 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
     }
 
     companion object {
-        // Simple global factor; good enough for kcal dashboarding
-        private const val KJ_TO_KCAL = 0.239006
-
         private fun short(u: UUID?): String = when (u) {
             null -> "null"
             else -> u.toString().let { s ->
@@ -426,13 +324,84 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
     }
 }
 
+internal data class DecodedHrmMeasurement(
+    val bpm: Int,
+    val sensorContact: Boolean?,
+    val energyKiloJoules: Int?,
+    val rrIntervalsMs: List<Int>,
+    val optionalFieldTruncated: Boolean,
+)
+
+private const val HRM_KJ_TO_KCAL = 0.239006
+
+internal fun emitHrmMetrics(decoded: DecodedHrmMeasurement, emitter: MetricEmitter) {
+    decoded.energyKiloJoules?.let { energyKj ->
+        val energyKcal = energyKj * HRM_KJ_TO_KCAL
+        emitter.emit(MetricKind.ENERGY, energyKcal, nativeCumulative = energyKcal)
+    }
+    emitter.emit(MetricKind.HEART_RATE, decoded.bpm)
+}
+
+/** Bounds-checked Heart Rate Measurement decoder with no engine or Bluetooth dependencies. */
+internal fun decodeHrmMeasurement(value: ByteArray): DecodedHrmMeasurement? {
+    if (value.isEmpty()) return null
+    var offset = 1
+    val flags = value[0].toInt() and 0xFF
+    val hrIs16 = flags and 0x01 != 0
+    val contactSupported = flags and 0x02 != 0
+    val contactDetected = flags and 0x04 != 0
+    val energyPresent = flags and 0x08 != 0
+    val rrPresent = flags and 0x10 != 0
+
+    val bpm = if (hrIs16) {
+        if (value.size < offset + 2) return null
+        ((value[offset].toInt() and 0xFF) or
+            ((value[offset + 1].toInt() and 0xFF) shl 8)).also { offset += 2 }
+    } else {
+        if (value.size < offset + 1) return null
+        (value[offset].toInt() and 0xFF).also { offset += 1 }
+    }
+
+    var optionalTruncated = false
+    val energyKj = if (energyPresent) {
+        if (value.size < offset + 2) {
+            optionalTruncated = true
+            null
+        } else {
+            ((value[offset].toInt() and 0xFF) or
+                ((value[offset + 1].toInt() and 0xFF) shl 8)).also { offset += 2 }
+        }
+    } else {
+        null
+    }
+
+    val rrIntervals = mutableListOf<Int>()
+    if (rrPresent && !optionalTruncated) {
+        while (value.size >= offset + 2) {
+            val rr1024 = (value[offset].toInt() and 0xFF) or
+                ((value[offset + 1].toInt() and 0xFF) shl 8)
+            offset += 2
+            rrIntervals += (rr1024 * 1000.0 / 1024.0).roundToInt()
+        }
+        if (offset != value.size) optionalTruncated = true
+    }
+
+    return DecodedHrmMeasurement(
+        bpm = bpm,
+        sensorContact = if (contactSupported) contactDetected else null,
+        energyKiloJoules = energyKj,
+        rrIntervalsMs = rrIntervals,
+        optionalFieldTruncated = optionalTruncated,
+    )
+}
+
 /** Phase 0.3 migration seam: the HRM body-location read retains its owning context. */
 internal fun <T> bodySensorLocationReadContext(hrmContext: T): T = hrmContext
 
 /**
  * Optional sink interface: if your EngineState implements this, HRM data will be populated.
  * NOTE: setHrmEnergyExpended(...) stays in **raw HRM units (kJ)** to mirror the 0x2A37 spec.
- * Consolidated kcal flow should come from EnergyArbitration, not from here.
+ * Consolidated kcal flow comes from [MetricFusion], not from this metadata sink.
  */
 internal interface HrmStateSink {
     fun setHrmSensorContact(contact: Boolean?)

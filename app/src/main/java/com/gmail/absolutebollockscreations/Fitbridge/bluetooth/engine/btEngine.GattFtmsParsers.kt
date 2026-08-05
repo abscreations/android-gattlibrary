@@ -3,8 +3,8 @@
  *
  * ROLE
  *  - Stateless FTMS (Fitness Machine Service) measurement parsers used by [FtmsProtocolHandler].
- *  - Decodes raw FTMS data characteristics for all supported machine types and pushes
- *    normalized values into [BtEngineState] (time-series, lap metrics, display fields).
+ *  - Decodes raw FTMS data characteristics for all supported machine types and emits
+ *    source-tagged, normalized [MetricSample] values through [MetricEmitter].
  *
  * SUPPORTED FTMS MEASUREMENT FRAMES
  *  - doBike(...)       → Cycling (UUID 0x2AD2)
@@ -18,7 +18,7 @@
  *    • Reads and interprets FTMS flag fields.
  *    • Walks the packed payload in spec order with bounds checks.
  *    • Converts FTMS units (0.01 km/h, 1/2 spm, 0.1 levels, etc.) into neutral / SI units.
- *    • Updates the appropriate fields on [BtEngine.state] using dedicated setters/appenders.
+ *    • Emits each decoded value with packet-scoped source identity and arrival time.
  *
  * METRICS & STATE UPDATES
  *  - Speed & distance
@@ -58,37 +58,9 @@
  *      • lapRowPaceMinPer500m (rowing-specific).
  *      • lapStrokeCount, lapSteps, lapCadenceSpm (including incremental averaging).
  *
- * ARBITRATION INTEGRATION
- *  - Heart rate:
- *      • FTMS HR frames call HrmArbitration.setFtmsHeartRate(engine, bpm) so the
- *        canonical heart rate (and zones) are chosen across FTMS vs. external HRM.
- *
- *  - Pace:
- *      • Native FTMS **instant** pace (treadmill/rower) is fed into
- *        PaceArbitration.setNativePace(engine, secPerKm).
- *      • Native FTMS **average** pace (treadmill/rower) is fed into
- *        PaceArbitration.setNativeAvgPace(engine, secPerKm).
- *      • When FTMS only reports **average speed**, this parser computes a synthetic
- *        average pace (sec/km) from km/h and feeds it into
- *        PaceArbitration.setNativeAvgPace(...) instead of relying on speed-derived
- *        paths inside the arbitrator.
- *      • Instant speed updates still call PaceArbitration.setSpeedMetersPerSecond(...)
- *        so the arbitrator can derive fallback instant pace when native pace is absent.
- *      • Distance updates feed BtEngineState.appendDistanceMetersSample(...), which
- *        PaceArbitration can use (via its own distance snapshots) to derive pace from
- *        distance/time when speed/pace are missing.
- *
- *  - Energy:
- *      • Machine energy is routed via EnergyArbitration.setFtmsEnergy(...) instead of
- *        writing directly to expEnergyTotal, so it can be consolidated with other sources.
- *
  * IMPLEMENTATION NOTES
- *  - The object itself is stateless; all mutable state lives in [BtEngineState] and the
- *    arbitration helpers (HrmArbitration, PaceArbitration, EnergyArbitration).
- *  - Uses small byte helpers (has / u8 / u16 / s16 / skip) and a logSet(...) helper to
- *    minimize boilerplate and only log state changes when logging is enabled.
- *  - Any value that participates in graphs or averages goes through append*Sample(...)
- *    so sliding-window series and running means remain consistent across the engine.
+ *  - The object itself is stateless; canonical state projection is owned by [MetricFusion].
+ *  - Uses small byte helpers (has / u8 / u16 / s16 / skip) for every optional field.
  */
 
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
@@ -96,7 +68,6 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 import android.Manifest
 import androidx.annotation.RequiresPermission
 import timber.log.Timber
-import kotlin.math.max
 import com.gmail.absolutebollockscreations.Fitbridge.Debugging
 import com.gmail.absolutebollockscreations.Fitbridge.DebugLevel
 
@@ -119,24 +90,14 @@ internal object BtEngineFtmsParsers {
     // ─────────────────────────────────────────────────────────────
     // Unit conversion constants (local)
     // ─────────────────────────────────────────────────────────────
-    private const val MPS_TO_KPH = 3.6
-    private const val MPS_TO_MPH = 2.23694
-    private const val M_TO_MI    = 0.000621371
-    private const val M_TO_KM    = 0.001
-    private const val M_PER_KM   = 1000.0
-    private const val M_PER_MILE = 1609.344
-    private const val ROW_PACE_M = 500.0
     private const val STRIDES_TO_STEPS = 2.0 // device-dependent; template default
-
-    private const val UNIT_METRIC = 0
-    private const val UNIT_IMPERIAL = 1
 
     // ─────────────────────────────────────────────────────────────
     // Public entry points (called by FtmsProtocolHandler)
     // ─────────────────────────────────────────────────────────────
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doBike(engine: BtEngine, value: ByteArray) {
+    fun doBike(emitter: MetricEmitter, value: ByteArray) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Bike (2AD2) len=%d %s", value.size, value.toHex())
         }
@@ -147,24 +108,24 @@ internal object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Bike flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.BIKE_MORE) == 0) off = readSpeed(engine, value, off)
-        if ((flags and Flags.BIKE_AVGSPEED) != 0) off = readAvgSpeed(engine, value, off)
-        if ((flags and Flags.BIKE_CADENCE) != 0) off = readCadence(engine, value, off, halfUnits = true)
-        if ((flags and Flags.BIKE_AVGCAD) != 0) off = readAvgCadence(engine, value, off, halfUnits = true)
-        if ((flags and Flags.BIKE_TOTALDIST) != 0) off = readDistance(engine, value, off)
-        if ((flags and Flags.BIKE_RESISTANCE) != 0) off = readResistance(engine, value, off, div10 = false)
-        if ((flags and Flags.BIKE_INSTPOWER) != 0) off = readPower(engine, value, off)
-        if ((flags and Flags.BIKE_AVGPOWER) != 0) off = readAvgPower(engine, value, off)
-        if ((flags and Flags.BIKE_EXPENERGY) != 0) off = readEnergy(engine, value, off)
+        if ((flags and Flags.BIKE_MORE) == 0) off = readSpeed(emitter, value, off)
+        if ((flags and Flags.BIKE_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
+        if ((flags and Flags.BIKE_CADENCE) != 0) off = readCadence(emitter, value, off, halfUnits = true)
+        if ((flags and Flags.BIKE_AVGCAD) != 0) off = readAvgCadence(emitter, value, off, halfUnits = true)
+        if ((flags and Flags.BIKE_TOTALDIST) != 0) off = readDistance(emitter, value, off)
+        if ((flags and Flags.BIKE_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = false)
+        if ((flags and Flags.BIKE_INSTPOWER) != 0) off = readPower(emitter, value, off)
+        if ((flags and Flags.BIKE_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
+        if ((flags and Flags.BIKE_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.BIKE_HEARTRATE) != 0) off = readFtmsHeartRate(engine, value, off)
-        if ((flags and Flags.BIKE_METABOLIC) != 0) off = readMet(engine, value, off)
-        if ((flags and Flags.BIKE_ELAPSED) != 0) off = readElapsed(engine, value, off)
+        if ((flags and Flags.BIKE_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and Flags.BIKE_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and Flags.BIKE_ELAPSED) != 0) off = readElapsed(emitter, value, off)
         if ((flags and Flags.BIKE_REMAINING) != 0) skip(off, 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doRower(engine: BtEngine, value: ByteArray) {
+    fun doRower(emitter: MetricEmitter, value: ByteArray) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Rower (2AD1) len=%d %s", value.size, value.toHex())
         }
@@ -175,28 +136,28 @@ internal object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Rower flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.ROW_MORE) == 0) off = readStrokes(engine, value, off)
-        if ((flags and Flags.ROW_AVGSTROKE) != 0) off = readAvgStrokes(engine, value, off)
-        if ((flags and Flags.ROW_TOTALDIST) != 0) off = readDistance(engine, value, off, rower = true)
+        if ((flags and Flags.ROW_MORE) == 0) off = readStrokes(emitter, value, off)
+        if ((flags and Flags.ROW_AVGSTROKE) != 0) off = readAvgStrokes(emitter, value, off)
+        if ((flags and Flags.ROW_TOTALDIST) != 0) off = readDistance(emitter, value, off)
         if ((flags and Flags.ROW_INSTPACE) != 0) {
-            off = readPace(engine, value, off, times10 = false, per500m = true)
+            off = readPace(emitter, value, off, times10 = false, per500m = true)
         }
         if ((flags and Flags.ROW_AVGPACE) != 0) {
-            off = readAvgPace(engine, value, off, times10 = false, per500m = true)
+            off = readAvgPace(emitter, value, off, times10 = false, per500m = true)
         }
-        if ((flags and Flags.ROW_INSTPOWER) != 0) off = readPower(engine, value, off)
-        if ((flags and Flags.ROW_AVGPOWER) != 0) off = readAvgPower(engine, value, off)
-        if ((flags and Flags.ROW_RESISTANCE) != 0) off = readResistance(engine, value, off, div10 = false)
-        if ((flags and Flags.ROW_EXPENERGY) != 0) off = readEnergy(engine, value, off)
+        if ((flags and Flags.ROW_INSTPOWER) != 0) off = readPower(emitter, value, off)
+        if ((flags and Flags.ROW_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
+        if ((flags and Flags.ROW_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = false)
+        if ((flags and Flags.ROW_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.ROW_HEARTRATE) != 0) off = readFtmsHeartRate(engine, value, off)
-        if ((flags and Flags.ROW_METABOLIC) != 0) off = readMet(engine, value, off)
-        if ((flags and Flags.ROW_ELAPSED) != 0) off = readElapsed(engine, value, off)
+        if ((flags and Flags.ROW_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and Flags.ROW_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and Flags.ROW_ELAPSED) != 0) off = readElapsed(emitter, value, off)
         if ((flags and Flags.ROW_REMAINING) != 0) skip(off, 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doTreadmill(engine: BtEngine, value: ByteArray) {
+    fun doTreadmill(emitter: MetricEmitter, value: ByteArray) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Treadmill (2ACD) len=%d %s", value.size, value.toHex())
         }
@@ -207,24 +168,24 @@ internal object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Treadmill flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.TREAD_MOREDATA) == 0) off = readSpeed(engine, value, off)
-        if ((flags and Flags.TREAD_AVGSPEED) != 0) off = readAvgSpeed(engine, value, off)
-        if ((flags and Flags.TREAD_TOTALDISTANCE) != 0) off = readDistance(engine, value, off)
-        if ((flags and Flags.TREAD_INCLRAMPANGLE) != 0) off = readInclineV1(engine, value, off)
-        if ((flags and Flags.TREAD_ELEVATIONGAIN) != 0) off = readElevation(engine, value, off, mode = 2)
-        if ((flags and Flags.TREAD_INSTANTPACE) != 0) off = readPace(engine, value, off, times10 = true)
-        if ((flags and Flags.TREAD_AVGPACE) != 0) off = readAvgPace(engine, value, off, times10 = true)
-        if ((flags and Flags.TREAD_EXPENERGY) != 0) off = readEnergy(engine, value, off)
+        if ((flags and Flags.TREAD_MOREDATA) == 0) off = readSpeed(emitter, value, off)
+        if ((flags and Flags.TREAD_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
+        if ((flags and Flags.TREAD_TOTALDISTANCE) != 0) off = readDistance(emitter, value, off)
+        if ((flags and Flags.TREAD_INCLRAMPANGLE) != 0) off = readInclineV1(emitter, value, off)
+        if ((flags and Flags.TREAD_ELEVATIONGAIN) != 0) off = readElevation(emitter, value, off, mode = 2)
+        if ((flags and Flags.TREAD_INSTANTPACE) != 0) off = readPace(emitter, value, off, times10 = true)
+        if ((flags and Flags.TREAD_AVGPACE) != 0) off = readAvgPace(emitter, value, off, times10 = true)
+        if ((flags and Flags.TREAD_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.TREAD_HEARTRATE) != 0) off = readFtmsHeartRate(engine, value, off)
-        if ((flags and Flags.TREAD_METABOLIC) != 0) off = readMet(engine, value, off)
-        if ((flags and Flags.TREAD_ELAPSEDTIME) != 0) off = readElapsed(engine, value, off)
+        if ((flags and Flags.TREAD_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and Flags.TREAD_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and Flags.TREAD_ELAPSEDTIME) != 0) off = readElapsed(emitter, value, off)
         if ((flags and Flags.TREAD_REMAININGTIME) != 0) off = skip(off, 2)
-        if ((flags and Flags.TREAD_BELTFORCEPOWER) != 0) readBeltForce(engine, value, off)
+        if ((flags and Flags.TREAD_BELTFORCEPOWER) != 0) readBeltForce(emitter, value, off)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doElliptical(engine: BtEngine, value: ByteArray) {
+    fun doElliptical(emitter: MetricEmitter, value: ByteArray) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Elliptical (2ACE) len=%d %s", value.size, value.toHex())
         }
@@ -237,26 +198,26 @@ internal object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Elliptical flags=0x%06X", flags)
         }
 
-        if ((flags and Flags.ELL_MORE) == 0) off = readSpeed(engine, value, off)
-        if ((flags and Flags.ELL_AVGSPEED) != 0) off = readAvgSpeed(engine, value, off)
-        if ((flags and Flags.ELL_TOTALDIST) != 0) off = readDistance(engine, value, off)
-        if ((flags and Flags.ELL_STEPCOUNT) != 0) off = readEllipticalCadence(engine, value, off)
-        if ((flags and Flags.ELL_STRIDECOUNT) != 0) off = readStrides(engine, value, off, tenths = true)
-        if ((flags and Flags.ELL_ELEVGAIN) != 0) off = readElevation(engine, value, off, mode = 3)
-        if ((flags and Flags.ELL_RESISTANCE) != 0) off = readResistance(engine, value, off, div10 = true)
-        if ((flags and Flags.ELL_INCLINATION) != 0) off = readInclineV2(engine, value, off)
-        if ((flags and Flags.ELL_INSTPOWER) != 0) off = readPower(engine, value, off)
-        if ((flags and Flags.ELL_AVGPOWER) != 0) off = readAvgPower(engine, value, off)
-        if ((flags and Flags.ELL_EXPENERGY) != 0) off = readEnergy(engine, value, off)
+        if ((flags and Flags.ELL_MORE) == 0) off = readSpeed(emitter, value, off)
+        if ((flags and Flags.ELL_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
+        if ((flags and Flags.ELL_TOTALDIST) != 0) off = readDistance(emitter, value, off)
+        if ((flags and Flags.ELL_STEPCOUNT) != 0) off = readEllipticalCadence(emitter, value, off)
+        if ((flags and Flags.ELL_STRIDECOUNT) != 0) off = readStrides(emitter, value, off, tenths = true)
+        if ((flags and Flags.ELL_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 3)
+        if ((flags and Flags.ELL_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = true)
+        if ((flags and Flags.ELL_INCLINATION) != 0) off = readInclineV2(emitter, value, off)
+        if ((flags and Flags.ELL_INSTPOWER) != 0) off = readPower(emitter, value, off)
+        if ((flags and Flags.ELL_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
+        if ((flags and Flags.ELL_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.ELL_HEARTRATE) != 0) off = readFtmsHeartRate(engine, value, off)
-        if ((flags and Flags.ELL_METABOLIC) != 0) off = readMet(engine, value, off)
-        if ((flags and Flags.ELL_ELAPSED) != 0) off = readElapsed(engine, value, off)
+        if ((flags and Flags.ELL_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and Flags.ELL_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and Flags.ELL_ELAPSED) != 0) off = readElapsed(emitter, value, off)
         if ((flags and Flags.ELL_REMAINING) != 0) skip(off, 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doStepper(engine: BtEngine, value: ByteArray) {
+    fun doStepper(emitter: MetricEmitter, value: ByteArray) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Stepper (2ACF) len=%d %s", value.size, value.toHex())
         }
@@ -267,20 +228,20 @@ internal object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Stepper flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.STEP_MORE) == 0) off = readFloors(engine, value, off, mode = 2)
-        if ((flags and Flags.STEP_STEPRATE) != 0) off = readCadence(engine, value, off, halfUnits = false)
-        if ((flags and Flags.STEP_AVGSTEPR) != 0) off = readAvgCadence(engine, value, off, halfUnits = false)
-        if ((flags and Flags.STEP_ELEVGAIN) != 0) off = readElevation(engine, value, off, mode = 1)
-        if ((flags and Flags.STEP_EXPENERGY) != 0) off = readEnergy(engine, value, off)
+        if ((flags and Flags.STEP_MORE) == 0) off = readFloors(emitter, value, off, mode = 2)
+        if ((flags and Flags.STEP_STEPRATE) != 0) off = readCadence(emitter, value, off, halfUnits = false)
+        if ((flags and Flags.STEP_AVGSTEPR) != 0) off = readAvgCadence(emitter, value, off, halfUnits = false)
+        if ((flags and Flags.STEP_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 1)
+        if ((flags and Flags.STEP_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.STEP_HEARTRATE) != 0) off = readFtmsHeartRate(engine, value, off)
-        if ((flags and Flags.STEP_METABOLIC) != 0) off = readMet(engine, value, off)
-        if ((flags and Flags.STEP_ELAPSED) != 0) off = readElapsed(engine, value, off)
+        if ((flags and Flags.STEP_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and Flags.STEP_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and Flags.STEP_ELAPSED) != 0) off = readElapsed(emitter, value, off)
         if ((flags and Flags.STEP_REMAINING) != 0) skip(off, 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doClimber(engine: BtEngine, value: ByteArray) {
+    fun doClimber(emitter: MetricEmitter, value: ByteArray) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Climber (2AD0) len=%d %s", value.size, value.toHex())
         }
@@ -291,16 +252,16 @@ internal object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Climber flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.CLIMB_MORE) == 0) off = readFloors(engine, value, off, mode = 1)
-        if ((flags and Flags.CLIMB_STEPRATE) != 0) off = readCadence(engine, value, off, halfUnits = false)
-        if ((flags and Flags.CLIMB_AVGSTEPR) != 0) off = readAvgCadence(engine, value, off, halfUnits = false)
-        if ((flags and Flags.CLIMB_ELEVGAIN) != 0) off = readElevation(engine, value, off, mode = 1)
-        if ((flags and Flags.CLIMB_STRIDE) != 0) off = readStrides(engine, value, off, tenths = false)
-        if ((flags and Flags.CLIMB_EXPENERGY) != 0) off = readEnergy(engine, value, off)
+        if ((flags and Flags.CLIMB_MORE) == 0) off = readFloors(emitter, value, off, mode = 1)
+        if ((flags and Flags.CLIMB_STEPRATE) != 0) off = readCadence(emitter, value, off, halfUnits = false)
+        if ((flags and Flags.CLIMB_AVGSTEPR) != 0) off = readAvgCadence(emitter, value, off, halfUnits = false)
+        if ((flags and Flags.CLIMB_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 1)
+        if ((flags and Flags.CLIMB_STRIDE) != 0) off = readStrides(emitter, value, off, tenths = false)
+        if ((flags and Flags.CLIMB_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.CLIMB_HEARTRATE) != 0) off = readFtmsHeartRate(engine, value, off)
-        if ((flags and Flags.CLIMB_METABOLIC) != 0) off = readMet(engine, value, off)
-        if ((flags and Flags.CLIMB_ELAPSED) != 0) off = readElapsed(engine, value, off)
+        if ((flags and Flags.CLIMB_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and Flags.CLIMB_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and Flags.CLIMB_ELAPSED) != 0) off = readElapsed(emitter, value, off)
         if ((flags and Flags.CLIMB_REMAINING) != 0) skip(off, 2)
     }
 
@@ -308,28 +269,27 @@ internal object BtEngineFtmsParsers {
     // Field readers
     // ─────────────────────────────────────────────────────────────
 
-    private fun readFtmsHeartRate(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readFtmsHeartRate(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 1)) {
             val hr = u8(b, off)
-            // Merge FTMS-native HR with any external HRM via arbitration
-            HrmArbitration.setFtmsHeartRate(engine, hr)
+            emitter.emit(MetricKind.HEART_RATE, hr)
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS HR (bpm) → HrmArbitration: %d", hr)
+                Timber.tag(TAG).d("FTMS HR sample (bpm): %d", hr)
             }
             off += 1
         }
         return off
     }
 
-    private fun readStrokes(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readStrokes(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 1)) {
             val sr = u8(b, off) / 2.0
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("Rower strokeRate (spm): %.1f", sr)
             }
-            engine.state.appendStrokeRateSample(sr)
+            emitter.emit(MetricKind.STROKE_RATE, sr)
             off += 1
         }
         if (has(b, off, 2)) {
@@ -337,33 +297,31 @@ internal object BtEngineFtmsParsers {
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("Rower strokeCount: %d", count)
             }
-            logSet("strokeCount", engine.state.strokeCount.value, count, engine.state::setStrokeCount)
+            emitter.emit(MetricKind.STROKE_COUNT, count)
             off += 2
-            updateLapStrokes(engine, count)
         }
         return off
     }
 
-    private fun readAvgStrokes(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readAvgStrokes(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 1)) {
             val avg = u8(b, off) / 2.0
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("Rower average strokeRate (spm): %.1f", avg)
             }
-            logSet("averageCadence", engine.state.averageCadence.value, avg, engine.state::setAverageCadence)
+            emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
+            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, avg, quality = MetricQuality.DERIVED)
             off += 1
-            feedLapCadenceAvg(engine, avg)
         }
         return off
     }
 
     // ─── Distance reader with rower branch (fixed to call state.*) ───────────────
     private fun readDistance(
-        engine: BtEngine,
+        emitter: MetricEmitter,
         b: ByteArray,
         off0: Int,
-        rower: Boolean = false
     ): Int {
         var off = off0
         if (!has(b, off, 3)) return off
@@ -375,28 +333,13 @@ internal object BtEngineFtmsParsers {
             Timber.tag(TAG).d("FTMS totalDistance (m): %d", total)
         }
 
-        // normal FTMS distance updates
-        logSet("totalDistanceMeters", engine.state.totalDistanceMeters.value, total, engine.state::setTotalDistanceMeters)
-        val disp = toDisplayDistance(engine, total)
-        logSet("totalDistanceDisplay", engine.state.totalDistanceDisplay.value, disp, engine.state::setTotalDistanceDisplay)
-
-        // keep distance series for rowing/speed derivation
-        engine.state.appendDistanceMetersSample(total)
-
-        // lap math
-        updateLapDistance(engine, total)
-
-        if (rower) {
-            // <-- these must go through engine.state
-            engine.state.updateLapRowingSpeed()
-            engine.state.updateRowingSpeed()
-        }
+        emitter.emit(MetricKind.DISTANCE, total, nativeCumulative = total.toDouble())
 
         return off
     }
 
     private fun readPace(
-        engine: BtEngine,
+        emitter: MetricEmitter,
         b: ByteArray,
         off0: Int,
         times10: Boolean,
@@ -408,11 +351,10 @@ internal object BtEngineFtmsParsers {
             if (times10) pSecPerKm /= 10.0
             if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
-            // Native instant pace goes through PaceArbitration (sec/km)
-            PaceArbitration.setNativePace(engine, pSecPerKm)
+            emitter.emit(MetricKind.INSTANT_PACE, pSecPerKm / 60.0)
 
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS instant pace (sec/km) → PaceArbitration: %.1f", pSecPerKm)
+                Timber.tag(TAG).d("FTMS instant pace sample (sec/km): %.1f", pSecPerKm)
             }
 
             off += 2
@@ -421,7 +363,7 @@ internal object BtEngineFtmsParsers {
     }
 
     private fun readAvgPace(
-        engine: BtEngine,
+        emitter: MetricEmitter,
         b: ByteArray,
         off0: Int,
         times10: Boolean,
@@ -433,11 +375,10 @@ internal object BtEngineFtmsParsers {
             if (times10) pSecPerKm /= 10.0
             if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
-            // Native **average** pace uses the dedicated average pace endpoint
-            PaceArbitration.setNativeAvgPace(engine, pSecPerKm)
+            emitter.emit(MetricKind.AVERAGE_PACE, pSecPerKm / 60.0)
 
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS average pace (sec/km) → PaceArbitration: %.1f", pSecPerKm)
+                Timber.tag(TAG).d("FTMS average pace sample (sec/km): %.1f", pSecPerKm)
             }
 
             off += 2
@@ -445,56 +386,34 @@ internal object BtEngineFtmsParsers {
         return off
     }
 
-    private fun readPower(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readPower(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 2)) {
             val v = s16(b, off)
             off += 2
 
-            // Maintain historical smoothing accumulator (legacy behavior)
-            engine.state.internalPowerSum += v.toDouble()
-            engine.state.internalPowerCount++
-
-            var inst = v
-            val avg = engine.state.averagePower.value
-            if (engine.state.internalPowerCount > 10 && avg != null) {
-                val testAvg = engine.state.internalPowerSum / engine.state.internalPowerCount.toDouble()
-                if (testAvg > 0 && testAvg + 2.0 < avg.toDouble()) {
-                    val ratio = avg.toDouble() / testAvg
-                    inst = (v * ratio).toInt()
-                }
-            }
-
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS instant power (W): %d", inst)
+                Timber.tag(TAG).d("FTMS instant power (W): %d", v)
             }
-
-            // Time-series + averages (updates instantPower + averagePower and series)
-            engine.state.appendPowerSample(inst)
-
-            // Peak tracking remains
-            val peak = engine.state.peakPower.value ?: Int.MIN_VALUE
-            if (inst > peak) {
-                logSet("peakPower", engine.state.peakPower.value, inst, engine.state::setPeakPower)
-            }
+            emitter.emit(MetricKind.POWER, v)
         }
         return off
     }
 
-    private fun readAvgPower(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readAvgPower(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 2)) {
             val ap = s16(b, off)
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("FTMS average power (W): %d", ap)
             }
-            logSet("averagePower", engine.state.averagePower.value, ap, engine.state::setAveragePower)
+            emitter.emit(MetricKind.AVERAGE_POWER, ap)
             off += 2
         }
         return off
     }
 
-    private fun readResistance(engine: BtEngine, b: ByteArray, off0: Int, div10: Boolean): Int {
+    private fun readResistance(emitter: MetricEmitter, b: ByteArray, off0: Int, div10: Boolean): Int {
         var off = off0
         if (has(b, off, 2)) {
             var res = s16(b, off).toDouble()
@@ -505,13 +424,12 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS resistance (level): %.1f", res)
             }
 
-            // Time-series (updates resistance + series)
-            engine.state.appendResistanceSample(res)
+            emitter.emit(MetricKind.RESISTANCE, res)
         }
         return off
     }
 
-    private fun readEnergy(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readEnergy(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 5)) {
             // Per FTMS spec: total energy (kcal) is uint16, followed by
@@ -521,30 +439,33 @@ internal object BtEngineFtmsParsers {
             val perMinuteRaw = u8(b, off + 4)
             off += 5
 
-            EnergyArbitration.setFtmsEnergy(engine, machineKcal.toDouble())
-            engine.state.setExpEnergyRateKcalPerHour(
-                ftmsEnergyRateKcalPerHour(perHourRaw, perMinuteRaw)
+            emitter.emit(
+                MetricKind.ENERGY,
+                machineKcal,
+                nativeCumulative = machineKcal.toDouble(),
             )
+            val rate = ftmsEnergyRateKcalPerHour(perHourRaw, perMinuteRaw)
+            rate?.let { emitter.emit(MetricKind.ENERGY_RATE, it) }
 
             if (canLogMetrics()) {
                 Timber.tag(TAG).d(
                     "FTMS energy: total=%d kcal rate=%s kcal/h",
                     machineKcal,
-                    engine.state.expEnergyRateKcalPerHour.value?.toString() ?: "unavailable"
+                    rate?.toString() ?: "unavailable"
                 )
             }
         }
         return off
     }
 
-    private fun readMet(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readMet(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 1)) {
             val met = u8(b, off).toDouble() / 10.0
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("FTMS MET value: %.1f", met)
             }
-            logSet("metabolicEquivalent", engine.state.metabolicEquivalent.value, met, engine.state::setMetabolicEquivalent)
+            emitter.emit(MetricKind.METABOLIC_EQUIVALENT, met)
             off += 1
         }
         return off
@@ -553,7 +474,7 @@ internal object BtEngineFtmsParsers {
     /**
      * FTMS is now the single source of truth for elapsed time in this app.
      */
-    private fun readElapsed(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readElapsed(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (!has(b, off, 2)) {
             return off
@@ -562,22 +483,16 @@ internal object BtEngineFtmsParsers {
         val ftmsElapsedSec = ((b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8))
         off += 2
 
-        engine.state.setElapsedSeconds(ftmsElapsedSec)
+        emitter.emit(MetricKind.ELAPSED, ftmsElapsedSec)
 
         if (canLogMetrics()) {
             Timber.tag(TAG).d("FTMS elapsed time (s): %d", ftmsElapsedSec)
         }
 
-        updateLapElapsed(engine, ftmsElapsedSec)
-
-        engine.state.strokeCount.value?.let { sc ->
-            updateLapStrokes(engine, sc)
-        }
-
         return off
     }
 
-    private fun readSpeed(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readSpeed(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 2)) {
             val kph = u16(b, off) / 100.0
@@ -587,33 +502,12 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS instant speed (km/h): %.2f", kph)
             }
 
-            // Time-series + averages (updates speedKph + avgSpeedKph and series)
-            engine.state.appendSpeedKphSample(kph)
-
-            // NEW: feed instant speed to PaceArbitration for instant pace fallback
-            val mps = kph / MPS_TO_KPH
-            PaceArbitration.setSpeedMetersPerSecond(engine, mps)
-
-            // Derived displays
-            val mph = kphToMph(kph)
-            logSet("speedMph", engine.state.speedMph.value, mph, engine.state::setSpeedMph)
-            val disp = toDisplaySpeed(engine, kph)
-            logSet("speedDisplay", engine.state.speedDisplay.value, disp, engine.state::setSpeedDisplay)
-
-            // Peaks
-            val pk = engine.state.peakSpeedKph.value ?: Double.MIN_VALUE
-            if (kph > pk) {
-                logSet("peakSpeedKph", engine.state.peakSpeedKph.value, kph, engine.state::setPeakSpeedKph)
-                val mphPk = kphToMph(kph)
-                logSet("peakSpeedMph", engine.state.peakSpeedMph.value, mphPk, engine.state::setPeakSpeedMph)
-                val dispPk = toDisplaySpeed(engine, kph)
-                logSet("peakSpeedDisplay", engine.state.peakSpeedDisplay.value, dispPk, engine.state::setPeakSpeedDisplay)
-            }
+            emitter.emit(MetricKind.SPEED, kph)
         }
         return off
     }
 
-    private fun readAvgSpeed(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readAvgSpeed(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 2)) {
             val kph = u16(b, off) / 100.0
@@ -623,30 +517,13 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS average speed (km/h): %.2f", kph)
             }
 
-            logSet("avgSpeedKph", engine.state.avgSpeedKph.value, kph, engine.state::setAvgSpeedKph)
-            val disp = toDisplaySpeed(engine, kph)
-            logSet("avgSpeedDisplay", engine.state.avgSpeedDisplay.value, disp, engine.state::setAvgSpeedDisplay)
-
-            // NEW: compute a synthetic **average pace** (sec/km) from the FTMS average speed
-            // and feed it into the dedicated average pace arbitration endpoint so the
-            // canonical average pace does not depend on speed-derived heuristics inside
-            // the arbitrator.
-            val paceSecPerKm = if (kph > 0.0) 3600.0 / kph else null
-            if (paceSecPerKm != null) {
-                PaceArbitration.setNativeAvgPace(engine, paceSecPerKm)
-                if (canLogMetrics()) {
-                    Timber.tag(TAG).d(
-                        "Synthetic AVG pace from avgSpeedKph (sec/km) → PaceArbitration: %.1f",
-                        paceSecPerKm
-                    )
-                }
-            }
+            emitter.emit(MetricKind.AVERAGE_SPEED, kph)
         }
         return off
     }
 
     /** Treadmill v1 (incline int, ramp/10) */
-    private fun readInclineV1(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readInclineV1(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 4)) {
             val inc = s16(b, off).toDouble(); off += 2
@@ -656,15 +533,14 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS incline (deg): %.1f, rampAngle (deg): %.1f", inc, ramp)
             }
 
-            // Time-series (updates inclination + series)
-            engine.state.appendInclineDegSample(inc)
-            logSet("rampAngle", engine.state.rampAngle.value, ramp, engine.state::setRampAngle)
+            emitter.emit(MetricKind.INCLINATION, inc)
+            emitter.emit(MetricKind.RAMP_ANGLE, ramp)
         }
         return off
     }
 
     /** Elliptical v2 (incline/10, ramp/10) */
-    private fun readInclineV2(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readInclineV2(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 4)) {
             val inc = s16(b, off).toDouble() / 10.0; off += 2
@@ -674,14 +550,13 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS incline (deg): %.1f, rampAngle (deg): %.1f", inc, ramp)
             }
 
-            // Time-series (updates inclination + series)
-            engine.state.appendInclineDegSample(inc)
-            logSet("rampAngle", engine.state.rampAngle.value, ramp, engine.state::setRampAngle)
+            emitter.emit(MetricKind.INCLINATION, inc)
+            emitter.emit(MetricKind.RAMP_ANGLE, ramp)
         }
         return off
     }
 
-    private fun readElevation(engine: BtEngine, b: ByteArray, off0: Int, mode: Int): Int {
+    private fun readElevation(emitter: MetricEmitter, b: ByteArray, off0: Int, mode: Int): Int {
         var off = off0
         when (mode) {
             1 -> { // +gain only
@@ -690,7 +565,7 @@ internal object BtEngineFtmsParsers {
                     if (canLogMetrics()) {
                         Timber.tag(TAG).d("FTMS elevation gain + (m): %.1f", pos)
                     }
-                    engine.state.setElevationGains(pos, null)
+                    emitter.emitElevationGains(pos, null)
                 }
             }
             2 -> { // +gain/10 and -gain/10
@@ -700,7 +575,7 @@ internal object BtEngineFtmsParsers {
                     if (canLogMetrics()) {
                         Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
                     }
-                    engine.state.setElevationGains(pos, neg)
+                    emitter.emitElevationGains(pos, neg)
                 }
             }
             3 -> { // +gain and -gain
@@ -710,14 +585,14 @@ internal object BtEngineFtmsParsers {
                     if (canLogMetrics()) {
                         Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
                     }
-                    engine.state.setElevationGains(pos, neg)
+                    emitter.emitElevationGains(pos, neg)
                 }
             }
         }
         return off
     }
 
-    private fun readBeltForce(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readBeltForce(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 4)) {
             val force = s16(b, off); off += 2
@@ -727,21 +602,13 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS beltForce (N-ish): %d, derived power (W): %d", force, inst)
             }
 
-            // Keep the instantaneous value and graph series in sync.
-            engine.state.appendForceOnBeltSample(force)
-
-            // Power sample derived from belt force: feed time-series path
-            engine.state.appendPowerSample(inst)
-
-            val peak = engine.state.peakPower.value ?: Int.MIN_VALUE
-            if (inst > peak) {
-                logSet("peakPower", engine.state.peakPower.value, inst, engine.state::setPeakPower)
-            }
+            emitter.emit(MetricKind.FORCE_ON_BELT, force)
+            emitter.emit(MetricKind.POWER, inst, quality = MetricQuality.DERIVED)
         }
         return off
     }
 
-    private fun readEllipticalCadence(engine: BtEngine, b: ByteArray, off0: Int): Int {
+    private fun readEllipticalCadence(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 4)) {
             val inst = u16(b, off).toDouble(); off += 2
@@ -754,17 +621,14 @@ internal object BtEngineFtmsParsers {
                 )
             }
 
-            // Time-series (updates instantCadence + averageCadence via running mean)
-            engine.state.appendCadenceSpmSample(inst)
-
-            // Also honor device-reported average cadence if present
-            logSet("averageCadence", engine.state.averageCadence.value, avg, engine.state::setAverageCadence)
-            feedLapCadenceAvg(engine, inst)
+            emitter.emit(MetricKind.CADENCE, inst)
+            emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
+            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, inst, quality = MetricQuality.DERIVED)
         }
         return off
     }
 
-    private fun readCadence(engine: BtEngine, b: ByteArray, off0: Int, halfUnits: Boolean): Int {
+    private fun readCadence(emitter: MetricEmitter, b: ByteArray, off0: Int, halfUnits: Boolean): Int {
         var off = off0
         if (has(b, off, 2)) {
             var inst = u16(b, off).toDouble(); off += 2
@@ -774,15 +638,13 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS cadence (spm): instant=%.1f", inst)
             }
 
-            // Time-series (updates instantCadence + running mean + series)
-            engine.state.appendCadenceSpmSample(inst)
-
-            feedLapCadenceAvg(engine, inst)
+            emitter.emit(MetricKind.CADENCE, inst)
+            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, inst, quality = MetricQuality.DERIVED)
         }
         return off
     }
 
-    private fun readAvgCadence(engine: BtEngine, b: ByteArray, off0: Int, halfUnits: Boolean): Int {
+    private fun readAvgCadence(emitter: MetricEmitter, b: ByteArray, off0: Int, halfUnits: Boolean): Int {
         var off = off0
         if (has(b, off, 2)) {
             var avg = u16(b, off).toDouble(); off += 2
@@ -792,33 +654,32 @@ internal object BtEngineFtmsParsers {
                 Timber.tag(TAG).d("FTMS average cadence (spm): %.1f", avg)
             }
 
-            logSet("averageCadence", engine.state.averageCadence.value, avg, engine.state::setAverageCadence)
-            feedLapCadenceAvg(engine, avg)
+            emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
+            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, avg, quality = MetricQuality.DERIVED)
         }
         return off
     }
 
-    private fun readFloors(engine: BtEngine, b: ByteArray, off0: Int, mode: Int): Int {
+    private fun readFloors(emitter: MetricEmitter, b: ByteArray, off0: Int, mode: Int): Int {
         var off = off0
         if (has(b, off, 2)) {
             val floors = u16(b, off); off += 2
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("FTMS totalFloors: %d", floors)
             }
-            logSet("totalFloors", engine.state.totalFloors.value, floors, engine.state::setTotalFloors)
+            emitter.emit(MetricKind.TOTAL_FLOORS, floors)
         }
         if (mode == 2 && has(b, off, 2)) {
             val steps = u16(b, off); off += 2
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("FTMS totalSteps: %d", steps)
             }
-            logSet("totalSteps", engine.state.totalSteps.value, steps, engine.state::setTotalSteps)
-            updateLapSteps(engine, steps)
+            emitter.emit(MetricKind.TOTAL_STEPS, steps)
         }
         return off
     }
 
-    private fun readStrides(engine: BtEngine, b: ByteArray, off0: Int, tenths: Boolean): Int {
+    private fun readStrides(emitter: MetricEmitter, b: ByteArray, off0: Int, tenths: Boolean): Int {
         var off = off0
         if (has(b, off, 2)) {
             var strides = u16(b, off).toDouble(); off += 2
@@ -832,111 +693,11 @@ internal object BtEngineFtmsParsers {
                 )
             }
 
-            logSet("totalStrides", engine.state.totalStrides.value, strides, engine.state::setTotalStrides)
-            logSet("totalSteps", engine.state.totalSteps.value, steps, engine.state::setTotalSteps)
-            updateLapSteps(engine, steps)
+            emitter.emit(MetricKind.TOTAL_STRIDES, strides)
+            emitter.emit(MetricKind.TOTAL_STEPS, steps, quality = MetricQuality.DERIVED)
         }
         return off
     }
-
-    // ─────────────────────────────────────────────────────────────
-    // Lap helpers
-    // ─────────────────────────────────────────────────────────────
-
-    private fun updateLapDistance(engine: BtEngine, totalMeters: Int) {
-        val lapMeters = max(0, totalMeters - engine.state.lapStartDistanceMeters)
-        logSet("lapDistanceMeters", engine.state.lapDistanceMeters.value, lapMeters, engine.state::setLapDistanceMeters)
-        val disp = toDisplayDistance(engine, lapMeters)
-        logSet("lapDistanceDisplay", engine.state.lapDistanceDisplay.value, disp, engine.state::setLapDistanceDisplay)
-        recomputeLapDerived(engine)
-    }
-
-    private fun updateLapElapsed(engine: BtEngine, totalElapsedSec: Int) {
-        val lap = max(0, totalElapsedSec - engine.state.lapStartElapsedSec)
-        logSet("lapElapsedTimeSec", engine.state.lapElapsedTimeSec.value, lap, engine.state::setLapElapsedTimeSec)
-        recomputeLapDerived(engine)
-    }
-
-    private fun updateLapSteps(engine: BtEngine, totalStepsNow: Int) {
-        val lap = max(0, totalStepsNow - engine.state.lapStartSteps)
-        logSet("lapSteps", engine.state.lapSteps.value, lap, engine.state::setLapSteps)
-    }
-
-    private fun updateLapStrokes(engine: BtEngine, totalStrokesNow: Int) {
-        val lap = max(0, totalStrokesNow - engine.state.lapStartStrokeCount)
-        logSet("lapStrokeCount", engine.state.lapStrokeCount.value, lap, engine.state::setLapStrokeCount)
-        val lapSec = engine.state.lapElapsedTimeSec.value
-        if (lapSec != null && lapSec > 0) {
-            val spm = (engine.state.lapStrokeCount.value ?: 0).toDouble() / (lapSec / 60.0)
-            logSet("lapCadenceSpm", engine.state.lapCadenceSpm.value, spm, engine.state::setLapCadenceSpm)
-        }
-    }
-
-    private fun feedLapCadenceAvg(engine: BtEngine, inst: Double?) {
-        if (inst == null) return
-        engine.state.lapAvgCadenceTotal += inst
-        engine.state.lapAvgCadenceCount += 1
-        val avg = engine.state.lapAvgCadenceTotal / engine.state.lapAvgCadenceCount.toDouble()
-        logSet("lapCadenceSpm", engine.state.lapCadenceSpm.value, avg, engine.state::setLapCadenceSpm)
-    }
-
-    private fun recomputeLapDerived(engine: BtEngine) {
-        val d = engine.state.lapDistanceMeters.value ?: return
-        val t = engine.state.lapElapsedTimeSec.value ?: return
-        if (t <= 0) {
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("Lap derived reset: t<=0")
-            }
-            logSet("lapAvgSpeedMps", engine.state.lapAvgSpeedMps.value, null as Double?, engine.state::setLapAvgSpeedMps)
-            logSet("lapAvgSpeedDisplay", engine.state.lapAvgSpeedDisplay.value, null as Double?, engine.state::setLapAvgSpeedDisplay)
-            logSet("lapRunPaceMinPerUnit", engine.state.lapRunPaceMinPerUnit.value, null as Double?, engine.state::setLapRunPaceMinPerUnit)
-            logSet("lapRowPaceMinPer500m", engine.state.lapRowPaceMinPer500m.value, null as Double?, engine.state::setLapRowPaceMinPer500m)
-            return
-        }
-        val mps = d.toDouble() / t.toDouble()
-        logSet("lapAvgSpeedMps", engine.state.lapAvgSpeedMps.value, mps, engine.state::setLapAvgSpeedMps)
-        val disp = when (engine.state.units.value) {
-            UNIT_METRIC   -> mps * MPS_TO_KPH
-            UNIT_IMPERIAL -> mps * MPS_TO_MPH
-            else          -> null
-        }
-        logSet("lapAvgSpeedDisplay", engine.state.lapAvgSpeedDisplay.value, disp, engine.state::setLapAvgSpeedDisplay)
-
-        val perMeters = when (engine.state.units.value) {
-            UNIT_METRIC   -> M_PER_KM
-            UNIT_IMPERIAL -> M_PER_MILE
-            else          -> null
-        }
-        val runPace = perMeters?.let { meters -> if (mps > 0.0) (meters / mps) / 60.0 else null }
-        logSet("lapRunPaceMinPerUnit", engine.state.lapRunPaceMinPerUnit.value, runPace, engine.state::setLapRunPaceMinPerUnit)
-
-        val rowPace = if (mps > 0.0) (ROW_PACE_M / mps) / 60.0 else null
-        logSet("lapRowPaceMinPer500m", engine.state.lapRowPaceMinPer500m.value, rowPace, engine.state::setLapRowPaceMinPer500m)
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Display helpers (unit-aware)
-    // ─────────────────────────────────────────────────────────────
-
-    private fun toDisplaySpeed(engine: BtEngine, kph: Double?): Double? {
-        if (kph == null) return null
-        return when (engine.state.units.value) {
-            UNIT_METRIC   -> kph
-            UNIT_IMPERIAL -> kph * 0.621371
-            else          -> null
-        }
-    }
-
-    private fun toDisplayDistance(engine: BtEngine, meters: Int?): Double? {
-        if (meters == null) return null
-        return when (engine.state.units.value) {
-            UNIT_METRIC   -> meters * M_TO_KM
-            UNIT_IMPERIAL -> meters * M_TO_MI
-            else          -> null
-        }
-    }
-
-    private fun kphToMph(kph: Double) = kph * 0.621371
 
     // ─────────────────────────────────────────────────────────────
     // Byte helpers
@@ -952,25 +713,6 @@ internal object BtEngineFtmsParsers {
 
     private fun ByteArray.toHex(): String = joinToString(" ") { "%02X".format(it) }
 
-    /**
-     * Log only on change and then perform the setter (to keep logs useful & low-noise).
-     * Metric value logs are gated on [canLogMetrics], so they appear at DebugLevel >= 4.
-     */
-    private inline fun <reified T> logSet(
-        name: String,
-        old: T?,
-        new: T?,
-        crossinline setter: (T?) -> Unit
-    ) {
-        if (old == new) {
-            setter(new)
-            return
-        }
-        if (canLogMetrics()) {
-            Timber.tag(TAG).d("state.%s: %s → %s", name, old, new)
-        }
-        setter(new)
-    }
 }
 
 /** FTMS Rower Data carries pace in seconds per 500 m; engine pace is seconds per km. */

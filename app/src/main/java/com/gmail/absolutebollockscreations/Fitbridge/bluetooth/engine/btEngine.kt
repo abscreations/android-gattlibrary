@@ -141,7 +141,51 @@ class BtEngine internal constructor(
     }
 
     internal val state: BtEngineState = BtEngineState()
-    internal val metricFusion: MetricFusion = MetricFusion(state)
+    internal val metricFusion: MetricFusion = MetricFusion(
+        state = state,
+        legacyInterceptor = { sample ->
+            when (sample.metric) {
+                MetricKind.HEART_RATE -> {
+                    val bpm = sample.value.toInt()
+                    if (sample.sourceClass == MetricSourceClass.HRM) {
+                        HrmArbitration.setExternalHeartRate(this, bpm)
+                    } else {
+                        HrmArbitration.setFtmsHeartRate(this, bpm)
+                    }
+                    true
+                }
+                MetricKind.ENERGY -> {
+                    if (sample.sourceClass == MetricSourceClass.HRM) {
+                        EnergyArbitration.setHrmEnergy(this, sample.value)
+                    } else {
+                        EnergyArbitration.setFtmsEnergy(this, sample.value)
+                    }
+                    true
+                }
+                MetricKind.INSTANT_PACE -> {
+                    PaceArbitration.setNativePace(this, sample.value * 60.0)
+                    true
+                }
+                MetricKind.AVERAGE_PACE -> {
+                    PaceArbitration.setNativeAvgPace(this, sample.value * 60.0)
+                    true
+                }
+                else -> false
+            }
+        },
+        legacyObserver = { sample ->
+            when (sample.metric) {
+                MetricKind.SPEED -> PaceArbitration.setSpeedMetersPerSecond(
+                    this,
+                    sample.value / 3.6,
+                )
+                MetricKind.AVERAGE_SPEED -> if (sample.value > 0.0) {
+                    PaceArbitration.setNativeAvgPace(this, 3_600.0 / sample.value)
+                }
+                else -> Unit
+            }
+        },
+    )
 
     // Optional sink into the provider-side btService layer.
     // Implemented by something like BtServiceManager in the service module.

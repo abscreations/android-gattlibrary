@@ -319,15 +319,21 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         value: ByteArray
     ) {
         Timber.tag(BtEngineState.TAG).v("Notify %s len=%d", short(ch.uuid), value.size)
+        val emitter = engine.metricEmitterFor(
+            gatt = gatt,
+            characteristicUuid = ch.uuid,
+            protocol = MetricProtocol.FTMS,
+            sourceClass = MetricSourceClass.FTMS,
+        ) ?: return
         when (ch.uuid) {
             UUID_FITNESS_MACHINE_CONTROL_POINT -> handleControlPointIndication(engine, gatt, value)
             UUID_FITNESS_MACHINE_STATUS        -> handleFitnessMachineStatus(engine, value)
-            UUID_TREADMILL_DATA                -> BtEngineFtmsParsers.doTreadmill(engine, value)
-            UUID_ELLIPTICAL_DATA               -> BtEngineFtmsParsers.doElliptical(engine, value)
-            UUID_STAIR_STEPPER_DATA            -> BtEngineFtmsParsers.doStepper(engine, value)
-            UUID_STAIR_CLIMBER_DATA            -> BtEngineFtmsParsers.doClimber(engine, value)
-            UUID_ROWING_MACHINE_DATA           -> BtEngineFtmsParsers.doRower(engine, value)
-            UUID_BIKING_DATA                   -> BtEngineFtmsParsers.doBike(engine, value)
+            UUID_TREADMILL_DATA                -> BtEngineFtmsParsers.doTreadmill(emitter, value)
+            UUID_ELLIPTICAL_DATA               -> BtEngineFtmsParsers.doElliptical(emitter, value)
+            UUID_STAIR_STEPPER_DATA            -> BtEngineFtmsParsers.doStepper(emitter, value)
+            UUID_STAIR_CLIMBER_DATA            -> BtEngineFtmsParsers.doClimber(emitter, value)
+            UUID_ROWING_MACHINE_DATA           -> BtEngineFtmsParsers.doRower(emitter, value)
+            UUID_BIKING_DATA                   -> BtEngineFtmsParsers.doBike(emitter, value)
             else -> Timber.tag(BtEngineState.TAG)
                 .w("Notify from unknown FTMS char %s: %s", short(ch.uuid), value.toHex())
         }

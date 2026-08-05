@@ -1,7 +1,34 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import android.bluetooth.BluetoothGatt
 import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
+import timber.log.Timber
 import java.util.UUID
+
+/** Bind one received packet to its exact physical-link generation; never infer a fallback link. */
+internal fun BtEngine.metricEmitterFor(
+    gatt: BluetoothGatt,
+    characteristicUuid: UUID,
+    protocol: MetricProtocol,
+    sourceClass: MetricSourceClass,
+    arrivalMs: Long = MonotonicMetricClock.SYSTEM.nowMs(),
+): MetricEmitter? {
+    val connection = state.connectionRegistry.contextForGatt(gatt)
+    if (connection == null) {
+        Timber.tag(BtEngineState.TAG).w(
+            "Metric emission rejected for unregistered GATT protocol=%s characteristic=%s",
+            protocol,
+            characteristicUuid,
+        )
+        return null
+    }
+    return MetricEmitter(
+        fusion = metricFusion,
+        sourceId = MetricSourceId(connection.connectionId, protocol, characteristicUuid),
+        sourceClass = sourceClass,
+        arrivalMs = arrivalMs,
+    )
+}
 
 /** Stable factory key for one BLE protocol handler implementation. */
 internal data class ProtocolKey(val value: String) {
