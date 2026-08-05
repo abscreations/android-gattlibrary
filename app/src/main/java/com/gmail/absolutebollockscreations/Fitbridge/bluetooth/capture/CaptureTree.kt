@@ -65,6 +65,10 @@ internal class CaptureTree(
 
     private val lock = Any()
 
+    init {
+        installed = this
+    }
+
     // Both widened from Timber's `protected`. Routing is the whole point of this
     // class and getting it wrong is silent in both directions, so it is worth
     // being able to assert on directly rather than only through a planted tree
@@ -113,6 +117,16 @@ internal class CaptureTree(
         const val CAPTURES_DIR_NAME: String = "captures"
         const val NDJSON_EXTENSION: String = "ndjson"
         const val DEFAULT_FLUSH_TIMEOUT_MS: Long = 2_000L
+
+        /**
+         * The planted instance, so the exporter can flush before zipping without
+         * threading a reference through the Application. Mirrors
+         * `FileLoggingTree.current()`.
+         */
+        @Volatile
+        private var installed: CaptureTree? = null
+
+        fun current(): CaptureTree? = installed
 
         private val ZONE: ZoneId = ZoneId.systemDefault()
 
