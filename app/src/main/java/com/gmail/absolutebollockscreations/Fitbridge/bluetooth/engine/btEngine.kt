@@ -141,6 +141,7 @@ class BtEngine internal constructor(
     }
 
     internal val state: BtEngineState = BtEngineState()
+    internal val metricFusion: MetricFusion = MetricFusion(state)
 
     // Optional sink into the provider-side btService layer.
     // Implemented by something like BtServiceManager in the service module.

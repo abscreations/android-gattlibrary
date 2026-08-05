@@ -1,0 +1,167 @@
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
+import org.junit.Test
+import java.util.UUID
+
+class MetricFusionTest {
+    private val connection = ConnectionId("AA:BB:CC:DD:EE:01", 7L)
+    private val characteristic = UUID.randomUUID()
+
+    private fun sample(
+        metric: MetricKind,
+        value: Double,
+        arrivalMs: Long,
+        protocol: MetricProtocol = MetricProtocol.FTMS,
+        sourceClass: MetricSourceClass = MetricSourceClass.FTMS,
+        eventMs: Long? = null,
+        nativeCumulative: Double? = if (metric.cumulative) value else null,
+    ): MetricSample = MetricSample(
+        connectionId = connection,
+        sourceId = MetricSourceId(connection, protocol, characteristic),
+        protocol = protocol,
+        sourceClass = sourceClass,
+        metric = metric,
+        arrivalMs = arrivalMs,
+        eventMs = eventMs,
+        value = value,
+        nativeCumulative = nativeCumulative,
+    )
+
+    @Test
+    fun `sample preserves separate monotonic arrival and protocol event time`() {
+        val sample = sample(MetricKind.CADENCE, 82.0, arrivalMs = 10_000, eventMs = 512)
+
+        assertEquals(10_000, sample.arrivalMs)
+        assertEquals(512L, sample.eventMs)
+        assertEquals(connection, sample.sourceId.connectionId)
+        assertEquals(characteristic, sample.sourceId.characteristicUuid)
+    }
+
+    @Test
+    fun `sample rejects inconsistent identity units and non-finite values`() {
+        val otherConnection = ConnectionId("AA:BB:CC:DD:EE:02", 8L)
+        assertThrows(IllegalArgumentException::class.java) {
+            sample(MetricKind.SPEED, Double.NaN, arrivalMs = 1)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            sample(MetricKind.SPEED, 12.0, arrivalMs = -1)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            MetricSample(
+                connectionId = connection,
+                sourceId = MetricSourceId(otherConnection, MetricProtocol.FTMS, characteristic),
+                protocol = MetricProtocol.FTMS,
+                sourceClass = MetricSourceClass.FTMS,
+                metric = MetricKind.POWER,
+                arrivalMs = 1,
+                value = 100.0,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            MetricSample(
+                connectionId = connection,
+                sourceId = MetricSourceId(connection, MetricProtocol.HRM, characteristic),
+                protocol = MetricProtocol.FTMS,
+                sourceClass = MetricSourceClass.FTMS,
+                metric = MetricKind.POWER,
+                arrivalMs = 1,
+                value = 100.0,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            MetricSample(
+                connectionId = connection,
+                sourceId = MetricSourceId(connection, MetricProtocol.FTMS, characteristic),
+                protocol = MetricProtocol.FTMS,
+                sourceClass = MetricSourceClass.FTMS,
+                metric = MetricKind.POWER,
+                arrivalMs = 1,
+                value = 100.0,
+                unit = MetricUnit.BPM,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            sample(MetricKind.POWER, 100.0, arrivalMs = 1).copy(confidence = 1.1)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            sample(MetricKind.DISTANCE, 100.0, arrivalMs = 1, nativeCumulative = null)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            sample(MetricKind.DISTANCE, 100.0, arrivalMs = 1, nativeCumulative = -1.0)
+        }
+    }
+
+    @Test
+    fun `pass through projects newest samples and retains arrival timestamps`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+
+        assertEquals(FusionSubmission.ACCEPTED, fusion.submit(sample(MetricKind.SPEED, 12.5, 100)))
+        assertEquals(FusionSubmission.ACCEPTED, fusion.submit(sample(MetricKind.CADENCE, 84.0, 101)))
+        assertEquals(FusionSubmission.ACCEPTED, fusion.submit(sample(MetricKind.POWER, 211.0, 102)))
+        assertEquals(FusionSubmission.ACCEPTED, fusion.submit(sample(MetricKind.DISTANCE, 432.0, 103)))
+
+        assertEquals(12.5, state.speedKph.value!!, 0.0)
+        assertEquals(84.0, state.instantCadence.value!!, 0.0)
+        assertEquals(211, state.instantPower.value)
+        assertEquals(432, state.totalDistanceMeters.value)
+        assertEquals(100, state.speedSeriesKph.value.single().tMillis)
+        assertEquals(101, state.cadenceSeriesSpm.value.single().tMillis)
+        assertEquals(102, state.powerSeriesW.value.single().tMillis)
+        assertEquals(103, state.distanceSeriesM.value.single().tMillis)
+    }
+
+    @Test
+    fun `pass through projects HR energy pace and resistance`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val hr = sample(
+            MetricKind.HEART_RATE,
+            147.0,
+            200,
+            protocol = MetricProtocol.HRM,
+            sourceClass = MetricSourceClass.HRM,
+        )
+
+        fusion.submit(hr)
+        fusion.submit(sample(MetricKind.ENERGY, 55.4, 201))
+        fusion.submit(sample(MetricKind.ENERGY_RATE, 700.0, 202))
+        fusion.submit(sample(MetricKind.INSTANT_PACE, 4.25, 203))
+        fusion.submit(sample(MetricKind.AVERAGE_PACE, 4.5, 204))
+        fusion.submit(sample(MetricKind.RESISTANCE, 8.5, 205))
+        fusion.submit(sample(MetricKind.AVERAGE_SPEED, 10.5, 206))
+        fusion.submit(sample(MetricKind.AVERAGE_CADENCE, 80.0, 207))
+        fusion.submit(sample(MetricKind.AVERAGE_POWER, 190.0, 208))
+        fusion.submit(sample(MetricKind.ELAPSED, 600.0, 209))
+
+        assertEquals(147, state.heartRate.value)
+        assertEquals(147, state.externalHeartRate.value)
+        assertEquals(BtEngineState.HrSource.EXTERNAL_HRM, state.heartRateSource.value)
+        assertEquals(55, state.expEnergyTotal.value)
+        assertEquals(700, state.expEnergyRateKcalPerHour.value)
+        assertEquals(4.25, state.instantPaceMinPerKm.value!!, 0.0)
+        assertEquals(4.5, state.averagePaceMinPerKm.value!!, 0.0)
+        assertEquals(8.5, state.resistance.value!!, 0.0)
+        assertEquals(10.5, state.avgSpeedKph.value!!, 0.0)
+        assertEquals(80.0, state.averageCadence.value!!, 0.0)
+        assertEquals(190, state.averagePower.value)
+        assertEquals(600, state.elapsedTimeSec.value)
+        assertSame(hr, fusion.latestSample(MetricKind.HEART_RATE))
+    }
+
+    @Test
+    fun `older arrival cannot overwrite newer pass through sample`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+
+        fusion.submit(sample(MetricKind.POWER, 250.0, 500))
+        val result = fusion.submit(sample(MetricKind.POWER, 100.0, 499))
+
+        assertEquals(FusionSubmission.REJECTED_STALE, result)
+        assertEquals(250, state.instantPower.value)
+        assertEquals(1, state.powerSeriesW.value.size)
+    }
+}
