@@ -18,16 +18,18 @@ internal value class CanonicalUuid private constructor(val value: String) {
             return fromUuid(UUID.fromString(trimmed))
         }
 
-        /** SIG short IDs are expanded only while a registry definition is being built. */
-        internal fun fromSig16(assignedNumber: Int): CanonicalUuid {
-            require(assignedNumber in 0x0000..0xffff) { "SIG assigned number must be 16-bit" }
-            return parse128("0000%04x-0000-1000-8000-00805f9b34fb".format(Locale.US, assignedNumber))
-        }
-
         private val FULL_UUID = Regex(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
         )
     }
+}
+
+/** The only short-ID expansion boundary; matcher definitions immediately store the full UUID. */
+private fun registeredSig16(assignedNumber: Int): CanonicalUuid {
+    require(assignedNumber in 0x0000..0xffff) { "SIG assigned number must be 16-bit" }
+    return CanonicalUuid.parse128(
+        "0000%04x-0000-1000-8000-00805f9b34fb".format(Locale.US, assignedNumber),
+    )
 }
 
 internal enum class MatchEvidenceKind {
@@ -245,12 +247,12 @@ internal class DeviceMatcherRegistry private constructor(
             names: List<Regex> = emptyList(),
         ) = MatchDefinition(
             candidateId = id,
-            serviceUuid = CanonicalUuid.fromSig16(serviceAssignedNumber),
+            serviceUuid = registeredSig16(serviceAssignedNumber),
             knownService = knownService,
             preference = preference,
             localNamePatterns = names,
             personaCharacteristicUuids = characteristicAssignedNumbers
-                .mapTo(linkedSetOf(), CanonicalUuid::fromSig16),
+                .mapTo(linkedSetOf(), ::registeredSig16),
         )
     }
 }

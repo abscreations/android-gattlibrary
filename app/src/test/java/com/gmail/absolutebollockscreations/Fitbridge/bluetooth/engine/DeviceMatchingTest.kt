@@ -20,11 +20,10 @@ class DeviceMatchingTest {
 
     @Test
     fun `SIG assigned numbers expand only into canonical Bluetooth base UUIDs`() {
-        assertEquals(
-            CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE),
-            CanonicalUuid.fromSig16(0x1814),
+        assertTrue(
+            CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE) in
+                DeviceMatcherRegistry.standard().registeredServices(),
         )
-        assertThrows(IllegalArgumentException::class.java) { CanonicalUuid.fromSig16(0x1_0000) }
     }
 
     @Test
@@ -108,7 +107,7 @@ class DeviceMatchingTest {
             listOf(
                 MatchDefinition(
                     candidateId = "generic.ftms",
-                    serviceUuid = CanonicalUuid.fromSig16(0x1826),
+                    serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
                     knownService = KnownBleService.FTMS,
                     preference = 600,
                 ),
@@ -127,7 +126,10 @@ class DeviceMatchingTest {
             MatchObservation(
                 localName = "Vendor Runner",
                 manufacturerCompanyIds = setOf(321),
-                advertisedServiceUuids = setOf(CanonicalUuid.fromSig16(0x1826), vendorService),
+                advertisedServiceUuids = setOf(
+                    CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    vendorService,
+                ),
                 discoveredServiceUuids = setOf(vendorService),
                 discoveredCharacteristicUuids = setOf(personaCharacteristic),
                 packetLength = 20,
