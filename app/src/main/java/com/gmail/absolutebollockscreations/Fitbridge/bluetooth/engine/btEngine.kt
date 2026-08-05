@@ -723,11 +723,16 @@ class BtEngine internal constructor(
             return
         }
         guardConnectPerm(op = "disconnectFtms()", default = Unit) {
+            val termination = connection?.terminationHook
             runCatching { connection?.gatt?.disconnect() }
-            runCatching { connection?.gatt?.close() }
-            connection?.let {
-                state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
-                state.clearConnection(it)
+            if (termination != null) {
+                termination("explicit FTMS disconnect")
+            } else {
+                runCatching { connection?.gatt?.close() }
+                connection?.let {
+                    state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                    state.clearConnection(it)
+                }
             }
             state.resetFtmsControl()
             featureReadRetryScheduled = false
@@ -777,17 +782,22 @@ class BtEngine internal constructor(
             return
         }
         guardConnectPerm(op = "disconnectHrm()", default = Unit) {
+            val termination = connection?.terminationHook
             runCatching { connection?.gatt?.disconnect() }
-            runCatching { connection?.gatt?.close() }
-            connection?.let {
-                state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
-                state.clearConnection(it)
+            if (termination != null) {
+                termination("explicit HRM disconnect")
+            } else {
+                runCatching { connection?.gatt?.close() }
+                connection?.let {
+                    state.setConnectionState(it, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                    state.clearConnection(it)
+                }
+                state.hrmMeasurementChar = null
+                state.hrmCtrlPointChar = null
+                state.hrmBodyLocChar = null
+                state.setExternalHeartRate(null)
+                HrmArbitration.reselect(this)
             }
-            state.hrmMeasurementChar = null
-            state.hrmCtrlPointChar = null
-            state.hrmBodyLocChar = null
-            state.setExternalHeartRate(null)
-            HrmArbitration.reselect(this)
         }
     }
 

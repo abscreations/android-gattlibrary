@@ -191,6 +191,29 @@ internal class ContextCallbackLifecycle(
     fun candidates(): List<BtEngineGattCore.ProtocolHandler> = candidateHandlers
 }
 
+/** Thread-safe active-handler ownership with one irreversible termination handoff. */
+internal class ActiveHandlerLifecycle<T> {
+    private val lock = Any()
+    private val active = LinkedHashSet<T>()
+    private var terminated = false
+
+    fun addAll(values: Iterable<T>) = synchronized(lock) {
+        if (!terminated) active.addAll(values)
+    }
+
+    fun snapshot(): List<T> = synchronized(lock) { active.toList() }
+
+    /** Returns handlers only for the first termination caller; later callers receive null. */
+    fun terminateOnce(): List<T>? = synchronized(lock) {
+        if (terminated) return@synchronized null
+        terminated = true
+        active.toList().also { active.clear() }
+    }
+
+    /** Drop stale callback state without claiming ownership of connection termination. */
+    fun discard() = synchronized(lock) { active.clear() }
+}
+
 internal object BtEngineGattCore {
 
     private const val PREFERRED_ATT_MTU = 512
@@ -268,12 +291,13 @@ internal object BtEngineGattCore {
     fun build(
         engine: BtEngine,
         context: ConnectionContext,
-    ): BluetoothGattCallback = object : BluetoothGattCallback() {
+    ): BluetoothGattCallback {
+        val callback = object : BluetoothGattCallback() {
         private val lifecycle = ContextCallbackLifecycle(engine.state, context)
         private val handlers = lifecycle.candidates()
 
         /** Active handlers for this connection (populated post-discovery). */
-        private val activeHandlers = LinkedHashSet<ProtocolHandler>()
+        private val activeHandlers = ActiveHandlerLifecycle<ProtocolHandler>()
 
         private val discoveryHandler = Handler(Looper.getMainLooper())
         private val discoveryGate = GattDiscoveryAttemptGate(MAX_DISCOVERY_ATTEMPTS)
@@ -304,6 +328,91 @@ internal object BtEngineGattCore {
             cancelDiscoveryCallbacks()
             activeGatt = null
             discoveryGate.reset()
+        }
+
+        /** Explicit-disconnect entry point installed on the owning connection context. */
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        fun terminateFromOwner(reason: String) {
+            terminateConnection(context.gatt, reason)
+        }
+
+        /**
+         * End this physical-link generation exactly once, regardless of whether explicit control
+         * or a platform callback observed the disconnect first.
+         */
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        private fun terminateConnection(gatt: BluetoothGatt?, reason: String) {
+            val handlersToClean = activeHandlers.terminateOnce()
+            if (handlersToClean == null) {
+                Timber.tag(BtEngineState.TAG).d(
+                    "Connection termination already completed context=%s reason=%s",
+                    context.connectionId,
+                    reason,
+                )
+                return
+            }
+
+            gatt?.let(::clearDiscovery) ?: cancelDiscoveryCallbacks()
+            val compatibilityRole = engine.state.connectionRegistry.roleOf(context)
+            Timber.tag(BtEngineState.TAG).i(
+                "Terminating connection context=%s role=%s reason=%s handlers=%d",
+                context.connectionId,
+                compatibilityRole ?: "none",
+                reason,
+                handlersToClean.size,
+            )
+
+            handlersToClean.forEach { handler ->
+                if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                    Timber.tag(PHASE_05_TAG).i(
+                        "PHASE05 disconnect cleanup start generation=%d handler=%s reason=%s",
+                        context.connectionId.linkGeneration,
+                        handlerName(handler),
+                        reason,
+                    )
+                }
+                runCatching { handler.onDisconnected(engine) }
+                    .onSuccess {
+                        if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                            Timber.tag(PHASE_05_TAG).i(
+                                "PHASE05 disconnect cleanup complete generation=%d handler=%s " +
+                                    "reason=%s",
+                                context.connectionId.linkGeneration,
+                                handlerName(handler),
+                                reason,
+                            )
+                        }
+                    }
+                    .onFailure {
+                        Timber.tag(BtEngineState.TAG).w(
+                            it,
+                            "handler.onDisconnected failed handler=%s",
+                            handlerName(handler),
+                        )
+                    }
+            }
+
+            engine.state.setConnectionState(context, STATE_DISCONNECTED)
+            if (compatibilityRole == LegacyConnectionRole.HRM) {
+                engine.state.hrmMeasurementChar = null
+                engine.state.hrmCtrlPointChar = null
+                engine.state.hrmBodyLocChar = null
+                engine.state.setExternalHeartRate(null)
+                HrmArbitration.reselect(engine)
+            } else if (compatibilityRole == LegacyConnectionRole.FTMS) {
+                engine.state.setHaveControl(false)
+                engine.state.resetFtmsCapabilities()
+                Timber.tag(BtEngineState.TAG)
+                    .d("FTMS disconnected → reset queue, CCCD flags, and capabilities")
+            }
+
+            engine.state.clearConnection(context)
+            gatt?.let { linkGatt ->
+                runCatching { linkGatt.close() }
+                    .onFailure {
+                        Timber.tag(BtEngineState.TAG).w(it, "BluetoothGatt.close() failed")
+                    }
+            }
         }
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -377,7 +486,7 @@ internal object BtEngineGattCore {
                 Timber.tag(BtEngineState.TAG)
                     .d("Ignoring callback for inactive or mismatched context=%s", context.connectionId)
                 clearDiscovery(gatt)
-                activeHandlers.clear()
+                activeHandlers.discard()
                 if (newState == STATE_DISCONNECTED) runCatching { gatt.close() }
                 return
             }
@@ -441,59 +550,7 @@ internal object BtEngineGattCore {
                 }
 
                 STATE_DISCONNECTED -> {
-                    clearDiscovery(gatt)
-
-                    // Notify handlers, then clear local state
-                    activeHandlers.toList().forEach { handler ->
-                        if (BuildConfig.PHASE_05_HARDWARE_TEST) {
-                            Timber.tag(PHASE_05_TAG).i(
-                                "PHASE05 disconnect cleanup start generation=%d handler=%s",
-                                context.connectionId.linkGeneration,
-                                handlerName(handler),
-                            )
-                        }
-                        runCatching { handler.onDisconnected(engine) }
-                            .onSuccess {
-                                if (BuildConfig.PHASE_05_HARDWARE_TEST) {
-                                    Timber.tag(PHASE_05_TAG).i(
-                                        "PHASE05 disconnect cleanup complete generation=%d handler=%s",
-                                        context.connectionId.linkGeneration,
-                                        handlerName(handler),
-                                    )
-                                }
-                            }
-                            .onFailure {
-                                Timber.tag(BtEngineState.TAG).w(
-                                    it,
-                                    "handler.onDisconnected failed handler=%s",
-                                    handlerName(handler),
-                                )
-                            }
-                    }
-                    activeHandlers.clear()
-
-                    if (compatibilityRole == LegacyConnectionRole.HRM) {
-                        engine.state.hrmMeasurementChar = null
-                        engine.state.hrmCtrlPointChar = null
-                        engine.state.hrmBodyLocChar = null
-                        engine.state.setExternalHeartRate(null)
-                        HrmArbitration.reselect(engine)
-                    } else if (compatibilityRole == LegacyConnectionRole.FTMS) {
-                        engine.state.setHaveControl(false)
-
-                        // Reset FTMS capabilities snapshot + legacy range flags so a future
-                        // connection always starts from a clean capability state.
-                        engine.state.resetFtmsCapabilities()
-                        Timber.tag(BtEngineState.TAG)
-                            .d("FTMS disconnected → reset queue, CCCD flags, and capabilities")
-                    }
-
-                    engine.state.clearConnection(context)
-
-                    runCatching { gatt.close() }
-                        .onFailure {
-                            Timber.tag(BtEngineState.TAG).w(it, "BluetoothGatt.close() failed")
-                        }
+                    terminateConnection(gatt, "platform disconnect status=$status")
                 }
             }
         }
@@ -557,19 +614,20 @@ internal object BtEngineGattCore {
                             Timber.tag(BtEngineState.TAG)
                                 .w(it, "handler.onServicesDiscovered failed")
                         }
-                        .getOrDefault(false)
+                    .getOrDefault(false)
                 }
             )
-            engine.state.connectionRegistry.replaceHandlers(context, activeHandlers)
+            val activeSnapshot = activeHandlers.snapshot()
+            engine.state.connectionRegistry.replaceHandlers(context, activeSnapshot)
 
             Timber.tag(BtEngineState.TAG)
-                .i("Services discovered: total=%d, activeHandlers=%d", services.size, activeHandlers.size)
+                .i("Services discovered: total=%d, activeHandlers=%d", services.size, activeSnapshot.size)
             if (BuildConfig.PHASE_05_HARDWARE_TEST) {
                 Timber.tag(PHASE_05_TAG).i(
                     "PHASE05 active handlers generation=%d count=%d handlers=%s",
                     context.connectionId.linkGeneration,
-                    activeHandlers.size,
-                    handlerNames(activeHandlers),
+                    activeSnapshot.size,
+                    handlerNames(activeSnapshot),
                 )
             }
         }
@@ -753,7 +811,7 @@ internal object BtEngineGattCore {
                     "All CCCDs armed → cccdReady=true context=%s",
                     context.connectionId,
                 )
-                activeHandlers.forEach { handler ->
+                activeHandlers.snapshot().forEach { handler ->
                     if (BuildConfig.PHASE_05_HARDWARE_TEST) {
                         Timber.tag(PHASE_05_TAG).i(
                             "PHASE05 merged CCCD ready delivery generation=%d handler=%s",
@@ -778,7 +836,11 @@ internal object BtEngineGattCore {
             action: (ProtocolHandler) -> Unit
         ) {
             val serviceUuid = characteristicServiceUuidOrNull(gatt, charUuid)
-            val route = resolveProtocolHandlerRoute(activeHandlers, charUuid, serviceUuid)
+            val route = resolveProtocolHandlerRoute(
+                activeHandlers.snapshot(),
+                charUuid,
+                serviceUuid,
+            )
             if (route.owners.isEmpty()) {
                 Timber.tag(BtEngineState.TAG).e(
                     "No active protocol handler owns characteristic=%s service=%s context=%s",
@@ -814,7 +876,11 @@ internal object BtEngineGattCore {
                 )
                 return emptyList()
             }
-            val route = resolveProtocolHandlerRoute(activeHandlers, charUuid, serviceUuid)
+            val route = resolveProtocolHandlerRoute(
+                activeHandlers.snapshot(),
+                charUuid,
+                serviceUuid,
+            )
             if (route.owners.isEmpty()) {
                 Timber.tag(BtEngineState.TAG).e(
                     "No active protocol handler owns descriptor characteristic=%s service=%s context=%s",
@@ -862,5 +928,8 @@ internal object BtEngineGattCore {
         private fun safeUuid(desc: BluetoothGattDescriptor): String =
             runCatching { desc.uuid.toString() }.getOrElse { "perm-denied" }
 
+        }
+        context.terminationHook = { reason -> callback.terminateFromOwner(reason) }
+        return callback
     }
 }

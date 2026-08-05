@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -66,6 +67,46 @@ class QueueTargetingCharacterizationTest {
         val hrmContext = Any()
 
         assertSame(hrmContext, bodySensorLocationReadContext(hrmContext))
+    }
+
+    @Test
+    fun `accepted body sensor read stays in flight until its matching callback`() {
+        val gatt = Any()
+        val bodyLocation = UUID.randomUUID()
+        val rscMeasurement = UUID.randomUUID()
+        val queue = GattQueue()
+        val read = StackEntry(StackEntry.Op.READ, charUuid = bodyLocation)
+        val followingDescriptor = StackEntry(
+            StackEntry.Op.DESC_WRITE,
+            charUuid = rscMeasurement,
+        )
+        queue.enqueue(read)
+        queue.enqueue(followingDescriptor)
+
+        val inFlightRead = queue.beginDispatch()
+
+        assertTrue(characteristicReadAccepted(true))
+        assertFalse(characteristicReadAccepted(false))
+        assertSame(read, inFlightRead)
+        assertEquals(2, queue.size)
+        assertTrue(queue.isBusy)
+        assertNull(queue.beginDispatch())
+        assertTrue(
+            queueCompletionMatches(
+                gatt,
+                gatt,
+                inFlightRead,
+                StackEntry.Op.READ,
+                bodyLocation,
+            ),
+        )
+
+        queue.finishIfHead(inFlightRead!!)
+        val nextInFlight = queue.beginDispatch()
+
+        assertSame(followingDescriptor, nextInFlight)
+        assertEquals(1, queue.size)
+        assertTrue(queue.isBusy)
     }
 
     @Test

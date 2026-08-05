@@ -13,6 +13,23 @@ import org.junit.Test
 class ConnectionContextTest {
 
     @Test
+    fun `active handlers are handed to connection termination exactly once`() {
+        val lifecycle = ActiveHandlerLifecycle<String>()
+        lifecycle.addAll(listOf("hrm", "echo"))
+
+        assertEquals(listOf("hrm", "echo"), lifecycle.snapshot())
+        assertEquals(listOf("hrm", "echo"), lifecycle.terminateOnce())
+        assertNull(lifecycle.terminateOnce())
+
+        lifecycle.addAll(listOf("late"))
+        assertTrue(lifecycle.snapshot().isEmpty())
+
+        val reconnectLifecycle = ActiveHandlerLifecycle<String>()
+        reconnectLifecycle.addAll(listOf("hrm", "echo"))
+        assertEquals(listOf("hrm", "echo"), reconnectLifecycle.terminateOnce())
+    }
+
+    @Test
     fun `FTMS and HRM contexts occupy independent compatibility slots`() {
         val registry = ConnectionRegistry()
 
@@ -101,6 +118,22 @@ class ConnectionContextTest {
         assertEquals(1, hrm.queue.size)
         assertTrue(hrm.queue.isBusy)
         assertEquals(1, hrm.cccd.recoveryAttempts)
+    }
+
+    @Test
+    fun `clearing a context releases its explicit termination hook`() {
+        val registry = ConnectionRegistry()
+        val context = registry.open(
+            LegacyConnectionRole.HRM,
+            "AA:BB:CC:DD:EE:02",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        context.terminationHook = {}
+
+        assertTrue(registry.clear(context))
+
+        assertNull(context.terminationHook)
     }
 
     @Test

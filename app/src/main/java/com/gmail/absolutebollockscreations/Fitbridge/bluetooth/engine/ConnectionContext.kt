@@ -171,6 +171,10 @@ internal class ConnectionContext(
     val cccd: CccdState = CccdState(),
     var linkRecovery: LinkRecoveryState? = null,
 ) {
+    /** Callback-owned, idempotent termination entry point used by explicit disconnects. */
+    @Volatile
+    var terminationHook: ((reason: String) -> Unit)? = null
+
     @Volatile
     var isActive: Boolean = true
         internal set
@@ -333,6 +337,7 @@ internal class ConnectionRegistry {
         connectionState.value = LinkState.DISCONNECTED
         queue.clear()
         cccd.reset()
+        terminationHook = null
         gatt = null
     }
 }

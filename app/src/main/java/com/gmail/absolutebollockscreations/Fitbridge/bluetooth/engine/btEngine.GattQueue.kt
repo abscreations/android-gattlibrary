@@ -138,6 +138,9 @@ internal fun <T> queueCompletionMatches(
         head.descriptor?.uuid == callbackDescriptorUuid
 }
 
+/** `BluetoothGatt.readCharacteristic` reports request acceptance as Boolean on every API level. */
+internal fun characteristicReadAccepted(accepted: Boolean): Boolean = accepted
+
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.pushRead(context: ConnectionContext, uuid: UUID) {
     val size = context.queue.enqueue(
@@ -580,49 +583,30 @@ internal fun BtEngine.handleStack(context: ConnectionContext) {
                 }
 
                 if (entry.op == StackEntry.Op.READ) {
-                    if (Build.VERSION.SDK_INT >= 33) {
-                        val rc = try {
-                            Timber.tag(BtEngineState.TAG).d(
-                                "Dispatch READ %s on %s",
-                                uuid,
-                                gattLabel(gatt)
-                            )
-                            gatt.readCharacteristic(ch)
-                        } catch (_: SecurityException) {
-                            BluetoothStatusCodes.ERROR_MISSING_BLUETOOTH_CONNECT_PERMISSION
-                        }
-                        Timber.tag(BtEngineState.TAG).d(
-                            "readCharacteristic issued rc=$rc $uuid on ${gattLabel(gatt)}"
-                        )
-                        if (rc != BluetoothStatusCodes.SUCCESS) {
-                            val msg =
-                                "readCharacteristic rc=$rc $uuid on ${gattLabel(gatt)}"
-                            state.setGattErrorFor(gatt, msg)
-                            failAndContinue(context, msg); return
-                        }
-                        // accepted; wait for onCharacteristicRead
-                    } else {
-                        @Suppress("DEPRECATION")
-                        run {
-                            Timber.tag(BtEngineState.TAG).d(
-                                "Dispatch READ %s on %s",
-                                uuid,
-                                gattLabel(gatt)
-                            )
-                            val ok = try {
-                                gatt.readCharacteristic(ch)
-                            } catch (_: SecurityException) {
-                                false
-                            }
-                            if (!ok) {
-                                val msg =
-                                    "readCharacteristic=false $uuid on ${gattLabel(gatt)}"
-                                state.setGattErrorFor(gatt, msg)
-                                failAndContinue(context, msg); return
-                            }
-                            // accepted; wait for onCharacteristicRead
-                        }
+                    Timber.tag(BtEngineState.TAG).d(
+                        "Dispatch READ %s on %s",
+                        uuid,
+                        gattLabel(gatt)
+                    )
+                    @Suppress("DEPRECATION")
+                    val accepted = try {
+                        gatt.readCharacteristic(ch)
+                    } catch (_: SecurityException) {
+                        false
                     }
+                    Timber.tag(BtEngineState.TAG).d(
+                        "readCharacteristic accepted=%s %s on %s",
+                        accepted,
+                        uuid,
+                        gattLabel(gatt),
+                    )
+                    if (!characteristicReadAccepted(accepted)) {
+                        val msg = "readCharacteristic=false $uuid on ${gattLabel(gatt)}"
+                        state.setGattErrorFor(gatt, msg)
+                        failAndContinue(context, msg)
+                        return
+                    }
+                    // Accepted; retain the READ head until onCharacteristicRead.
                 } else {
                     val value = entry.data ?: ByteArray(0)
                     if (Build.VERSION.SDK_INT >= 33) {
