@@ -78,10 +78,21 @@ class BtEngineState : HrmStateSink {
         val lastSeenMs: Long,
         val scanResult: ScanResult?,
         val services: Set<BtServiceType> = emptySet(),
+        // Discovery/matcher decision; future proprietary fingerprints may set this without FTMS.
+        val machineCandidate: Boolean = BtServiceType.FTMS in services,
         // Authoritative type inferred from GATT characteristics after connecting.
         val machineFeature: Int? = null,
         // Optimistic ActivityType ordinal decoded from advertised FTMS Service Data.
         val advertisedMachineFeature: Int? = null,
+    )
+
+    /** Registry projection for one physical-link generation; independent of scan visibility. */
+    data class ConnectedDeviceLink(
+        val connectionKey: String,
+        val address: String,
+        val connectionState: Int,
+        val activeServices: Set<BtServiceType>,
+        val machineConnection: Boolean,
     )
 
     // ⬇️ Container types for provider-side capabilities snapshot
@@ -286,6 +297,8 @@ class BtEngineState : HrmStateSink {
     /* ───────────────────────────── connections & characteristics ───────────────────────────── */
 
     internal val connectionRegistry = ConnectionRegistry()
+    val connectedDevices: StateFlow<List<ConnectedDeviceLink>> =
+        connectionRegistry.connectedDevices
 
     // FTMS connection (primary). Compatibility accessor over the Phase 0 registry.
     var gatt: BluetoothGatt?

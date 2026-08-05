@@ -203,6 +203,9 @@ internal class ConnectionRegistry {
     val hrmConnectionState: StateFlow<Int> = _hrmConnectionState
     private val _machineCccdReady = MutableStateFlow(false)
     val machineCccdReady: StateFlow<Boolean> = _machineCccdReady
+    private val _connectedDevices =
+        MutableStateFlow<List<BtEngineState.ConnectedDeviceLink>>(emptyList())
+    val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>> = _connectedDevices
 
     fun current(role: LegacyConnectionRole): ConnectionContext? = synchronized(lock) {
         contexts[role]
@@ -236,6 +239,7 @@ internal class ConnectionRegistry {
         contexts.put(role, context)?.deactivate()
         connectionProjection(role).value = initialState
         if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
+        publishConnectedDevices()
         context
     }
 
@@ -254,6 +258,7 @@ internal class ConnectionRegistry {
     fun attach(context: ConnectionContext, gatt: BluetoothGatt): Boolean = synchronized(lock) {
         if (!context.isActive || contexts.values.none { it === context }) return@synchronized false
         context.gatt = gatt
+        publishConnectedDevices()
         true
     }
 
@@ -262,6 +267,7 @@ internal class ConnectionRegistry {
             context.deactivate()
             connectionProjection(role).value = BluetoothProfile.STATE_DISCONNECTED
             if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
+            publishConnectedDevices()
         }
     }
 
@@ -273,6 +279,7 @@ internal class ConnectionRegistry {
         context.deactivate()
         connectionProjection(role).value = BluetoothProfile.STATE_DISCONNECTED
         if (role == LegacyConnectionRole.FTMS) _machineCccdReady.value = false
+        publishConnectedDevices()
         true
     }
 
@@ -282,6 +289,7 @@ internal class ConnectionRegistry {
         contexts.entries.firstOrNull { it.value === context }?.key?.let { role ->
             connectionProjection(role).value = state
         }
+        publishConnectedDevices()
     }
 
     fun setCccdReady(context: ConnectionContext, ready: Boolean) = synchronized(lock) {
@@ -313,6 +321,7 @@ internal class ConnectionRegistry {
                 clear()
                 addAll(services)
             }
+            publishConnectedDevices()
         }
 
     fun replaceHandlers(
@@ -320,10 +329,31 @@ internal class ConnectionRegistry {
         handlers: Collection<BtEngineGattCore.ProtocolHandler>,
     ) = synchronized(lock) {
         if (!context.isActive) return@synchronized
-        context.handlers.apply {
-            clear()
-            addAll(handlers)
+            context.handlers.apply {
+                clear()
+                addAll(handlers)
+            }
+            publishConnectedDevices()
         }
+
+    private fun publishConnectedDevices() {
+        _connectedDevices.value = contexts.map { (role, context) ->
+            val handlerServices = context.handlers
+                .flatMapTo(linkedSetOf()) { handler ->
+                    handler.primaryServices.mapNotNull(::serviceTypeForUuid)
+                }
+            val fallbackService = when (role) {
+                LegacyConnectionRole.FTMS -> BtEngineState.BtServiceType.FTMS
+                LegacyConnectionRole.HRM -> BtEngineState.BtServiceType.HeartRate
+            }
+            BtEngineState.ConnectedDeviceLink(
+                connectionKey = "${context.connectionId.address}#${context.connectionId.linkGeneration}",
+                address = context.address,
+                connectionState = context.connectionState.value.bluetoothProfileState,
+                activeServices = handlerServices.ifEmpty { setOf(fallbackService) },
+                machineConnection = role == LegacyConnectionRole.FTMS,
+            )
+        }.sortedBy { it.connectionKey }
     }
 
     private fun connectionProjection(role: LegacyConnectionRole): MutableStateFlow<Int> =
@@ -340,4 +370,14 @@ internal class ConnectionRegistry {
         terminationHook = null
         gatt = null
     }
+}
+
+private fun serviceTypeForUuid(uuid: UUID): BtEngineState.BtServiceType? = when (uuid) {
+    BluetoothIds.UUID_FTMS_SERVICE -> BtEngineState.BtServiceType.FTMS
+    BluetoothIds.UUID_HRM_SERVICE -> BtEngineState.BtServiceType.HeartRate
+    BluetoothIds.UUID_CSC_SERVICE -> BtEngineState.BtServiceType.CSC
+    BluetoothIds.UUID_RSC_SERVICE -> BtEngineState.BtServiceType.RSC
+    BluetoothIds.UUID_POWER_SERVICE -> BtEngineState.BtServiceType.Power
+    BluetoothIds.UUID_GLUCOSE_SERVICE -> BtEngineState.BtServiceType.Glucose
+    else -> null
 }

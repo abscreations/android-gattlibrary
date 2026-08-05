@@ -462,6 +462,8 @@ class BtEngine internal constructor(
 
     val devices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.devices
     val hrmDevices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.hrmDevices
+    val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>>
+        get() = state.connectedDevices
 
     /* Clear all discovered FTMS + HRM devices */
     fun clearDiscovered() {

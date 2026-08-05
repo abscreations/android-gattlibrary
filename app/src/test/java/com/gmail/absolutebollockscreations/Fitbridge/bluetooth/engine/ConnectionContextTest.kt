@@ -13,6 +13,42 @@ import org.junit.Test
 class ConnectionContextTest {
 
     @Test
+    fun `registry publishes live link snapshots independently of discovery maps`() {
+        val registry = ConnectionRegistry()
+        val machine = registry.open(
+            role = LegacyConnectionRole.FTMS,
+            address = "aa:bb",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTING,
+        )
+
+        assertEquals(1, registry.connectedDevices.value.size)
+        assertEquals(
+            setOf(BtEngineState.BtServiceType.FTMS),
+            registry.connectedDevices.value.single().activeServices,
+        )
+
+        registry.updateState(machine, BluetoothProfile.STATE_CONNECTED)
+        val sensor = registry.open(
+            role = LegacyConnectionRole.HRM,
+            address = "AA:BB",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+
+        assertEquals(2, registry.connectedDevices.value.size)
+        assertTrue(registry.connectedDevices.value.any { it.machineConnection })
+        assertTrue(registry.connectedDevices.value.any {
+            BtEngineState.BtServiceType.HeartRate in it.activeServices
+        })
+
+        assertTrue(registry.clear(sensor))
+        assertEquals(1, registry.connectedDevices.value.size)
+        assertTrue(registry.clear(machine))
+        assertTrue(registry.connectedDevices.value.isEmpty())
+    }
+
+    @Test
     fun `active handlers are handed to connection termination exactly once`() {
         val lifecycle = ActiveHandlerLifecycle<String>()
         lifecycle.addAll(listOf("hrm", "echo"))
