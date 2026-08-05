@@ -95,6 +95,48 @@ class ConnectionContextTest {
         )
     }
 
+    @Test
+    fun `one machine and three sensors coexist and disconnect independently by key`() {
+        val registry = ConnectionRegistry()
+        val machine = registry.open(
+            LegacyConnectionRole.FTMS,
+            "AA:00",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        val firstSensor = registry.openAdditional(
+            "AA:01",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        val secondSensor = registry.openAdditional(
+            "AA:02",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        val thirdSensor = registry.openAdditional(
+            "AA:03",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+
+        assertEquals(4, registry.connectedDevices.value.size)
+        assertSame(machine, registry.current(LegacyConnectionRole.FTMS))
+        assertSame(firstSensor, registry.current(LegacyConnectionRole.HRM))
+
+        val secondKey = registry.connectedDevices.value.single {
+            it.address == secondSensor.address
+        }.connectionKey
+        assertSame(secondSensor, registry.contextForKey(secondKey))
+        assertTrue(registry.clear(registry.contextForKey(secondKey)!!))
+
+        assertEquals(3, registry.connectedDevices.value.size)
+        assertTrue(registry.isCurrent(machine))
+        assertTrue(registry.isCurrent(firstSensor))
+        assertTrue(registry.isCurrent(thirdSensor))
+        assertFalse(registry.isCurrent(secondSensor))
+    }
+
     private class TestHandler(
         serviceUuid: UUID,
     ) : BtEngineGattCore.ProtocolHandler {

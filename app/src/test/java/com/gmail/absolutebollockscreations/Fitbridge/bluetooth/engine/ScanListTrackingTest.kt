@@ -7,6 +7,31 @@ import org.junit.Test
 
 class ScanListTrackingTest {
 
+    @Test
+    fun `machine and sensor observations share one discovery registry`() {
+        val state = BtEngineState()
+        val machine = BtEngineState.DiscoveredDevice(
+            name = "Bike",
+            address = "AA:00",
+            rssi = -40,
+            lastSeenMs = 1,
+            scanResult = null,
+            services = setOf(BtEngineState.BtServiceType.FTMS),
+        )
+        val sensor = BtEngineState.DiscoveredDevice(
+            name = "HRM",
+            address = "AA:01",
+            rssi = -50,
+            lastSeenMs = 2,
+            scanResult = null,
+            services = setOf(BtEngineState.BtServiceType.HeartRate),
+        )
+
+        state.putDiscoveredDevices(mapOf(machine.address to machine, sensor.address to sensor))
+
+        assertEquals(setOf(machine.address, sensor.address), state.discoveredDevices.value.keys)
+    }
+
     private data class SeenEntry(
         val address: String,
         val lastSeenMs: Long,

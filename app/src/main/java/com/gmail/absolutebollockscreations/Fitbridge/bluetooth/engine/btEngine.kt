@@ -95,6 +95,7 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattConnectionSettings
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
@@ -460,15 +461,14 @@ class BtEngine internal constructor(
 
     internal val adapter: BluetoothAdapter? = btManager?.adapter
 
-    val devices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.devices
-    val hrmDevices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>> get() = state.hrmDevices
+    val discoveredDevices: StateFlow<Map<String, BtEngineState.DiscoveredDevice>>
+        get() = state.discoveredDevices
     val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>>
         get() = state.connectedDevices
 
-    /* Clear all discovered FTMS + HRM devices */
+    /* Clear the canonical discovery registry. */
     fun clearDiscovered() {
-        state.putDevices(emptyMap())
-        state.putHrmDevices(emptyMap())
+        state.putDiscoveredDevices(emptyMap())
     }
 
     /** Public entry point for UI/service to clear short-term series and reset baselines. */
@@ -594,6 +594,9 @@ class BtEngine internal constructor(
         // API 30-36 compatibility path; all context-based overloads are deprecated in API 37.
         device.connectGatt(context, /* autoConnect = */ false, callback, BluetoothDevice.TRANSPORT_LE)
     }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun connectMachine(address: String): Boolean = connectFtms(address)
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun connectFtms(
@@ -748,20 +751,28 @@ class BtEngine internal constructor(
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun connectHrm(address: String): Boolean =
-        guardConnectPerm("connectHrm(address=$address)", default = false) {
-            Timber.tag(BtEngineState.TAG).i("connectHrm %s", address)
+    fun connectSensor(
+        address: String,
+        serviceType: BtEngineState.BtServiceType,
+    ): Boolean = guardConnectPerm("connectSensor(address=$address, service=$serviceType)", false) {
+            Timber.tag(BtEngineState.TAG).i("connectSensor %s service=%s", address, serviceType)
             if (address.isBlank()) return@guardConnectPerm false
+            if (state.connectionRegistry.contextsForAddress(address).isNotEmpty()) {
+                return@guardConnectPerm activateServiceAtAddress(address, serviceType)
+            }
+            val protocol = when (serviceType) {
+                BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
+                else -> return@guardConnectPerm false
+            }
             stopScan()
             val dev = try { adapter?.getRemoteDevice(address) } catch (_: IllegalArgumentException) { null }
             if (dev == null) {
-                Timber.tag(BtEngineState.TAG).w("connectHrm: invalid address %s", address)
+                Timber.tag(BtEngineState.TAG).w("connectSensor: invalid address %s", address)
                 return@guardConnectPerm false
             }
-            val connection = state.openConnectionContext(
-                LegacyConnectionRole.HRM,
+            val connection = state.openAdditionalSensorContext(
                 address,
-                handlers = handlerFactory.createForConnection(ProtocolKey.HRM),
+                handlers = handlerFactory.createForConnection(protocol),
             )
             val cb = BtEngineGattCore.build(this@BtEngine, connection)
             val connectedGatt = connectLeGatt(dev, cb)
@@ -769,6 +780,10 @@ class BtEngine internal constructor(
             if (!attached) state.clearConnection(connection)
             attached
         }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun connectHrm(address: String): Boolean =
+        connectSensor(address, BtEngineState.BtServiceType.HeartRate)
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun disconnectHrm() {
@@ -806,17 +821,51 @@ class BtEngine internal constructor(
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun disconnectDevice(connectionKey: String): Boolean =
+        guardConnectPerm("disconnectDevice($connectionKey)", default = false) {
+            val connection = state.connectionRegistry.contextForKey(connectionKey)
+                ?: return@guardConnectPerm false
+            val termination = connection.terminationHook
+            runCatching { connection.gatt?.disconnect() }
+            if (termination != null) {
+                termination("explicit device disconnect")
+            } else {
+                runCatching { connection.gatt?.close() }
+                state.setConnectionState(connection, BluetoothProfile.STATE_DISCONNECTED)
+                metricFusion.onDisconnected(connection.connectionId)
+                state.clearConnection(connection)
+            }
+            if (connection.machineConnection) {
+                state.resetFtmsControl()
+                featureReadRetryScheduled = false
+                earlyBondScheduled = false
+                stopProviderAdvertising("explicit device disconnect")
+                resetProviderAdvertisingState()
+            }
+            true
+        }
+
     /** Activate another supported service handler on an existing physical link. */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun activateServiceOn(
+    private fun activateServiceAtAddress(
         address: String,
         serviceType: BtEngineState.BtServiceType,
-    ): Boolean = guardConnectPerm("activateServiceOn($address, $serviceType)", default = false) {
+    ): Boolean = guardConnectPerm("activateServiceAtAddress($address, $serviceType)", default = false) {
         val protocol = when (serviceType) {
             BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
             else -> return@guardConnectPerm false
         }
         state.connectionRegistry.activateHandlerOn(address, handlerFactory.create(protocol))
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun activateServiceOn(
+        connectionKey: String,
+        serviceType: BtEngineState.BtServiceType,
+    ): Boolean {
+        val context = state.connectionRegistry.contextForKey(connectionKey) ?: return false
+        return activateServiceAtAddress(context.address, serviceType)
     }
 
     /** Manual hook to force a pairing UI for a known MAC (e.g., user action) */
@@ -841,9 +890,11 @@ class BtEngine internal constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun release() {
         runCatching { stopScan() }
-        runCatching { disconnectFtms() }
-        runCatching { disconnectHrm() }
-        // No explicit stopAdvertising here; handled centrally by disconnectFtms()/setGattErrorFor().
+        state.connectedDevices.value.map { it.connectionKey }.forEach { connectionKey ->
+            runCatching { disconnectDevice(connectionKey) }
+        }
+        stopProviderAdvertising("release")
+        resetProviderAdvertisingState()
     }
 
     /* ───────────────────────────── session orchestration ───────────────────────────── */

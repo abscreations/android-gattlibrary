@@ -7,8 +7,7 @@
  *      • startScanImpl(...)  → start scanning with HW or SW filters
  *      • stopScanImpl()      → stop scanning and clear callback
  *  - Maintains the in-memory “discovered devices” catalog in BtEngineState:
- *      • FTMS-capable fitness machines → state.devices
- *      • HRM / other sensors           → state.hrmDevices
+ *      • all supported machines and sensors → state.discoveredDevices
  *  - Normalizes scan results into stable keys, safe names/addresses, and
  *    per-service classification.
  *
@@ -37,14 +36,14 @@
  *        and later migrated to the real address when it becomes known.
  *
  *  - Upsert helpers (device catalog):
- *      • upsertDeviceFTMS(...)   → updates state.devices for FTMS machines:
+ *      • upsertDiscoveredDevice(...) → updates one canonical discovery registry:
  *          - Refreshes RSSI and monotonic lastSeenMs for every packet.
  *          - Collapses entries that share a nonblank MAC address.
  *          - Migrates tmp: keys to real addresses when available.
  *          - Decodes an optimistic machine-type hint from FTMS Service Data;
  *            machineFeature remains reserved for connected GATT discovery.
  *      • upsertDeviceSensor(...) → same pattern for HRM/other sensors, backing
- *        state.hrmDevices (reused bucket for non-FTMS peripherals).
+ *        service and machine-candidate evidence are merged by canonical address.
  *
  *  - Scan callback management:
  *      • Per-BtEngine ScanCallback instances are tracked in a WeakHashMap to
@@ -132,16 +131,19 @@ internal fun BtEngine.startScanImpl(
 
             when (primary?.knownService) {
                 KnownBleService.FTMS -> {
-                    upsertDeviceFTMS(key, name, address, result, primary.serviceUuid.toUuid())
+                    upsertDiscoveredDevice(
+                        key, name, address, result, primary.serviceUuid.toUuid(),
+                        machineCandidate = true,
+                    )
                 }
                 KnownBleService.HRM,
                 KnownBleService.CSC,
                 KnownBleService.RSC,
                 KnownBleService.CPS,
                 KnownBleService.GLUCOSE -> {
-                    // Reuse the "hrmDevices" bucket for non-FTMS sensors
-                    upsertDeviceSensor(
-                        key, name, address, result, primary.serviceUuid.toUuid()
+                    upsertDiscoveredDevice(
+                        key, name, address, result, primary.serviceUuid.toUuid(),
+                        machineCandidate = false,
                     )
                 }
                 else -> {
@@ -183,7 +185,7 @@ internal fun BtEngine.startScanImpl(
         if (useFtmsHardwareFilter) {
             handler.postDelayed({
                 if (scanSessions[this@startScanImpl]?.callback === cb) {
-                    val empty = state.devices.value.isEmpty() && state.hrmDevices.value.isEmpty()
+                    val empty = state.discoveredDevices.value.isEmpty()
                     if (empty && state.isScanning.value) {
                         Timber.tag(BtEngineState.TAG).w("No supported services w/ HW filter → restarting with SW filter")
                         stopScanImpl()
@@ -214,33 +216,21 @@ internal fun BtEngine.stopScanImpl() {
 
 @SuppressLint("MissingPermission")
 private fun BtEngine.pruneStaleScanEntries(nowMs: Long) {
-    val connectedFtmsAddress = runCatching { state.gatt?.device?.address }.getOrNull()
-    val connectedSensorAddress = runCatching { state.gattHrm?.device?.address }.getOrNull()
-
-    val freshFtms = retainFreshScanEntries(
-        entries = state.devices.value,
+    val connectedAddresses = state.connectedDevices.value
+        .mapTo(linkedSetOf()) { canonicalScanAddress(it.address) }
+    val fresh = retainFreshScanEntries(
+        entries = state.discoveredDevices.value,
         nowMs = nowMs,
         staleAfterMs = SCAN_ENTRY_STALE_AFTER_MS,
         lastSeenMs = { it.lastSeenMs },
-        alwaysRetain = { it.address.equals(connectedFtmsAddress, ignoreCase = true) },
+        alwaysRetain = { canonicalScanAddress(it.address) in connectedAddresses },
     )
-    val freshSensors = retainFreshScanEntries(
-        entries = state.hrmDevices.value,
-        nowMs = nowMs,
-        staleAfterMs = SCAN_ENTRY_STALE_AFTER_MS,
-        lastSeenMs = { it.lastSeenMs },
-        alwaysRetain = { it.address.equals(connectedSensorAddress, ignoreCase = true) },
-    )
-
-    val removedFtms = state.devices.value.size - freshFtms.size
-    val removedSensors = state.hrmDevices.value.size - freshSensors.size
-    if (removedFtms > 0) state.putDevices(freshFtms)
-    if (removedSensors > 0) state.putHrmDevices(freshSensors)
-    if (removedFtms > 0 || removedSensors > 0) {
+    val removed = state.discoveredDevices.value.size - fresh.size
+    if (removed > 0) {
+        state.putDiscoveredDevices(fresh)
         Timber.tag(BtEngineState.TAG).d(
-            "Pruned stale scan entries: ftms=%d sensors=%d",
-            removedFtms,
-            removedSensors,
+            "Pruned stale scan entries: removed=%d",
+            removed,
         )
     }
 }
@@ -396,19 +386,24 @@ private fun advertisedServiceTypes(result: ScanResult): Set<BtEngineState.BtServ
 
 /* ───────────────────────────── upsert ───────────────────────────── */
 
-private fun BtEngine.upsertDeviceFTMS(
+private fun BtEngine.upsertDiscoveredDevice(
     key: String,
     name: String,
     address: String,
     result: ScanResult,
-    serviceUuid: UUID
+    serviceUuid: UUID,
+    machineCandidate: Boolean,
 ) {
     synchronized(state) {
         val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
-        val advertisedMachineFeature = BtServiceProfiles.activityTypeFromFtmsServiceData(
-            result.scanRecord?.getServiceData(BluetoothIds.FTMS_SERVICE_PARCEL)
-        )?.ordinal
-        val map = state.devices.value.toMutableMap()
+        val advertisedMachineFeature = if (machineCandidate) {
+            BtServiceProfiles.activityTypeFromFtmsServiceData(
+                result.scanRecord?.getServiceData(BluetoothIds.FTMS_SERVICE_PARCEL)
+            )?.ordinal
+        } else {
+            null
+        }
+        val map = state.discoveredDevices.value.toMutableMap()
         val current = map[key] ?: map.values.firstOrNull { device ->
             address.isNotBlank() && canonicalScanAddress(device.address) == address
         }
@@ -432,6 +427,7 @@ private fun BtEngine.upsertDeviceFTMS(
             services = retainedServices +
                 advertisedServiceTypes(result) +
                 setOfNotNull(toServiceType(serviceUuid)),
+            machineCandidate = current?.machineCandidate == true || machineCandidate,
             machineFeature = current?.machineFeature,
             advertisedMachineFeature =
                 advertisedMachineFeature ?: current?.advertisedMachineFeature,
@@ -449,70 +445,6 @@ private fun BtEngine.upsertDeviceFTMS(
         }
 
         map[key] = dev
-        if (address.isNotBlank()) {
-            val sensorMap = state.hrmDevices.value.toMutableMap()
-            duplicateAddressKeys(sensorMap, keepKey = "", address = address) { it.address }
-                .forEach(sensorMap::remove)
-            if (sensorMap.size != state.hrmDevices.value.size) {
-                state.putHrmDevices(sensorMap)
-            }
-        }
-        state.putDevices(map)
-    }
-}
-
-private fun BtEngine.upsertDeviceSensor(
-    key: String,
-    name: String,
-    address: String,
-    result: ScanResult,
-    serviceUuid: UUID
-) {
-    synchronized(state) {
-        if (address.isNotBlank()) {
-            val matchingFtms = state.devices.value.values.any { device ->
-                canonicalScanAddress(device.address) == address
-            }
-            if (matchingFtms) {
-                val sensorMap = state.hrmDevices.value.toMutableMap()
-                duplicateAddressKeys(sensorMap, keepKey = "", address = address) { it.address }
-                    .forEach(sensorMap::remove)
-                if (sensorMap.size != state.hrmDevices.value.size) {
-                    state.putHrmDevices(sensorMap)
-                }
-                return@synchronized
-            }
-        }
-        val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
-        val map = state.hrmDevices.value.toMutableMap()
-        val current = map[key] ?: map.values.firstOrNull { device ->
-            address.isNotBlank() && canonicalScanAddress(device.address) == address
-        }
-        val dev = BtEngineState.DiscoveredDevice(
-            name = display.ifBlank { current?.name.orEmpty() },
-            address = address,
-            rssi = result.rssi,
-            lastSeenMs = SystemClock.elapsedRealtime(),
-            scanResult = result,
-            services = current?.services.orEmpty() +
-                advertisedServiceTypes(result) +
-                setOfNotNull(toServiceType(serviceUuid)),
-            machineFeature = null,
-            advertisedMachineFeature = null,
-        )
-
-        if (address.isNotBlank()) {
-            duplicateAddressKeys(map, key, address) { it.address }.forEach(map::remove)
-            map.entries
-                .filter { (candidateKey, device) ->
-                    candidateKey != key && candidateKey.startsWith("tmp:") &&
-                        device.scanResult?.device == result.device
-                }
-                .map { it.key }
-                .forEach(map::remove)
-        }
-
-        map[key] = dev
-        state.putHrmDevices(map)
+        state.putDiscoveredDevices(map)
     }
 }

@@ -285,11 +285,11 @@ class BtEngineState : HrmStateSink {
     var powerIncr = 0f
     var powerRangeKnown = false
 
-    private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
-    val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices
+    private val _discoveredDevices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
+    val discoveredDevices: StateFlow<Map<String, DiscoveredDevice>> = _discoveredDevices
 
-    private val _hrmDevices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
-    val hrmDevices: StateFlow<Map<String, DiscoveredDevice>> = _hrmDevices
+    // Internal parser/capability compatibility only; scanner/UI callers use discoveredDevices.
+    internal val devices: StateFlow<Map<String, DiscoveredDevice>> = discoveredDevices
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning
@@ -746,12 +746,12 @@ class BtEngineState : HrmStateSink {
     // Discovery -> machine feature
     fun updateDeviceMachineFeatureByAddress(address: String, machineTypeOrdinal: Int) {
         if (address.isBlank()) return
-        val map = _devices.value.toMutableMap()
+        val map = _discoveredDevices.value.toMutableMap()
         val entry = map.entries.firstOrNull { it.value.address.equals(address, ignoreCase = true) } ?: return
         val oldFeature = entry.value.machineFeature
         if (oldFeature == machineTypeOrdinal) return
         map[entry.key] = entry.value.copy(machineFeature = machineTypeOrdinal)
-        _devices.value = map
+        _discoveredDevices.value = map
         Timber.tag(TAG).i(
             "updateDeviceMachineFeatureByAddress(%s): %s → %d",
             address,
@@ -788,14 +788,9 @@ class BtEngineState : HrmStateSink {
         Timber.tag(TAG).d("isScanning %s → %s", old, v)
     }
 
-    fun putDevices(map: Map<String, DiscoveredDevice>) {
-        _devices.value = map
-        Timber.tag(TAG).d("putDevices(size=%d)", map.size)
-    }
-
-    fun putHrmDevices(map: Map<String, DiscoveredDevice>) {
-        _hrmDevices.value = map
-        Timber.tag(TAG).d("putHrmDevices(size=%d)", map.size)
+    fun putDiscoveredDevices(map: Map<String, DiscoveredDevice>) {
+        _discoveredDevices.value = map
+        Timber.tag(TAG).d("putDiscoveredDevices(size=%d)", map.size)
     }
 
     // Connections
@@ -809,6 +804,17 @@ class BtEngineState : HrmStateSink {
         context.handlers.addAll(handlers)
         if (role == LegacyConnectionRole.FTMS) linkedAtMs = null
         Timber.tag(TAG).i("Opened %s context %s", role, context.connectionId)
+        return context
+    }
+
+    internal fun openAdditionalSensorContext(
+        address: String,
+        handlers: Collection<BtEngineGattCore.ProtocolHandler>,
+        initialState: Int = BluetoothProfile.STATE_CONNECTING,
+    ): ConnectionContext {
+        val context = connectionRegistry.openAdditional(address, gatt = null, initialState)
+        context.handlers.addAll(handlers)
+        Timber.tag(TAG).i("Opened sensor context %s", context.connectionId)
         return context
     }
 
