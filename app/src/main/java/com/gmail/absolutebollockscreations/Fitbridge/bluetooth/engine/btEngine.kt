@@ -116,6 +116,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineSt
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -136,6 +137,7 @@ class BtEngine internal constructor(
     constructor(context: Context) : this(context, HandlerFactory.standard())
 
     companion object {
+        private const val RECOVERY_CONNECT_TIMEOUT_MS = 12_000L
         @Volatile private var isStarted = false
         @Volatile private var stopped = false
         private val startLock = Any()
@@ -143,6 +145,8 @@ class BtEngine internal constructor(
 
     internal val state: BtEngineState = BtEngineState()
     internal val metricFusion: MetricFusion = MetricFusion(state)
+    private val linkRecovery = InSessionLinkRecovery()
+    private val recoveryJobs = mutableMapOf<String, Job>()
 
     // Optional sink into the provider-side btService layer.
     // Implemented by something like BtServiceManager in the service module.
@@ -471,6 +475,8 @@ class BtEngine internal constructor(
         state.putDiscoveredDevices(emptyMap())
     }
 
+    private fun elapsedRealtimeMs(): Long = android.os.SystemClock.elapsedRealtime()
+
     /** Public entry point for UI/service to clear short-term series and reset baselines. */
     fun clearTimeSeries(keepTotals: Boolean = true) {
         state.clearTimeSeries(keepTotals)
@@ -595,6 +601,39 @@ class BtEngine internal constructor(
         device.connectGatt(context, /* autoConnect = */ false, callback, BluetoothDevice.TRANSPORT_LE)
     }
 
+    private fun handlersForServices(
+        services: Set<BtEngineState.BtServiceType>,
+        machineConnection: Boolean,
+    ): List<BtEngineGattCore.ProtocolHandler> = buildList {
+        if (machineConnection) addAll(handlerFactory.createForConnection(ProtocolKey.FTMS))
+        if (BtEngineState.BtServiceType.HeartRate in services) {
+            addAll(handlerFactory.createForConnection(ProtocolKey.HRM))
+        }
+    }.distinctBy { handler -> handler::class.java.name to handler.primaryServices }
+
+    private fun recoveryTarget(
+        address: String,
+        machineConnection: Boolean,
+        services: Set<BtEngineState.BtServiceType>,
+    ) = LinkRecoveryTarget(
+        recoveryKey = recoveryKey(address, machineConnection),
+        address = canonicalConnectionAddress(address),
+        machineConnection = machineConnection,
+        activeServices = services,
+    )
+
+    private fun recoveryTargetFor(context: ConnectionContext): LinkRecoveryTarget {
+        val activeServices = context.handlers.flatMapTo(linkedSetOf()) { handler ->
+            handler.primaryServices.mapNotNull(::serviceTypeForUuid)
+        }.ifEmpty {
+            setOf(
+                if (context.machineConnection) BtEngineState.BtServiceType.FTMS
+                else BtEngineState.BtServiceType.HeartRate
+            )
+        }
+        return recoveryTarget(context.address, context.machineConnection, activeServices)
+    }
+
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun connectMachine(address: String): Boolean = connectFtms(address)
 
@@ -623,7 +662,10 @@ class BtEngine internal constructor(
     private fun connectFtmsInternal(
         address: String,
         activity: ActivityType?,      // nullable: null = AUTO
-        preBondIfNeeded: Boolean
+        preBondIfNeeded: Boolean,
+        assignedServices: Set<BtEngineState.BtServiceType> =
+            setOf(BtEngineState.BtServiceType.FTMS),
+        recoveryAttempt: Boolean = false,
     ): Boolean = guardConnectPerm(
         op = "connectFtms(address=$address, activity=$activity, preBondIfNeeded=$preBondIfNeeded)",
         default = false
@@ -638,7 +680,7 @@ class BtEngine internal constructor(
         if (dev == null) return@guardConnectPerm false
 
         stopScan()
-        resetProviderAdvertisingState()
+        if (!recoveryAttempt) resetProviderAdvertisingState()
 
         // Opt-in only. See the bonding-policy note on connectFtms: bonding
         // proactively raced service discovery and killed the link. Android
@@ -663,7 +705,7 @@ class BtEngine internal constructor(
         val connection = state.openConnectionContext(
             LegacyConnectionRole.FTMS,
             address,
-            handlers = handlerFactory.createForConnection(ProtocolKey.FTMS),
+            handlers = handlersForServices(assignedServices, machineConnection = true),
         )
         val cb = BtEngineGattCore.build(this@BtEngine, connection)
         val connectedGatt = connectLeGatt(dev, cb)
@@ -671,6 +713,11 @@ class BtEngine internal constructor(
         if (!attached) state.clearConnection(connection)
 
         val created = attached
+        if (created && !recoveryAttempt) {
+            linkRecovery.registerSelection(
+                recoveryTarget(address, machineConnection = true, assignedServices)
+            )
+        }
         if (created && preBondIfNeeded) {
             // Only when bonding was explicitly asked for. This used to run on
             // every connect and is what produced the TERMINATE_LOCAL_HOST
@@ -754,15 +801,28 @@ class BtEngine internal constructor(
     fun connectSensor(
         address: String,
         serviceType: BtEngineState.BtServiceType,
-    ): Boolean = guardConnectPerm("connectSensor(address=$address, service=$serviceType)", false) {
-            Timber.tag(BtEngineState.TAG).i("connectSensor %s service=%s", address, serviceType)
+    ): Boolean = connectSensorInternal(address, setOf(serviceType), recoveryAttempt = false)
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun connectSensorInternal(
+        address: String,
+        assignedServices: Set<BtEngineState.BtServiceType>,
+        recoveryAttempt: Boolean,
+    ): Boolean = guardConnectPerm("connectSensor(address=$address, services=$assignedServices)", false) {
+            Timber.tag(BtEngineState.TAG).i(
+                "connectSensor %s services=%s recovery=%s",
+                address,
+                assignedServices,
+                recoveryAttempt,
+            )
             if (address.isBlank()) return@guardConnectPerm false
             if (state.connectionRegistry.contextsForAddress(address).isNotEmpty()) {
-                return@guardConnectPerm activateServiceAtAddress(address, serviceType)
+                return@guardConnectPerm assignedServices.all { serviceType ->
+                    activateServiceAtAddress(address, serviceType)
+                }
             }
-            val protocol = when (serviceType) {
-                BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
-                else -> return@guardConnectPerm false
+            if (assignedServices.any { it != BtEngineState.BtServiceType.HeartRate }) {
+                return@guardConnectPerm false
             }
             stopScan()
             val dev = try { adapter?.getRemoteDevice(address) } catch (_: IllegalArgumentException) { null }
@@ -772,12 +832,17 @@ class BtEngine internal constructor(
             }
             val connection = state.openAdditionalSensorContext(
                 address,
-                handlers = handlerFactory.createForConnection(protocol),
+                handlers = handlersForServices(assignedServices, machineConnection = false),
             )
             val cb = BtEngineGattCore.build(this@BtEngine, connection)
             val connectedGatt = connectLeGatt(dev, cb)
             val attached = connectedGatt?.let { state.attachGatt(connection, it) } == true
             if (!attached) state.clearConnection(connection)
+            if (attached && !recoveryAttempt) {
+                linkRecovery.registerSelection(
+                    recoveryTarget(address, machineConnection = false, assignedServices)
+                )
+            }
             attached
         }
 
@@ -826,6 +891,7 @@ class BtEngine internal constructor(
         guardConnectPerm("disconnectDevice($connectionKey)", default = false) {
             val connection = state.connectionRegistry.contextForKey(connectionKey)
                 ?: return@guardConnectPerm false
+            cancelRecoveryTarget(recoveryTargetFor(connection).recoveryKey)
             val termination = connection.terminationHook
             runCatching { connection.gatt?.disconnect() }
             if (termination != null) {
@@ -846,6 +912,82 @@ class BtEngine internal constructor(
             true
         }
 
+    fun beginRecoverySession() {
+        val targets = state.connectionRegistry.connectedDevices.value.mapNotNull { link ->
+            state.connectionRegistry.contextForKey(link.connectionKey)?.let(::recoveryTargetFor)
+        }
+        linkRecovery.beginSession(targets)
+    }
+
+    fun endRecoverySession() {
+        linkRecovery.endSession()
+        synchronized(recoveryJobs) {
+            recoveryJobs.values.forEach(Job::cancel)
+            recoveryJobs.clear()
+        }
+    }
+
+    internal fun onPhysicalLinkConnected(context: ConnectionContext) {
+        val key = recoveryTargetFor(context).recoveryKey
+        linkRecovery.onConnected(key)
+        synchronized(recoveryJobs) { recoveryJobs.remove(key)?.cancel() }
+    }
+
+    internal fun onPhysicalLinkTerminating(context: ConnectionContext, reason: String) {
+        val target = recoveryTargetFor(context)
+        if (reason.startsWith("platform disconnect") || reason == "recovery timeout") {
+            linkRecovery.updateTarget(target)
+            linkRecovery.onUnexpectedDisconnect(target.recoveryKey, elapsedRealtimeMs())
+                ?.let(::scheduleRecovery)
+        } else {
+            cancelRecoveryTarget(target.recoveryKey)
+        }
+    }
+
+    private fun cancelRecoveryTarget(recoveryKey: String) {
+        linkRecovery.cancelTarget(recoveryKey)
+        synchronized(recoveryJobs) { recoveryJobs.remove(recoveryKey)?.cancel() }
+    }
+
+    private fun scheduleRecovery(attempt: LinkRecoveryAttempt) {
+        val key = attempt.target.recoveryKey
+        val job = scope.launch {
+            val waitMs = (attempt.dueAtMs - elapsedRealtimeMs()).coerceAtLeast(0L)
+            delay(waitMs)
+            if (!linkRecovery.shouldRun(attempt)) return@launch
+            val connected = if (attempt.target.machineConnection) {
+                connectFtmsInternal(
+                    address = attempt.target.address,
+                    activity = null,
+                    preBondIfNeeded = false,
+                    assignedServices = attempt.target.activeServices,
+                    recoveryAttempt = true,
+                )
+            } else {
+                connectSensorInternal(
+                    address = attempt.target.address,
+                    assignedServices = attempt.target.activeServices,
+                    recoveryAttempt = true,
+                )
+            }
+            if (!connected) {
+                linkRecovery.onAttemptFailed(attempt, elapsedRealtimeMs())
+                    ?.let(::scheduleRecovery)
+                return@launch
+            }
+
+            delay(RECOVERY_CONNECT_TIMEOUT_MS)
+            if (!linkRecovery.shouldRun(attempt)) return@launch
+            state.connectionRegistry.contextsForAddress(attempt.target.address)
+                .firstOrNull { it.connectionState.value != LinkState.CONNECTED }
+                ?.terminationHook
+                ?.invoke("recovery timeout")
+        }
+        synchronized(recoveryJobs) {
+            recoveryJobs.put(key, job)?.cancel()
+        }
+    }
+
     /** Activate another supported service handler on an existing physical link. */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun activateServiceAtAddress(
@@ -856,7 +998,16 @@ class BtEngine internal constructor(
             BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
             else -> return@guardConnectPerm false
         }
-        state.connectionRegistry.activateHandlerOn(address, handlerFactory.create(protocol))
+        val activated = state.connectionRegistry.activateHandlerOn(
+            address,
+            handlerFactory.create(protocol),
+        )
+        if (activated) {
+            state.connectionRegistry.contextsForAddress(address).firstOrNull()?.let { context ->
+                linkRecovery.updateTarget(recoveryTargetFor(context))
+            }
+        }
+        activated
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -889,6 +1040,7 @@ class BtEngine internal constructor(
     // Release all Bluetooth resources. Each call has its own permission guards.
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun release() {
+        endRecoverySession()
         runCatching { stopScan() }
         state.connectedDevices.value.map { it.connectionKey }.forEach { connectionKey ->
             runCatching { disconnectDevice(connectionKey) }

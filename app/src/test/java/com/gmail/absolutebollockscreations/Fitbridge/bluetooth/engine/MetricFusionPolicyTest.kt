@@ -182,6 +182,32 @@ class MetricFusionPolicyTest {
     }
 
     @Test
+    fun `cumulative distance remains continuous across a recovered link generation`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val beforeDrop = source(ftmsConnection, MetricProtocol.FTMS, 80)
+        val recoveredConnection = ConnectionId(ftmsConnection.address, 99)
+        val afterRecovery = source(recoveredConnection, MetricProtocol.FTMS, 80)
+
+        fusion.submit(
+            sample(MetricKind.DISTANCE, 100.0, 100, beforeDrop, MetricSourceClass.FTMS)
+        )
+        fusion.submit(
+            sample(MetricKind.DISTANCE, 120.0, 101, beforeDrop, MetricSourceClass.FTMS)
+        )
+        fusion.onDisconnected(ftmsConnection, nowMs = 102)
+        fusion.submit(
+            sample(MetricKind.DISTANCE, 2.0, 103, afterRecovery, MetricSourceClass.FTMS)
+        )
+        assertEquals(120, state.totalDistanceMeters.value)
+
+        fusion.submit(
+            sample(MetricKind.DISTANCE, 5.0, 104, afterRecovery, MetricSourceClass.FTMS)
+        )
+        assertEquals(123, state.totalDistanceMeters.value)
+    }
+
+    @Test
     fun `machine elapsed is ignored and FitBridge session clock is authoritative`() {
         val state = BtEngineState()
         val fusion = MetricFusion(state)

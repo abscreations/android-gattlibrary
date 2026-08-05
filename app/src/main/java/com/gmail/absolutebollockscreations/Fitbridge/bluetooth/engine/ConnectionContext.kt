@@ -461,7 +461,7 @@ internal class ConnectionRegistry {
 private val ConnectionContext.connectionKey: String
     get() = "${connectionId.address}#${connectionId.linkGeneration}"
 
-private fun serviceTypeForUuid(uuid: UUID): BtEngineState.BtServiceType? = when (uuid) {
+internal fun serviceTypeForUuid(uuid: UUID): BtEngineState.BtServiceType? = when (uuid) {
     BluetoothIds.UUID_FTMS_SERVICE -> BtEngineState.BtServiceType.FTMS
     BluetoothIds.UUID_HRM_SERVICE -> BtEngineState.BtServiceType.HeartRate
     BluetoothIds.UUID_CSC_SERVICE -> BtEngineState.BtServiceType.CSC

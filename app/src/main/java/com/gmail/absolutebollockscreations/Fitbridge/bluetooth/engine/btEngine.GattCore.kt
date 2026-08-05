@@ -401,6 +401,7 @@ internal object BtEngineGattCore {
                 )
                 return
             }
+            engine.onPhysicalLinkTerminating(context, reason)
 
             gatt?.let(::clearDiscovery) ?: cancelDiscoveryCallbacks()
             val compatibilityRole = engine.state.connectionRegistry.roleOf(context)
@@ -555,6 +556,7 @@ internal object BtEngineGattCore {
 
             when (newState) {
                 STATE_CONNECTED -> {
+                    engine.onPhysicalLinkConnected(context)
                     resetDiscovery(gatt)
 
                     if (compatibilityRole == LegacyConnectionRole.FTMS) {
