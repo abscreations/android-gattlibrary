@@ -859,6 +859,13 @@ internal object BtEngineGattCore {
             }
 
             if (cccdPlanBecameReady) {
+                // §0.7a: the liveness clock starts here, not at connect. The
+                // device has demonstrably accepted every subscription, so from
+                // this instant silence is the machine's doing rather than ours.
+                engine.state.adapterLiveness.onSubscriptionsComplete(
+                    context,
+                    android.os.SystemClock.elapsedRealtime(),
+                )
                 Timber.tag(BtEngineState.TAG).d(
                     "All CCCDs armed → cccdReady=true context=%s",
                     context.connectionId,

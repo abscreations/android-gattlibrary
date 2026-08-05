@@ -121,6 +121,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -143,6 +144,9 @@ class BtEngine internal constructor(
 
         // Polled faster than 1 Hz so a published second never drifts a whole tick late.
         private const val SESSION_ELAPSED_TICK_MS = 250L
+
+        /** §0.7a liveness poll. Far finer than the 30 s timeout it evaluates. */
+        private const val LIVENESS_TICK_MS = 1_000L
         @Volatile private var isStarted = false
         @Volatile private var stopped = false
         private val startLock = Any()
@@ -459,6 +463,25 @@ class BtEngine internal constructor(
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
+
+    /**
+     * §0.7a liveness tick.
+     *
+     * A timeout is by definition the absence of events, so there is nothing to
+     * piggyback on and a poll is required. One second is far finer than the
+     * 30-second timeout it evaluates; the work is a map lookup per live machine
+     * link and allocates nothing when nothing has expired.
+     *
+     * Tied to the engine's own scope, so it dies with the engine rather than
+     * outliving it.
+     */
+    private val livenessTickJob: Job = scope.launch {
+        while (isActive) {
+            delay(LIVENESS_TICK_MS)
+            runCatching { state.adapterLiveness.tick(elapsedRealtimeMs()) }
+                .onFailure { Timber.tag(BtEngineState.TAG).w(it, "liveness tick failed") }
+        }
+    }
 
     @Volatile private var desiredAddress: String? = null
     @Volatile private var desiredActivity: ActivityType? = null

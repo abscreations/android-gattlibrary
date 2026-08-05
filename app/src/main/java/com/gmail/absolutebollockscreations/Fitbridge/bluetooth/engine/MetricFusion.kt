@@ -205,6 +205,11 @@ internal class MetricFusion(
 
     fun submit(sample: MetricSample): FusionSubmission = synchronized(lock) {
         if (!isDomainValid(sample)) return@synchronized FusionSubmission.REJECTED_INVALID
+        // §0.7a: every sample passes through here, so this is the one place that
+        // sees a machine adapter proving it is alive. Deliberately before the
+        // staleness check below - an out-of-order sample is still evidence the
+        // device is talking, even if fusion has no use for its value.
+        state.adapterLiveness.onSample(sample)
         val bySource = candidates.getOrPut(sample.metric) { mutableMapOf() }
         val candidateKey = sample.candidateKey()
         val previous = bySource[candidateKey]

@@ -309,6 +309,14 @@ class BtEngineState : HrmStateSink {
     /* ───────────────────────────── connections & characteristics ───────────────────────────── */
 
     internal val connectionRegistry = ConnectionRegistry()
+
+    /**
+     * §0.7a liveness supervision. Lives here because the three things that feed
+     * it sit in different layers — CCCD completion in the GATT callbacks, samples
+     * in fusion, and the periodic tick in the engine loop — and this is the one
+     * object all three already hold.
+     */
+    internal val adapterLiveness = AdapterLivenessCoordinator()
     val connectedDevices: StateFlow<List<ConnectedDeviceLink>> =
         connectionRegistry.connectedDevices
 
@@ -877,6 +885,12 @@ class BtEngineState : HrmStateSink {
     internal fun clearConnection(context: ConnectionContext): Boolean {
         val role = connectionRegistry.roleOf(context)
         val cleared = connectionRegistry.clear(context)
+        if (cleared) {
+            // §0.7a policy state is per link generation. A reconnect gets a new
+            // generation and therefore a fresh policy; keeping the old one would
+            // both leak and let a stale deadline fire against a live link.
+            adapterLiveness.forget(context.connectionId)
+        }
         if (cleared && role == LegacyConnectionRole.FTMS) linkedAtMs = null
         Timber.tag(TAG).d("Clear context=%s accepted=%s", context.connectionId, cleared)
         return cleared
