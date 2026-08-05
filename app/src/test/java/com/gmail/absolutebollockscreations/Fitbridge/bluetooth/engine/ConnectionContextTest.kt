@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -9,6 +11,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.UUID
 
 class ConnectionContextTest {
 
@@ -46,6 +49,62 @@ class ConnectionContextTest {
         assertEquals(1, registry.connectedDevices.value.size)
         assertTrue(registry.clear(machine))
         assertTrue(registry.connectedDevices.value.isEmpty())
+    }
+
+    @Test
+    fun `additional service activates on the same link generation exactly once`() {
+        val registry = ConnectionRegistry()
+        val context = registry.open(
+            role = LegacyConnectionRole.FTMS,
+            address = "aa:bb",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        context.handlers += TestHandler(BluetoothIds.UUID_FTMS_SERVICE)
+        context.discoveredServiceUuids += BluetoothIds.UUID_HRM_SERVICE
+        var activationCalls = 0
+        context.handlerActivator = { handler ->
+            activationCalls += 1
+            context.handlers += handler
+            true
+        }
+        val connectionKey = registry.connectedDevices.value.single().connectionKey
+
+        assertTrue(
+            registry.activateHandlerOn(
+                "AA:BB",
+                TestHandler(BluetoothIds.UUID_HRM_SERVICE),
+            )
+        )
+        assertTrue(
+            registry.activateHandlerOn(
+                "aa:bb",
+                TestHandler(BluetoothIds.UUID_HRM_SERVICE),
+            )
+        )
+
+        assertEquals(1, activationCalls)
+        assertEquals(1, registry.connectedDevices.value.size)
+        assertEquals(connectionKey, registry.connectedDevices.value.single().connectionKey)
+        assertEquals(
+            setOf(
+                BtEngineState.BtServiceType.FTMS,
+                BtEngineState.BtServiceType.HeartRate,
+            ),
+            registry.connectedDevices.value.single().activeServices,
+        )
+    }
+
+    private class TestHandler(
+        serviceUuid: UUID,
+    ) : BtEngineGattCore.ProtocolHandler {
+        override val primaryServices: Set<UUID> = setOf(serviceUuid)
+
+        override fun onServicesDiscovered(
+            engine: BtEngine,
+            gatt: BluetoothGatt,
+            services: List<BluetoothGattService>,
+        ): Boolean = true
     }
 
     @Test

@@ -97,6 +97,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGatt.GATT_SUCCESS
 import android.bluetooth.BluetoothGattCallback
@@ -299,6 +300,10 @@ internal object BtEngineGattCore {
         /** Active handlers for this connection (populated post-discovery). */
         private val activeHandlers = ActiveHandlerLifecycle<ProtocolHandler>()
 
+        init {
+            context.handlerActivator = { handler -> activateAdditionalHandler(handler) }
+        }
+
         private val discoveryHandler = Handler(Looper.getMainLooper())
         private val discoveryGate = GattDiscoveryAttemptGate(MAX_DISCOVERY_ATTEMPTS)
         @Volatile private var activeGatt: BluetoothGatt? = null
@@ -308,6 +313,51 @@ internal object BtEngineGattCore {
         private fun ownsGatt(gatt: BluetoothGatt, allowUnbound: Boolean = false): Boolean {
             if (!context.isActive) return false
             return context.gatt === gatt || (allowUnbound && context.gatt == null)
+        }
+
+        @SuppressLint("MissingPermission")
+        private fun activateAdditionalHandler(handler: ProtocolHandler): Boolean {
+            val gatt = activeGatt ?: context.gatt ?: return false
+            if (!ownsGatt(gatt) ||
+                context.connectionState.value != LinkState.CONNECTED ||
+                context.discoveredServiceUuids.none(handler.primaryServices::contains)
+            ) {
+                return false
+            }
+            if (activeHandlers.snapshot().any { active ->
+                    active.primaryServices.any(handler.primaryServices::contains)
+                }
+            ) {
+                return true
+            }
+
+            runCatching { handler.onConnected(engine, gatt) }
+                .onFailure {
+                    Timber.tag(BtEngineState.TAG).w(it, "additional handler onConnected failed")
+                }
+            val activated = runCatching {
+                handler.onServicesDiscovered(
+                    engine,
+                    gatt,
+                    context.discoveredServices.toList(),
+                )
+            }.onFailure {
+                Timber.tag(BtEngineState.TAG).w(it, "additional handler activation failed")
+            }.getOrDefault(false)
+            if (!activated) return false
+
+            activeHandlers.addAll(listOf(handler))
+            engine.state.connectionRegistry.replaceHandlers(context, activeHandlers.snapshot())
+            runCatching { handler.onCccdPlanReady(engine, gatt) }
+                .onFailure {
+                    Timber.tag(BtEngineState.TAG).w(it, "additional handler CCCD plan failed")
+                }
+            Timber.tag(BtEngineState.TAG).i(
+                "Activated additional handler=%s on context=%s",
+                handlerName(handler),
+                context.connectionId,
+            )
+            return true
         }
 
         private fun cancelDiscoveryCallbacks() {

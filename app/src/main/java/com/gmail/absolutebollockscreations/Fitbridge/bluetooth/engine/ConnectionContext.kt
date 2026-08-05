@@ -166,6 +166,7 @@ internal class ConnectionContext(
     var gatt: BluetoothGatt?,
     val connectionState: MutableStateFlow<LinkState>,
     val discoveredServices: MutableList<BluetoothGattService> = mutableListOf(),
+    val discoveredServiceUuids: MutableSet<UUID> = linkedSetOf(),
     val handlers: MutableList<BtEngineGattCore.ProtocolHandler> = mutableListOf(),
     val queue: GattQueue = GattQueue(),
     val cccd: CccdState = CccdState(),
@@ -174,6 +175,10 @@ internal class ConnectionContext(
     /** Callback-owned, idempotent termination entry point used by explicit disconnects. */
     @Volatile
     var terminationHook: ((reason: String) -> Unit)? = null
+
+    /** Callback-owned hook for deliberately activating another handler on this physical link. */
+    @Volatile
+    var handlerActivator: ((BtEngineGattCore.ProtocolHandler) -> Boolean)? = null
 
     @Volatile
     var isActive: Boolean = true
@@ -213,6 +218,31 @@ internal class ConnectionRegistry {
 
     fun contextForGatt(gatt: BluetoothGatt): ConnectionContext? = synchronized(lock) {
         contexts.values.firstOrNull { it.gatt === gatt }
+    }
+
+    fun contextsForAddress(address: String): List<ConnectionContext> = synchronized(lock) {
+        val canonicalAddress = canonicalConnectionAddress(address)
+        contexts.values.filter { it.isActive && it.address == canonicalAddress }
+    }
+
+    fun activateHandlerOn(
+        address: String,
+        handler: BtEngineGattCore.ProtocolHandler,
+    ): Boolean {
+        val matchingContexts = contextsForAddress(address)
+        val alreadyActive = matchingContexts.any { context ->
+            context.handlers.any { active ->
+                active.primaryServices.any(handler.primaryServices::contains)
+            }
+        }
+        if (alreadyActive) return true
+
+        val target = matchingContexts.firstOrNull { context ->
+            context.discoveredServiceUuids.any(handler.primaryServices::contains)
+        } ?: return false
+        val activated = target.handlerActivator?.invoke(handler) == true
+        if (activated) synchronized(lock) { publishConnectedDevices() }
+        return activated
     }
 
     fun roleOf(context: ConnectionContext): LegacyConnectionRole? = synchronized(lock) {
@@ -321,6 +351,10 @@ internal class ConnectionRegistry {
                 clear()
                 addAll(services)
             }
+            context.discoveredServiceUuids.apply {
+                clear()
+                addAll(services.map { it.uuid })
+            }
             publishConnectedDevices()
         }
 
@@ -367,7 +401,10 @@ internal class ConnectionRegistry {
         connectionState.value = LinkState.DISCONNECTED
         queue.clear()
         cccd.reset()
+        discoveredServices.clear()
+        discoveredServiceUuids.clear()
         terminationHook = null
+        handlerActivator = null
         gatt = null
     }
 }

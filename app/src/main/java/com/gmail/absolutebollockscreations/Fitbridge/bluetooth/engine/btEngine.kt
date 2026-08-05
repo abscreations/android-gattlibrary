@@ -806,6 +806,19 @@ class BtEngine internal constructor(
         }
     }
 
+    /** Activate another supported service handler on an existing physical link. */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun activateServiceOn(
+        address: String,
+        serviceType: BtEngineState.BtServiceType,
+    ): Boolean = guardConnectPerm("activateServiceOn($address, $serviceType)", default = false) {
+        val protocol = when (serviceType) {
+            BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
+            else -> return@guardConnectPerm false
+        }
+        state.connectionRegistry.activateHandlerOn(address, handlerFactory.create(protocol))
+    }
+
     /** Manual hook to force a pairing UI for a known MAC (e.g., user action) */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun promptPairing(address: String) = guardConnectPerm(op = "promptPairing($address)", default = Unit) {
