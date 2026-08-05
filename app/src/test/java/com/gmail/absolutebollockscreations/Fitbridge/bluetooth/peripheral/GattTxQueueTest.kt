@@ -20,6 +20,22 @@ class GattTxQueueTest {
 
     private val characteristic = UUID.fromString("00002ad2-0000-1000-8000-00805f9b34fb")
 
+    /**
+     * Blocks until the queue reports at least the given pending depths.
+     *
+     * `send` suspends only after it has enqueued, but it is dispatched on a
+     * different thread, so a test that enqueues and then immediately drives the
+     * queue is racing its own setup.
+     */
+    private suspend fun awaitQueued(queue: GattTxQueue, control: Int, data: Int) {
+        repeat(200) {
+            val stats = queue.stats()
+            if (stats.queuedControlPayloads >= control && stats.queuedDataPayloads >= data) return
+            delay(5)
+        }
+        throw AssertionError("queue never accepted control=$control data=$data")
+    }
+
     @Test
     fun `only one operation is posted until its callback arrives`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -54,6 +70,12 @@ class GattTxQueueTest {
         assertTrue(posted.receive().purpose == "first")
         val data = async { queue.send(1, "AA", characteristic, byteArrayOf(2), false, GattTxQueue.Priority.DATA, "data") }
         val control = async { queue.send(1, "AA", characteristic, byteArrayOf(3), true, GattTxQueue.Priority.CONTROL, "control") }
+
+        // Both sends run on another dispatcher, so wait until the queue has
+        // actually accepted them before releasing the in-flight operation.
+        // Without this the drain can run while only one is queued, and the
+        // ordering assertion below becomes a race rather than a test of priority.
+        awaitQueued(queue, control = 1, data = 1)
 
         queue.onNotificationSent("AA", true)
         assertTrue(first.await())

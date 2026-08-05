@@ -82,11 +82,14 @@ class CaptureJsonTest {
     @Test
     fun `a device name from the air cannot corrupt the line`() {
         // Names are attacker-controlled: a quote or a newline would otherwise
-        // split one record into two unparseable ones.
+        // split one record into two unparseable ones. The trailing U+0001 covers
+        // the generic control-character branch, which must emit a backslash-u
+        // escape rather than the raw byte: JSON forbids an unescaped control
+        // character inside a string.
         val line = CaptureJson.encode(
             record(
                 ScanEvent(
-                    name = "Bad\"Name\\With\nControl",
+                    name = "Bad\"Name\\With\nControl\u0001",
                     rssi = -61,
                     serviceUuids = listOf("1826"),
                     manufacturerData = mapOf(0x0157 to byteArrayOf(0x02, 0x01)),
@@ -95,7 +98,7 @@ class CaptureJsonTest {
             ),
         )
 
-        assertTrue(line, line.contains("""\"Name\\With\nControl"""))
+        assertTrue(line, line.contains("""\"Name\\With\nControl\u0001"""))
         assertEquals("exactly one line", 1, line.lines().size)
     }
 

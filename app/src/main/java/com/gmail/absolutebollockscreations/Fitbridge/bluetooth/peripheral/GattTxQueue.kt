@@ -168,20 +168,28 @@ internal class GattTxQueue(
     /** Acknowledgement for the single in-flight *frame* of [current]. */
     private var frameAck: CompletableDeferred<Boolean>? = null
 
-    /**
-     * Set when a frame times out, so a confirmation that arrives *after* we gave
-     * up is not credited to the next payload.
+    /*
+     * There is deliberately no "swallow the next acknowledgement after a timeout"
+     * guard here, and one should not be re-added without new evidence.
      *
-     * Android's onNotificationSent carries only the device and a status, with
-     * nothing to correlate it to the operation that caused it, so a late
-     * acknowledgement is indistinguishable from the next one on its own. This
-     * matters more now that [controlTimeoutMs] is shorter: giving up sooner makes
-     * a late confirmation more likely. Bounded by [STALE_ACK_WINDOW_MS] so a
-     * confirmation that never arrives cannot swallow acknowledgements forever;
-     * the worst case is one extra failed payload rather than a cascade.
+     * The reasoning that suggested one: Android's onNotificationSent carries only
+     * a device and a status, nothing that correlates it to the operation that
+     * caused it, so a confirmation arriving after we gave up is indistinguishable
+     * from the next payload's and would report a delivery that never happened.
+     *
+     * The reasoning against, which wins: discarding the next acknowledgement
+     * makes the *next* payload time out too. In the case this queue exists to
+     * bound - an unconfirmed control indication - that turns a 2 s measurement
+     * blackout into 2 s plus a full data timeout, which is worse than the defect
+     * being fixed. And in the only case actually observed (2026-08-05, where the
+     * client never confirmed at all and then dropped the link) the guard would
+     * have been pure cost with no benefit.
+     *
+     * A mis-attributed acknowledgement is self-limiting instead: it puts the
+     * queue one payload out of phase, and the first premature post then fails
+     * because the stack is still busy, which resynchronises it. Measurement data
+     * is superseded every cycle regardless.
      */
-    private var awaitingStaleAck = false
-    private var staleAckDeadlineMs = 0L
 
     private var deliveredCount = 0L
     private var supersededCount = 0L
@@ -274,15 +282,6 @@ internal class GattTxQueue(
     /** Completes the one globally in-flight frame. */
     fun onNotificationSent(deviceAddress: String, success: Boolean) {
         val ack = synchronized(lock) {
-            if (awaitingStaleAck) {
-                val expired = nowMs() > staleAckDeadlineMs
-                awaitingStaleAck = false
-                staleAckDeadlineMs = 0L
-                // Inside the window this is the confirmation for the frame we
-                // already abandoned; crediting it to the current payload would
-                // report a delivery that never happened.
-                if (!expired) return
-            }
             val item = current ?: return
             if (!item.deviceAddress.equals(deviceAddress, ignoreCase = true)) return
             frameAck
@@ -408,17 +407,7 @@ internal class GattTxQueue(
             )
             val posted = runCatching { post(request) }.getOrDefault(false)
             val acknowledged = if (posted) {
-                val settled = withTimeoutOrNull(timeout) { ack.await() }
-                if (settled == null) {
-                    // Timed out rather than being answered or cancelled. The
-                    // confirmation may still be in flight, so arm the guard that
-                    // stops it being credited to whatever we send next.
-                    synchronized(lock) {
-                        awaitingStaleAck = true
-                        staleAckDeadlineMs = nowMs() + STALE_ACK_WINDOW_MS
-                    }
-                }
-                settled ?: false
+                withTimeoutOrNull(timeout) { ack.await() } ?: false
             } else {
                 false
             }
@@ -438,9 +427,6 @@ internal class GattTxQueue(
                 if (elapsed > maxAckLatencyMs) maxAckLatencyMs = elapsed
                 ackLatencySamples++
                 ackLatencyTotalMs += elapsed
-                // A clean delivery proves the stack is answering again.
-                awaitingStaleAck = false
-                staleAckDeadlineMs = 0L
             }
         }
         return if (failed) Outcome.FAILED else Outcome.DELIVERED
@@ -488,12 +474,5 @@ internal class GattTxQueue(
         const val DEFAULT_CONTROL_TIMEOUT_MS = 2_000L
 
         const val DEFAULT_MAX_PENDING_CONTROL = 16
-
-        /**
-         * How long after a timeout a late acknowledgement is still attributed to
-         * the payload that timed out rather than to the next one. See
-         * [awaitingStaleAck].
-         */
-        const val STALE_ACK_WINDOW_MS = 2_000L
     }
 }

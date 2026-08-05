@@ -55,7 +55,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `the newest record wins and the stale one is superseded not failed`() = runBlocking {
+    fun `the newest record wins and the stale one is superseded not failed`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 2_000, controlTimeoutMs = 2_000, post = h::post)
@@ -93,7 +93,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `queue depth per slot never exceeds one pending payload`() = runBlocking {
+    fun `queue depth per slot never exceeds one pending payload`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 2_000, controlTimeoutMs = 2_000, post = h::post)
@@ -135,7 +135,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `a fragmented record is sent whole and is never interrupted`() = runBlocking {
+    fun `a fragmented record is sent whole and is never interrupted`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 2_000, controlTimeoutMs = 2_000, post = h::post)
@@ -172,7 +172,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `a failed frame abandons the rest of its record`() = runBlocking {
+    fun `a failed frame abandons the rest of its record`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 100, controlTimeoutMs = 100, post = h::post)
@@ -194,7 +194,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `separate characteristics get separate slots`() = runBlocking {
+    fun `separate characteristics get separate slots`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 2_000, controlTimeoutMs = 2_000, post = h::post)
@@ -218,7 +218,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `a slow client does not starve another client`() = runBlocking {
+    fun `a slow client does not starve another client`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 2_000, controlTimeoutMs = 2_000, post = h::post)
@@ -247,7 +247,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `control traffic is never conflated`() = runBlocking {
+    fun `control traffic is never conflated`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 2_000, controlTimeoutMs = 2_000, post = h::post)
@@ -292,7 +292,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `a timeout affects only its own payload and the queue keeps working`() = runBlocking {
+    fun `a timeout affects only its own payload and the queue keeps working`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         val queue = GattTxQueue(scope, dataTimeoutMs = 80, controlTimeoutMs = 80, post = h::post)
@@ -333,73 +333,7 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `a late confirmation is not credited to the next payload`() = runBlocking {
-        val scope = scope()
-        val h = Harness()
-        var clock = 0L
-        val queue = GattTxQueue(
-            scope,
-            dataTimeoutMs = 400,
-            controlTimeoutMs = 400,
-            nowMs = { clock },
-            post = h::post,
-        )
-
-        try {
-            val abandoned = scope.dataSend(queue, "AA", ftmsData, "abandoned", listOf(byteArrayOf(1)))
-            withTimeout(2_000) { h.posted.receive() }
-            assertEquals(GattTxQueue.Outcome.FAILED, withTimeout(2_000) { abandoned.await() })
-
-            val next = scope.dataSend(queue, "AA", ftmsData, "next", listOf(byteArrayOf(2)))
-            assertEquals("next", withTimeout(2_000) { h.posted.receive() }.purpose)
-
-            // The confirmation for "abandoned" finally shows up. Android gives us
-            // nothing to correlate it with, so without the guard it would deliver
-            // "next" - reporting a delivery that never happened.
-            queue.onNotificationSent("AA", true)
-            delay(100)
-            assertFalse("a late ack must not deliver the next payload", next.isCompleted)
-
-            queue.onNotificationSent("AA", true)
-            assertEquals(GattTxQueue.Outcome.DELIVERED, withTimeout(2_000) { next.await() })
-        } finally {
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun `the stale-ack guard expires so it cannot swallow acks forever`() = runBlocking {
-        val scope = scope()
-        val h = Harness()
-        var clock = 0L
-        val queue = GattTxQueue(
-            scope,
-            dataTimeoutMs = 400,
-            controlTimeoutMs = 400,
-            nowMs = { clock },
-            post = h::post,
-        )
-
-        try {
-            val abandoned = scope.dataSend(queue, "AA", ftmsData, "abandoned", listOf(byteArrayOf(1)))
-            withTimeout(2_000) { h.posted.receive() }
-            assertEquals(GattTxQueue.Outcome.FAILED, withTimeout(2_000) { abandoned.await() })
-
-            val next = scope.dataSend(queue, "AA", ftmsData, "next", listOf(byteArrayOf(2)))
-            assertEquals("next", withTimeout(2_000) { h.posted.receive() }.purpose)
-
-            // Past the window: the confirmation that never came cannot keep
-            // swallowing acknowledgements, so this one counts normally.
-            clock = GattTxQueue.STALE_ACK_WINDOW_MS * 4
-            queue.onNotificationSent("AA", true)
-            assertEquals(GattTxQueue.Outcome.DELIVERED, withTimeout(2_000) { next.await() })
-        } finally {
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun `acknowledgement latency is recorded for delivered payloads`() = runBlocking {
+    fun `acknowledgement latency is recorded for delivered payloads`(): Unit = runBlocking {
         val scope = scope()
         val h = Harness()
         var clock = 0L
