@@ -96,6 +96,36 @@ class ConnectionContextTest {
     }
 
     @Test
+    fun `HRM selection followed by RSC activation remains one physical registry entry`() {
+        val registry = ConnectionRegistry()
+        val context = registry.openAdditional(
+            address = "AA:BB",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        context.handlers += TestHandler(BluetoothIds.UUID_HRM_SERVICE)
+        context.discoveredServiceUuids += BluetoothIds.UUID_RSC_SERVICE
+        context.handlerActivator = { handler ->
+            context.handlers += handler
+            true
+        }
+
+        assertTrue(
+            registry.activateHandlerOn(
+                address = "aa:bb",
+                handler = TestHandler(BluetoothIds.UUID_RSC_SERVICE),
+            )
+        )
+
+        val links = registry.connectedDevices.value
+        assertEquals(1, links.size)
+        assertEquals(
+            setOf(BtEngineState.BtServiceType.HeartRate, BtEngineState.BtServiceType.RSC),
+            links.single().activeServices,
+        )
+    }
+
+    @Test
     fun `one machine and three sensors coexist and disconnect independently by key`() {
         val registry = ConnectionRegistry()
         val machine = registry.open(
@@ -124,17 +154,27 @@ class ConnectionContextTest {
         assertSame(machine, registry.current(LegacyConnectionRole.FTMS))
         assertSame(firstSensor, registry.current(LegacyConnectionRole.HRM))
 
-        val secondKey = registry.connectedDevices.value.single {
-            it.address == secondSensor.address
-        }.connectionKey
-        assertSame(secondSensor, registry.contextForKey(secondKey))
-        assertTrue(registry.clear(registry.contextForKey(secondKey)!!))
+        val contexts = listOf(machine, firstSensor, secondSensor, thirdSensor)
+        val keysByAddress = registry.connectedDevices.value.associate {
+            it.address to it.connectionKey
+        }
+        contexts.forEach { target ->
+            val key = keysByAddress.getValue(target.address)
+            assertSame(target, registry.contextForKey(key))
+            val remainingBefore = registry.connectedDevices.value
+                .mapTo(linkedSetOf()) { it.address }
+                .minus(target.address)
 
-        assertEquals(3, registry.connectedDevices.value.size)
-        assertTrue(registry.isCurrent(machine))
-        assertTrue(registry.isCurrent(firstSensor))
-        assertTrue(registry.isCurrent(thirdSensor))
-        assertFalse(registry.isCurrent(secondSensor))
+            assertTrue(registry.clear(registry.contextForKey(key)!!))
+
+            assertNull(registry.contextForKey(key))
+            assertFalse(registry.isCurrent(target))
+            assertEquals(
+                remainingBefore,
+                registry.connectedDevices.value.mapTo(linkedSetOf()) { it.address },
+            )
+        }
+        assertTrue(registry.connectedDevices.value.isEmpty())
     }
 
     private class TestHandler(
