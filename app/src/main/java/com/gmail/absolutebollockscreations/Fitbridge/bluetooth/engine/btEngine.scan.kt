@@ -15,19 +15,16 @@
  *  KEY FEATURES
  *  - Hardware vs software filtering:
  *      • When useFtmsHardwareFilter = true:
- *          - Uses OS-level ScanFilter OR’ed on FTMS + HRM services.
- *          - If no FTMS/HRM devices are discovered within 5 seconds, the scan
+ *          - Uses OS-level ScanFilter OR’ed on FTMS, HRM, CSC, RSC, and CPS services.
+ *          - If no supported devices are discovered within 5 seconds, the scan
  *            is automatically restarted with software filtering.
  *      • When useFtmsHardwareFilter = false:
- *          - Uses a wide-open scan and filters in software via detectPrimaryService().
- *          - Supports FTMS / HRM (+ commented hooks for CSC/RSC/Power/Glucose).
+ *          - Uses a wide-open scan and filters in software via ranked matcher candidates.
  *
  *  - Service detection & classification:
- *      • detectPrimaryService(result):
- *          - Inspects advertised service UUIDs and service data to find the
- *            “primary” supported service for a ScanResult.
- *          - Prefers FTMS, then HRM (with optional heuristic on device name
- *            for straps that don’t advertise the HRM service).
+ *      • detectServiceCandidates(result):
+ *          - Produces structured match evidence and a deterministic ranked list.
+ *          - The current two-bucket UI consumes only the top candidate until Phase 0.8.
  *      • toServiceType(UUID) maps 128-bit UUIDs into BtServiceType (FTMS,
  *        HeartRate, CSC, RSC, Power, Glucose).
  *
@@ -107,16 +104,11 @@ internal fun BtEngine.startScanImpl(
         return
     }
 
-    // Build OR filters when using hardware filtering (now covers all supported services)
+    // Build OR filters at the Android boundary from the canonical matcher registry.
     val filters: List<ScanFilter>? = if (useFtmsHardwareFilter) {
-        listOf(
-            ScanFilter.Builder().setServiceUuid(BluetoothIds.FTMS_SERVICE_PARCEL).build(),
-            ScanFilter.Builder().setServiceUuid(BluetoothIds.HRM_SERVICE_PARCEL).build(),
-            //ScanFilter.Builder().setServiceUuid(BluetoothIds.CSC_SERVICE_PARCEL).build(),
-            //ScanFilter.Builder().setServiceUuid(BluetoothIds.RSC_SERVICE_PARCEL).build(),
-            //ScanFilter.Builder().setServiceUuid(BluetoothIds.POWER_SERVICE_PARCEL).build(),
-            //ScanFilter.Builder().setServiceUuid(BluetoothIds.GLUCOSE_SERVICE_PARCEL).build(),
-        )
+        hardwareScanServiceUuids().map { uuid ->
+            ScanFilter.Builder().setServiceUuid(ParcelUuidCompat(uuid)).build()
+        }
     } else null
 
     val settings = ScanSettings.Builder()
@@ -134,22 +126,22 @@ internal fun BtEngine.startScanImpl(
                 logPhase05AdvertisementEvidence(result)
             }
 
-            // When software filtering, keep only supported service types (ftms/hrm/csc/rsc/power/glucose)
-            val serviceUuid: UUID? = detectPrimaryService(result)
-            if (!useFtmsHardwareFilter && serviceUuid == null) return
+            val candidates = detectServiceCandidates(result)
+            val primary = candidates.firstOrNull { it.knownService != null }
+            if (!useFtmsHardwareFilter && primary == null) return
 
-            when (serviceUuid) {
-                BluetoothIds.UUID_FTMS_SERVICE -> {
-                    upsertDeviceFTMS(key, name, address, result, BluetoothIds.UUID_FTMS_SERVICE)
+            when (primary?.knownService) {
+                KnownBleService.FTMS -> {
+                    upsertDeviceFTMS(key, name, address, result, primary.serviceUuid.toUuid())
                 }
-                BluetoothIds.UUID_HRM_SERVICE,
-                BluetoothIds.UUID_CSC_SERVICE,
-                BluetoothIds.UUID_RSC_SERVICE,
-                BluetoothIds.UUID_POWER_SERVICE,
-                BluetoothIds.UUID_GLUCOSE_SERVICE -> {
+                KnownBleService.HRM,
+                KnownBleService.CSC,
+                KnownBleService.RSC,
+                KnownBleService.CPS,
+                KnownBleService.GLUCOSE -> {
                     // Reuse the "hrmDevices" bucket for non-FTMS sensors
                     upsertDeviceSensor(
-                        key, name, address, result, serviceUuid
+                        key, name, address, result, primary.serviceUuid.toUuid()
                     )
                 }
                 else -> {
@@ -299,26 +291,41 @@ private fun BtEngine.safeDeviceAddress(result: ScanResult): String {
     return try { result.device.address ?: "" } catch (_: SecurityException) { "" }
 }
 
-/** Returns the *primary* supported service UUID for this result, or null if none. */
-private fun detectPrimaryService(result: ScanResult): UUID? {
-    val rec = result.scanRecord ?: return null
-    val has = { u: UUID ->
-        rec.serviceUuids?.any { it.uuid == u } == true
-                || rec.getServiceData(ParcelUuidCompat(u)) != null
-    }
+private val deviceMatcherRegistry = DeviceMatcherRegistry.standard()
 
-    // Prefer FTMS if multiple are present; then Power/HRM/CSC/RSC/Glucose.
-    return when {
-        has(BluetoothIds.UUID_FTMS_SERVICE) -> BluetoothIds.UUID_FTMS_SERVICE
-        //has(BluetoothIds.UUID_POWER_SERVICE) -> BluetoothIds.UUID_POWER_SERVICE
-        has(BluetoothIds.UUID_HRM_SERVICE) -> BluetoothIds.UUID_HRM_SERVICE
-        //has(BluetoothIds.UUID_CSC_SERVICE) -> BluetoothIds.UUID_CSC_SERVICE
-        //has(BluetoothIds.UUID_RSC_SERVICE) -> BluetoothIds.UUID_RSC_SERVICE
-        //has(BluetoothIds.UUID_GLUCOSE_SERVICE) -> BluetoothIds.UUID_GLUCOSE_SERVICE
-        // Heuristic: HRM by name (common for straps without explicit service in adv)
-        isLikelyHrmName(rec.deviceName ?: "") -> BluetoothIds.UUID_HRM_SERVICE
-        else -> null
+internal fun rankedServiceCandidates(observation: MatchObservation): List<RankedMatchCandidate> =
+    deviceMatcherRegistry.rankedCandidates(observation)
+
+internal fun hardwareScanServiceUuids(): List<UUID> = listOf(
+    KnownBleService.FTMS,
+    KnownBleService.HRM,
+    KnownBleService.CSC,
+    KnownBleService.RSC,
+    KnownBleService.CPS,
+).map { service ->
+    deviceMatcherRegistry.registeredServices()
+        .first { deviceMatcherRegistry.knownService(it) == service }
+        .toUuid()
+}
+
+private fun detectServiceCandidates(result: ScanResult): List<RankedMatchCandidate> {
+    val record = result.scanRecord ?: return emptyList()
+    val registeredServices = deviceMatcherRegistry.registeredServices()
+    val manufacturerIds = buildSet {
+        val data = record.manufacturerSpecificData
+        for (index in 0 until data.size()) add(data.keyAt(index))
     }
+    return rankedServiceCandidates(
+        MatchObservation(
+            localName = record.deviceName,
+            manufacturerCompanyIds = manufacturerIds,
+            advertisedServiceUuids = record.serviceUuids.orEmpty()
+                .mapTo(linkedSetOf()) { CanonicalUuid.fromUuid(it.uuid) },
+            serviceDataUuids = registeredServices.filterTo(linkedSetOf()) { uuid ->
+                record.getServiceData(ParcelUuidCompat(uuid.toUuid())) != null
+            },
+        ),
+    )
 }
 
 /** Small helper to avoid importing ParcelUuid at call sites. */
@@ -353,33 +360,21 @@ private fun logPhase05AdvertisementEvidence(result: ScanResult) {
     )
 }
 
-private fun isLikelyHrmName(nameRaw: String): Boolean {
-    if (nameRaw.isBlank()) return false
-    val n = nameRaw.lowercase()
-    return n.contains("polar") || n.contains("wahoo") || n.contains("garmin") ||
-            n.contains("coospo") || n.contains("tickr") || n.contains("hrm") ||
-            n.contains("heart")
+/** Map a full UUID through the canonical registry to our current scan-list service model. */
+private fun toServiceType(u: UUID): BtEngineState.BtServiceType? =
+    deviceMatcherRegistry.knownService(CanonicalUuid.fromUuid(u))?.toServiceType()
+
+private fun KnownBleService.toServiceType(): BtEngineState.BtServiceType = when (this) {
+    KnownBleService.FTMS -> BtEngineState.BtServiceType.FTMS
+    KnownBleService.HRM -> BtEngineState.BtServiceType.HeartRate
+    KnownBleService.CSC -> BtEngineState.BtServiceType.CSC
+    KnownBleService.RSC -> BtEngineState.BtServiceType.RSC
+    KnownBleService.CPS -> BtEngineState.BtServiceType.Power
+    KnownBleService.GLUCOSE -> BtEngineState.BtServiceType.Glucose
 }
 
-/** Map a 128-bit UUID to our BtServiceType enum. */
-private fun toServiceType(u: UUID): BtEngineState.BtServiceType? = when (u) {
-    BluetoothIds.UUID_FTMS_SERVICE   -> BtEngineState.BtServiceType.FTMS
-    BluetoothIds.UUID_HRM_SERVICE    -> BtEngineState.BtServiceType.HeartRate
-    BluetoothIds.UUID_CSC_SERVICE    -> BtEngineState.BtServiceType.CSC
-    BluetoothIds.UUID_RSC_SERVICE    -> BtEngineState.BtServiceType.RSC
-    BluetoothIds.UUID_POWER_SERVICE  -> BtEngineState.BtServiceType.Power
-    BluetoothIds.UUID_GLUCOSE_SERVICE-> BtEngineState.BtServiceType.Glucose
-    else -> null
-}
-
-private val supportedAdvertisementServiceUuids = listOf(
-    BluetoothIds.UUID_FTMS_SERVICE,
-    BluetoothIds.UUID_HRM_SERVICE,
-    BluetoothIds.UUID_RSC_SERVICE,
-    BluetoothIds.UUID_CSC_SERVICE,
-    BluetoothIds.UUID_POWER_SERVICE,
-    BluetoothIds.UUID_GLUCOSE_SERVICE,
-)
+private val supportedAdvertisementServiceUuids =
+    deviceMatcherRegistry.registeredServices().map(CanonicalUuid::toUuid)
 
 internal fun advertisedServiceTypes(
     advertisedUuids: Set<UUID>,

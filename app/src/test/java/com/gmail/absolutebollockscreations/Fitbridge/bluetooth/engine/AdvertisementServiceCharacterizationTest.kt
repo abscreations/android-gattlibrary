@@ -41,4 +41,18 @@ class AdvertisementServiceCharacterizationTest {
             ),
         )
     }
+
+    @Test
+    fun `RSC-only blank-name observation remains visible to software classification`() {
+        val candidates = rankedServiceCandidates(
+            MatchObservation(
+                localName = "",
+                advertisedServiceUuids = setOf(
+                    CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE),
+                ),
+            ),
+        )
+
+        assertEquals(KnownBleService.RSC, candidates.first().knownService)
+    }
 }
