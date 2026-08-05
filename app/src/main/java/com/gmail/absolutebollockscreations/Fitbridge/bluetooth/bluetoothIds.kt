@@ -125,7 +125,9 @@ object BluetoothIds {
     // ─────────────────────────────────────────────────────────────
     val UUID_RSC_SERVICE: UUID         = shortUuid(0x1814)
     val RSC_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_RSC_SERVICE)
-    // (RSC characteristics omitted for now; we only detect the service)
+    val UUID_RSC_MEASUREMENT: UUID     = shortUuid(0x2A53) // notify
+    val UUID_RSC_FEATURE: UUID         = shortUuid(0x2A54) // read
+    // UUID_SENSOR_LOCATION (0x2A5D) and UUID_SC_CONTROL_POINT (0x2A55) are shared above.
 
     // ─────────────────────────────────────────────────────────────
     // Cycling Power (Service 0x1818)

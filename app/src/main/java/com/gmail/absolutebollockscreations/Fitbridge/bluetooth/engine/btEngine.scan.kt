@@ -74,6 +74,7 @@ import android.bluetooth.le.ScanSettings
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import timber.log.Timber
 import java.util.Locale
 import java.util.WeakHashMap
@@ -122,11 +123,16 @@ internal fun BtEngine.startScanImpl(
         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
         .build()
 
+    val phase05EvidenceKeys = mutableSetOf<String>()
     val cb = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val name = safeDeviceName(result)
             val address = canonicalScanAddress(safeDeviceAddress(result))
             val key = address.ifBlank { "tmp:${result.device.hashCode()}" }
+
+            if (BuildConfig.PHASE_05_HARDWARE_TEST && phase05EvidenceKeys.add(key)) {
+                logPhase05AdvertisementEvidence(result)
+            }
 
             // When software filtering, keep only supported service types (ftms/hrm/csc/rsc/power/glucose)
             val serviceUuid: UUID? = detectPrimaryService(result)
@@ -317,6 +323,35 @@ private fun detectPrimaryService(result: ScanResult): UUID? {
 
 /** Small helper to avoid importing ParcelUuid at call sites. */
 private fun ParcelUuidCompat(u: UUID) = android.os.ParcelUuid(u)
+
+/** Structural advertisement evidence only: UUIDs and company identifiers, never raw payloads. */
+private fun logPhase05AdvertisementEvidence(result: ScanResult) {
+    val record = result.scanRecord
+    if (record == null) {
+        Timber.tag("Phase05Hw").i("PHASE05 advertisement scanRecord=missing rssi=%d", result.rssi)
+        return
+    }
+    val serviceUuids = record.serviceUuids.orEmpty()
+        .map { it.uuid.toString() }
+        .sorted()
+    val serviceDataUuids = supportedAdvertisementServiceUuids
+        .filter { record.getServiceData(ParcelUuidCompat(it)) != null }
+        .map(UUID::toString)
+        .sorted()
+    val manufacturerIds = buildList {
+        val data = record.manufacturerSpecificData
+        for (index in 0 until data.size()) add(data.keyAt(index))
+    }.sorted()
+
+    Timber.tag("Phase05Hw").i(
+        "PHASE05 advertisement rssi=%d txPower=%d services=%s serviceData=%s manufacturerIds=%s",
+        result.rssi,
+        record.txPowerLevel,
+        serviceUuids,
+        serviceDataUuids,
+        manufacturerIds,
+    )
+}
 
 private fun isLikelyHrmName(nameRaw: String): Boolean {
     if (nameRaw.isBlank()) return false

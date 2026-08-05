@@ -108,8 +108,11 @@ import android.bluetooth.BluetoothProfile.STATE_DISCONNECTED
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.RequiresPermission
+import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import timber.log.Timber
 import java.util.UUID
+
+private const val PHASE_05_TAG = "Phase05Hw"
 
 internal class GattDiscoveryAttemptGate(
     private val maxAttempts: Int,
@@ -441,7 +444,32 @@ internal object BtEngineGattCore {
                     clearDiscovery(gatt)
 
                     // Notify handlers, then clear local state
-                    activeHandlers.toList().forEach { runCatching { it.onDisconnected(engine) } }
+                    activeHandlers.toList().forEach { handler ->
+                        if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                            Timber.tag(PHASE_05_TAG).i(
+                                "PHASE05 disconnect cleanup start generation=%d handler=%s",
+                                context.connectionId.linkGeneration,
+                                handlerName(handler),
+                            )
+                        }
+                        runCatching { handler.onDisconnected(engine) }
+                            .onSuccess {
+                                if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                                    Timber.tag(PHASE_05_TAG).i(
+                                        "PHASE05 disconnect cleanup complete generation=%d handler=%s",
+                                        context.connectionId.linkGeneration,
+                                        handlerName(handler),
+                                    )
+                                }
+                            }
+                            .onFailure {
+                                Timber.tag(BtEngineState.TAG).w(
+                                    it,
+                                    "handler.onDisconnected failed handler=%s",
+                                    handlerName(handler),
+                                )
+                            }
+                    }
                     activeHandlers.clear()
 
                     if (compatibilityRole == LegacyConnectionRole.HRM) {
@@ -536,6 +564,14 @@ internal object BtEngineGattCore {
 
             Timber.tag(BtEngineState.TAG)
                 .i("Services discovered: total=%d, activeHandlers=%d", services.size, activeHandlers.size)
+            if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                Timber.tag(PHASE_05_TAG).i(
+                    "PHASE05 active handlers generation=%d count=%d handlers=%s",
+                    context.connectionId.linkGeneration,
+                    activeHandlers.size,
+                    handlerNames(activeHandlers),
+                )
+            }
         }
 
         // ───────────────────────────────── I/O callbacks & fan-out ─────────────────────────────────
@@ -718,6 +754,13 @@ internal object BtEngineGattCore {
                     context.connectionId,
                 )
                 activeHandlers.forEach { handler ->
+                    if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                        Timber.tag(PHASE_05_TAG).i(
+                            "PHASE05 merged CCCD ready delivery generation=%d handler=%s",
+                            context.connectionId.linkGeneration,
+                            handlerName(handler),
+                        )
+                    }
                     runCatching { handler.onCccdPlanReady(engine, gatt) }
                         .onFailure {
                             Timber.tag(BtEngineState.TAG)
@@ -745,6 +788,17 @@ internal object BtEngineGattCore {
                 )
                 return
             }
+            if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                Timber.tag(PHASE_05_TAG).d(
+                    "PHASE05 characteristic route generation=%d characteristic=%s service=%s " +
+                        "ownership=%s owners=%s",
+                    context.connectionId.linkGeneration,
+                    charUuid,
+                    serviceUuid,
+                    route.ownership,
+                    handlerNames(route.owners),
+                )
+            }
             route.owners.forEach(action)
         }
 
@@ -768,9 +822,26 @@ internal object BtEngineGattCore {
                     serviceUuid,
                     context.connectionId,
                 )
+            } else if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                Timber.tag(PHASE_05_TAG).d(
+                    "PHASE05 descriptor route generation=%d characteristic=%s service=%s " +
+                        "descriptor=%s ownership=%s owners=%s",
+                    context.connectionId.linkGeneration,
+                    charUuid,
+                    serviceUuid,
+                    safeUuid(desc),
+                    route.ownership,
+                    handlerNames(route.owners),
+                )
             }
             return route.owners
         }
+
+        private fun handlerNames(handlers: Collection<ProtocolHandler>): String =
+            handlers.joinToString(prefix = "[", postfix = "]") { handlerName(it) }
+
+        private fun handlerName(handler: ProtocolHandler): String =
+            handler::class.java.simpleName.ifBlank { handler::class.java.name }
 
         /** Best-effort lookup of the containing service UUID for a characteristic UUID. */
         private fun characteristicServiceUuidOrNull(
@@ -790,5 +861,6 @@ internal object BtEngineGattCore {
 
         private fun safeUuid(desc: BluetoothGattDescriptor): String =
             runCatching { desc.uuid.toString() }.getOrElse { "perm-denied" }
+
     }
 }

@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import java.util.UUID
 
 /** Stable factory key for one BLE protocol handler implementation. */
@@ -11,6 +12,7 @@ internal data class ProtocolKey(val value: String) {
     companion object {
         val FTMS = ProtocolKey("ftms")
         val HRM = ProtocolKey("hrm")
+        val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
 
@@ -31,12 +33,24 @@ internal class HandlerFactory(
         createAll((listOf(primaryProtocol) + companionProtocols[primaryProtocol].orEmpty()).distinct())
 
     companion object {
-        fun standard(): HandlerFactory = HandlerFactory(
-            mapOf(
+        fun standard(
+            enablePhase05HardwareTest: Boolean = BuildConfig.PHASE_05_HARDWARE_TEST,
+        ): HandlerFactory {
+            val builders = mutableMapOf<ProtocolKey, () -> BtEngineGattCore.ProtocolHandler>(
                 ProtocolKey.FTMS to ::FtmsProtocolHandler,
                 ProtocolKey.HRM to ::HrmProtocolHandler,
-            )
-        )
+            ).apply {
+                if (enablePhase05HardwareTest) {
+                    put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)
+                }
+            }
+            val companions = if (enablePhase05HardwareTest) {
+                mapOf(ProtocolKey.HRM to listOf(ProtocolKey.TEST_ECHO))
+            } else {
+                emptyMap()
+            }
+            return HandlerFactory(builders, companions)
+        }
     }
 }
 

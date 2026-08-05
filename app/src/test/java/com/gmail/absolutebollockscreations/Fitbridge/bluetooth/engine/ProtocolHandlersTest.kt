@@ -29,7 +29,7 @@ class ProtocolHandlersTest {
 
     @Test
     fun `standard factory returns fresh production handlers`() {
-        val factory = HandlerFactory.standard()
+        val factory = HandlerFactory.standard(enablePhase05HardwareTest = false)
 
         val firstFtms = factory.create(ProtocolKey.FTMS)
         val secondFtms = factory.create(ProtocolKey.FTMS)
@@ -40,6 +40,40 @@ class ProtocolHandlersTest {
         assertTrue(firstHrm is HrmProtocolHandler)
         assertNotSame(firstFtms, secondFtms)
         assertNotSame(firstHrm, secondHrm)
+    }
+
+    @Test
+    fun `release-safe factory keeps HRM connection single handler`() {
+        val handlers = HandlerFactory.standard(enablePhase05HardwareTest = false)
+            .createForConnection(ProtocolKey.HRM)
+
+        assertEquals(1, handlers.size)
+        assertTrue(handlers.single() is HrmProtocolHandler)
+    }
+
+    @Test
+    fun `phase 05 factory adds fresh inert RSC echo companion to HRM connection`() {
+        val factory = HandlerFactory.standard(enablePhase05HardwareTest = true)
+
+        val first = factory.createForConnection(ProtocolKey.HRM)
+        val second = factory.createForConnection(ProtocolKey.HRM)
+
+        assertEquals(2, first.size)
+        assertTrue(first[0] is HrmProtocolHandler)
+        assertTrue(first[1] is TestEchoHandler)
+        assertEquals(setOf(BluetoothIds.UUID_RSC_SERVICE), first[1].primaryServices)
+        assertEquals(setOf(BluetoothIds.UUID_RSC_MEASUREMENT), first[1].extraCharacteristics)
+        assertNotSame(first[0], second[0])
+        assertNotSame(first[1], second[1])
+    }
+
+    @Test
+    fun `phase 05 companion is not added to FTMS connections`() {
+        val handlers = HandlerFactory.standard(enablePhase05HardwareTest = true)
+            .createForConnection(ProtocolKey.FTMS)
+
+        assertEquals(1, handlers.size)
+        assertTrue(handlers.single() is FtmsProtocolHandler)
     }
 
     @Test
