@@ -134,10 +134,31 @@ class EngineMetricPump(
 
     companion object {
         /**
-         * Twice the notifier's default cadence, so the notifier always has a
-         * reasonably fresh sample without the store doing pointless work.
+         * Half the notifier's emission floor, so the notifier always has a sample
+         * newer than its own cadence.
+         *
+         * **Derived, not a literal.** The original 350 ms was chosen as twice the
+         * notifier's then-700 ms tick. Lowering that tick to a 250 ms floor
+         * silently inverted the relationship: the pump became *slower* than the
+         * notifier, so consecutive emissions could carry an identical snapshot and
+         * every emission carried a sample up to 350 ms old. Deriving the value
+         * keeps the intent from drifting the next time either side changes.
+         *
+         * What this bounds is only the *sampling* delay — the gap between a value
+         * landing in [BtEngineState] and the pump copying it into the store. It
+         * does not and cannot bound how long that value sat in the StateFlow
+         * before the pump ran; see the note on [FtmsMetricSnapshot.updatedAtMs]
+         * about what the staleness metric can and cannot see.
+         *
+         * Sampling faster than the upstream machine notifies produces no fresher
+         * data, only repeated reads of an unchanged value. The cost is a handful
+         * of StateFlow reads and one allocation per sample, which is negligible;
+         * the store's averages and elevation accumulator are trapezoidal and
+         * time-weighted, so a shorter period leaves them mathematically unchanged
+         * and marginally more accurate.
          */
-        const val DEFAULT_SAMPLE_PERIOD_MS = 350L
+        const val DEFAULT_SAMPLE_PERIOD_MS = FtmsPeripheralNotifier.DEFAULT_PERIOD_MS / 2
+
         private const val MILES_TO_KM = 1.609344
     }
 }

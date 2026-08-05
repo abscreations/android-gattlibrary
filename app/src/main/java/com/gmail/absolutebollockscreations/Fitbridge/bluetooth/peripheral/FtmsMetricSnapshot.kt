@@ -57,7 +57,23 @@ data class FtmsMetricSnapshot(
     val floors: Int? = null,
     /** Strokes, strides or steps depending on persona. */
     val strokeCount: Int? = null,
-    /** SystemClock.elapsedRealtime() when this snapshot was produced. */
+    /**
+     * `SystemClock.elapsedRealtime()` when [EngineMetricPump] **sampled** this
+     * snapshot — not when the upstream machine sent the data.
+     *
+     * The distinction matters because this timestamp is what the notifier's
+     * staleness metric measures against. That metric therefore covers
+     * sample → downstream acknowledgement, and is blind to how long a value sat
+     * in [BtEngineState] before the pump read it. `BtEngineState` carries no
+     * arrival timestamps today, so the upstream leg cannot be measured here at
+     * all; a real end-to-end figure needs the arrival-time-tagged `MetricSample`
+     * that plan §3.1 introduces.
+     *
+     * Read the staleness metric as "peripheral-side lag", and remember that the
+     * unmeasured upstream leg is bounded by the machine's own notification rate,
+     * which is typically the larger of the two and is not something FitBridge can
+     * reduce.
+     */
     val updatedAtMs: Long = 0L,
 ) {
     companion object {

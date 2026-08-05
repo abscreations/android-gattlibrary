@@ -73,6 +73,20 @@ class FtmsPeripheralController(
         val cpsPacketsSent: Long = 0,
         val cumulativeWheelRevolutions: Long = 0,
         val cumulativeCrankRevolutions: Int = 0,
+        /**
+         * Downstream-lag diagnostics. [lastStalenessMs] is the age of the data at
+         * the instant the client acknowledged it - the number that describes how
+         * far behind a watch actually is. [supersededRecords] rising while
+         * staleness stays low means the link is slower than the encoder and the
+         * conflation is doing its job; both rising together means the link cannot
+         * keep up at all.
+         */
+        val lastStalenessMs: Long = 0,
+        val meanStalenessMs: Long = 0,
+        val maxStalenessMs: Long = 0,
+        val supersededRecords: Long = 0,
+        val meanAckLatencyMs: Long = 0,
+        val maxAckLatencyMs: Long = 0,
         val lastDisconnectStatus: Int? = null,
         val lastDisconnectReason: String? = null,
         val lastError: String? = null,
@@ -504,6 +518,12 @@ class FtmsPeripheralController(
             cpsPacketsSent = notifier.cpsPacketsSent,
             cumulativeWheelRevolutions = revolutions.cumulativeWheelRevolutions,
             cumulativeCrankRevolutions = revolutions.cumulativeCrankRevolutions,
+            lastStalenessMs = notifier.lastStalenessMs,
+            meanStalenessMs = notifier.meanStalenessMs,
+            maxStalenessMs = notifier.maxStalenessMs,
+            supersededRecords = notifier.supersededRecords,
+            meanAckLatencyMs = advertiser.txStats().meanAckLatencyMs,
+            maxAckLatencyMs = advertiser.txStats().maxAckLatencyMs,
         )
     }
 

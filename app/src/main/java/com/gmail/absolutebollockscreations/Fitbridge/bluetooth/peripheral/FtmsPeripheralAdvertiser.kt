@@ -1131,6 +1131,8 @@ class FtmsPeripheralAdvertiser(
             // order. The actual Bluetooth work remains asynchronous.
             txScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
+                    val requestedOpcode = value.firstOrNull()?.toInt()?.and(0xFF) ?: -1
+                    val startedAtMs = SystemClock.elapsedRealtime()
                     val indicated = sendTx(
                         conn = conn,
                         characteristicUuid = BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
@@ -1139,7 +1141,29 @@ class FtmsPeripheralAdvertiser(
                         priority = GattTxQueue.Priority.CONTROL,
                         purpose = "control-point-response",
                     )
-                    if (indicated && outcome.status != null && conn.statusSubscribed) {
+                    if (!indicated) {
+                        // Previously silent, which is why a 2026-08-05 session
+                        // showed nine seconds of nothing before the client gave
+                        // up. An unconfirmed indication also holds the single
+                        // in-flight slot for its whole timeout, so this line marks
+                        // the start of a measurement gap for that client.
+                        Timber.tag(TAG).w(
+                            "CP %s response indication NOT confirmed by %s after %dms; " +
+                                "client may not know the procedure succeeded",
+                            FtmsControlPointHandler.opcodeName(requestedOpcode),
+                            deviceLabel(conn.device),
+                            SystemClock.elapsedRealtime() - startedAtMs,
+                        )
+                    }
+
+                    // The follow-ups below are deliberately NOT gated on the
+                    // indication being confirmed. The procedure already executed;
+                    // suppressing the state notifications because the client
+                    // missed the response is what creates a split brain, where
+                    // FitBridge believes control was granted and the client has
+                    // been told nothing at all. A Machine Status notification is
+                    // the client's other route to the same fact.
+                    if (outcome.status != null && conn.statusSubscribed) {
                         sendTx(
                             conn = conn,
                             characteristicUuid = BluetoothIds.UUID_FITNESS_MACHINE_STATUS,
@@ -1149,7 +1173,7 @@ class FtmsPeripheralAdvertiser(
                             purpose = "machine-status",
                         )
                     }
-                    if (indicated && outcome.trainingStatusChanged && conn.trainingStatusSubscribed) {
+                    if (outcome.trainingStatusChanged && conn.trainingStatusSubscribed) {
                         sendTx(
                             conn = conn,
                             characteristicUuid = BluetoothIds.UUID_TRAINING_STATUS,
@@ -1159,7 +1183,11 @@ class FtmsPeripheralAdvertiser(
                             purpose = "training-status",
                         )
                     }
-                    if (indicated && outcome.resetMetrics) {
+                    if (outcome.resetMetrics) {
+                        // Same reasoning: the reset is a consequence of the
+                        // procedure having run, not of the client hearing about
+                        // it. Gating it on the indication would leave FitBridge
+                        // holding metrics the client believes it cleared.
                         main.post {
                             if (matchingConnection(conn.device)?.sessionId == conn.sessionId) {
                                 listener.onProcedureReset()
@@ -1467,48 +1495,74 @@ class FtmsPeripheralAdvertiser(
 
     // ── outbound ──────────────────────────────────────────────────────────────
 
-    /** Enqueues one data notification behind any pending Control Point traffic. */
-    suspend fun notifyData(device: BluetoothDevice, payload: ByteArray): Boolean {
-        val conn = matchingConnection(device) ?: return false
-        if (!conn.dataSubscribed) return false
-        return sendTx(
+    /**
+     * Enqueues one complete measurement record as a single atomic payload.
+     *
+     * [frames] is the whole FTMS record: one frame normally, several when More
+     * Data continuation is required by the negotiated MTU. Passing them together
+     * is what lets [GattTxQueue] treat the record as indivisible — a fragmented
+     * record can never be half-sent, and only whole records are ever superseded.
+     *
+     * Returns [GattTxQueue.Outcome.SUPERSEDED] when a newer record replaced this
+     * one before the link was free. That is the normal steady state on a slow
+     * client and is not an error.
+     */
+    // Internal, like [GattTxQueue] itself: the outcome type is a transmission-queue
+    // detail and must not leak out of the peripheral module surface.
+    internal suspend fun notifyDataRecord(
+        device: BluetoothDevice,
+        frames: List<ByteArray>,
+    ): GattTxQueue.Outcome {
+        val conn = matchingConnection(device) ?: return GattTxQueue.Outcome.FAILED
+        if (!conn.dataSubscribed) return GattTxQueue.Outcome.FAILED
+        return sendPayload(
             conn = conn,
             characteristicUuid = profile.dataCharacteristic,
-            payload = payload,
+            frames = frames,
             confirm = false,
             priority = GattTxQueue.Priority.DATA,
             purpose = "machine-data",
         )
     }
 
-    suspend fun notifyCscMeasurement(device: BluetoothDevice, payload: ByteArray): Boolean {
-        val conn = matchingConnection(device) ?: return false
-        if (!conn.cscMeasurementSubscribed) return false
-        return sendTx(
+    // No single-frame data entry point: a measurement record is atomic by
+    // construction, and a back door that posts one frame would let a caller
+    // reintroduce the half-sent fragmented record this design exists to prevent.
+
+    internal suspend fun notifyCscMeasurement(
+        device: BluetoothDevice,
+        payload: ByteArray,
+    ): GattTxQueue.Outcome {
+        val conn = matchingConnection(device) ?: return GattTxQueue.Outcome.FAILED
+        if (!conn.cscMeasurementSubscribed) return GattTxQueue.Outcome.FAILED
+        return sendPayload(
             conn = conn,
             characteristicUuid = BluetoothIds.UUID_CSC_MEASUREMENT,
-            payload = payload,
+            frames = listOf(payload),
             confirm = false,
             priority = GattTxQueue.Priority.DATA,
             purpose = "csc-measurement",
         )
     }
 
-    suspend fun notifyCyclingPowerMeasurement(
+    internal suspend fun notifyCyclingPowerMeasurement(
         device: BluetoothDevice,
         payload: ByteArray,
-    ): Boolean {
-        val conn = matchingConnection(device) ?: return false
-        if (!conn.cyclingPowerMeasurementSubscribed) return false
-        return sendTx(
+    ): GattTxQueue.Outcome {
+        val conn = matchingConnection(device) ?: return GattTxQueue.Outcome.FAILED
+        if (!conn.cyclingPowerMeasurementSubscribed) return GattTxQueue.Outcome.FAILED
+        return sendPayload(
             conn = conn,
             characteristicUuid = BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
-            payload = payload,
+            frames = listOf(payload),
             confirm = false,
             priority = GattTxQueue.Priority.DATA,
             purpose = "cycling-power-measurement",
         )
     }
+
+    /** Transmission-queue counters, surfaced for downstream-lag diagnosis. */
+    internal fun txStats(): GattTxQueue.Stats = txQueue.stats()
 
     /**
      * Publishes one Fitness Machine Status notification to every subscribed
@@ -1554,6 +1608,23 @@ class FtmsPeripheralAdvertiser(
         deviceAddress = conn.device.address,
         characteristicUuid = characteristicUuid,
         payload = payload,
+        confirm = confirm,
+        priority = priority,
+        purpose = purpose,
+    )
+
+    private suspend fun sendPayload(
+        conn: PeripheralConnection,
+        characteristicUuid: UUID,
+        frames: List<ByteArray>,
+        confirm: Boolean,
+        priority: GattTxQueue.Priority,
+        purpose: String,
+    ): GattTxQueue.Outcome = txQueue.sendPayload(
+        sessionId = conn.sessionId,
+        deviceAddress = conn.device.address,
+        characteristicUuid = characteristicUuid,
+        frames = frames,
         confirm = confirm,
         priority = priority,
         purpose = purpose,

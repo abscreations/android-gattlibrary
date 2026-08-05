@@ -2,27 +2,65 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import android.os.SystemClock
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Periodically encodes the latest metric snapshot and notifies the connected
- * clients.
+ * How long a client pump waits before its next emission.
  *
- * Runs on its own timer rather than reacting to every upstream packet. That
+ * [periodMs] is a **floor, not a period**. When a payload took at least that long
+ * to complete — the normal case on a 990 ms connection interval — the next
+ * emission starts immediately, so the snapshot is encoded at the moment the link
+ * is ready rather than at a fixed tick that bears no relation to the link's
+ * capacity. Extracted and tested because collapsing this back into a fixed
+ * `delay(periodMs)` would silently restore the behavior this refactor removed.
+ */
+internal fun emissionDelayMs(periodMs: Long, elapsedMs: Long): Long =
+    (periodMs - elapsedMs).coerceAtLeast(0L)
+
+/**
+ * Encodes the latest metric snapshot and notifies each connected client.
+ *
+ * Runs on its own schedule rather than reacting to every upstream packet. That
  * decoupling is the whole point: a machine may deliver notifications irregularly,
  * but FTMS clients expect a steady stream, and a burst of upstream packets must
  * not turn into a burst of downstream notifications.
  *
- * Differences from the old `BtServiceNotifier`:
- *  - Encodes once *per client*, because each link has its own negotiated MTU. The
- *    old notifier built one payload and pushed the same bytes to everyone.
- *  - Emits CSC and Cycling Power measurements, which the old notifier never did.
- *  - Default period is 700 ms rather than 333 ms - see [DEFAULT_PERIOD_MS].
+ * ### Why each client has its own pump
+ *
+ * The previous version ran one tick loop that awaited each client's send in turn,
+ * inside a fixed `delay(periodMs)`. Two consequences, both observed as a Garmin
+ * watch falling progressively further behind the tablet:
+ *
+ * 1. A slow client stalled every other client's notifications and stretched the
+ *    tick period itself, because the loop awaited each send serially.
+ * 2. The fixed period had no relationship to what the link could carry. At a
+ *    990 ms connection interval against a 700 ms tick, records were produced
+ *    faster than they could be delivered and the old FIFO queue banked the
+ *    backlog — see [GattTxQueue].
+ *
+ * Now each connection gets its own pump. A pump encodes a snapshot, sends it as
+ * one atomic payload, and *waits for that payload to finish* before encoding the
+ * next. Data is therefore encoded at the moment the link is ready for it rather
+ * than up to a period earlier, which is the freshest a snapshot can be. The
+ * period becomes a floor: if a send completes quickly the pump waits out the
+ * remainder, and if it takes longer than the period the next send starts
+ * immediately.
+ *
+ * The conflation slots in [GattTxQueue] remain the enforced ceiling — at most one
+ * payload queued per client per characteristic — but with pumps pacing themselves
+ * off completion, the queued slot is normally empty. An empty queued slot is the
+ * ideal state: it means nothing stale is waiting to be sent.
  */
 class FtmsPeripheralNotifier(
     private val advertiser: FtmsPeripheralAdvertiser,
@@ -42,35 +80,59 @@ class FtmsPeripheralNotifier(
     private var cyclingConfig: CyclingSensorConfig = CyclingSensorConfig.DISABLED
     private var cyclingAccumulator: CyclingEventAccumulator? = null
 
+    /**
+     * Latest revolution counts, advanced by the supervisor exactly once per
+     * period. The accumulator integrates speed and cadence over elapsed time, so
+     * it must not be advanced once per client — that would multiply the
+     * revolution counts by the number of connected clients.
+     */
+    @Volatile
+    private var latestRevolutions: CyclingRevolutionSnapshot? = null
+
     private var job: Job? = null
 
-    @Volatile
-    var packetsSent: Long = 0
-        private set
+    // Counters are atomic because several client pumps now update them
+    // concurrently. The previous single tick loop made plain fields safe; per-
+    // connection pumps do not.
+    private val packets = AtomicLong(0L)
+    private val complete = AtomicLong(0L)
+    private val compacted = AtomicLong(0L)
+    private val fragmented = AtomicLong(0L)
+    private val ftmsPackets = AtomicLong(0L)
+    private val cscPackets = AtomicLong(0L)
+    private val cpsPackets = AtomicLong(0L)
+    private val superseded = AtomicLong(0L)
+    private val stalenessLast = AtomicLong(0L)
+    private val stalenessMax = AtomicLong(0L)
+    private val stalenessSamples = AtomicLong(0L)
+    private val stalenessTotal = AtomicLong(0L)
 
-    @Volatile
-    var completeRecords: Long = 0
-        private set
+    val packetsSent: Long get() = packets.get()
+    val completeRecords: Long get() = complete.get()
+    val compactedRecords: Long get() = compacted.get()
+    val fragmentedRecords: Long get() = fragmented.get()
+    val ftmsPacketsSent: Long get() = ftmsPackets.get()
+    val cscPacketsSent: Long get() = cscPackets.get()
+    val cpsPacketsSent: Long get() = cpsPackets.get()
 
-    @Volatile
-    var compactedRecords: Long = 0
-        private set
+    /**
+     * Records superseded because a newer one was ready before the link was free.
+     * Expected to be non-zero on a slow client; it is the mechanism working, not
+     * a fault. A large and growing value alongside a large [maxStalenessMs] is
+     * what a genuinely overloaded link looks like.
+     */
+    val supersededRecords: Long get() = superseded.get()
 
-    @Volatile
-    var fragmentedRecords: Long = 0
-        private set
+    /** Age of the snapshot at the instant the client acknowledged it. */
+    val lastStalenessMs: Long get() = stalenessLast.get()
 
-    @Volatile
-    var ftmsPacketsSent: Long = 0
-        private set
+    val maxStalenessMs: Long get() = stalenessMax.get()
 
-    @Volatile
-    var cscPacketsSent: Long = 0
-        private set
-
-    @Volatile
-    var cpsPacketsSent: Long = 0
-        private set
+    val meanStalenessMs: Long
+        get() {
+            val samples = stalenessSamples.get()
+            return if (samples == 0L) 0L else stalenessTotal.get() / samples
+        }
 
     fun configureCycling(config: CyclingSensorConfig) {
         cyclingConfig = config
@@ -79,6 +141,7 @@ class FtmsPeripheralNotifier(
         } else {
             null
         }
+        latestRevolutions = null
     }
 
     fun setCumulativeWheelRevolutions(value: Long): Boolean {
@@ -92,19 +155,15 @@ class FtmsPeripheralNotifier(
 
     fun start(scope: CoroutineScope) {
         if (job != null) return
-        packetsSent = 0
-        completeRecords = 0
-        compactedRecords = 0
-        fragmentedRecords = 0
-        ftmsPacketsSent = 0
-        cscPacketsSent = 0
-        cpsPacketsSent = 0
+        listOf(
+            packets, complete, compacted, fragmented,
+            ftmsPackets, cscPackets, cpsPackets, superseded,
+            stalenessLast, stalenessMax, stalenessSamples, stalenessTotal,
+        ).forEach { it.set(0L) }
+        latestRevolutions = null
         job = scope.launch {
-            Timber.tag(TAG).i("notifier started at %dms", periodMs)
-            while (isActive) {
-                runCatching { tick() }.onFailure { Timber.tag(TAG).w(it, "tick failed") }
-                delay(periodMs)
-            }
+            Timber.tag(TAG).i("notifier started, floor=%dms", periodMs)
+            supervise()
             Timber.tag(TAG).i("notifier stopped")
         }
     }
@@ -114,58 +173,173 @@ class FtmsPeripheralNotifier(
         job = null
     }
 
-    /** Fire one tick immediately when measurement notifications become enabled. */
+    /**
+     * Fire one extra emission immediately when measurement notifications become
+     * enabled, so a client that has just subscribed does not wait a full period.
+     *
+     * Safe to overlap a pump: every record still enters the conflating queue, so
+     * the worst case is that one of the two is superseded by the other.
+     */
     fun kick(scope: CoroutineScope) {
         if (job?.isActive != true) return
-        // A kick may overlap the periodic loop, but every packet still enters the
-        // advertiser's single GATT transaction queue. It cannot collide with
-        // another notification or a Control Point indication.
-        scope.launch { runCatching { tick() }.onFailure { Timber.tag(TAG).w(it, "kick failed") } }
+        scope.launch {
+            try {
+                coroutineScope {
+                    // Concurrently, so a slow client cannot delay the kick to a
+                    // fast one - the same reason each client has its own pump.
+                    advertiser.activeConnections().forEach { conn ->
+                        launch { emitOnce(conn) }
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                Timber.tag(TAG).w(failure, "kick failed")
+            }
+        }
     }
 
-    private suspend fun tick() {
-        val connections = advertiser.activeConnections()
+    /**
+     * Owns the shared per-period work — advancing the cycling accumulator and
+     * logging diagnostics — and keeps one pump alive per connected client.
+     */
+    private suspend fun supervise() = coroutineScope {
+        val pumps = mutableMapOf<String, Job>()
+        var lastSummaryAtMs = SystemClock.elapsedRealtime()
+
+        try {
+            while (isActive) {
+                val nowMs = SystemClock.elapsedRealtime()
+                advanceCyclingAccumulator(nowMs)
+
+                val connections = advertiser.activeConnections()
+                val live = connections.associateBy { pumpKey(it) }
+                for ((key, conn) in live) {
+                    if (pumps[key]?.isActive != true) {
+                        pumps[key] = launch { pump(conn) }
+                    }
+                }
+                // A reconnect produces a new sessionId and therefore a new key,
+                // so the stale pump is cancelled rather than left writing to a
+                // dead session.
+                val gone = pumps.keys - live.keys
+                for (key in gone) {
+                    pumps.remove(key)?.cancel()
+                }
+
+                if (nowMs - lastSummaryAtMs >= SUMMARY_INTERVAL_MS) {
+                    lastSummaryAtMs = nowMs
+                    logSummary(pumps.size)
+                }
+
+                delay(periodMs)
+            }
+        } finally {
+            pumps.values.forEach { it.cancel() }
+        }
+    }
+
+    /**
+     * One client's send loop.
+     *
+     * [periodMs] is a floor, not a period: the next emission starts as soon as
+     * the previous payload finishes, unless less than a period has elapsed.
+     */
+    private suspend fun pump(conn: PeripheralConnection) = coroutineScope {
+        while (isActive) {
+            val startedAtMs = SystemClock.elapsedRealtime()
+            try {
+                emitOnce(conn)
+            } catch (cancelled: CancellationException) {
+                // The pump is being torn down; never swallow this, or the loop
+                // keeps running against a dead session.
+                throw cancelled
+            } catch (failure: Throwable) {
+                Timber.tag(TAG).w(failure, "emit failed for %s", conn.device.address)
+            }
+            val elapsed = SystemClock.elapsedRealtime() - startedAtMs
+            val remaining = emissionDelayMs(periodMs, elapsed)
+            if (remaining > 0) delay(remaining)
+        }
+    }
+
+    /**
+     * Encodes and sends every subscribed characteristic for one client.
+     *
+     * The three characteristics are sent concurrently so they occupy independent
+     * conflation slots. Sending them serially would make an FTMS record wait
+     * behind CSC and CPS on a slow link, tripling its effective period.
+     */
+    private suspend fun emitOnce(conn: PeripheralConnection) {
+        // Re-read per emission: the machine profile can change mid-session.
         val profile = advertiser.currentProfile()
         val nowMs = SystemClock.elapsedRealtime()
         // Keep the stream flowing once a workout has started: stale instantaneous
         // metrics come back zeroed, cumulative totals held. Null only before the
         // first sample ever arrives.
         val snapshot = store.snapshotForNotification(nowMs) ?: return
-        val revolutions = cyclingAccumulator?.update(snapshot.speedKph, snapshot.cadence, nowMs)
-        if (connections.isEmpty()) return
-        val needsFtmsMeasurement = connections.any { it.dataSubscribed }
-        val speed = if (needsFtmsMeasurement && requiresSpeed(profile)) {
+        val revolutions = latestRevolutions
+
+        val speed = if (conn.dataSubscribed && requiresSpeed(profile)) {
             store.effectiveSpeedKph(nowMs) ?: return
         } else {
             null
         }
 
-        // Encode once per client because each link has its own negotiated MTU (a
-        // phone may take one large record while a Connect IQ watch is capped at
-        // 20 octets). Notifications for every client funnel through the shared,
-        // globally-serialised GattTxQueue, so they never collide on the wire.
-        for (conn in connections) {
-            if (conn.dataSubscribed) notifyOne(conn, profile, snapshot, speed)
+        coroutineScope {
+            val pending = mutableListOf<Deferred<Unit>>()
+            if (conn.dataSubscribed) {
+                pending += async { notifyOne(conn, profile, snapshot, speed) }
+            }
             if (revolutions != null && conn.cscMeasurementSubscribed) {
-                val payload = CyclingSensorEncoders.cscMeasurement(revolutions)
-                if (advertiser.notifyCscMeasurement(conn.device, payload)) {
-                    packetsSent++
-                    cscPacketsSent++
-                    conn.countPacket()
+                pending += async {
+                    val payload = CyclingSensorEncoders.cscMeasurement(revolutions)
+                    countCyclingOutcome(
+                        outcome = advertiser.notifyCscMeasurement(conn.device, payload),
+                        counter = cscPackets,
+                        conn = conn,
+                    )
                 }
             }
             if (revolutions != null && conn.cyclingPowerMeasurementSubscribed) {
-                val payload = CyclingSensorEncoders.cyclingPowerMeasurement(
-                    snapshot.powerWatts ?: 0,
-                    revolutions,
-                )
-                if (advertiser.notifyCyclingPowerMeasurement(conn.device, payload)) {
-                    packetsSent++
-                    cpsPacketsSent++
-                    conn.countPacket()
+                pending += async {
+                    val payload = CyclingSensorEncoders.cyclingPowerMeasurement(
+                        snapshot.powerWatts ?: 0,
+                        revolutions,
+                    )
+                    countCyclingOutcome(
+                        outcome = advertiser.notifyCyclingPowerMeasurement(conn.device, payload),
+                        counter = cpsPackets,
+                        conn = conn,
+                    )
                 }
             }
+            pending.awaitAll()
         }
+    }
+
+    private fun countCyclingOutcome(
+        outcome: GattTxQueue.Outcome,
+        counter: AtomicLong,
+        conn: PeripheralConnection,
+    ) {
+        when (outcome) {
+            GattTxQueue.Outcome.DELIVERED -> {
+                packets.incrementAndGet()
+                counter.incrementAndGet()
+                conn.countPacket()
+            }
+
+            // Cumulative counters, so a skipped update self-heals on the next one.
+            GattTxQueue.Outcome.SUPERSEDED -> superseded.incrementAndGet()
+            GattTxQueue.Outcome.FAILED -> Unit
+        }
+    }
+
+    private fun advanceCyclingAccumulator(nowMs: Long) {
+        val accumulator = cyclingAccumulator ?: return
+        val snapshot = store.snapshotForNotification(nowMs) ?: return
+        latestRevolutions = accumulator.update(snapshot.speedKph, snapshot.cadence, nowMs)
     }
 
     private suspend fun notifyOne(
@@ -177,7 +351,7 @@ class FtmsPeripheralNotifier(
         // Preserve every populated metric. When the negotiated ATT payload is too
         // small, FTMS More Data continuation frames carry the overflow.
         var packOutcome: FtmsPackOutcome? = null
-        val packets = FtmsDataEncoders.encode(
+        val frames = FtmsDataEncoders.encode(
             profile,
             snapshot,
             speed,
@@ -186,50 +360,81 @@ class FtmsPeripheralNotifier(
             onPackOutcome = { packOutcome = it },
             garminCompatibilityFraming = garminCompatibilityFraming,
         )
-        if (packets.isEmpty()) return
+        if (frames.isEmpty()) return
 
         when (packOutcome) {
-            FtmsPackOutcome.COMPLETE -> completeRecords++
-            FtmsPackOutcome.COMPACTED -> compactedRecords++
-            FtmsPackOutcome.FRAGMENTED -> fragmentedRecords++
+            FtmsPackOutcome.COMPLETE -> complete.incrementAndGet()
+            FtmsPackOutcome.COMPACTED -> compacted.incrementAndGet()
+            FtmsPackOutcome.FRAGMENTED -> fragmented.incrementAndGet()
             null -> Unit
         }
 
         if (FTMS_VERBOSE_LOGGING) {
             Timber.tag(TAG).d(
-                "tick %s client=%s snapshot=%s -> %d packet(s) payloadCap=%dB",
-                profile, conn.device.address, describe(snapshot), packets.size,
+                "emit %s client=%s snapshot=%s -> %d frame(s) payloadCap=%dB",
+                profile, conn.device.address, describe(snapshot), frames.size,
                 conn.maxNotifyPayload,
             )
         }
 
-        for ((i, payload) in packets.withIndex()) {
-            val ok = advertiser.notifyData(conn.device, payload)
-            if (FTMS_VERBOSE_LOGGING) {
-                Timber.tag(TAG).d(
-                    "  notify frag %d/%d %dB moreData=%s hex=%s -> %s",
-                    i + 1, packets.size, payload.size,
-                    (payload[0].toInt() and 0x01) == 1,
-                    payload.toHexString(),
-                    if (ok) "OK" else "FAIL",
-                )
+        // The whole record goes as one atomic payload. Fragmented records can no
+        // longer be half-sent: the queue either delivers every frame or reports
+        // the record failed, and supersession happens only at record boundaries.
+        when (advertiser.notifyDataRecord(conn.device, frames)) {
+            GattTxQueue.Outcome.DELIVERED -> {
+                packets.addAndGet(frames.size.toLong())
+                ftmsPackets.addAndGet(frames.size.toLong())
+                repeat(frames.size) { conn.countPacket() }
+                recordStaleness(snapshot)
             }
-            if (ok) {
-                packetsSent++
-                ftmsPacketsSent++
-                conn.countPacket()
-            } else {
-                // A failed notify usually means the client went away or the
-                // stack's buffer is full. Drop the rest of this record rather
-                // than sending a partial fragment set.
+
+            GattTxQueue.Outcome.SUPERSEDED -> {
+                // Normal on a slow link: a newer record was ready before this one
+                // reached the wire, so the client gets the newer one instead.
+                // Deliberately not a warning - this is the mechanism working.
+                superseded.incrementAndGet()
+            }
+
+            GattTxQueue.Outcome.FAILED -> {
                 Timber.tag(TAG).w(
-                    "notify failed on frag %d/%d; dropping remainder of this record",
-                    i + 1, packets.size,
+                    "record of %d frame(s) not delivered to %s",
+                    frames.size, conn.device.address,
                 )
-                break
             }
         }
     }
+
+    /**
+     * Age of the data at the instant the client acknowledged it. This is the
+     * number that describes the user-visible symptom — how far behind the watch
+     * is — so it is measured on acknowledgement rather than on encode.
+     */
+    private fun recordStaleness(snapshot: FtmsMetricSnapshot) {
+        if (snapshot.updatedAtMs <= 0L) return
+        val age = SystemClock.elapsedRealtime() - snapshot.updatedAtMs
+        if (age < 0L) return
+        stalenessLast.set(age)
+        stalenessMax.updateAndGet { previous -> maxOf(previous, age) }
+        stalenessSamples.incrementAndGet()
+        stalenessTotal.addAndGet(age)
+    }
+
+    private fun logSummary(pumpCount: Int) {
+        val tx = advertiser.txStats()
+        Timber.tag(TAG).i(
+            "downstream pumps=%d staleness last=%dms mean=%dms max=%dms | " +
+                "records delivered=%d superseded=%d failed=%d | " +
+                "ack last=%dms mean=%dms max=%dms | queued data=%d control=%d",
+            pumpCount,
+            lastStalenessMs, meanStalenessMs, maxStalenessMs,
+            tx.delivered, tx.superseded, tx.failed,
+            tx.lastAckLatencyMs, tx.meanAckLatencyMs, tx.maxAckLatencyMs,
+            tx.queuedDataPayloads, tx.queuedControlPayloads,
+        )
+    }
+
+    private fun pumpKey(conn: PeripheralConnection): String =
+        "${conn.device.address.lowercase()}#${conn.sessionId}"
 
     /** Compact snapshot dump: only the fields that are actually populated. */
     private fun describe(s: FtmsMetricSnapshot): String = buildList {
@@ -255,24 +460,28 @@ class FtmsPeripheralNotifier(
         private const val TAG = "FtmsNotifier"
 
         /**
-         * Confirmed disconnect root cause and resiliency requirement:
+         * Emission floor, not a fixed period.
          *
-         * A 1,000 ms notification period sits directly on Android's one-second
-         * no-holder GATT idle timeout. When the app is backgrounded, normal
-         * scheduling jitter lets the idle timer fire before the next notification,
-         * so affected Samsung/vendor stacks kill an otherwise active connection
-         * after only a few packets.
+         * Two constraints bound it. Below: a 1,000 ms cadence sits directly on
+         * Android's one-second no-holder GATT idle timeout, and normal scheduling
+         * jitter then lets the idle timer fire before the next notification, so
+         * affected Samsung/vendor stacks kill an otherwise active connection.
+         * 250 ms is comfortably clear of that — more so than the previous 700 ms.
          *
-         * Keep this at 700 ms, comfortably below that timeout. The GATT server
-         * also explicitly retains inbound links, but the shorter cadence is a
-         * second, confirmed defense against background idle disconnects while
-         * remaining gentle on the globally serialized notification queue.
+         * Above: there is no point encoding faster than a client can consume,
+         * but because pumps pace themselves off payload completion, a shorter
+         * floor costs nothing on a slow link. It only takes effect when the link
+         * is fast enough to finish a payload in under 250 ms, and there it caps
+         * the radio and encode cost.
          *
-         * The previous FitBridge default of 333 ms was safe from that timeout but
-         * wasteful: at MTU 23 it put three fragmented records per second on a link
-         * whose connection interval may be 990 ms.
+         * The old 700 ms value was chosen against a FIFO queue that banked the
+         * overflow. With conflation the trade-off inverts: a shorter floor means
+         * fresher data, and surplus records are dropped rather than queued.
          */
-        const val DEFAULT_PERIOD_MS = 700L
-        const val MIN_PERIOD_MS = 200L
+        const val DEFAULT_PERIOD_MS = 250L
+        const val MIN_PERIOD_MS = 100L
+
+        /** How often the downstream-lag summary is written to the log. */
+        private const val SUMMARY_INTERVAL_MS = 30_000L
     }
 }
