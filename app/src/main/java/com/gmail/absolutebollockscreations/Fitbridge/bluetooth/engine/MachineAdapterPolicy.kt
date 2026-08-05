@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.BleCapture
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.DemoteEvent
 import timber.log.Timber
 
 /** A machine adapter eligible for one physical link generation. */
@@ -47,19 +49,42 @@ internal fun interface AdapterDemotionRecorder {
     fun record(demotion: AdapterDemotion)
 }
 
+/**
+ * Publishes a §0.7a liveness demotion to the capture channel.
+ *
+ * §0.9.1 calls this the highest-value event in the system: it means the matcher
+ * was wrong *and FitBridge now knows it*, which is exactly the evidence needed
+ * to add a correct fingerprint later. It is also one of the §0.9.5 arming
+ * triggers.
+ *
+ * Two things changed when the capture channel landed in 0.9.2. The record is now
+ * a schema `demote` event rather than a printf line, so it parses. And it
+ * carries a **session-scoped connection label instead of the raw MAC address**:
+ * the previous version printed `demotion.connectionId.address` verbatim, which
+ * §0.9.6 forbids in an event body.
+ */
 private val structuralDemotionRecorder = AdapterDemotionRecorder { demotion ->
     val evidence = demotion.evidence.facts.joinToString(prefix = "[", postfix = "]") { fact ->
         "${fact.kind}:${fact.structuralValue}:w${fact.weight}:${fact.collisionRisk}:${fact.note}"
     }
-    Timber.tag("BLECAP").i(
-        "event=demote conn=%s#%d from=%s to=%s reason=%s timeoutMs=%d evidence=%s",
-        demotion.connectionId.address,
+    BleCapture.emit(
+        DemoteEvent(
+            conn = BleCapture.labelFor(demotion.connectionId.address),
+            from = demotion.fromAdapterId,
+            to = demotion.toAdapterId,
+            reason = demotion.reason,
+            timeoutMs = demotion.timeoutMs,
+            evidence = evidence,
+        ),
+    )
+    // Breadcrumb on the ordinary tag, so someone reading the human log knows a
+    // demotion happened and can go looking for the capture.
+    BleCapture.summary(
+        "adapter demoted on link generation %d: %s -> %s (%s)",
         demotion.connectionId.linkGeneration,
         demotion.fromAdapterId,
         demotion.toAdapterId ?: "none",
         demotion.reason,
-        demotion.timeoutMs,
-        evidence,
     )
 }
 
@@ -188,8 +213,15 @@ internal class MachineAdapterPolicy(
         )
         runCatching { demotionRecorder.record(demotion) }
             .onFailure { error ->
-                Timber.tag("BLECAP").e(error, "event=demote_record_failed conn=%s#%d",
-                    connectionId.address, connectionId.linkGeneration)
+                // Reported on the human tag, not the capture tag: if recording
+                // the event failed, the capture channel is exactly what cannot
+                // be trusted to carry the news. No address here either - the
+                // link generation is enough to correlate.
+                Timber.tag("AdapterPolicy").e(
+                    error,
+                    "failed to record adapter demotion on link generation %d",
+                    connectionId.linkGeneration,
+                )
             }
         demotionUsed = true
         deadlineMs = null
