@@ -1,7 +1,9 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.BleCapture
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CaptureTrigger
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.DemoteEvent
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.ErrorEvent
 import timber.log.Timber
 
 /** A machine adapter eligible for one physical link generation. */
@@ -86,6 +88,10 @@ private val structuralDemotionRecorder = AdapterDemotionRecorder { demotion ->
         demotion.toAdapterId ?: "none",
         demotion.reason,
     )
+    // §0.9.5 trigger. Armed *after* emitting, so the demote event is the last
+    // thing in the ring and gets flushed in order along with the run-up that
+    // explains it — which is the entire point of arming retroactively.
+    BleCapture.arm(CaptureTrigger.LIVENESS_DEMOTION)
 }
 
 internal data class AdapterPolicySnapshot(
@@ -129,6 +135,18 @@ internal class MachineAdapterPolicy(
         if (orderedCandidates.isEmpty()) {
             state = AdapterPolicyState.CONNECTED_NO_DATA
             detail = "No adapter candidates matched"
+            // §0.9.5 trigger: unknown hardware is the triage case. The device
+            // connected and FitBridge has no idea what it is, so the run-up -
+            // the advertisement and the GATT inventory - is exactly what someone
+            // needs to add support for it later.
+            BleCapture.emit(
+                ErrorEvent(
+                    conn = BleCapture.labelFor(connectionId.address),
+                    where = "adapter-selection",
+                    message = "no adapter candidate matched this device",
+                ),
+            )
+            BleCapture.arm(CaptureTrigger.UNMATCHED_DEVICE)
             return@synchronized snapshotLocked()
         }
         selectedIndex = 0
