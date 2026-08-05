@@ -163,7 +163,7 @@ object BluetoothIds {
     const val OPCODE_REQUEST_CONTROL: Byte        = 0x00
     const val OPCODE_RESET: Byte                  = 0x01
     const val OPCODE_SET_TARGET_SPEED: Byte       = 0x02   // 0.01 km/h units (UInt16)
-    const val OPCODE_SET_TARGET_INCLINATION: Byte = 0x03   // 0.1 deg units (SInt16)
+    const val OPCODE_SET_TARGET_INCLINATION: Byte = 0x03   // 0.1 percent grade units (SInt16)
     const val OPCODE_SET_TARGET_RESISTANCE: Byte  = 0x04   // 0.1 level units (UInt8 — 2-byte write)
     const val OPCODE_SET_TARGET_POWER: Byte       = 0x05   // watts (SInt16)
     const val OPCODE_SET_TARGET_HEART_RATE: Byte = 0x06   // bpm (UInt8)

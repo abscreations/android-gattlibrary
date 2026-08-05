@@ -638,6 +638,17 @@ internal fun applyFitnessMachineStatus(
         return b0 or (b1 shl 8)
     }
 
+    /**
+     * Signed little-endian 16-bit, or null when the payload cannot contain it. Signed FTMS
+     * targets must not silently fall back to zero: zero is itself a valid movement target.
+     */
+    fun s16LE(offset: Int): Int? {
+        if (value.size < offset + 2) return null
+        val b0 = value[offset].toInt() and 0xFF
+        val b1 = value[offset + 1].toInt() and 0xFF
+        return (b0 or (b1 shl 8)).toShort().toInt()
+    }
+
     Timber.tag(BtEngineState.TAG).d(
         "FTMS Status opcode=0x%02X payload=%s",
         status,
@@ -683,11 +694,21 @@ internal fun applyFitnessMachineStatus(
         }
 
         STATUS_TARGET_INCLINE_CHANGED -> {
-            val deg = u16LE(1) / FTMS_INCLINE_SCALE
-            state.setTargetInclineDeg(deg)
-            serviceControlSink?.onTargetInclineChangedDeg(deg)
+            // Inclination is sint16 in 0.1 percent grade. Read unsigned, a decline target of
+            // -5.0 % decoded as 6553.5 % instead of a negative grade.
+            val raw = s16LE(1)
+            if (raw == null) {
+                Timber.tag(BtEngineState.TAG).w(
+                    "FTMS Status: malformed TARGET_INCLINE_CHANGED payload=%s",
+                    value.joinToString(" ") { b -> "%02X".format(b) },
+                )
+                return
+            }
+            val percent = raw / FTMS_INCLINE_SCALE
+            state.setTargetInclinePercent(percent)
+            serviceControlSink?.onTargetInclineChangedPercent(percent)
             Timber.tag(BtEngineState.TAG)
-                .i("FTMS Status: TARGET_INCLINE_CHANGED → %.1f deg", deg)
+                .i("FTMS Status: TARGET_INCLINE_CHANGED → %.1f %%", percent)
         }
 
         STATUS_TARGET_RESISTANCE_LEVEL_CHANGED -> {

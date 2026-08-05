@@ -34,7 +34,7 @@
  *      • Floors and total steps for steppers/climbers.
  *
  *  - Incline, ramp, elevation, belt force
- *      • Inclination samples (degrees) and ramp angle for treadmills/ellipticals.
+ *      • Inclination samples (percent grade) and ramp angle (degrees) for treadmills/ellipticals.
  *      • Positive / negative elevation gain variants depending on machine type.
  *      • Belt force + belt-derived instantaneous power for treadmills.
  *
@@ -522,15 +522,21 @@ internal object BtEngineFtmsParsers {
         return off
     }
 
-    /** Treadmill v1 (incline int, ramp/10) */
+    /**
+     * Treadmill Data (0x2ACD) Inclination and Ramp Angle Setting.
+     *
+     * Both are sint16. Inclination is in units of 0.1 percent grade and Ramp Angle Setting is in
+     * units of 0.1 degree, so both need the same tenth scaling. Inclination previously kept its
+     * raw value, which reported a -5 %..+10 % treadmill as -50..+100.
+     */
     private fun readInclineV1(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 4)) {
-            val inc = s16(b, off).toDouble(); off += 2
+            val inc = s16(b, off).toDouble() / 10.0; off += 2
             val ramp = s16(b, off).toDouble() / 10.0; off += 2
 
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS incline (deg): %.1f, rampAngle (deg): %.1f", inc, ramp)
+                Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
             }
 
             emitter.emit(MetricKind.INCLINATION, inc)
@@ -539,7 +545,7 @@ internal object BtEngineFtmsParsers {
         return off
     }
 
-    /** Elliptical v2 (incline/10, ramp/10) */
+    /** Cross Trainer Data (0x2ACE): inclination in 0.1 percent, ramp angle in 0.1 degree. */
     private fun readInclineV2(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (has(b, off, 4)) {
@@ -547,7 +553,7 @@ internal object BtEngineFtmsParsers {
             val ramp = s16(b, off).toDouble() / 10.0; off += 2
 
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS incline (deg): %.1f, rampAngle (deg): %.1f", inc, ramp)
+                Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
             }
 
             emitter.emit(MetricKind.INCLINATION, inc)

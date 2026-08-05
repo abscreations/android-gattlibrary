@@ -76,6 +76,35 @@ class MetricParserEmissionTest {
     }
 
     @Test
+    fun `treadmill inclination is percent in tenths and ramp angle is degrees in tenths`() {
+        val harness = harness(BluetoothIds.UUID_TREADMILL_DATA)
+
+        // Flags 0x0008 = inclination + ramp angle only, no speed (bit 0 clear means speed present,
+        // so bit 0 is set here to omit it). Inclination -5.0 % = -50, ramp 2.5 deg = 25.
+        BtEngineFtmsParsers.doTreadmill(
+            harness.emitter,
+            byteArrayOf(0x09, 0x00, 0xCE.toByte(), 0xFF.toByte(), 0x19, 0x00),
+        )
+
+        assertEquals(-5.0, harness.fusion.latestSample(MetricKind.INCLINATION)!!.value, 0.0001)
+        assertEquals(2.5, harness.fusion.latestSample(MetricKind.RAMP_ANGLE)!!.value, 0.0001)
+        assertEquals(-5.0, harness.state.inclination.value!!, 0.0001)
+    }
+
+    @Test
+    fun `treadmill inclination keeps its sign and full positive scale`() {
+        val harness = harness(BluetoothIds.UUID_TREADMILL_DATA)
+
+        // Inclination +10.0 % = 100, ramp angle 0.
+        BtEngineFtmsParsers.doTreadmill(
+            harness.emitter,
+            byteArrayOf(0x09, 0x00, 0x64, 0x00, 0x00, 0x00),
+        )
+
+        assertEquals(10.0, harness.state.inclination.value!!, 0.0001)
+    }
+
+    @Test
     fun `elliptical vector emits speed after three byte flags`() {
         val harness = harness(BluetoothIds.UUID_ELLIPTICAL_DATA)
 

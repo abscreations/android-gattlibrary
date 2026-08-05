@@ -58,7 +58,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *          - `safetyKeyEngaged`     (emergency-stop / safety key state)
  *          - target set-points:
  *              · `targetSpeedKmh`
- *              · `targetInclineDeg`
+ *              · `targetInclinePercent`
  *              · `targetResistanceLevel`
  *              · `targetPowerWatts`
  *              · `targetHeartRateBpm`
@@ -91,7 +91,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *              · Power:    `appendPowerSample(...)` and smoothed averages
  *              · Cadence:  `appendCadenceSpmSample(...)`
  *              · Steps/strides/floors/strokes: set* totals and stroke metrics
- *              · Incline/ramp/elevation/force: `appendInclineDegSample(...)`,
+ *              · Incline/ramp/elevation/force: `appendInclinePercentSample(...)`,
  *                `setRampAngle`, `setElevationGainPos/Neg`, `setForceOnBelt`
  *          - Energy:
  *              · Machine calories are passed into `MetricFusion`, which
@@ -192,7 +192,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *          - `speedSeriesKph`
  *          - `cadenceSeriesSpm`
  *          - `powerSeriesW`
- *          - `inclineSeriesDeg`
+ *          - `inclineSeriesPercent`
  *          - `resistanceSeries`
  *          - `distanceSeriesM` (rower helper)
  *      • The `append*Sample(...)` helpers:
@@ -228,7 +228,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *            `heartRateZone`, `averageHeartRate`, `sensorContact`,
  *            `rrIntervalsMs`, `bodySensorLocation`)
  *          - Graphs (`hrSeries`, `speedSeriesKph`, `cadenceSeriesSpm`,
- *            `powerSeriesW`, `inclineSeriesDeg`, `resistanceSeries`)
+ *            `powerSeriesW`, `inclineSeriesPercent`, `resistanceSeries`)
  *      • UI code does **not** re-interpret bytes; it just renders.
  *
  *  - **Workout / session orchestration**

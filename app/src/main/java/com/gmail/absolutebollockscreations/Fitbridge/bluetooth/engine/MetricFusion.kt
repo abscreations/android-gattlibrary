@@ -39,6 +39,9 @@ internal enum class MetricUnit {
     LEVEL,
     SECONDS,
     COUNT,
+
+    /** Grade, as used by FTMS Inclination. Not an angle. */
+    PERCENT,
     DEGREES,
     METABOLIC_EQUIVALENT,
     NEWTONS,
@@ -63,7 +66,7 @@ internal enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = f
     STROKE_RATE(MetricUnit.STEPS_PER_MINUTE),
     STROKE_COUNT(MetricUnit.COUNT),
     METABOLIC_EQUIVALENT(MetricUnit.METABOLIC_EQUIVALENT),
-    INCLINATION(MetricUnit.DEGREES),
+    INCLINATION(MetricUnit.PERCENT),
     RAMP_ANGLE(MetricUnit.DEGREES),
     ELEVATION_GAIN_POSITIVE(MetricUnit.METERS),
     ELEVATION_GAIN_NEGATIVE(MetricUnit.METERS),
@@ -125,6 +128,15 @@ internal fun interface MonotonicMetricClock {
     }
 }
 
+/** Wall-clock time used only for UI series that are rendered against epoch time. */
+internal fun interface MetricSeriesClock {
+    fun nowMs(): Long
+
+    companion object {
+        val SYSTEM = MetricSeriesClock(System::currentTimeMillis)
+    }
+}
+
 internal enum class FusionSubmission { ACCEPTED, REJECTED_STALE, REJECTED_INVALID }
 
 internal enum class FusionPersona { RIDE, RUN, ROW_PADDLE }
@@ -177,6 +189,7 @@ internal class MetricEmitter(
 internal class MetricFusion(
     private val state: BtEngineState,
     private val clock: MonotonicMetricClock = MonotonicMetricClock.SYSTEM,
+    private val seriesClock: MetricSeriesClock = MetricSeriesClock.SYSTEM,
 ) {
     private val lock = Any()
     private val candidates = mutableMapOf<MetricKind, MutableMap<MetricCandidateKey, MetricSample>>()
@@ -300,8 +313,8 @@ internal class MetricFusion(
             value = totalSeconds.toDouble(),
         )
         candidates.getOrPut(MetricKind.ELAPSED) { mutableMapOf() }[sample.candidateKey()] = sample
-        val previous = selectedByMetric.put(MetricKind.ELAPSED, sample)
-        if (previous != sample) projectPassThrough(sample)
+        // The session clock is one candidate among the machine's own, not a forced projection.
+        reselect(MetricKind.ELAPSED, arrivalMs)
     }
 
     private fun resetSessionState(clearMachine: Boolean) {
@@ -331,7 +344,6 @@ internal class MetricFusion(
     private fun MetricSample.candidateKey() = MetricCandidateKey(sourceId, sourceClass, quality)
 
     private fun reselect(metric: MetricKind, nowMs: Long) {
-        if (metric == MetricKind.ELAPSED) return
         val bySource = candidates[metric].orEmpty()
         val pinned = manualAssignments[metric]
         val winner = if (pinned != null) {
@@ -426,7 +438,16 @@ internal class MetricFusion(
             FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.DERIVED)
             FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.DERIVED)
         }
-        MetricKind.ELAPSED -> if (source == MetricSourceClass.SESSION) 0 else Int.MAX_VALUE
+        // A machine's own elapsed time wins while it is fresh, so elapsed pauses when the
+        // machine pauses. The session clock is the fallback and never goes stale, so a machine
+        // that never reports elapsed still produces a running session time.
+        MetricKind.ELAPSED -> rank(
+            source,
+            MetricSourceClass.FTMS,
+            MetricSourceClass.VENDOR_NATIVE,
+            MetricSourceClass.INTEGRATED,
+            MetricSourceClass.SESSION,
+        )
         else -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.MOTION, MetricSourceClass.DERIVED)
     }
 
@@ -480,24 +501,25 @@ internal class MetricFusion(
     }
 
     private fun projectPassThrough(sample: MetricSample) {
-        val at = sample.arrivalMs
+        val arrivalAt = sample.arrivalMs
+        val seriesAt = seriesClock.nowMs()
         val value = sample.value
         when (sample.metric) {
             MetricKind.HEART_RATE -> {
                 val bpm = value.roundToInt()
                 if (sample.sourceClass == MetricSourceClass.HRM) {
                     state.setExternalHeartRate(bpm)
-                    state.updateLastExternalAt(at)
+                    state.updateLastExternalAt(arrivalAt)
                     state.setHeartRateSource(BtEngineState.HrSource.EXTERNAL_HRM)
                 } else {
                     state.setHeartRateSource(BtEngineState.HrSource.UNKNOWN)
                 }
-                state.appendHeartRateSample(bpm, at)
+                state.appendHeartRateSample(bpm, seriesAt)
                 publishHeartRateZones()
             }
 
             MetricKind.SPEED -> {
-                state.appendSpeedKphSample(value, at)
+                state.appendSpeedKphSample(value, seriesAt)
                 state.setSpeedMph(value / 1.609344)
                 state.setSpeedDisplay(if (state.units.value == 1) value / 1.609344 else value)
                 val peak = maxOf(state.peakSpeedKph.value ?: value, value)
@@ -513,11 +535,11 @@ internal class MetricFusion(
                 if (value > 0.0) emitDerivedPace(MetricKind.AVERAGE_PACE, 60.0 / value, sample)
             }
 
-            MetricKind.CADENCE -> state.appendCadenceSpmSample(value, at)
+            MetricKind.CADENCE -> state.appendCadenceSpmSample(value, seriesAt)
             MetricKind.AVERAGE_CADENCE -> state.setAverageCadence(value)
             MetricKind.POWER -> {
                 val watts = adjustedPower(sample)
-                state.appendPowerSample(watts, at)
+                state.appendPowerSample(watts, seriesAt)
                 state.setPeakPower(maxOf(state.peakPower.value ?: watts, watts))
             }
             MetricKind.AVERAGE_POWER -> state.setAveragePower(value.roundToInt())
@@ -527,11 +549,11 @@ internal class MetricFusion(
                 state.setTotalDistanceDisplay(
                     if (state.units.value == 1) meters * 0.000621371 else meters / 1000.0,
                 )
-                state.appendDistanceMetersSample(meters, at)
+                state.appendDistanceMetersSample(meters, seriesAt)
                 updateLapDistance(meters)
                 if (sample.sourceId.characteristicUuid == BluetoothIds.UUID_ROWING_MACHINE_DATA) {
-                    state.updateLapRowingSpeed(at)
-                    state.updateRowingSpeed(at)
+                    state.updateLapRowingSpeed(seriesAt)
+                    state.updateRowingSpeed(seriesAt)
                 }
                 updateDistanceDerivedPace(sample)
             }
@@ -539,7 +561,7 @@ internal class MetricFusion(
             MetricKind.ENERGY_RATE -> state.setExpEnergyRateKcalPerHour(value.roundToInt())
             MetricKind.INSTANT_PACE -> state.setInstantPace(value)
             MetricKind.AVERAGE_PACE -> state.setAvgPace(value)
-            MetricKind.RESISTANCE -> state.appendResistanceSample(value, at)
+            MetricKind.RESISTANCE -> state.appendResistanceSample(value, seriesAt)
             MetricKind.ELAPSED -> {
                 val seconds = value.roundToInt()
                 state.setElapsedSeconds(seconds)
@@ -547,18 +569,18 @@ internal class MetricFusion(
                 state.strokeCount.value?.let(::updateLapStrokes)
                 updateAveragePaceFromSessionDistance(sample)
             }
-            MetricKind.STROKE_RATE -> state.appendStrokeRateSample(value, at)
+            MetricKind.STROKE_RATE -> state.appendStrokeRateSample(value, seriesAt)
             MetricKind.STROKE_COUNT -> {
                 val strokes = value.roundToInt()
                 state.setStrokeCount(strokes)
                 updateLapStrokes(strokes)
             }
             MetricKind.METABOLIC_EQUIVALENT -> state.setMetabolicEquivalent(value)
-            MetricKind.INCLINATION -> state.appendInclineDegSample(value, at)
+            MetricKind.INCLINATION -> state.appendInclinePercentSample(value, seriesAt)
             MetricKind.RAMP_ANGLE -> state.setRampAngle(value)
             MetricKind.ELEVATION_GAIN_POSITIVE -> state.setElevationGainPos(value)
             MetricKind.ELEVATION_GAIN_NEGATIVE -> state.setElevationGainNeg(value)
-            MetricKind.FORCE_ON_BELT -> state.appendForceOnBeltSample(value.roundToInt(), at)
+            MetricKind.FORCE_ON_BELT -> state.appendForceOnBeltSample(value.roundToInt(), seriesAt)
             MetricKind.TOTAL_FLOORS -> state.setTotalFloors(value.roundToInt())
             MetricKind.TOTAL_STEPS -> {
                 val steps = value.roundToInt()

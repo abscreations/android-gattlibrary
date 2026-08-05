@@ -178,12 +178,12 @@ interface BtServiceControlSink {
      * Called when the upstream FTMS device reports that the target incline has
      * changed (via Fitness Machine Status 0x06).
      *
-     * @param deg New target incline in degrees (already decoded from 0.1° units).
+     * @param percent New target incline in percent grade (already decoded from 0.1 % units).
      *
      * Typical implementation:
      *  • Emit STATUS_TARGET_INCLINE_CHANGED with the encoded SInt16 parameter.
      */
-    fun onTargetInclineChangedDeg(deg: Float)
+    fun onTargetInclineChangedPercent(percent: Float)
 
     /**
      * Called when the upstream FTMS device reports that the target resistance
@@ -280,9 +280,9 @@ class LoggingBtServiceControlSink(
         delegate.onTargetSpeedChangedKmh(kmh)
     }
 
-    override fun onTargetInclineChangedDeg(deg: Float) {
-        Timber.tag(tag).d("onTargetInclineChangedDeg(deg=%.2f)", deg)
-        delegate.onTargetInclineChangedDeg(deg)
+    override fun onTargetInclineChangedPercent(percent: Float) {
+        Timber.tag(tag).d("onTargetInclineChangedPercent(percent=%.2f)", percent)
+        delegate.onTargetInclineChangedPercent(percent)
     }
 
     override fun onTargetResistanceLevelChanged(level: Float) {

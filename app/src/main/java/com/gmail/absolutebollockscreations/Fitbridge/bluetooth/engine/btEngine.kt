@@ -105,6 +105,8 @@ import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
+import com.gmail.absolutebollockscreations.Fitbridge.canAssignSensorService
+import com.gmail.absolutebollockscreations.Fitbridge.cscRoleCapabilityFromAppearance
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_FITNESS_MACHINE_FEATURE
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_FTMS_SERVICE
@@ -138,6 +140,9 @@ class BtEngine internal constructor(
 
     companion object {
         private const val RECOVERY_CONNECT_TIMEOUT_MS = 12_000L
+
+        // Polled faster than 1 Hz so a published second never drifts a whole tick late.
+        private const val SESSION_ELAPSED_TICK_MS = 250L
         @Volatile private var isStarted = false
         @Volatile private var stopped = false
         private val startLock = Any()
@@ -457,6 +462,7 @@ class BtEngine internal constructor(
 
     @Volatile private var desiredAddress: String? = null
     @Volatile private var desiredActivity: ActivityType? = null
+    @Volatile private var sessionElapsedJob: Job? = null
 
     // Android primitives
     private val btManager: BluetoothManager? = runCatching {
@@ -816,6 +822,23 @@ class BtEngine internal constructor(
                 recoveryAttempt,
             )
             if (address.isBlank()) return@guardConnectPerm false
+            val candidateCscCapability = cscRoleCapabilityForAddress(address)
+            if (assignedServices.any { serviceType ->
+                    !canAssignSensorService(
+                        address,
+                        serviceType,
+                        state.connectionRegistry.connectedDevices.value,
+                        candidateCscCapability,
+                    )
+                }
+            ) {
+                Timber.tag(BtEngineState.TAG).w(
+                    "connectSensor rejected by per-class limit: address=%s services=%s",
+                    address,
+                    assignedServices,
+                )
+                return@guardConnectPerm false
+            }
             if (state.connectionRegistry.contextsForAddress(address).isNotEmpty()) {
                 return@guardConnectPerm assignedServices.all { serviceType ->
                     activateServiceAtAddress(address, serviceType)
@@ -834,6 +857,9 @@ class BtEngine internal constructor(
                 address,
                 handlers = handlersForServices(assignedServices, machineConnection = false),
             )
+            if (BtEngineState.BtServiceType.CSC in assignedServices) {
+                state.setCscRoleCapability(connection, candidateCscCapability)
+            }
             val cb = BtEngineGattCore.build(this@BtEngine, connection)
             val connectedGatt = connectLeGatt(dev, cb)
             val attached = connectedGatt?.let { state.attachGatt(connection, it) } == true
@@ -994,6 +1020,21 @@ class BtEngine internal constructor(
         address: String,
         serviceType: BtEngineState.BtServiceType,
     ): Boolean = guardConnectPerm("activateServiceAtAddress($address, $serviceType)", default = false) {
+        val candidateCscCapability = cscRoleCapabilityForAddress(address)
+        if (!canAssignSensorService(
+                address,
+                serviceType,
+                state.connectionRegistry.connectedDevices.value,
+                candidateCscCapability,
+            )
+        ) {
+            Timber.tag(BtEngineState.TAG).w(
+                "activateServiceAtAddress rejected by per-class limit: address=%s service=%s",
+                address,
+                serviceType,
+            )
+            return@guardConnectPerm false
+        }
         val protocol = when (serviceType) {
             BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
             else -> return@guardConnectPerm false
@@ -1004,11 +1045,21 @@ class BtEngine internal constructor(
         )
         if (activated) {
             state.connectionRegistry.contextsForAddress(address).firstOrNull()?.let { context ->
+                if (serviceType == BtEngineState.BtServiceType.CSC) {
+                    state.setCscRoleCapability(context, candidateCscCapability)
+                }
                 linkRecovery.updateTarget(recoveryTargetFor(context))
             }
         }
         activated
     }
+
+    private fun cscRoleCapabilityForAddress(
+        address: String,
+    ): BtEngineState.CscRoleCapability? = state.discoveredDevices.value.values
+        .firstOrNull { device -> device.address.equals(address, ignoreCase = true) }
+        ?.appearance
+        ?.let(::cscRoleCapabilityFromAppearance)
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun activateServiceOn(
@@ -1113,6 +1164,7 @@ class BtEngine internal constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun stop() = guardConnectPerm(op = "stop()", default = Unit) {
         synchronized(startLock) { isStarted = false }
+        stopSessionElapsedClock()
         state.setIsRunning(false)
         state.setActiveSession(false)
         metricFusion.endSession()
@@ -1125,11 +1177,45 @@ class BtEngine internal constructor(
         desiredAddress = address
         metricFusion.startSession(activity.fusionPersona())
         state.setActiveSession(true)
+        startSessionElapsedClock()
     }
 
     fun markSessionStopped() {
+        stopSessionElapsedClock()
         state.setActiveSession(false)
         metricFusion.endSession()
+    }
+
+    /**
+     * Fallback session clock. Fusion prefers a machine's own Elapsed Time while it is fresh, so
+     * this only reaches the UI for a machine that does not report elapsed at all, or one that has
+     * stopped reporting it. Bounded by the session: it is cancelled wherever fusion's session ends.
+     */
+    private fun startSessionElapsedClock() {
+        stopSessionElapsedClock()
+        val startedAtMs = elapsedRealtimeMs()
+        sessionElapsedJob = scope.launch {
+            var publishedSeconds = -1
+            metricFusion.updateSessionElapsed(0)
+            while (true) {
+                delay(SESSION_ELAPSED_TICK_MS)
+                val seconds = ((elapsedRealtimeMs() - startedAtMs) / 1_000L).toInt()
+                // Republish only on a second boundary; fusion reselects on every submission.
+                if (seconds != publishedSeconds) {
+                    publishedSeconds = seconds
+                    metricFusion.updateSessionElapsed(seconds)
+                }
+            }
+        }
+        Timber.tag(BtEngineState.TAG).i("Session elapsed clock started")
+    }
+
+    private fun stopSessionElapsedClock() {
+        sessionElapsedJob?.let {
+            it.cancel()
+            Timber.tag(BtEngineState.TAG).i("Session elapsed clock stopped")
+        }
+        sessionElapsedJob = null
     }
 
     fun setRunning(running: Boolean) {
@@ -1272,9 +1358,9 @@ class BtEngine internal constructor(
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun setTargetInclinationDeg(deg: Float): Boolean =
-        guardConnectPerm(op = "setTargetInclinationDeg()", default = false) {
-            val ok: Boolean = BtEngineControlPoint.setTargetInclinationDeg(this, deg)
+    override fun setTargetInclinationPercent(percent: Float): Boolean =
+        guardConnectPerm(op = "setTargetInclinationPercent()", default = false) {
+            val ok: Boolean = BtEngineControlPoint.setTargetInclinationPercent(this, percent)
             ok
         }
 
@@ -1467,6 +1553,7 @@ class BtEngine internal constructor(
 
     // Manual reset hook — call from VM when RunMode closes
     fun clearAllTimeSeriesAndState() {
+        stopSessionElapsedClock()
         metricFusion.endSession()
         runCatching { state.clearAllTimeSeries() }
             .onFailure {

@@ -172,6 +172,7 @@ internal class ConnectionContext(
     val queue: GattQueue = GattQueue(),
     val cccd: CccdState = CccdState(),
     var linkRecovery: LinkRecoveryState? = null,
+    var cscRoleCapability: BtEngineState.CscRoleCapability? = null,
 ) {
     /** Callback-owned, idempotent termination entry point used by explicit disconnects. */
     @Volatile
@@ -402,6 +403,15 @@ internal class ConnectionRegistry {
             publishConnectedDevices()
         }
 
+    fun setCscRoleCapability(
+        context: ConnectionContext,
+        capability: BtEngineState.CscRoleCapability?,
+    ) = synchronized(lock) {
+        if (!context.isActive || contexts[context.connectionId] !== context) return@synchronized
+        context.cscRoleCapability = capability
+        publishConnectedDevices()
+    }
+
     private fun publishConnectedDevices() {
         _connectedDevices.value = contexts.values.map { context ->
             val handlerServices = context.handlers
@@ -419,6 +429,7 @@ internal class ConnectionRegistry {
                 connectionState = context.connectionState.value.bluetoothProfileState,
                 activeServices = handlerServices.ifEmpty { setOf(fallbackService) },
                 machineConnection = context.machineConnection,
+                cscRoleCapability = context.cscRoleCapability,
             )
         }.sortedBy { it.connectionKey }
     }

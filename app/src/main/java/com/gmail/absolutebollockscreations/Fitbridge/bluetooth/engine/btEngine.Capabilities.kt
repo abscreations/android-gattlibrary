@@ -184,7 +184,7 @@ internal object BtEngineCapabilities {
             rawMax = t
         }
 
-        // Legacy degrees on engine.state (for existing UI/math)
+        // Percent grade on engine.state (for existing UI/math)
         val minVal = rawMin / 10f
         val maxVal = rawMax / 10f
         val incRaw = rawInc / 10f
@@ -199,7 +199,7 @@ internal object BtEngineCapabilities {
             BtEngineState.FtmsCapabilities(
                 featuresRead       = true,
                 supportsInclination = engine.state.supportsInclination,
-                inclineMin         = rawMin.toFloat(),                   // spec: 0.1 deg units
+                inclineMin         = rawMin.toFloat(),                   // spec: 0.1 percent units
                 inclineMax         = rawMax.toFloat(),
                 inclineIncr        = normalizeStep(rawInc.toFloat()),
                 inclineRangeKnown  = true
@@ -207,7 +207,7 @@ internal object BtEngineCapabilities {
         )
 
         Timber.tag(BtEngineState.TAG).d(
-            "Incline range: min=%.1f° max=%.1f° inc=%.1f° " +
+            "Incline range: min=%.1f%% max=%.1f%% inc=%.1f%% " +
                     "[spec raw min=%d max=%d inc=%d]",
             engine.state.inclineMin,
             engine.state.inclineMax,

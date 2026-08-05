@@ -365,4 +365,22 @@ class ConnectionContextTest {
         assertEquals(BluetoothProfile.STATE_CONNECTED, state.connectionState.value)
         assertSame(current, state.connectionRegistry.current(LegacyConnectionRole.FTMS))
     }
+
+    @Test
+    fun `CSC role capability is projected by physical connection identity`() {
+        val registry = ConnectionRegistry()
+        val context = registry.openAdditional(
+            "AA:BB:CC:DD:EE:03",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        val capability = BtEngineState.CscRoleCapability(
+            roles = setOf(BtEngineState.CscRole.SPEED),
+            source = BtEngineState.CscRoleSource.APPEARANCE,
+        )
+
+        registry.setCscRoleCapability(context, capability)
+
+        assertEquals(capability, registry.connectedDevices.value.single().cscRoleCapability)
+    }
 }

@@ -95,9 +95,10 @@ class MetricFusionTest {
     }
 
     @Test
-    fun `pass through projects newest samples and retains arrival timestamps`() {
+    fun `pass through uses wall clock for graph series and monotonic time for freshness`() {
         val state = BtEngineState()
-        val fusion = MetricFusion(state)
+        val seriesClock = MetricSeriesClock { 1_785_000_000_000L }
+        val fusion = MetricFusion(state, seriesClock = seriesClock)
 
         assertEquals(FusionSubmission.ACCEPTED, fusion.submit(sample(MetricKind.SPEED, 12.5, 100)))
         assertEquals(FusionSubmission.ACCEPTED, fusion.submit(sample(MetricKind.CADENCE, 84.0, 101)))
@@ -108,16 +109,17 @@ class MetricFusionTest {
         assertEquals(84.0, state.instantCadence.value!!, 0.0)
         assertEquals(211, state.instantPower.value)
         assertEquals(432, state.totalDistanceMeters.value)
-        assertEquals(100, state.speedSeriesKph.value.single().tMillis)
-        assertEquals(101, state.cadenceSeriesSpm.value.single().tMillis)
-        assertEquals(102, state.powerSeriesW.value.single().tMillis)
-        assertEquals(103, state.distanceSeriesM.value.single().tMillis)
+        assertEquals(1_785_000_000_000L, state.speedSeriesKph.value.single().tMillis)
+        assertEquals(1_785_000_000_000L, state.cadenceSeriesSpm.value.single().tMillis)
+        assertEquals(1_785_000_000_000L, state.powerSeriesW.value.single().tMillis)
+        assertEquals(1_785_000_000_000L, state.distanceSeriesM.value.single().tMillis)
+        assertEquals(103L, fusion.latestSample(MetricKind.DISTANCE)?.arrivalMs)
     }
 
     @Test
     fun `pass through projects HR energy pace and resistance`() {
         val state = BtEngineState()
-        val fusion = MetricFusion(state)
+        val fusion = MetricFusion(state, seriesClock = MetricSeriesClock { 1_785_000_000_000L })
         val hr = sample(
             MetricKind.HEART_RATE,
             147.0,
@@ -141,6 +143,8 @@ class MetricFusionTest {
         assertEquals(147, state.heartRate.value)
         assertEquals(147, state.externalHeartRate.value)
         assertEquals(BtEngineState.HrSource.EXTERNAL_HRM, state.heartRateSource.value)
+        assertEquals(200L, state.lastExternalAt)
+        assertEquals(1_785_000_000_000L, state.hrSeries.value.single().tMillis)
         assertEquals(55, state.expEnergyTotal.value)
         assertEquals(700, state.expEnergyRateKcalPerHour.value)
         assertEquals(4.25, state.instantPaceMinPerKm.value!!, 0.0)
@@ -149,8 +153,9 @@ class MetricFusionTest {
         assertEquals(10.5, state.avgSpeedKph.value!!, 0.0)
         assertEquals(80.0, state.averageCadence.value!!, 0.0)
         assertEquals(190, state.averagePower.value)
-        assertEquals(600, state.elapsedTimeSec.value)
-        assertEquals(MetricProtocol.SESSION, fusion.latestSample(MetricKind.ELAPSED)?.protocol)
+        // The machine's own elapsed time outranks the session clock while it stays fresh.
+        assertEquals(999, state.elapsedTimeSec.value)
+        assertEquals(MetricProtocol.FTMS, fusion.latestSample(MetricKind.ELAPSED)?.protocol)
         assertSame(hr, fusion.latestSample(MetricKind.HEART_RATE))
     }
 

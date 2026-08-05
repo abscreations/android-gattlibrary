@@ -29,13 +29,15 @@ class FtmsPassThroughCharacterizationTest {
             requestedSpeedKph = kph
             return true
         }
-        override fun setTargetInclinationDeg(deg: Float) = true
+        override fun setTargetInclinationPercent(percent: Float) = true
         override fun setTargetResistance(level: Float) = true
         override fun setTargetPowerWatts(watts: Int) = true
     }
 
     private class RecordingStatusSink : BtServiceControlSink {
         var targetSpeedKph: Float? = null
+        var targetInclinePercent: Float? = null
+        var inclineCallbacks = 0
 
         override fun startAdvertisingFtms(
             ftmsType: FtmsMachineProfile,
@@ -49,7 +51,10 @@ class FtmsPassThroughCharacterizationTest {
         override fun onTargetSpeedChangedKmh(kmh: Float) {
             targetSpeedKph = kmh
         }
-        override fun onTargetInclineChangedDeg(deg: Float) = Unit
+        override fun onTargetInclineChangedPercent(percent: Float) {
+            targetInclinePercent = percent
+            inclineCallbacks++
+        }
         override fun onTargetResistanceLevelChanged(level: Float) = Unit
         override fun onTargetPowerChangedWatts(watts: Int) = Unit
         override fun onTargetHeartRateChangedBpm(bpm: Int) = Unit
@@ -93,5 +98,47 @@ class FtmsPassThroughCharacterizationTest {
 
         assertEquals(12.34f, upstream.engineState.targetSpeedKmh.value!!, 0.001f)
         assertEquals(12.34f, downstreamStatus.targetSpeedKph!!, 0.001f)
+    }
+
+    @Test
+    fun `target incline status decodes sint16 percent including a decline`() {
+        val state = BtEngineState()
+        val sink = RecordingStatusSink()
+
+        // -5.0 % grade = -50 = 0xFFCE little-endian. Read unsigned this reported 6553.5 %.
+        applyFitnessMachineStatus(
+            state,
+            sink,
+            byteArrayOf(BluetoothIds.STATUS_TARGET_INCLINE_CHANGED, 0xCE.toByte(), 0xFF.toByte()),
+        )
+
+        assertEquals(-5.0f, state.targetInclinePercent.value!!, 0.001f)
+        assertEquals(-5.0f, sink.targetInclinePercent!!, 0.001f)
+
+        // +10.0 % grade = 100 = 0x0064.
+        applyFitnessMachineStatus(
+            state,
+            sink,
+            byteArrayOf(BluetoothIds.STATUS_TARGET_INCLINE_CHANGED, 0x64, 0x00),
+        )
+
+        assertEquals(10.0f, state.targetInclinePercent.value!!, 0.001f)
+        assertEquals(10.0f, sink.targetInclinePercent!!, 0.001f)
+    }
+
+    @Test
+    fun `truncated target incline status is rejected rather than reported as zero`() {
+        val state = BtEngineState()
+        val sink = RecordingStatusSink()
+
+        applyFitnessMachineStatus(
+            state,
+            sink,
+            byteArrayOf(BluetoothIds.STATUS_TARGET_INCLINE_CHANGED, 0xCE.toByte()),
+        )
+
+        // Zero is a valid movement target, so a short payload must not synthesise one.
+        assertNull(state.targetInclinePercent.value)
+        assertEquals(0, sink.inclineCallbacks)
     }
 }

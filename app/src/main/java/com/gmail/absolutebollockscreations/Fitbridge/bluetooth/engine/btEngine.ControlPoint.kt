@@ -42,10 +42,10 @@
 //       - Applies [speedMin, speedMax, speedIncr] if speedRangeKnown.
 //       - Converts to 0.01 km/h units (FTMS_SPEED_SCALE) → UInt16 LE.
 //
-//   • setTargetInclinationDeg(engine, deg)
+//   • setTargetInclinationPercent(engine, percent)
 //       - Feature gate: state.supportsInclination
 //       - Applies [inclineMin, inclineMax, inclineIncr] if inclineRangeKnown.
-//       - Converts to 0.1° SInt16 LE (FTMS_INCLINE_SCALE).
+//       - Converts to 0.1 % SInt16 LE (FTMS_INCLINE_SCALE).
 //
 //   • setTargetResistance(engine, level)
 //       - Feature gate: state.supportsResistance
@@ -167,21 +167,21 @@ internal object BtEngineControlPoint {
         return enqueueControlPointWrite(engine, payload)
     }
 
-    /** Set target incline (degrees). Device step/min/max applied when known. */
+    /** Set target incline (percent grade). Device step/min/max applied when known. */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun setTargetInclinationDeg(engine: BtEngine, deg: Float): Boolean {
-        if (!ensureCccdReady(engine, opName = "setTargetInclinationDeg", requireControl = true)) return false
+    fun setTargetInclinationPercent(engine: BtEngine, percent: Float): Boolean {
+        if (!ensureCccdReady(engine, opName = "setTargetInclinationPercent", requireControl = true)) return false
         if (!precheck(engine, feature = "inclination", supported = engine.state.supportsInclination)) return false
 
         val value = if (engine.state.inclineRangeKnown)
-            snapToStep(deg, engine.state.inclineMin, engine.state.inclineMax, engine.state.inclineIncr)
-        else deg
+            snapToStep(percent, engine.state.inclineMin, engine.state.inclineMax, engine.state.inclineIncr)
+        else percent
 
         val scaled = (value * FTMS_INCLINE_SCALE).toInt()
             .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
         val payload = byteArrayOf(OPCODE_SET_TARGET_INCLINATION) + s16le(scaled)
 
-        Timber.tag(BtEngineState.TAG).i("CP: set incline → %.1f° (scaled=%d)", value, scaled)
+        Timber.tag(BtEngineState.TAG).i("CP: set incline → %.1f %% (scaled=%d)", value, scaled)
         return enqueueControlPointWrite(engine, payload)
     }
 

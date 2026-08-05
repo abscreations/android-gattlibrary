@@ -33,7 +33,7 @@
  *  - Control Point helpers:
  *      • [startOrResume] / [stopOrPause]          – map START/RESUME and STOP/PAUSE
  *        FTMS CP opcodes onto BtEngine’s session control.
- *      • [setTargetSpeedKph] / [setTargetInclinationDeg] /
+ *      • [setTargetSpeedKph] / [setTargetInclinationPercent] /
  *        [setTargetResistance] / [setTargetPowerWatts] – map Set Target * FTMS
  *        CP opcodes into upstream target changes.
  *    All helpers are guarded by BLUETOOTH_CONNECT since concrete implementations
@@ -108,7 +108,7 @@ interface BtServiceEngineFacade {
     fun setTargetSpeedKph(kph: Float): Boolean
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun setTargetInclinationDeg(deg: Float): Boolean
+    fun setTargetInclinationPercent(percent: Float): Boolean
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun setTargetResistance(level: Float): Boolean

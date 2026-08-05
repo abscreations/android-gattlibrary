@@ -117,4 +117,22 @@ class ScanListTrackingTest {
             ).isEmpty(),
         )
     }
+
+    @Test
+    fun `GAP appearance parser reads little endian cycling appearance`() {
+        val advertisingData = byteArrayOf(
+            2, 0x01, 0x06,
+            3, 0x19, 0x82.toByte(), 0x04,
+            0,
+        )
+
+        assertEquals(0x0482, gapAppearanceFromAdvertisingData(advertisingData))
+    }
+
+    @Test
+    fun `GAP appearance parser rejects truncated and undersized structures`() {
+        assertEquals(null, gapAppearanceFromAdvertisingData(byteArrayOf(3, 0x19, 0x82.toByte())))
+        assertEquals(null, gapAppearanceFromAdvertisingData(byteArrayOf(2, 0x19, 0x82.toByte())))
+        assertEquals(null, gapAppearanceFromAdvertisingData(byteArrayOf(0)))
+    }
 }

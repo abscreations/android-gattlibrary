@@ -208,15 +208,40 @@ class MetricFusionPolicyTest {
     }
 
     @Test
-    fun `machine elapsed is ignored and FitBridge session clock is authoritative`() {
+    fun `machine elapsed wins while fresh and the session clock is the fallback`() {
         val state = BtEngineState()
         val fusion = MetricFusion(state)
         val ftms = source(ftmsConnection, MetricProtocol.FTMS, 70)
+
+        // A machine that reports its own elapsed time owns the value.
         fusion.submit(sample(MetricKind.ELAPSED, 900.0, 100, ftms, MetricSourceClass.FTMS))
+        assertEquals(900, state.elapsedTimeSec.value)
+        assertEquals(MetricProtocol.FTMS, fusion.latestSample(MetricKind.ELAPSED)?.protocol)
+
+        // The session clock cannot displace a machine that is still reporting.
+        fusion.updateSessionElapsed(12, 101)
+        assertEquals(900, state.elapsedTimeSec.value)
+        assertEquals(MetricProtocol.FTMS, fusion.latestSample(MetricKind.ELAPSED)?.protocol)
+
+        // Once the machine's sample goes stale the session clock takes over.
+        // Fusion's default freshness window is 3 s; the constant itself is private.
+        val afterStale = 100L + 3_000L + 1L
+        fusion.updateSessionElapsed(310, afterStale)
+        assertEquals(310, state.elapsedTimeSec.value)
+        assertEquals(MetricProtocol.SESSION, fusion.latestSample(MetricKind.ELAPSED)?.protocol)
+    }
+
+    @Test
+    fun `a machine that never reports elapsed still gets a running session clock`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
         assertNull(state.elapsedTimeSec.value)
 
-        fusion.updateSessionElapsed(12, 101)
-        assertEquals(12, state.elapsedTimeSec.value)
+        fusion.updateSessionElapsed(0, 100)
+        assertEquals(0, state.elapsedTimeSec.value)
+
+        fusion.updateSessionElapsed(1, 1_100)
+        assertEquals(1, state.elapsedTimeSec.value)
         assertEquals(MetricProtocol.SESSION, fusion.latestSample(MetricKind.ELAPSED)?.protocol)
     }
 

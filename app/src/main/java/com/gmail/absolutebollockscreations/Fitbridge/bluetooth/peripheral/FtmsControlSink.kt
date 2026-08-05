@@ -235,7 +235,7 @@ class EngineFtmsControlSink(
 
     @SuppressLint("MissingPermission")
     override fun setTargetInclinationPercent(percent: Double): Boolean =
-        forwardTarget("setTargetInclination") { it.setTargetInclinationDeg(percent.toFloat()) }
+        forwardTarget("setTargetInclination") { it.setTargetInclinationPercent(percent.toFloat()) }
 
     @SuppressLint("MissingPermission")
     override fun setTargetResistance(level: Double): Boolean =

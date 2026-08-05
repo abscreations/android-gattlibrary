@@ -70,6 +70,15 @@ class BtEngineState : HrmStateSink {
         Glucose       // Glucose (0x1808)
     }
 
+    enum class CscRole { SPEED, CADENCE }
+
+    enum class CscRoleSource { APPEARANCE, FEATURE }
+
+    data class CscRoleCapability(
+        val roles: Set<CscRole>,
+        val source: CscRoleSource,
+    )
+
     /** Discovery model for scan lists. */
     data class DiscoveredDevice(
         val name: String,
@@ -84,6 +93,8 @@ class BtEngineState : HrmStateSink {
         val machineFeature: Int? = null,
         // Optimistic ActivityType ordinal decoded from advertised FTMS Service Data.
         val advertisedMachineFeature: Int? = null,
+        // GAP Appearance AD type 0x19, when present in the advertisement.
+        val appearance: Int? = null,
     )
 
     /** Registry projection for one physical-link generation; independent of scan visibility. */
@@ -93,6 +104,7 @@ class BtEngineState : HrmStateSink {
         val connectionState: Int,
         val activeServices: Set<BtServiceType>,
         val machineConnection: Boolean,
+        val cscRoleCapability: CscRoleCapability? = null,
     )
 
     // ⬇️ Container types for provider-side capabilities snapshot
@@ -386,9 +398,9 @@ class BtEngineState : HrmStateSink {
     private val _targetSpeedKmh = MutableStateFlow<Float?>(null)
     val targetSpeedKmh: StateFlow<Float?> = _targetSpeedKmh
 
-    /** Current target incline in degrees (decoded from 0.1° units). */
-    private val _targetInclineDeg = MutableStateFlow<Float?>(null)
-    val targetInclineDeg: StateFlow<Float?> = _targetInclineDeg
+    /** Current target incline in percent grade (decoded from 0.1 % units). */
+    private val _targetInclinePercent = MutableStateFlow<Float?>(null)
+    val targetInclinePercent: StateFlow<Float?> = _targetInclinePercent
 
     /** Current target resistance level (unitless, 0.1 resolution already applied). */
     private val _targetResistanceLevel = MutableStateFlow<Float?>(null)
@@ -579,8 +591,8 @@ class BtEngineState : HrmStateSink {
     private val _powerSeriesW = MutableStateFlow<List<TimedSample>>(emptyList())
     val powerSeriesW: StateFlow<List<TimedSample>> = _powerSeriesW
 
-    private val _inclineSeriesDeg = MutableStateFlow<List<TimedSample>>(emptyList())
-    val inclineSeriesDeg: StateFlow<List<TimedSample>> = _inclineSeriesDeg
+    private val _inclineSeriesPercent = MutableStateFlow<List<TimedSample>>(emptyList())
+    val inclineSeriesPercent: StateFlow<List<TimedSample>> = _inclineSeriesPercent
 
     private val _resistanceSeries = MutableStateFlow<List<TimedSample>>(emptyList())
     val resistanceSeries: StateFlow<List<TimedSample>> = _resistanceSeries
@@ -824,6 +836,13 @@ class BtEngineState : HrmStateSink {
         return attached
     }
 
+    internal fun setCscRoleCapability(
+        context: ConnectionContext,
+        capability: CscRoleCapability?,
+    ) {
+        connectionRegistry.setCscRoleCapability(context, capability)
+    }
+
     /** Publish state by physical-link identity; legacy flows are registry projections. */
     internal fun setConnectionState(context: ConnectionContext, state: Int) {
         val old = context.connectionState.value.bluetoothProfileState
@@ -929,10 +948,10 @@ class BtEngineState : HrmStateSink {
         Timber.tag(TAG).d("targetSpeedKmh %s → %s", old?.toString() ?: "null", kmh?.toString() ?: "null")
     }
 
-    fun setTargetInclineDeg(deg: Float?) {
-        val old = _targetInclineDeg.value
-        _targetInclineDeg.value = deg
-        Timber.tag(TAG).d("targetInclineDeg %s → %s", old?.toString() ?: "null", deg?.toString() ?: "null")
+    fun setTargetInclinePercent(percent: Float?) {
+        val old = _targetInclinePercent.value
+        _targetInclinePercent.value = percent
+        Timber.tag(TAG).d("targetInclinePercent %s → %s", old?.toString() ?: "null", percent?.toString() ?: "null")
     }
 
     fun setTargetResistanceLevel(level: Float?) {
@@ -976,7 +995,7 @@ class BtEngineState : HrmStateSink {
             _lastFtmsStatusCode.value = null
             _safetyKeyEngaged.value = false
             _targetSpeedKmh.value = null
-            _targetInclineDeg.value = null
+            _targetInclinePercent.value = null
             _targetResistanceLevel.value = null
             _targetPowerWatts.value = null
             _targetHeartRateBpm.value = null
@@ -1226,14 +1245,14 @@ class BtEngineState : HrmStateSink {
         )
     }
 
-    /** Append an incline sample (degrees). */
-    fun appendInclineDegSample(deg: Double, tsMillis: Long = System.currentTimeMillis()) {
-        _inclination.value = deg
-        _inclineSeriesDeg.value = _inclineSeriesDeg.value + TimedSample(tsMillis, deg)
+    /** Append an incline sample (percent grade). */
+    fun appendInclinePercentSample(percent: Double, tsMillis: Long = System.currentTimeMillis()) {
+        _inclination.value = percent
+        _inclineSeriesPercent.value = _inclineSeriesPercent.value + TimedSample(tsMillis, percent)
         Timber.tag(TAG).v(
-            "appendInclineDegSample deg=%.2f seriesSize=%d",
-            deg,
-            _inclineSeriesDeg.value.size
+            "appendInclinePercentSample percent=%.2f seriesSize=%d",
+            percent,
+            _inclineSeriesPercent.value.size
         )
     }
 
@@ -1255,7 +1274,7 @@ class BtEngineState : HrmStateSink {
         _speedSeriesKph.value = emptyList()
         _cadenceSeriesSpm.value = emptyList()
         _powerSeriesW.value = emptyList()
-        _inclineSeriesDeg.value = emptyList()
+        _inclineSeriesPercent.value = emptyList()
         _resistanceSeries.value = emptyList()
         _forceOnBeltSeries.value = emptyList()
         _elevationNetSeries.value = emptyList()
@@ -1515,7 +1534,7 @@ class BtEngineState : HrmStateSink {
         _speedSeriesKph.value = emptyList()
         _cadenceSeriesSpm.value = emptyList()
         _powerSeriesW.value = emptyList()
-        _inclineSeriesDeg.value = emptyList()
+        _inclineSeriesPercent.value = emptyList()
         _resistanceSeries.value = emptyList()
         _distanceSeriesM.value = emptyList()
         _forceOnBeltSeries.value = emptyList()

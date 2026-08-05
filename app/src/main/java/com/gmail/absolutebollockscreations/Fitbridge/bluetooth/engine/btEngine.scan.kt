@@ -265,6 +265,26 @@ internal fun <K, V> duplicateAddressKeys(
 internal fun canonicalScanAddress(address: String): String =
     address.trim().uppercase(Locale.US)
 
+/** Parse GAP AD structures and return the little-endian Appearance (type 0x19), if valid. */
+internal fun gapAppearanceFromAdvertisingData(bytes: ByteArray): Int? {
+    var offset = 0
+    while (offset < bytes.size) {
+        val structureLength = bytes[offset].toInt() and 0xFF
+        if (structureLength == 0) return null
+        val structureEnd = offset + 1 + structureLength
+        if (structureEnd > bytes.size || structureLength < 1) return null
+        val type = bytes[offset + 1].toInt() and 0xFF
+        if (type == 0x19) {
+            if (structureLength < 3) return null
+            val low = bytes[offset + 2].toInt() and 0xFF
+            val high = bytes[offset + 3].toInt() and 0xFF
+            return low or (high shl 8)
+        }
+        offset = structureEnd
+    }
+    return null
+}
+
 /* ───────────────────────────── helpers ───────────────────────────── */
 
 @SuppressLint("MissingPermission")
@@ -431,6 +451,9 @@ private fun BtEngine.upsertDiscoveredDevice(
             machineFeature = current?.machineFeature,
             advertisedMachineFeature =
                 advertisedMachineFeature ?: current?.advertisedMachineFeature,
+            appearance = result.scanRecord?.bytes
+                ?.let(::gapAppearanceFromAdvertisingData)
+                ?: current?.appearance,
         )
 
         if (address.isNotBlank()) {

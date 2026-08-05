@@ -144,7 +144,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *
  * FTMS CONTROL POINT (delegates to BtEngineControlPoint)
  *  - requestControl(), startOrResume(), stopOrPause(), reset()
- *  - setTargetSpeedKmh(kmh), setTargetInclinationDeg(deg),
+ *  - setTargetSpeedKmh(kmh), setTargetInclinationPercent(percent),
  *    setTargetResistance(level), setTargetPowerWatts(watts)
  *
  *    All methods:
@@ -248,7 +248,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *  - fitnessMachineStatus: StateFlow<Byte>   // last STATUS_* code from 0x2ADA
  *
  *  - Target snapshot (what we last requested via CP):
- *      • targetSpeedKph, targetInclineDeg, targetResistance, targetPowerWatts
+ *      • targetSpeedKph, targetInclinePercent, targetResistance, targetPowerWatts
  *
  *  - Mirroring hooks for btService:
  *      • Methods like setTargetsFromService(...) allow the local provider to
@@ -409,7 +409,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *
  *      • FTMS unit scales used by CP encoders:
  *          FTMS_SPEED_SCALE      (km/h × 100 → UInt16)
- *          FTMS_INCLINE_SCALE    (deg × 10 → SInt16)
+ *          FTMS_INCLINE_SCALE    (percent × 10 → SInt16)
  *          FTMS_RESISTANCE_SCALE (level × 10 → UInt16)
  *          FTMS_POWER_SCALE      (watts × 1 → UInt16)
  *
@@ -534,7 +534,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *  - stopOrPause(engine)
  *  - reset(engine)
  *  - setTargetSpeedKmh(engine, kmh: Float)
- *  - setTargetInclinationDeg(engine, deg: Float)
+ *  - setTargetInclinationPercent(engine, percent: Float)
  *  - setTargetResistance(engine, level: Float)
  *  - setTargetPowerWatts(engine, watts: Int)
  *
