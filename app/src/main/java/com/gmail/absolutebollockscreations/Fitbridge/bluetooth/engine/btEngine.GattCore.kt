@@ -406,6 +406,7 @@ internal object BtEngineGattCore {
                     .d("FTMS disconnected → reset queue, CCCD flags, and capabilities")
             }
 
+            engine.metricFusion.onDisconnected(context.connectionId)
             engine.state.clearConnection(context)
             gatt?.let { linkGatt ->
                 runCatching { linkGatt.close() }

@@ -135,7 +135,8 @@ class MetricFusionTest {
         fusion.submit(sample(MetricKind.AVERAGE_SPEED, 10.5, 206))
         fusion.submit(sample(MetricKind.AVERAGE_CADENCE, 80.0, 207))
         fusion.submit(sample(MetricKind.AVERAGE_POWER, 190.0, 208))
-        fusion.submit(sample(MetricKind.ELAPSED, 600.0, 209))
+        fusion.submit(sample(MetricKind.ELAPSED, 999.0, 209))
+        fusion.updateSessionElapsed(600, arrivalMs = 210)
 
         assertEquals(147, state.heartRate.value)
         assertEquals(147, state.externalHeartRate.value)
@@ -149,6 +150,7 @@ class MetricFusionTest {
         assertEquals(80.0, state.averageCadence.value!!, 0.0)
         assertEquals(190, state.averagePower.value)
         assertEquals(600, state.elapsedTimeSec.value)
+        assertEquals(MetricProtocol.SESSION, fusion.latestSample(MetricKind.ELAPSED)?.protocol)
         assertSame(hr, fusion.latestSample(MetricKind.HEART_RATE))
     }
 

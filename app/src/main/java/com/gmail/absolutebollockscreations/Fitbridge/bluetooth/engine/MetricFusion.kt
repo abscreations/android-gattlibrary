@@ -124,7 +124,9 @@ internal fun interface MonotonicMetricClock {
     }
 }
 
-internal enum class FusionSubmission { ACCEPTED, REJECTED_STALE }
+internal enum class FusionSubmission { ACCEPTED, REJECTED_STALE, REJECTED_INVALID }
+
+internal enum class FusionPersona { RIDE, RUN, ROW_PADDLE }
 
 /** Packet-scoped source binding. Every field decoded from one packet shares [arrivalMs]. */
 internal class MetricEmitter(
@@ -161,25 +163,33 @@ internal class MetricEmitter(
     }
 }
 
-/** Initial Phase 0.6a policy: newest arrival for each metric projects directly to engine state. */
+/**
+ * Session-scoped, per-metric source selection. Protocol time is never consulted here: source
+ * freshness and all tie-breaking recency use monotonic host [MetricSample.arrivalMs] only.
+ */
 internal class MetricFusion(
     private val state: BtEngineState,
-    private val legacyInterceptor: ((MetricSample) -> Boolean)? = null,
-    private val legacyObserver: ((MetricSample) -> Unit)? = null,
+    private val clock: MonotonicMetricClock = MonotonicMetricClock.SYSTEM,
 ) {
     private val lock = Any()
-    private val latestByMetric = mutableMapOf<MetricKind, MetricSample>()
+    private val candidates = mutableMapOf<MetricKind, MutableMap<MetricSourceId, MetricSample>>()
+    private val selectedByMetric = mutableMapOf<MetricKind, MetricSample>()
+    private val manualAssignments = mutableMapOf<MetricKind, MetricSourceId>()
+    private val cumulativeTotals = mutableMapOf<MetricKind, Double>()
+    private val cumulativeActiveSource = mutableMapOf<MetricKind, MetricSourceId>()
+    private val cumulativeLastNative = mutableMapOf<MetricKind, Double>()
+    private var persona: FusionPersona = FusionPersona.RIDE
+    private var machineConnectionId: ConnectionId? = null
 
     fun submit(sample: MetricSample): FusionSubmission = synchronized(lock) {
-        val previous = latestByMetric[sample.metric]
+        if (!isDomainValid(sample)) return@synchronized FusionSubmission.REJECTED_INVALID
+        val bySource = candidates.getOrPut(sample.metric) { mutableMapOf() }
+        val previous = bySource[sample.sourceId]
         if (previous != null && sample.arrivalMs < previous.arrivalMs) {
             return@synchronized FusionSubmission.REJECTED_STALE
         }
-        latestByMetric[sample.metric] = sample
-        if (legacyInterceptor?.invoke(sample) != true) {
-            projectPassThrough(sample)
-            legacyObserver?.invoke(sample)
-        }
+        bySource[sample.sourceId] = sample
+        reselect(sample.metric, sample.arrivalMs)
         FusionSubmission.ACCEPTED
     }
 
@@ -187,24 +197,255 @@ internal class MetricFusion(
         emitter: MetricEmitter,
         positiveMeters: Double?,
         negativeMeters: Double?,
-    ) = synchronized(lock) {
-        val positiveSample = positiveMeters?.let {
-            emitterSample(emitter, MetricKind.ELEVATION_GAIN_POSITIVE, it)
-        }
-        val negativeSample = negativeMeters?.let {
-            emitterSample(emitter, MetricKind.ELEVATION_GAIN_NEGATIVE, it)
-        }
-        positiveSample?.let { latestByMetric[it.metric] = it }
-        negativeSample?.let { latestByMetric[it.metric] = it }
-        state.setElevationGains(
-            positiveSample?.value,
-            negativeSample?.value,
-            emitter.arrivalMs,
-        )
+    ) {
+        positiveMeters?.let { submit(emitterSample(emitter, MetricKind.ELEVATION_GAIN_POSITIVE, it)) }
+        negativeMeters?.let { submit(emitterSample(emitter, MetricKind.ELEVATION_GAIN_NEGATIVE, it)) }
     }
 
     fun latestSample(metric: MetricKind): MetricSample? = synchronized(lock) {
-        latestByMetric[metric]
+        selectedByMetric[metric]
+    }
+
+    fun selectedSource(metric: MetricKind): MetricSourceId? = synchronized(lock) {
+        selectedByMetric[metric]?.sourceId
+    }
+
+    fun manualAssignment(metric: MetricKind): MetricSourceId? = synchronized(lock) {
+        manualAssignments[metric]
+    }
+
+    fun assign(metric: MetricKind, sourceId: MetricSourceId, nowMs: Long = clock.nowMs()) =
+        synchronized(lock) {
+            manualAssignments[metric] = sourceId
+            reselect(metric, nowMs)
+        }
+
+    fun clearAssignment(metric: MetricKind, nowMs: Long = clock.nowMs()) = synchronized(lock) {
+        manualAssignments.remove(metric)
+        reselect(metric, nowMs)
+    }
+
+    fun setPersona(value: FusionPersona, nowMs: Long = clock.nowMs()) = synchronized(lock) {
+        persona = value
+        candidates.keys.toList().forEach { reselect(it, nowMs) }
+    }
+
+    fun currentPersona(): FusionPersona = synchronized(lock) { persona }
+
+    fun selectMachine(connectionId: ConnectionId?) = synchronized(lock) {
+        machineConnectionId = connectionId
+    }
+
+    fun selectedMachine(): ConnectionId? = synchronized(lock) { machineConnectionId }
+
+    fun refresh(nowMs: Long = clock.nowMs()) = synchronized(lock) {
+        candidates.keys.toList().forEach { reselect(it, nowMs) }
+    }
+
+    fun onDisconnected(connectionId: ConnectionId, nowMs: Long = clock.nowMs()) = synchronized(lock) {
+        val affected = mutableSetOf<MetricKind>()
+        candidates.forEach { (metric, bySource) ->
+            if (bySource.keys.removeAll { it.connectionId == connectionId }) affected += metric
+        }
+        manualAssignments.entries.removeAll { (metric, source) ->
+            val clear = source.connectionId == connectionId
+            if (clear) affected += metric
+            clear
+        }
+        if (machineConnectionId == connectionId) machineConnectionId = null
+        affected.forEach { reselect(it, nowMs) }
+    }
+
+    fun startSession(value: FusionPersona, nowMs: Long = clock.nowMs()) = synchronized(lock) {
+        resetSessionState(clearMachine = false)
+        persona = value
+        state.setTotalDistanceMeters(0)
+        state.setTotalDistanceDisplay(0.0)
+        state.setExpEnergyTotal(0)
+        updateSessionElapsedLocked(0, nowMs)
+    }
+
+    fun endSession() = synchronized(lock) {
+        resetSessionState(clearMachine = true)
+    }
+
+    fun updateSessionElapsed(totalSeconds: Int, arrivalMs: Long = clock.nowMs()): FusionSubmission =
+        synchronized(lock) {
+            if (totalSeconds < 0 || arrivalMs < 0L) return@synchronized FusionSubmission.REJECTED_INVALID
+            updateSessionElapsedLocked(totalSeconds, arrivalMs)
+            FusionSubmission.ACCEPTED
+        }
+
+    private fun updateSessionElapsedLocked(totalSeconds: Int, arrivalMs: Long) {
+        val source = SESSION_SOURCE
+        val sample = MetricSample(
+            connectionId = source.connectionId,
+            sourceId = source,
+            protocol = MetricProtocol.SESSION,
+            sourceClass = MetricSourceClass.SESSION,
+            metric = MetricKind.ELAPSED,
+            arrivalMs = arrivalMs,
+            value = totalSeconds.toDouble(),
+        )
+        candidates.getOrPut(MetricKind.ELAPSED) { mutableMapOf() }[source] = sample
+        val previous = selectedByMetric.put(MetricKind.ELAPSED, sample)
+        if (previous != sample) projectPassThrough(sample)
+    }
+
+    private fun resetSessionState(clearMachine: Boolean) {
+        candidates.clear()
+        selectedByMetric.clear()
+        manualAssignments.clear()
+        cumulativeTotals.clear()
+        cumulativeActiveSource.clear()
+        cumulativeLastNative.clear()
+        if (clearMachine) machineConnectionId = null
+    }
+
+    private fun reselect(metric: MetricKind, nowMs: Long) {
+        if (metric == MetricKind.ELAPSED) return
+        val bySource = candidates[metric].orEmpty()
+        val pinned = manualAssignments[metric]
+        val winner = if (pinned != null) {
+            bySource[pinned]
+        } else {
+            bySource.values
+                .asSequence()
+                .filter { isFresh(it, nowMs) }
+                .minWithOrNull(sampleComparator(metric))
+        }
+        val previous = selectedByMetric[metric]
+        if (winner == null) {
+            if (previous != null) {
+                selectedByMetric.remove(metric)
+                clearProjection(metric)
+            }
+            return
+        }
+        if (previous == winner) return
+        selectedByMetric[metric] = winner
+        if (metric.cumulative) projectCumulative(winner, previous?.sourceId) else projectPassThrough(winner)
+    }
+
+    private fun projectCumulative(sample: MetricSample, previousSource: MetricSourceId?) {
+        val metric = sample.metric
+        val native = sample.nativeCumulative ?: return
+        val totalBefore = cumulativeTotals[metric]
+        val activeSource = cumulativeActiveSource[metric]
+        val canonical = when {
+            totalBefore == null -> native
+            activeSource != sample.sourceId || previousSource != sample.sourceId -> totalBefore
+            native < (cumulativeLastNative[metric] ?: native) -> totalBefore
+            else -> totalBefore + (native - (cumulativeLastNative[metric] ?: native))
+        }
+        cumulativeTotals[metric] = canonical
+        cumulativeActiveSource[metric] = sample.sourceId
+        cumulativeLastNative[metric] = native
+        projectPassThrough(sample.copy(value = canonical, nativeCumulative = native))
+    }
+
+    private fun isFresh(sample: MetricSample, nowMs: Long): Boolean {
+        if (sample.sourceClass == MetricSourceClass.SESSION) return true
+        val age = nowMs - sample.arrivalMs
+        return age >= 0L && age <= freshnessMs(sample.metric)
+    }
+
+    private fun freshnessMs(metric: MetricKind): Long =
+        if (metric == MetricKind.HEART_RATE) HEART_RATE_FRESHNESS_MS else DEFAULT_FRESHNESS_MS
+
+    private fun sampleComparator(metric: MetricKind): Comparator<MetricSample> =
+        compareBy<MetricSample> { if (it.quality == MetricQuality.NATIVE) 0 else 100 }
+            .thenBy { priorityRank(metric, it.sourceClass) }
+            .thenBy { qualityRank(it.quality) }
+            .thenByDescending { it.confidence }
+            .thenByDescending { it.arrivalMs }
+            .thenBy { it.sourceId.connectionId.address }
+            .thenBy { it.sourceId.connectionId.linkGeneration }
+
+    private fun qualityRank(quality: MetricQuality): Int = when (quality) {
+        MetricQuality.NATIVE -> 0
+        MetricQuality.DERIVED -> 1
+        MetricQuality.ESTIMATED -> 2
+    }
+
+    private fun priorityRank(metric: MetricKind, source: MetricSourceClass): Int = when (metric) {
+        MetricKind.HEART_RATE -> rank(source, MetricSourceClass.HRM, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
+        MetricKind.POWER, MetricKind.AVERAGE_POWER -> when (persona) {
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.CPS, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.DERIVED)
+            FusionPersona.RUN -> rank(source, MetricSourceClass.CPS, MetricSourceClass.FTMS)
+            FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
+        }
+        MetricKind.CADENCE, MetricKind.AVERAGE_CADENCE -> when (persona) {
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.CPS_CRANK, MetricSourceClass.CSC_CRANK, MetricSourceClass.FTMS, MetricSourceClass.MOTION)
+            FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.MOTION)
+            FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
+        }
+        MetricKind.SPEED, MetricKind.AVERAGE_SPEED -> when (persona) {
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.CSC_WHEEL, MetricSourceClass.CPS_WHEEL, MetricSourceClass.DERIVED)
+            FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.GPS)
+            FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
+        }
+        MetricKind.DISTANCE -> when (persona) {
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.CSC_WHEEL, MetricSourceClass.CPS_WHEEL, MetricSourceClass.INTEGRATED)
+            FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.INTEGRATED)
+            FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.INTEGRATED)
+        }
+        MetricKind.ENERGY -> rank(source, MetricSourceClass.HRM, MetricSourceClass.FTMS, MetricSourceClass.CPS)
+        MetricKind.INSTANT_PACE, MetricKind.AVERAGE_PACE -> when (persona) {
+            FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.GPS, MetricSourceClass.DERIVED)
+            FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.DERIVED)
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.DERIVED)
+        }
+        MetricKind.ELAPSED -> if (source == MetricSourceClass.SESSION) 0 else Int.MAX_VALUE
+        else -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.MOTION, MetricSourceClass.DERIVED)
+    }
+
+    private fun rank(source: MetricSourceClass, vararg order: MetricSourceClass): Int {
+        val index = order.indexOf(source)
+        return if (index >= 0) index else 1_000 + source.ordinal
+    }
+
+    private fun isDomainValid(sample: MetricSample): Boolean = when (sample.metric) {
+        MetricKind.HEART_RATE -> sample.value in 1.0..254.0
+        MetricKind.INSTANT_PACE, MetricKind.AVERAGE_PACE -> sample.value > 0.0
+        MetricKind.INCLINATION, MetricKind.RAMP_ANGLE, MetricKind.RESISTANCE -> true
+        else -> sample.value >= 0.0
+    }
+
+    private fun clearProjection(metric: MetricKind) {
+        when (metric) {
+            MetricKind.HEART_RATE -> {
+                state.setHeartRate(null)
+                state.setExternalHeartRate(null)
+                state.setHeartRateSource(BtEngineState.HrSource.UNKNOWN)
+            }
+            MetricKind.SPEED -> {
+                state.setSpeedKph(null)
+                state.setSpeedMph(null)
+                state.setSpeedDisplay(null)
+            }
+            MetricKind.AVERAGE_SPEED -> {
+                state.setAvgSpeedKph(null)
+                state.setAvgSpeedDisplay(null)
+            }
+            MetricKind.CADENCE -> state.setInstantCadence(null)
+            MetricKind.AVERAGE_CADENCE -> state.setAverageCadence(null)
+            MetricKind.POWER -> state.setInstantPower(null)
+            MetricKind.AVERAGE_POWER -> state.setAveragePower(null)
+            MetricKind.ENERGY_RATE -> state.setExpEnergyRateKcalPerHour(null)
+            MetricKind.INSTANT_PACE -> state.setInstantPace(null)
+            MetricKind.AVERAGE_PACE -> state.setAvgPace(null)
+            MetricKind.RESISTANCE -> state.setResistance(null)
+            MetricKind.STROKE_RATE -> state.setStrokeRate(null)
+            MetricKind.METABOLIC_EQUIVALENT -> state.setMetabolicEquivalent(null)
+            MetricKind.RAMP_ANGLE -> state.setRampAngle(null)
+            MetricKind.TOTAL_STRIDES -> state.setTotalStrides(null)
+            MetricKind.DISTANCE, MetricKind.ENERGY, MetricKind.ELAPSED,
+            MetricKind.STROKE_COUNT, MetricKind.INCLINATION,
+            MetricKind.ELEVATION_GAIN_POSITIVE, MetricKind.ELEVATION_GAIN_NEGATIVE,
+            MetricKind.FORCE_ON_BELT, MetricKind.TOTAL_FLOORS, MetricKind.TOTAL_STEPS,
+            MetricKind.LAP_CADENCE_SAMPLE -> Unit
+        }
     }
 
     private fun projectPassThrough(sample: MetricSample) {
@@ -373,4 +614,14 @@ internal class MetricFusion(
         arrivalMs = emitter.arrivalMs,
         value = value,
     )
+
+    private companion object {
+        const val HEART_RATE_FRESHNESS_MS = 4_000L
+        const val DEFAULT_FRESHNESS_MS = 3_000L
+        val SESSION_SOURCE = MetricSourceId(
+            connectionId = ConnectionId("FITBRIDGE_SESSION", 0L),
+            protocol = MetricProtocol.SESSION,
+            characteristicUuid = UUID(0L, 0L),
+        )
+    }
 }

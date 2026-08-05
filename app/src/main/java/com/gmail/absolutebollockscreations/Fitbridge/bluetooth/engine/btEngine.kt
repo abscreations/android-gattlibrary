@@ -141,51 +141,7 @@ class BtEngine internal constructor(
     }
 
     internal val state: BtEngineState = BtEngineState()
-    internal val metricFusion: MetricFusion = MetricFusion(
-        state = state,
-        legacyInterceptor = { sample ->
-            when (sample.metric) {
-                MetricKind.HEART_RATE -> {
-                    val bpm = sample.value.toInt()
-                    if (sample.sourceClass == MetricSourceClass.HRM) {
-                        HrmArbitration.setExternalHeartRate(this, bpm)
-                    } else {
-                        HrmArbitration.setFtmsHeartRate(this, bpm)
-                    }
-                    true
-                }
-                MetricKind.ENERGY -> {
-                    if (sample.sourceClass == MetricSourceClass.HRM) {
-                        EnergyArbitration.setHrmEnergy(this, sample.value)
-                    } else {
-                        EnergyArbitration.setFtmsEnergy(this, sample.value)
-                    }
-                    true
-                }
-                MetricKind.INSTANT_PACE -> {
-                    PaceArbitration.setNativePace(this, sample.value * 60.0)
-                    true
-                }
-                MetricKind.AVERAGE_PACE -> {
-                    PaceArbitration.setNativeAvgPace(this, sample.value * 60.0)
-                    true
-                }
-                else -> false
-            }
-        },
-        legacyObserver = { sample ->
-            when (sample.metric) {
-                MetricKind.SPEED -> PaceArbitration.setSpeedMetersPerSecond(
-                    this,
-                    sample.value / 3.6,
-                )
-                MetricKind.AVERAGE_SPEED -> if (sample.value > 0.0) {
-                    PaceArbitration.setNativeAvgPace(this, 3_600.0 / sample.value)
-                }
-                else -> Unit
-            }
-        },
-    )
+    internal val metricFusion: MetricFusion = MetricFusion(state)
 
     // Optional sink into the provider-side btService layer.
     // Implemented by something like BtServiceManager in the service module.
@@ -939,6 +895,7 @@ class BtEngine internal constructor(
         synchronized(startLock) { isStarted = false }
         state.setIsRunning(false)
         state.setActiveSession(false)
+        metricFusion.endSession()
         runCatching { stopOrPause() }
         release()
     }
@@ -946,11 +903,13 @@ class BtEngine internal constructor(
     fun markSessionStarted(activity: ActivityType, address: String?) {
         desiredActivity = activity
         desiredAddress = address
+        metricFusion.startSession(activity.fusionPersona())
         state.setActiveSession(true)
     }
 
     fun markSessionStopped() {
         state.setActiveSession(false)
+        metricFusion.endSession()
     }
 
     fun setRunning(running: Boolean) {
@@ -1266,8 +1225,7 @@ class BtEngine internal constructor(
     }
 
     fun setElapsedFromWorkout(totalSec: Int) {
-        state.setElapsedSeconds(totalSec)
-        updateLapElapsedFromTotal(this, totalSec)
+        metricFusion.updateSessionElapsed(totalSec)
     }
 
     fun doLap() {
@@ -1289,6 +1247,7 @@ class BtEngine internal constructor(
 
     // Manual reset hook — call from VM when RunMode closes
     fun clearAllTimeSeriesAndState() {
+        metricFusion.endSession()
         runCatching { state.clearAllTimeSeries() }
             .onFailure {
                 Timber.tag(BtEngineState.TAG).w(it, "clearAllTimeSeries() not available on BtEngineState")
@@ -1604,4 +1563,11 @@ internal fun BluetoothDevice.requestBondCompat(): Boolean {
     } catch (_: Throwable) {
         false
     }
+}
+
+internal fun ActivityType.fusionPersona(): FusionPersona = when (this) {
+    ActivityType.TREADMILL, ActivityType.HEARTRATE -> FusionPersona.RUN
+    ActivityType.ROWING -> FusionPersona.ROW_PADDLE
+    ActivityType.BIKING, ActivityType.ELLIPTICAL,
+    ActivityType.STAIRCLIMBER, ActivityType.STAIRSTEPPER -> FusionPersona.RIDE
 }
