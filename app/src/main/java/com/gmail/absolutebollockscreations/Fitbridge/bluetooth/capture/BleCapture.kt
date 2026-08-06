@@ -34,7 +34,12 @@ import timber.log.Timber
  */
 internal object BleCapture {
 
-    /** Reserved Timber tag. Nothing else may use it. */
+    /**
+     * Reserved Timber tag for the central role.
+     *
+     * Retained as a constant because it is the original tag and several call
+     * sites and tests name it directly. [CaptureRole.tag] is the general form.
+     */
     const val TAG: String = "BLECAP"
 
     private val lock = Any()
@@ -69,11 +74,16 @@ internal object BleCapture {
      * an in-memory append, armed it is a non-blocking enqueue inside
      * `RotatingLogSink`. Safe to call from a GATT callback thread.
      */
-    fun emit(event: CaptureEvent) {
+    fun emit(event: CaptureEvent, role: CaptureRole = CaptureRole.CENTRAL) {
         val record = CaptureRecord(
             atMs = clock(),
+            // One counter across both roles on purpose: interleaving the two
+            // files by seq reconstructs cause and effect across the bridge - the
+            // upstream notification that produced a sample, and the downstream
+            // notification that carried it onward.
             seq = sequence.incrementAndGet(),
             event = event,
+            role = role,
         )
         synchronized(lock) {
             if (armed) publishLocked(record) else ring.offer(record)
@@ -168,7 +178,7 @@ internal object BleCapture {
     fun bufferedCount(): Int = synchronized(lock) { ring.size() }
 
     private fun publishLocked(record: CaptureRecord) {
-        runCatching { Timber.tag(TAG).i(CaptureJson.encode(record)) }
+        runCatching { Timber.tag(record.role.tag).i(CaptureJson.encode(record)) }
     }
 
     /** Test seam for a deterministic clock. */

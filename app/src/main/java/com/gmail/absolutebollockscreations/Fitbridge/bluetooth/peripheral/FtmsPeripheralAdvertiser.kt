@@ -794,6 +794,13 @@ class FtmsPeripheralAdvertiser(
             clearEngagementWatchdog(key)
             val existing = connections.remove(key)
             if (existing != null) {
+                // Before resetSession(), which clears the MTU and subscriptions
+                // that make the record interpretable.
+                PeripheralCaptureHooks.clientDisconnected(
+                    address = device.address,
+                    sessionId = existing.sessionId,
+                    reason = "status=$status",
+                )
                 txQueue.cancelSession(existing.sessionId)
                 existing.resetSession()
                 Timber.tag(TAG).i(
@@ -832,13 +839,33 @@ class FtmsPeripheralAdvertiser(
                 deviceLabel(device),
                 mtu,
                 conn.maxNotifyPayload,
-                if (mtu <= PeripheralConnection.DEFAULT_ATT_MTU) {
-                    " (minimum; records >20B will fragment)"
+                if (conn.prefersCompactFraming) {
+                    // Named explicitly: this changes what goes on the wire, and a
+                    // silent change to the encoding would be its own diagnostic
+                    // problem the next time a client misbehaves.
+                    " (below MTU ${PeripheralConnection.COMPACT_FRAMING_MTU_THRESHOLD};" +
+                        " using compact framing instead of More Data fragmentation)"
                 } else {
                     ""
                 },
             )
         }
+
+        /*
+         * There is deliberately no onConnectionUpdated override here.
+         *
+         * BluetoothGattCallback - the *central*-role callback - has had
+         * onConnectionUpdated since API 26. BluetoothGattServerCallback does not.
+         * A GATT server on Android is given no public way to learn the negotiated
+         * connection interval, latency or supervision timeout of a link it is
+         * serving, even though those parameters entirely determine how fast it can
+         * usefully send.
+         *
+         * The interval is therefore estimated rather than observed - see
+         * PeripheralConnection.assumedConnectionIntervalMs. If a supported API
+         * ever appears, this is where it plugs in, and the estimate should be
+         * deleted rather than kept alongside it.
+         */
 
         override fun onPhyUpdate(device: BluetoothDevice, txPhy: Int, rxPhy: Int, status: Int) {
             if (!isCurrentEpoch(callbackEpoch) || isExcluded(device)) return
@@ -910,6 +937,12 @@ class FtmsPeripheralAdvertiser(
             ) {
                 val wasDataSubscribed = conn.anyMeasurementSubscribed
                 conn.onCccdWrite(characteristic.uuid, profile.dataCharacteristic, mode)
+                PeripheralCaptureHooks.clientCccd(
+                    address = device.address,
+                    characteristic = characteristic.uuid,
+                    enabled = mode != PeripheralConnection.CccdMode.DISABLED,
+                    mode = mode.name,
+                )
                 Timber.tag(TAG).i(
                     "CCCD t=%d %s=%s [%s]",
                     SystemClock.elapsedRealtime(),
@@ -1065,6 +1098,12 @@ class FtmsPeripheralAdvertiser(
                 }
                 return
             }
+            PeripheralCaptureHooks.clientWrote(
+                address = device.address,
+                characteristic = characteristic.uuid,
+                payload = value,
+                withoutResponse = !responseNeeded,
+            )
             if (characteristic.uuid == BluetoothIds.UUID_SC_CONTROL_POINT) {
                 handleCscControlPointWrite(
                     server = server,
@@ -1326,6 +1365,11 @@ class FtmsPeripheralAdvertiser(
         connectedDevices.add(key)
         clearEngagementWatchdog(key)
         Timber.tag(TAG).i("client engaged %s (clients=%d)", deviceLabel(device), connections.size)
+        PeripheralCaptureHooks.clientConnected(
+            address = device.address,
+            sessionId = created.sessionId,
+            mtu = created.attMtu,
+        )
         listener.onClientConnected(device)
         return created
     }
@@ -1656,6 +1700,15 @@ class FtmsPeripheralAdvertiser(
         }
         val characteristic = server.getService(serviceUuid)
             ?.getCharacteristic(request.characteristicUuid) ?: return false
+        // Recorded here rather than at encode time: this is the exact octet
+        // sequence handed to the stack, one capture line per frame. A fragmented
+        // record therefore appears as the several notifications a client actually
+        // receives, which is the only way to see whether it could reassemble them.
+        PeripheralCaptureHooks.notified(
+            address = conn.device.address,
+            characteristic = request.characteristicUuid,
+            payload = request.payload,
+        )
         return notifyCompat(
             server = server,
             device = conn.device,

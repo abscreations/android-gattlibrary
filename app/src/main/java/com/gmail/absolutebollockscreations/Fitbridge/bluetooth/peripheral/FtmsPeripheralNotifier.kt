@@ -29,6 +29,79 @@ internal fun emissionDelayMs(periodMs: Long, elapsedMs: Long): Long =
     (periodMs - elapsedMs).coerceAtLeast(0L)
 
 /**
+ * What an `onNotificationSent` callback actually told us.
+ *
+ * Android fires that callback when the stack **accepts** a notification into its
+ * controller buffer, not when the radio transmits it. Nothing in the Android API
+ * reports transmission. So every latency figure derived from it is an acceptance
+ * latency, and on a busy link acceptance and transmission are minutes of meaning
+ * apart.
+ */
+internal enum class DeliveryConfidence {
+    /** Acceptance took at least one connection interval: the previous packet had to go out first. */
+    TRANSMITTED,
+
+    /**
+     * Acceptance was faster than one connection interval, so the packet cannot
+     * have reached the air yet — it is sitting in the controller buffer.
+     */
+    BUFFERED,
+
+    /** No negotiated interval known yet, so acceptance cannot be interpreted at all. */
+    UNKNOWN,
+}
+
+/**
+ * How much of a reported latency can be believed.
+ *
+ * The inference is a hard physical bound rather than a heuristic: a peripheral
+ * transmits only during a connection event, so a notification cannot be on the
+ * air sooner than the next one. If the stack accepted a payload in less time
+ * than a single interval, that payload is provably still queued.
+ *
+ * Where it is buffered, the true age at transmission is therefore somewhere in
+ * `[measured, measured + interval]`. Reporting the upper bound alongside the
+ * measurement is the honest form: the measurement alone reads healthy precisely
+ * when the link is most congested.
+ *
+ * This is the instrument that was missing. Three sessions reported acceptance
+ * under 30 ms and nothing superseded while the on-air rate was a third of the
+ * production rate, because acceptance latency is exactly the quantity that
+ * *improves* as the buffer fills.
+ */
+internal data class DeliveryEstimate(
+    val confidence: DeliveryConfidence,
+    /** Snapshot age at the moment the stack accepted the payload. */
+    val measuredStalenessMs: Long,
+    /** Worst-case snapshot age when the payload actually reaches the air. */
+    val stalenessUpperBoundMs: Long,
+)
+
+internal fun estimateDelivery(
+    measuredStalenessMs: Long,
+    stackAcceptMs: Long,
+    connectionIntervalMs: Int,
+): DeliveryEstimate = when {
+    connectionIntervalMs <= 0 -> DeliveryEstimate(
+        DeliveryConfidence.UNKNOWN,
+        measuredStalenessMs,
+        measuredStalenessMs,
+    )
+
+    stackAcceptMs >= connectionIntervalMs -> DeliveryEstimate(
+        DeliveryConfidence.TRANSMITTED,
+        measuredStalenessMs,
+        measuredStalenessMs,
+    )
+
+    else -> DeliveryEstimate(
+        DeliveryConfidence.BUFFERED,
+        measuredStalenessMs,
+        measuredStalenessMs + connectionIntervalMs,
+    )
+}
+
+/**
  * Encodes the latest metric snapshot and notifies each connected client.
  *
  * Runs on its own schedule rather than reacting to every upstream packet. That
@@ -107,6 +180,17 @@ class FtmsPeripheralNotifier(
     private val stalenessSamples = AtomicLong(0L)
     private val stalenessTotal = AtomicLong(0L)
 
+    // Upper bound on age at transmission, not at stack acceptance. See
+    // [estimateDelivery] for why the measured figure alone cannot be trusted.
+    private val stalenessUpperLast = AtomicLong(0L)
+    private val stalenessUpperMax = AtomicLong(0L)
+
+    // How many acknowledgements could be believed, and how many were provably
+    // just the controller taking the packet off our hands.
+    private val transmittedAcks = AtomicLong(0L)
+    private val bufferedAcks = AtomicLong(0L)
+    private val unknownAcks = AtomicLong(0L)
+
     val packetsSent: Long get() = packets.get()
     val completeRecords: Long get() = complete.get()
     val compactedRecords: Long get() = compacted.get()
@@ -123,10 +207,36 @@ class FtmsPeripheralNotifier(
      */
     val supersededRecords: Long get() = superseded.get()
 
-    /** Age of the snapshot at the instant the client acknowledged it. */
+    /**
+     * Age of the snapshot when the **stack accepted** it — not when the client
+     * received it. Android reports no transmission event, so this is the most
+     * that can be measured directly. Read it alongside [maxStalenessUpperMs].
+     */
     val lastStalenessMs: Long get() = stalenessLast.get()
 
     val maxStalenessMs: Long get() = stalenessMax.get()
+
+    /**
+     * Worst-case age when the record actually reaches the air.
+     *
+     * Equal to the measured figure when acceptance took at least one connection
+     * interval — that packet had to wait for a real transmission opportunity, so
+     * the measurement is sound. Otherwise the measured figure plus one interval,
+     * because the packet is provably still queued and the next connection event
+     * is the earliest it can leave.
+     */
+    val lastStalenessUpperMs: Long get() = stalenessUpperLast.get()
+
+    val maxStalenessUpperMs: Long get() = stalenessUpperMax.get()
+
+    /** Acknowledgements slow enough to have involved a real transmission. */
+    val transmittedAckCount: Long get() = transmittedAcks.get()
+
+    /** Acknowledgements provably returned before the packet could reach the air. */
+    val bufferedAckCount: Long get() = bufferedAcks.get()
+
+    /** Acknowledgements taken before any connection interval was known. */
+    val unknownAckCount: Long get() = unknownAcks.get()
 
     val meanStalenessMs: Long
         get() {
@@ -159,6 +269,8 @@ class FtmsPeripheralNotifier(
             packets, complete, compacted, fragmented,
             ftmsPackets, cscPackets, cpsPackets, superseded,
             stalenessLast, stalenessMax, stalenessSamples, stalenessTotal,
+            stalenessUpperLast, stalenessUpperMax,
+            transmittedAcks, bufferedAcks, unknownAcks,
         ).forEach { it.set(0L) }
         latestRevolutions = null
         job = scope.launch {
@@ -258,7 +370,13 @@ class FtmsPeripheralNotifier(
                 Timber.tag(TAG).w(failure, "emit failed for %s", conn.device.address)
             }
             val elapsed = SystemClock.elapsedRealtime() - startedAtMs
-            val remaining = emissionDelayMs(periodMs, elapsed)
+            // Paced to the link, not to a constant. The configured period is a
+            // lower bound on how often we *want* to emit; the negotiated
+            // connection interval is a hard bound on how often the client can
+            // actually be reached, and exceeding it only builds a queue in front
+            // of that client's own ATT requests.
+            val floor = maxOf(periodMs, conn.emissionFloorMs)
+            val remaining = emissionDelayMs(floor, elapsed)
             if (remaining > 0) delay(remaining)
         }
     }
@@ -358,7 +476,11 @@ class FtmsPeripheralNotifier(
             conn.maxNotifyPayload,
             payloadMode = FtmsPayloadMode.STRICT_FRAGMENTATION,
             onPackOutcome = { packOutcome = it },
-            garminCompatibilityFraming = garminCompatibilityFraming,
+            // Automatic per link, because the constraint is that link's payload
+            // budget rather than anything about the vendor. The manual flag stays
+            // as a force-on override for a client that needs it despite a roomy
+            // MTU; it can add compact framing, never remove it.
+            garminCompatibilityFraming = garminCompatibilityFraming || conn.prefersCompactFraming,
         )
         if (frames.isEmpty()) return
 
@@ -380,12 +502,17 @@ class FtmsPeripheralNotifier(
         // The whole record goes as one atomic payload. Fragmented records can no
         // longer be half-sent: the queue either delivers every frame or reports
         // the record failed, and supersession happens only at record boundaries.
+        val handedOverAtMs = SystemClock.elapsedRealtime()
         when (advertiser.notifyDataRecord(conn.device, frames)) {
             GattTxQueue.Outcome.DELIVERED -> {
                 packets.addAndGet(frames.size.toLong())
                 ftmsPackets.addAndGet(frames.size.toLong())
                 repeat(frames.size) { conn.countPacket() }
-                recordStaleness(snapshot)
+                recordStaleness(
+                    snapshot = snapshot,
+                    stackAcceptMs = SystemClock.elapsedRealtime() - handedOverAtMs,
+                    connectionIntervalMs = conn.connectionIntervalMs,
+                )
             }
 
             GattTxQueue.Outcome.SUPERSEDED -> {
@@ -409,24 +536,60 @@ class FtmsPeripheralNotifier(
      * number that describes the user-visible symptom — how far behind the watch
      * is — so it is measured on acknowledgement rather than on encode.
      */
-    private fun recordStaleness(snapshot: FtmsMetricSnapshot) {
+    /**
+     * Records how stale a record was when the stack accepted it, **and how stale
+     * it could still be when it actually reaches the air**.
+     *
+     * Only the first of those is measurable. The second is a bound derived from
+     * the connection interval, and it exists because the measurement alone is
+     * systematically optimistic: acceptance latency falls as the controller
+     * buffer fills, so the number looks best exactly when the link is worst.
+     */
+    private fun recordStaleness(
+        snapshot: FtmsMetricSnapshot,
+        stackAcceptMs: Long,
+        connectionIntervalMs: Int,
+    ) {
         if (snapshot.updatedAtMs <= 0L) return
         val age = SystemClock.elapsedRealtime() - snapshot.updatedAtMs
         if (age < 0L) return
+
+        val estimate = estimateDelivery(age, stackAcceptMs, connectionIntervalMs)
+        when (estimate.confidence) {
+            DeliveryConfidence.TRANSMITTED -> transmittedAcks.incrementAndGet()
+            DeliveryConfidence.BUFFERED -> bufferedAcks.incrementAndGet()
+            DeliveryConfidence.UNKNOWN -> unknownAcks.incrementAndGet()
+        }
+
         stalenessLast.set(age)
         stalenessMax.updateAndGet { previous -> maxOf(previous, age) }
         stalenessSamples.incrementAndGet()
         stalenessTotal.addAndGet(age)
+        stalenessUpperLast.set(estimate.stalenessUpperBoundMs)
+        stalenessUpperMax.updateAndGet { previous ->
+            maxOf(previous, estimate.stalenessUpperBoundMs)
+        }
     }
 
     private fun logSummary(pumpCount: Int) {
         val tx = advertiser.txStats()
+        val pacing = advertiser.activeConnections().joinToString(",") { conn ->
+            "${conn.attMtu}/~${conn.assumedConnectionIntervalMs}ms->${maxOf(periodMs, conn.emissionFloorMs)}ms"
+        }.ifBlank { "none" }
+        val acks = transmittedAckCount + bufferedAckCount + unknownAckCount
+        val bufferedPct = if (acks == 0L) 0L else bufferedAckCount * 100 / acks
         Timber.tag(TAG).i(
-            "downstream pumps=%d staleness last=%dms mean=%dms max=%dms | " +
+            "downstream pumps=%d pacing[mtu/~interval->floor]=%s | " +
+                "staleness measured last=%dms mean=%dms max=%dms" +
+                " / at-air-worst-case last=%dms max=%dms | " +
+                "acks transmitted=%d buffered=%d(%d%%) unknown=%d | " +
                 "records delivered=%d superseded=%d failed=%d | " +
-                "ack last=%dms mean=%dms max=%dms | queued data=%d control=%d",
+                "stackAccept last=%dms mean=%dms max=%dms | queued data=%d control=%d",
             pumpCount,
+            pacing,
             lastStalenessMs, meanStalenessMs, maxStalenessMs,
+            lastStalenessUpperMs, maxStalenessUpperMs,
+            transmittedAckCount, bufferedAckCount, bufferedPct, unknownAckCount,
             tx.delivered, tx.superseded, tx.failed,
             tx.lastAckLatencyMs, tx.meanAckLatencyMs, tx.maxAckLatencyMs,
             tx.queuedDataPayloads, tx.queuedControlPayloads,

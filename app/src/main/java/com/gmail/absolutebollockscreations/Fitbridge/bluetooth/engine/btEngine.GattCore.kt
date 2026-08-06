@@ -556,6 +556,7 @@ internal object BtEngineGattCore {
 
             when (newState) {
                 STATE_CONNECTED -> {
+                    CaptureHooks.connected(context.connectionId)
                     engine.onPhysicalLinkConnected(context)
                     resetDiscovery(gatt)
 
@@ -602,6 +603,10 @@ internal object BtEngineGattCore {
                 }
 
                 STATE_DISCONNECTED -> {
+                    CaptureHooks.disconnected(
+                        context.connectionId,
+                        reason = "platform disconnect status=$status",
+                    )
                     terminateConnection(gatt, "platform disconnect status=$status")
                 }
             }
@@ -641,6 +646,11 @@ internal object BtEngineGattCore {
 
             cancelDiscoveryCallbacks()
             discoveryGate.complete()
+
+            // §0.9.1 calls this the single most useful event for triage: "it
+            // connects but shows nothing" is usually answered by looking at what
+            // the device actually exposes, and nothing else carries that.
+            CaptureHooks.gattInventory(context.connectionId, gatt)
 
             // Reset CCCD readiness only for the current machine compatibility context.
             if (engine.state.connectionRegistry.roleOf(context) == LegacyConnectionRole.FTMS) {
@@ -693,6 +703,10 @@ internal object BtEngineGattCore {
             value: ByteArray
         ) {
             if (!ownsGatt(gatt)) return
+            // Raw bytes before anything parses them: §0.9.1's fixture-generation
+            // and protocol-specification consumers both need the payload exactly
+            // as it arrived, not a decode of it.
+            CaptureHooks.notified(context.connectionId, characteristic.uuid, value)
             engine.handleStack(context)
             routeToOwners(gatt, characteristic.uuid) {
                 it.onCharacteristicChanged(engine, gatt, characteristic, value)
@@ -721,6 +735,7 @@ internal object BtEngineGattCore {
                 Timber.tag(BtEngineState.TAG).w(msg)
             }
             if (status == GATT_SUCCESS) {
+                CaptureHooks.read(context.connectionId, characteristic.uuid, value)
                 engine.queueSucceed(context, gatt, StackEntry.Op.READ, characteristic.uuid)
             } else {
                 engine.queueFail(
@@ -764,6 +779,19 @@ internal object BtEngineGattCore {
                 Timber.tag(BtEngineState.TAG).w(msg)
             }
             if (status == GATT_SUCCESS) {
+                // Redaction is applied inside the hook by characteristic UUID, so
+                // a profile write cannot leak here even though this call site has
+                // no idea what it is carrying.
+                CaptureHooks.wrote(
+                    connectionId = context.connectionId,
+                    characteristic = characteristic.uuid,
+                    // characteristic.value is deprecated on API 33+; the enclosing
+                    // override already suppresses it, and it is the only place the
+                    // written bytes are still available at completion time.
+                    payload = characteristic.value ?: ByteArray(0),
+                    withoutResponse = characteristic.writeType ==
+                        BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE,
+                )
                 engine.queueSucceed(context, gatt, StackEntry.Op.WRITE, characteristic.uuid)
             } else {
                 engine.queueFail(
@@ -842,6 +870,15 @@ internal object BtEngineGattCore {
                     charUuid,
                     descriptor.uuid,
                     "descriptor write failed status=$status uuid=${safeUuid(descriptor)}",
+                )
+            }
+
+            if (descriptor.uuid == BluetoothIds.UUID_CCCD) {
+                CaptureHooks.cccd(
+                    connectionId = context.connectionId,
+                    descriptor = descriptor,
+                    enabled = status == GATT_SUCCESS,
+                    result = if (status == GATT_SUCCESS) "SUCCESS" else "status=$status",
                 )
             }
 

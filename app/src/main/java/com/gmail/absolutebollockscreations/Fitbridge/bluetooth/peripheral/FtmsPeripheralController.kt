@@ -74,16 +74,34 @@ class FtmsPeripheralController(
         val cumulativeWheelRevolutions: Long = 0,
         val cumulativeCrankRevolutions: Int = 0,
         /**
-         * Downstream-lag diagnostics. [lastStalenessMs] is the age of the data at
-         * the instant the client acknowledged it - the number that describes how
-         * far behind a watch actually is. [supersededRecords] rising while
-         * staleness stays low means the link is slower than the encoder and the
-         * conflation is doing its job; both rising together means the link cannot
-         * keep up at all.
+         * Downstream-lag diagnostics.
+         *
+         * **[lastStalenessMs] is the age of the data when Android's stack
+         * *accepted* it, not when the client received it.** Android reports no
+         * transmission event, so that is the most that can be measured. It is
+         * systematically optimistic, because acceptance gets *faster* as the
+         * controller buffer fills — which is exactly how three sessions reported
+         * "ack under 30 ms, nothing superseded" while a sniffer measured the
+         * on-air rate at a third of the production rate.
+         *
+         * Read it against [maxStalenessUpperMs], which adds one connection
+         * interval wherever acceptance was provably too fast for the packet to
+         * have been transmitted, and against [bufferedAckCount]: a high buffered
+         * fraction means the measured figures describe the buffer rather than
+         * the link.
          */
         val lastStalenessMs: Long = 0,
         val meanStalenessMs: Long = 0,
         val maxStalenessMs: Long = 0,
+        /** Worst-case age at transmission. See [lastStalenessMs]. */
+        val lastStalenessUpperMs: Long = 0,
+        val maxStalenessUpperMs: Long = 0,
+        /** Acknowledgements slow enough to have involved a real transmission. */
+        val transmittedAckCount: Long = 0,
+        /** Acknowledgements provably returned before the packet could reach the air. */
+        val bufferedAckCount: Long = 0,
+        /** Negotiated connection interval of the first active client, or 0 if unknown. */
+        val connectionIntervalMs: Int = 0,
         val supersededRecords: Long = 0,
         val meanAckLatencyMs: Long = 0,
         val maxAckLatencyMs: Long = 0,
@@ -518,6 +536,12 @@ class FtmsPeripheralController(
             cpsPacketsSent = notifier.cpsPacketsSent,
             cumulativeWheelRevolutions = revolutions.cumulativeWheelRevolutions,
             cumulativeCrankRevolutions = revolutions.cumulativeCrankRevolutions,
+            lastStalenessUpperMs = notifier.lastStalenessUpperMs,
+            maxStalenessUpperMs = notifier.maxStalenessUpperMs,
+            transmittedAckCount = notifier.transmittedAckCount,
+            bufferedAckCount = notifier.bufferedAckCount,
+            connectionIntervalMs = advertiser.activeConnections()
+                .firstOrNull()?.connectionIntervalMs ?: 0,
             lastStalenessMs = notifier.lastStalenessMs,
             meanStalenessMs = notifier.meanStalenessMs,
             maxStalenessMs = notifier.maxStalenessMs,

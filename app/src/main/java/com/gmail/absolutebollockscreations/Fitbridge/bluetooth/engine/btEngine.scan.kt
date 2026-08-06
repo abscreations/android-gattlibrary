@@ -125,6 +125,12 @@ internal fun BtEngine.startScanImpl(
                 logPhase05AdvertisementEvidence(result)
             }
 
+            // Recorded before the filter below, and with payloads unparsed. The
+            // Keiser M3i case is exactly why: its entire metric stream lives in
+            // manufacturer data FitBridge does not decode, so a device this scan
+            // path discards is precisely the one a capture needs to have seen.
+            captureAdvertisement(name, result)
+
             val candidates = detectServiceCandidates(result)
             val primary = candidates.firstOrNull { it.knownService != null }
             if (!useFtmsHardwareFilter && primary == null) return
@@ -288,6 +294,40 @@ internal fun gapAppearanceFromAdvertisingData(bytes: ByteArray): Int? {
 /* ───────────────────────────── helpers ───────────────────────────── */
 
 @SuppressLint("MissingPermission")
+/**
+ * Publishes one advertisement to the §0.9 capture channel with **raw payloads**.
+ *
+ * Manufacturer data and service data are recorded exactly as broadcast rather
+ * than parsed. §0.9.4 is explicit about this and the Keiser M3i is the reason:
+ * its whole metric stream lives in manufacturer data FitBridge has no decoder
+ * for, so a parsed-only record would contain nothing useful about the very
+ * device someone is trying to add support for.
+ *
+ * No address is recorded — §0.9.6 permits addresses only in the file header, and
+ * only when the user opts in while sharing.
+ */
+private fun captureAdvertisement(name: String, result: ScanResult) {
+    val record = result.scanRecord ?: return
+    val manufacturer = buildMap {
+        val data = record.manufacturerSpecificData ?: return@buildMap
+        for (index in 0 until data.size()) {
+            val payload = data.valueAt(index) ?: continue
+            put(data.keyAt(index), payload)
+        }
+    }
+    val serviceData = record.serviceData.orEmpty()
+        .mapNotNull { (parcel, bytes) -> bytes?.let { parcel.uuid to it } }
+        .toMap()
+
+    CaptureHooks.scan(
+        name = name.ifBlank { null },
+        rssi = result.rssi,
+        serviceUuids = record.serviceUuids.orEmpty().map { it.uuid },
+        manufacturerData = manufacturer,
+        serviceData = serviceData,
+    )
+}
+
 private fun BtEngine.safeDeviceName(result: ScanResult): String {
     val advertised = result.scanRecord?.deviceName
     if (!advertised.isNullOrBlank()) return advertised

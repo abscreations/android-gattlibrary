@@ -124,7 +124,7 @@ class CaptureRoutingTest {
             val names = dir.listFiles()?.map { it.name }.orEmpty()
             assertEquals(1, names.size)
             assertTrue(names.first(), names.first().startsWith("capture-"))
-            assertTrue(names.first(), names.first().endsWith("-a3f9.ndjson"))
+            assertTrue(names.first(), names.first().endsWith("-a3f9-central.ndjson"))
         } finally {
             subject.close()
         }

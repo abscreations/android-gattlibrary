@@ -210,6 +210,10 @@ internal class MetricFusion(
         // staleness check below - an out-of-order sample is still evidence the
         // device is talking, even if fusion has no use for its value.
         state.adapterLiveness.onSample(sample)
+        // §0.9.4: recorded post-parse, so a capture pairs each decoded value with
+        // the notify event whose bytes produced it. That pairing is what makes a
+        // capture convertible into a §5 fixture rather than merely readable.
+        CaptureHooks.sample(sample)
         val bySource = candidates.getOrPut(sample.metric) { mutableMapOf() }
         val candidateKey = sample.candidateKey()
         val previous = bySource[candidateKey]

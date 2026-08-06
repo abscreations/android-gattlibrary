@@ -6,16 +6,22 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import timber.log.Timber
 
 /**
  * Timber tree that writes the capture channel into the `captures/` directory as
  * NDJSON (plan §0.9.2, §0.9.7).
  *
- * Routing is by tag alone: this tree accepts [BleCapture.TAG] and nothing else,
- * while every human-log tree rejects that tag. Timber already dispatches on
- * `isLoggable`, so the reserved tag is the whole mechanism and Timber itself
- * needs no changes.
+ * Routing is by tag alone: this tree accepts its [CaptureRole]'s reserved tag
+ * and nothing else, while every human-log tree rejects all of them. Timber
+ * already dispatches on `isLoggable`, so the reserved tag is the whole mechanism
+ * and Timber itself needs no changes.
+ *
+ * **One tree per role, one file per role.** Both sides of the bridge produce the
+ * same event shapes, so mixing them would make a capture misleading: `notify`
+ * means "received from the machine" in the central file and "sent to the client"
+ * in the peripheral one.
  *
  * Reuses [RotatingLogSink], which was written for the human log in 0.9.3 and
  * parameterised by extension and drop marker for exactly this second caller. The
@@ -30,6 +36,13 @@ internal class CaptureTree(
     logsRoot: File,
     private val sessionId: String,
     private val headerProvider: () -> CaptureHeader,
+    /**
+     * Which side of the bridge this tree records. One tree per role, each
+     * accepting only its own reserved tag and writing its own file, so a
+     * `notify` is never ambiguous between "received from the machine" and "sent
+     * to the watch".
+     */
+    private val role: CaptureRole = CaptureRole.CENTRAL,
     private val nowMs: () -> Long = System::currentTimeMillis,
 ) : Timber.Tree() {
 
@@ -46,9 +59,10 @@ internal class CaptureTree(
      */
     private val baseName: String = String.format(
         Locale.US,
-        "capture-%s-%s",
+        "capture-%s-%s-%s",
         STAMP_FORMAT.format(Instant.ofEpochMilli(nowMs()).atZone(ZONE)),
         sessionId,
+        role.fileSuffix,
     )
 
     private val sink = RotatingLogSink(
@@ -66,19 +80,20 @@ internal class CaptureTree(
     private val lock = Any()
 
     init {
-        installed = this
+        installed[role] = this
     }
 
     // Both widened from Timber's `protected`. Routing is the whole point of this
     // class and getting it wrong is silent in both directions, so it is worth
     // being able to assert on directly rather than only through a planted tree
     // and global Timber state.
-    public override fun isLoggable(tag: String?, priority: Int): Boolean = tag == BleCapture.TAG
+    public override fun isLoggable(tag: String?, priority: Int): Boolean = tag == role.tag
 
     public override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         // Defensive: Timber consults isLoggable, but a caller holding this tree
-        // directly must not be able to put a human line in the capture file.
-        if (tag != BleCapture.TAG) return
+        // directly must not be able to put a human line - or the other role's
+        // events - into this file.
+        if (tag != role.tag) return
         writeHeaderOnce()
         sink.write(message)
     }
@@ -111,6 +126,7 @@ internal class CaptureTree(
         // rather than by anything that happened on the air.
         seq = 0L,
         event = DroppedEvent(count = dropped),
+        role = role,
     )
 
     companion object {
@@ -119,18 +135,19 @@ internal class CaptureTree(
         const val DEFAULT_FLUSH_TIMEOUT_MS: Long = 2_000L
 
         /**
-         * The planted instance, so the exporter can flush before zipping without
-         * threading a reference through the Application. Mirrors
-         * `FileLoggingTree.current()`.
+         * Planted trees by role, so the exporter can flush before zipping without
+         * threading references through the Application.
          */
-        @Volatile
-        private var installed: CaptureTree? = null
+        private val installed = ConcurrentHashMap<CaptureRole, CaptureTree>()
 
-        fun current(): CaptureTree? = installed
+        fun current(role: CaptureRole): CaptureTree? = installed[role]
+
+        /** Every planted tree, so the exporter flushes both roles before zipping. */
+        fun all(): Collection<CaptureTree> = installed.values
 
         private val ZONE: ZoneId = ZoneId.systemDefault()
 
-        /** `capture-<yyyyMMdd_HHmmss>-<session>.ndjson` per §0.9.7. */
+        /** `capture-<yyyyMMdd_HHmmss>-<session>-<role>.ndjson`. */
         private val STAMP_FORMAT: DateTimeFormatter =
             DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss", Locale.US)
     }

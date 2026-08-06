@@ -47,6 +47,41 @@ internal sealed interface CaptureEvent {
     val conn: String?
 }
 
+/**
+ * Which side of the bridge an event belongs to.
+ *
+ * FitBridge is simultaneously a GATT **client** to fitness machines and a GATT
+ * **server** to watches and apps. Both directions produce the same event shapes,
+ * and mixing them in one file makes a capture actively misleading: a `notify`
+ * would mean "received from the machine" on one line and "sent to the watch" on
+ * the next.
+ *
+ * Each role therefore gets its own reserved tag and its own file. The role is
+ * **not** written into the JSON — the filename carries it, and keeping the line
+ * format identical means one parser reads both and the §5 fixture pipeline needs
+ * no special case.
+ *
+ * Sequence numbers are shared across roles on purpose. Interleaving the two files
+ * by `seq` reconstructs cause and effect across the bridge: the upstream
+ * notification that produced a sample, and the downstream notification that
+ * carried it onward.
+ */
+internal enum class CaptureRole(val tag: String, val fileSuffix: String) {
+    /** FitBridge as GATT client. `notify` and `read` mean *received*. */
+    CENTRAL("BLECAP", "central"),
+
+    /** FitBridge as GATT server. `notify` means *sent*; `write` and `read` are client-initiated. */
+    PERIPHERAL("BLECAP-P", "peripheral"),
+    ;
+
+    companion object {
+        /** True for any reserved capture tag. Human-log trees reject all of them. */
+        fun isCaptureTag(tag: String?): Boolean = entries.any { it.tag == tag }
+
+        fun forTag(tag: String?): CaptureRole? = entries.firstOrNull { it.tag == tag }
+    }
+}
+
 /** Why a payload was withheld. Written verbatim as the `redacted` field. */
 internal enum class RedactionReason(val wireName: String) {
     /** Name, email, age, gender, height, weight — Life Fitness (Phase 6). */
@@ -121,6 +156,15 @@ internal data class ConnectEvent(
     override val conn: String,
     /** Link generation from §0.2, so a reconnect is distinguishable. */
     val generation: Int,
+    /**
+     * Negotiated ATT MTU, where known. Omitted from the line when null.
+     *
+     * Carried on the connect event because on the peripheral side it is the
+     * single most consequential property of a link: it decides whether a record
+     * fits in one notification or is fragmented, and a client that never raises
+     * it cannot be sent the same bytes as one that does.
+     */
+    val mtu: Int? = null,
 ) : CaptureEvent {
     override val ev: String get() = "connect"
 }
@@ -330,6 +374,12 @@ internal data class CaptureRecord(
     val atMs: Long,
     val seq: Long,
     val event: CaptureEvent,
+    /**
+     * Which file this record belongs in. Routing only — deliberately not encoded
+     * into the JSON, since the filename already carries it and keeping the line
+     * format identical lets one parser read both roles.
+     */
+    val role: CaptureRole = CaptureRole.CENTRAL,
 )
 
 /** First line of every capture file. */

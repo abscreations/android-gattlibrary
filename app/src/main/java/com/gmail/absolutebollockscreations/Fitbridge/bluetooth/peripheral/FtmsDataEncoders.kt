@@ -24,6 +24,18 @@ import kotlin.math.roundToInt
  */
 object FtmsDataEncoders {
 
+    /**
+     * Payload budget at or below which compact framing applies.
+     *
+     * Mirrors [PeripheralConnection.COMPACT_FRAMING_MTU_THRESHOLD] of 30, less
+     * the 3-octet ATT notification header. Kept as a derived constant so the two
+     * cannot drift apart and leave a range of MTUs where the caller enables
+     * compact framing and the encoder quietly declines it.
+     */
+    const val COMPACT_FRAMING_MAX_PAYLOAD =
+        PeripheralConnection.COMPACT_FRAMING_MTU_THRESHOLD -
+            PeripheralConnection.ATT_NOTIFY_OVERHEAD
+
     fun encode(
         profile: FtmsMachineProfile,
         snapshot: FtmsMetricSnapshot,
@@ -244,7 +256,12 @@ object FtmsDataEncoders {
         val elapsed = s.elapsedSeconds?.let { FtmsField(13, elapsedField(it)) }
         elapsed?.let { optionals += it }
 
-        if (garminCompatibilityFraming && maxPayload == FtmsPacker.MAX_PAYLOAD) {
+        // Was `maxPayload == MAX_PAYLOAD`, which only ever fired at exactly 20
+        // octets. Now that the caller enables this for any MTU below 30, a link
+        // negotiating 24-29 would otherwise turn the flag into a silent no-op and
+        // fall back to the fragmentation this exists to avoid. Both compact
+        // frames are at most 20 octets, so a larger budget is always sufficient.
+        if (garminCompatibilityFraming && maxPayload <= COMPACT_FRAMING_MAX_PAYLOAD) {
             return packGarminCrossTrainer(
                 mandatory = speedField(speedKph),
                 optionals = optionals,

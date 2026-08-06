@@ -76,7 +76,12 @@ internal object CaptureJson {
 
             is DroppedEvent -> appendNumberField("n", event.count.toLong())
 
-            is ConnectEvent -> appendNumberField("gen", event.generation.toLong())
+            is ConnectEvent -> {
+                appendNumberField("gen", event.generation.toLong())
+                // Omitted rather than written as null when unknown, so a central
+                // connect event keeps the line it has always had.
+                event.mtu?.let { appendNumberField("mtu", it.toLong()) }
+            }
 
             is DisconnectEvent -> {
                 appendStringField("reason", event.reason)
