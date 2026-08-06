@@ -1,0 +1,53 @@
+# Line-ending policy: LF everywhere, in the repository and in the working tree.
+#
+# Before this file existed the repository had mixed endings - 49 tracked text
+# files were stored with CRLF and the rest with LF, sometimes within the same
+# directory. That made `git diff --cached --check` report every added line of a
+# CRLF file as trailing whitespace, which trains you to ignore the check that
+# exists to catch real problems.
+#
+# `text=auto` lets git detect text vs binary rather than trusting this list to
+# be exhaustive; `eol=lf` then pins the checkout to LF on every platform,
+# including Windows. Renormalized in one dedicated commit so the change is
+# separable from behavioural history.
+* text=auto eol=lf
+
+# ── Explicit text types ──────────────────────────────────────────────────────
+# Redundant with text=auto, but stated so a future binary-looking heuristic
+# miss cannot silently corrupt a source file.
+*.kt      text
+*.kts     text
+*.java    text
+*.xml     text
+*.md      text
+*.pro     text
+*.toml    text
+*.properties text
+*.ndjson  text
+*.json    text
+*.txt     text
+
+# ── Windows batch stays CRLF ─────────────────────────────────────────────────
+# Deliberate exception to the LF rule. cmd.exe has known failure modes parsing
+# LF-only batch files - notably `goto` and label handling - and gradlew.bat is
+# the build entry point on this machine. The risk of a subtly broken build
+# script outweighs uniformity here. Remove this line if you want literal
+# all-LF and are willing to test the wrapper.
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+# ── Binary: never normalize, never diff as text ──────────────────────────────
+*.jar     binary
+*.aab     binary
+*.apk     binary
+*.keystore binary
+*.jks     binary
+*.png     binary
+*.webp    binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.zip     binary
+*.pcapng  binary
