@@ -108,8 +108,13 @@ data class TargetCapabilities(
     companion object {
         val NONE = TargetCapabilities()
 
-        /** Generous cap matching the previous BtServiceSupportedRangesAdapter. */
-        private const val MAX_SPEED_KPH = 60f
+        /**
+         * Generous sanity cap, in the characteristic's own 0.01 km/h units:
+         * 60.00 km/h. Expressed raw because that is what the source values are;
+         * comparing a raw 3000 against a 60 "km/h" limit is what silently
+         * rewrote a 30 km/h machine as a 60 km/h one.
+         */
+        private const val MAX_SPEED_RAW = 6000
 
         /**
          * Derive the peripheral's advertised target capability from what the
@@ -122,18 +127,32 @@ data class TargetCapabilities(
          * `BtServiceSupportedRangesAdapter` fallbacks produced.
          */
         fun fromEngineCapabilities(caps: BtEngineState.FtmsCapabilities): TargetCapabilities {
+            // [BtEngineState.FtmsCapabilities] holds every range in RAW SPEC
+            // UNITS, exactly as read off the upstream machine - 0.01 km/h,
+            // 0.1 %, 0.1 level, whole watts. The Supported-* Range
+            // characteristics use those same units, so this is a pass-through
+            // and must not rescale.
+            //
+            // Inclination and speed used to rescale here as though the source
+            // were in public units, while resistance and power did not. The
+            // asymmetry is why resistance control worked and inclination did
+            // not: a machine reporting -10.0..30.0 % step 0.5 was republished as
+            // -100.0..300.0 % step 5.0, and a watch obeying that advertisement
+            // snapped 1.0 % to 0.0, 3.0 % to 5.0, and let the user reach 110.0 %
+            // because the maximum claimed 300 %. Confirmed on the wire
+            // 2026-08-06: the watch wrote 030000 / 033200 / 034c04.
             val speed = range(
                 enabled = caps.supportsSpeed && caps.speedRangeKnown,
-                min = caps.speedMin?.let { scaleSpeed(it) },
-                max = caps.speedMax?.let { scaleSpeed(it) },
-                increment = caps.speedIncr?.let { scaleSpeed(it) },
+                min = caps.speedMin?.let { clampSpeedRaw(it) },
+                max = caps.speedMax?.let { clampSpeedRaw(it) },
+                increment = caps.speedIncr?.roundToInt(),
             )?.takeIf { it.isValidU16 }
 
             val inclination = range(
                 enabled = caps.supportsInclination && caps.inclineRangeKnown,
-                min = caps.inclineMin?.let { (it * 10f).roundToInt() },
-                max = caps.inclineMax?.let { (it * 10f).roundToInt() },
-                increment = caps.inclineIncr?.let { (it * 10f).roundToInt() },
+                min = caps.inclineMin?.roundToInt(),
+                max = caps.inclineMax?.roundToInt(),
+                increment = caps.inclineIncr?.roundToInt(),
             )?.takeIf { it.isValidS16 }
 
             val resistance = range(
@@ -166,8 +185,8 @@ data class TargetCapabilities(
             )
         }
 
-        private fun scaleSpeed(kph: Float): Int =
-            (kph.coerceIn(0f, MAX_SPEED_KPH) * 100f).roundToInt()
+        private fun clampSpeedRaw(raw: Float): Int =
+            raw.roundToInt().coerceIn(0, MAX_SPEED_RAW)
 
         private fun range(
             enabled: Boolean,
