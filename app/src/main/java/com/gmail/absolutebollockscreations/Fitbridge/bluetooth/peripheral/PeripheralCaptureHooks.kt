@@ -120,6 +120,21 @@ internal object PeripheralCaptureHooks {
     }
 
     /** A client read one of our characteristics. */
+    /**
+     * Whether a read at [offset] should produce a capture event.
+     *
+     * A client fetching a value larger than the ATT payload issues a Read
+     * Request followed by Read Blob Requests at increasing offsets. Recording
+     * every one would put the same value in the file several times, in pieces,
+     * with no marker saying they belong together - so only the first fragment is
+     * recorded, and it carries the whole value because the server holds it
+     * complete before slicing.
+     *
+     * Extracted rather than inlined in the GATT callback so the rule is
+     * reachable from a test. The callback itself is not.
+     */
+    fun shouldCaptureRead(offset: Int): Boolean = offset <= 0
+
     fun clientRead(address: String, characteristic: UUID, payload: ByteArray) {
         BleCapture.emit(
             ReadEvent(

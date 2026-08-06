@@ -216,8 +216,6 @@ class PeripheralConnection(
 
     fun cccdMode(characteristic: UUID): CccdMode = subscriptions.mode(characteristic)
 
-    fun isSubscribed(characteristic: UUID): Boolean = cccdMode(characteristic) != CccdMode.DISABLED
-
     fun resetSession() {
         subscriptions.clear()
         dataSubscribed = false

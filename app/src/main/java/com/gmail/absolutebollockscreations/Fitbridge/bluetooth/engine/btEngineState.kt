@@ -165,41 +165,6 @@ class BtEngineState : HrmStateSink {
      */
     data class RangeTriple(val min: Int, val max: Int, val inc: Int)
 
-    /**
-     * Update [ftmsCapabilities] with a newly parsed snapshot from the FTMS device.
-     *
-     * Typical caller: FtmsCapabilities reader module after reading:
-     *   - 0x2ACC (Fitness Machine Feature – FMF/TSF bits)
-     *   - 0x2AD4–0x2AD8 (Supported-* Range characteristics)
-     */
-    fun setFtmsCapabilities(caps: FtmsCapabilities) {
-        val old = ftmsCapabilities
-        ftmsCapabilities = caps
-        // keep legacy flag in sync for older consumers
-        featuresRead = caps.featuresRead
-
-        Timber.tag(TAG).i(
-            "ftmsCapabilities updated: " +
-                    "supports(S/I/R/P)=%s/%s/%s/%s " +
-                    "speed=[%s..%s step=%s known=%s] " +
-                    "incline=[%s..%s step=%s known=%s] " +
-                    "res=[%s..%s step=%s known=%s] " +
-                    "power=[%s..%s step=%s known=%s]",
-            caps.supportsSpeed,
-            caps.supportsInclination,
-            caps.supportsResistance,
-            caps.supportsPower,
-            caps.speedMin, caps.speedMax, caps.speedIncr, caps.speedRangeKnown,
-            caps.inclineMin, caps.inclineMax, caps.inclineIncr, caps.inclineRangeKnown,
-            caps.resistanceMin, caps.resistanceMax, caps.resistanceIncr, caps.resistanceRangeKnown,
-            caps.powerMin, caps.powerMax, caps.powerIncr, caps.powerRangeKnown,
-        )
-
-        if (!old.featuresRead && caps.featuresRead) {
-            Timber.tag(TAG).d("ftmsCapabilities: featuresRead → true (first full capability snapshot)")
-        }
-    }
-
     fun mergeFtmsCapabilities(update: FtmsCapabilities) {
         val old = ftmsCapabilities
         ftmsCapabilities = FtmsCapabilities(
@@ -795,16 +760,6 @@ class BtEngineState : HrmStateSink {
         )
     }
 
-    fun updateConnectedFtmsMachineFeature(machineTypeOrdinal: Int) {
-        val addr = gatt?.device?.address ?: return
-        Timber.tag(TAG).i(
-            "updateConnectedFtmsMachineFeature addr=%s machineFeature=%d",
-            addr,
-            machineTypeOrdinal
-        )
-        updateDeviceMachineFeatureByAddress(addr, machineTypeOrdinal)
-    }
-
     // Scanning + lists
     internal fun setCccdReady(context: ConnectionContext, value: Boolean) {
         val old = context.cccd.ready.value
@@ -1046,7 +1001,6 @@ class BtEngineState : HrmStateSink {
 
     // Metrics setters (kept quiet to avoid log spam; still available if you want to instrument later)
     fun setStrokeRate(v: Double?) { _strokeRate.value = v }
-    fun setPeakStrokeRate(v: Double?) { _peakStrokeRate.value = v }
     fun setStrokeCount(v: Int?) { _strokeCount.value = v }
 
     fun setTotalDistanceMeters(m: Int?) { _totalDistanceMeters.value = m }

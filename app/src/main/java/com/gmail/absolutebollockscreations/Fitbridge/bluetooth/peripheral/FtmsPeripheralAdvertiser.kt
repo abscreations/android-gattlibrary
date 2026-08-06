@@ -198,13 +198,10 @@ class FtmsPeripheralAdvertiser(
     var isAdvertising: Boolean = false
         private set
 
-    fun currentGattServer(): BluetoothGattServer? = gattServer
     fun currentProfile(): FtmsMachineProfile = profile
 
     /** Snapshot of the currently attached clients. */
     fun activeConnections(): List<PeripheralConnection> = connections.values.toList()
-
-    fun clientCount(): Int = connections.size
 
     fun hasClients(): Boolean = connections.isNotEmpty()
 
@@ -1063,6 +1060,18 @@ class FtmsPeripheralAdvertiser(
                     gattStatusName(read.status),
                     read.value?.size ?: 0,
                 )
+            }
+            // §0.9.4: what the client was *told* about this machine. Recorded on
+            // the first fragment only, so a long value fetched in slices appears
+            // once and whole rather than as a run of partial rows.
+            //
+            // This hook existed unwired until 2026-08-06, which is why a session
+            // where FitBridge advertised a Supported Inclination Range ten times
+            // too wide produced a capture with no trace of it: the watch's target
+            // writes were visible, the advertisement that caused them was not.
+            // Reads are half the story of any downstream negotiation.
+            if (PeripheralCaptureHooks.shouldCaptureRead(offset)) {
+                PeripheralCaptureHooks.clientRead(device.address, characteristic.uuid, payload)
             }
             server.sendResponse(device, requestId, read.status, offset.coerceAtLeast(0), read.value)
         }

@@ -112,9 +112,6 @@ internal class CaptureTree(
         }
     }
 
-    /** Directory holding capture files, for the exporter. */
-    fun capturesDirectory(): File = captureRoot
-
     /** Blocks until buffered events reach disk. Called before export. */
     fun flush(timeoutMs: Long = DEFAULT_FLUSH_TIMEOUT_MS): Boolean = sink.flush(timeoutMs)
 

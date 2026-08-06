@@ -77,8 +77,6 @@ internal enum class CaptureRole(val tag: String, val fileSuffix: String) {
     companion object {
         /** True for any reserved capture tag. Human-log trees reject all of them. */
         fun isCaptureTag(tag: String?): Boolean = entries.any { it.tag == tag }
-
-        fun forTag(tag: String?): CaptureRole? = entries.firstOrNull { it.tag == tag }
     }
 }
 
@@ -117,8 +115,6 @@ internal object SensitiveCharacteristics {
     )
 
     fun reasonFor(characteristic: UUID): RedactionReason? = byUuid[characteristic]
-
-    fun isSensitive(characteristic: UUID): Boolean = byUuid.containsKey(characteristic)
 
     /** Every registered characteristic, for the redaction test to enumerate. */
     fun all(): Map<UUID, RedactionReason> = byUuid

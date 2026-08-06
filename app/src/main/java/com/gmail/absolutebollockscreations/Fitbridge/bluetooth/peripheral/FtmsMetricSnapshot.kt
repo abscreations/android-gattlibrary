@@ -217,14 +217,6 @@ class FtmsMetricStore {
         return if (nowMs - lastKnownSpeedAtMs in 0..FtmsMetricSnapshot.SPEED_HOLD_MS) held else 0.0
     }
 
-    /** No cached workout data is emitted after the common freshness window. */
-    fun freshSnapshot(nowMs: Long): FtmsMetricSnapshot? {
-        val current = snapshot
-        if (current.updatedAtMs <= 0L) return null
-        val age = nowMs - current.updatedAtMs
-        return current.takeIf { age in 0..FtmsMetricSnapshot.METRIC_FRESHNESS_MS }
-    }
-
     /**
      * The snapshot to notify with, designed to *never go silent* once a workout
      * has produced at least one sample.
