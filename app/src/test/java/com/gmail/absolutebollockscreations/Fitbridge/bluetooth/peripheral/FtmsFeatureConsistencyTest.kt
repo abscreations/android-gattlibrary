@@ -23,7 +23,7 @@ class FtmsFeatureConsistencyTest {
         distanceMeters = 1_234,
         elapsedSeconds = 600,
         caloriesTotal = 100,
-        resistance = 8,
+        resistance = 8f,
         inclinationPercent = 2.0,
         positiveElevationGainMeters = 30.0,
         negativeElevationGainMeters = 5.0,

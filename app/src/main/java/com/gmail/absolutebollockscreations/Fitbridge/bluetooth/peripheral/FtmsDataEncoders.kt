@@ -36,6 +36,32 @@ object FtmsDataEncoders {
         PeripheralConnection.COMPACT_FRAMING_MTU_THRESHOLD -
             PeripheralConnection.ATT_NOTIFY_OVERHEAD
 
+    /**
+     * Wire units per whole unit for the two Cross Trainer fields carrying
+     * `<DecimalExponent>-1</DecimalExponent>`: **Stride Count** and **Resistance
+     * Level**.
+     *
+     * From the published `org.bluetooth.characteristic.cross_trainer_data` XML
+     * (uuid `2ACE`, approved 2017-02-14):
+     *
+     * ```
+     * <Field name="Stride Count">      uint16  DecimalExponent -1  unitless
+     * <Field name="Resistance Level">  sint16  DecimalExponent -1  unitless
+     * ```
+     *
+     * Inclination, Ramp Angle and Metabolic Equivalent are also tenths but are
+     * scaled by their own builders, which serve characteristics beyond `2ACE`.
+     *
+     * ### Scope
+     *
+     * Cross Trainer only. Indoor Bike (`0x2AD2`) and Rower (`0x2AD1`) declare
+     * their own resolutions for the same-named fields and must be checked against
+     * their own XML, not assumed from this one - Rower Stroke Count in particular
+     * has no exponent while Cross Trainer Stride Count does, and both read from
+     * [FtmsMetricSnapshot.strokeCount].
+     */
+    const val CROSS_TRAINER_TENTHS_SCALE = 10
+
     fun encode(
         profile: FtmsMachineProfile,
         snapshot: FtmsMetricSnapshot,
@@ -120,6 +146,41 @@ object FtmsDataEncoders {
 
     private fun elapsedField(sec: Int): ByteArray = u16le(sec.coerceIn(0, 0xFFFF))
 
+    /**
+     * Cross Trainer Resistance Level, scaled by [CROSS_TRAINER_TENTHS_SCALE].
+     *
+     * Clamped before the multiply as well as after, so a wild upstream level
+     * cannot overflow into a plausible-looking small number on the wire.
+     */
+    internal fun crossTrainerResistanceField(level: Float): ByteArray =
+        s16le((level * CROSS_TRAINER_TENTHS_SCALE).roundToInt().coerceIn(-32768, 32767))
+
+    /**
+     * Resistance Level for characteristics that do **not** declare a decimal
+     * exponent on the field - Indoor Bike (`0x2AD2`) and Rower (`0x2AD1`).
+     *
+     * Rounded rather than truncated, so a bridged 6.6 becomes 7 instead of 6.
+     * The fractional part is genuinely lost here, but only because these two
+     * characteristics have nowhere to put it.
+     */
+    private fun unscaledResistanceField(level: Float): ByteArray =
+        s16le(level.roundToInt().coerceIn(-32768, 32767))
+
+    /**
+     * Cross Trainer Stride Count, scaled by [CROSS_TRAINER_TENTHS_SCALE].
+     *
+     * The `2ACE` XML gives Stride Count `<DecimalExponent>-1</DecimalExponent>`,
+     * so this field is in tenths of a stride - unlike Rower Stroke Count, which
+     * has no exponent and shares [FtmsMetricSnapshot.strokeCount]. The scaling is
+     * therefore applied here rather than at the snapshot.
+     *
+     * [BtEngineFtmsParsers] already divides this field by ten on the way in. It
+     * was not multiplied on the way out, so a bridged stride count arrived at the
+     * client ten times low, exactly as Resistance Level did.
+     */
+    internal fun crossTrainerStrideCountField(strides: Int): ByteArray =
+        u16le((strides.coerceIn(0, 0xFFFF / CROSS_TRAINER_TENTHS_SCALE)) * CROSS_TRAINER_TENTHS_SCALE)
+
     /** Force on Belt (sint16 N) + Power Output (sint16 W), one treadmill flag. */
     private fun forceAndPowerField(forceNewtons: Int, powerWatts: Int): ByteArray =
         s16le(forceNewtons.coerceIn(-32768, 32767)) + s16le(powerWatts.coerceIn(-32768, 32767))
@@ -149,7 +210,7 @@ object FtmsDataEncoders {
             optionals += FtmsField(3, u16le((it * 2.0).roundToInt().coerceIn(0, 0xFFFF)))
         }
         s.distanceMeters?.let { optionals += FtmsField(4, distanceField(it)) }
-        s.resistance?.let { optionals += FtmsField(5, s16le(it.coerceIn(-32768, 32767))) }
+        s.resistance?.let { optionals += FtmsField(5, unscaledResistanceField(it)) }
         s.powerWatts?.let { optionals += FtmsField(6, s16le(it.coerceIn(-32768, 32767))) }
         s.averagePowerWatts?.let { optionals += FtmsField(7, s16le(it.coerceIn(-32768, 32767))) }
         if (s.caloriesTotal != null) optionals += FtmsField(8, energyField(s))
@@ -243,12 +304,12 @@ object FtmsDataEncoders {
                     u16le(s.averageCadence.roundToInt().coerceIn(0, 0xFFFF)),
             )
         }
-        s.strokeCount?.let { optionals += FtmsField(4, u16le(it.coerceIn(0, 0xFFFF))) }
+        s.strokeCount?.let { optionals += FtmsField(4, crossTrainerStrideCountField(it)) }
         if (s.positiveElevationGainMeters != null || s.negativeElevationGainMeters != null) {
             optionals += FtmsField(5, elevationPairField(s))
         }
         s.inclinationPercent?.let { optionals += FtmsField(6, inclinationAndRampField(it)) }
-        s.resistance?.let { optionals += FtmsField(7, s16le(it.coerceIn(-32768, 32767))) }
+        s.resistance?.let { optionals += FtmsField(7, crossTrainerResistanceField(it)) }
         s.powerWatts?.let { optionals += FtmsField(8, s16le(it.coerceIn(-32768, 32767))) }
         s.averagePowerWatts?.let { optionals += FtmsField(9, s16le(it.coerceIn(-32768, 32767))) }
         if (s.caloriesTotal != null) optionals += FtmsField(10, energyField(s))
@@ -305,6 +366,17 @@ object FtmsDataEncoders {
         val continuationFields = listOf(5, 6, 8, 9, 10).mapNotNull(byBit::get)
 
         fun frame(moreData: Boolean, mandatoryBytes: ByteArray, fields: List<FtmsField>): ByteArray {
+            // This path bypasses FtmsPacker and so does not inherit its ordering
+            // guard, while the bit lists above are hand-written literals. A field
+            // emitted out of bit order still produces a well-formed, correctly
+            // sized packet - the client simply reads every subsequent field from
+            // the wrong offset. That failure is silent and survives review, which
+            // is exactly how the central parser read resistance as inclination
+            // for as long as it existed.
+            require(fields.zipWithNext().all { (a, b) -> a.bit < b.bit }) {
+                "Garmin Cross Trainer frame fields must ascend by flag bit: " +
+                    fields.joinToString { it.bit.toString() }
+            }
             var flags = if (moreData) 1 else 0
             fields.forEach { flags = flags or (1 shl it.bit) }
             val size = 3 + mandatoryBytes.size + fields.sumOf { it.bytes.size }
@@ -367,7 +439,7 @@ object FtmsDataEncoders {
         s.averagePaceSecondsPer500m?.let { optionals += FtmsField(4, rowerPaceField(it)) }
         s.powerWatts?.let { optionals += FtmsField(5, s16le(it.coerceIn(-32768, 32767))) }
         s.averagePowerWatts?.let { optionals += FtmsField(6, s16le(it.coerceIn(-32768, 32767))) }
-        s.resistance?.let { optionals += FtmsField(7, s16le(it.coerceIn(-32768, 32767))) }
+        s.resistance?.let { optionals += FtmsField(7, unscaledResistanceField(it)) }
         if (s.caloriesTotal != null) optionals += FtmsField(8, energyField(s))
         s.heartRate?.let { optionals += FtmsField(9, hrField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(11, elapsedField(it)) }

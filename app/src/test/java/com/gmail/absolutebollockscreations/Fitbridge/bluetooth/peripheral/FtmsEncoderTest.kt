@@ -53,7 +53,7 @@ class FtmsEncoderTest {
         caloriesTotal = 250,
         caloriesPerHour = 600,
         caloriesPerMinute = 10,
-        resistance = 7,
+        resistance = 7f,
         inclinationPercent = -2.5,
         positiveElevationGainMeters = 48.0,
         negativeElevationGainMeters = 12.0,
@@ -311,10 +311,15 @@ class FtmsEncoderTest {
     }
 
     @Test
-    fun `cross trainer stride count is a plain uint16 count`() {
-        // TrackMyIndoorWorkout expands this field by 10 at the peripheral
-        // boundary to match a legacy Dart decoder. FitBridge has no such
-        // consumer, so the spec scaling (1 stride = 1 unit) applies unchanged.
+    fun `cross trainer stride count is transmitted in tenths`() {
+        // This test previously asserted 123 and justified it by claiming
+        // TrackMyIndoorWorkout's x10 was a legacy Dart decoder quirk with no
+        // spec basis. That was backwards. The 2ACE XML gives Stride Count
+        // `DecimalExponent -1`, so tenths is the spec and TMIW was right.
+        //
+        // Rower Stroke Count (0x2AD1) has no exponent and shares this same
+        // snapshot field, which is why the scaling lives in the cross trainer
+        // field builder rather than at the snapshot.
         val snapshot = FtmsMetricSnapshot(speedKph = 8.0, strokeCount = 123)
         val packet = FtmsDataEncoders.encode(
             FtmsMachineProfile.ELLIPTICAL,
@@ -323,7 +328,153 @@ class FtmsEncoderTest {
         ).single()
 
         assertTrue("stride count must be declared by bit 4", flags(packet, 3).bitSet(4))
-        assertEquals("stride count is not rescaled", 123, u16At(packet, 5))
+        assertEquals("123 strides go out as 1230", 1230, u16At(packet, 5))
+    }
+
+    @Test
+    fun `rower stroke count is not scaled like cross trainer stride count`() {
+        // Both read FtmsMetricSnapshot.strokeCount; only 2ACE declares tenths.
+        val snapshot = FtmsMetricSnapshot(cadence = 30.0, strokeCount = 123)
+        val packet = FtmsDataEncoders.encode(
+            FtmsMachineProfile.INDOOR_ROWER,
+            snapshot,
+            null,
+        ).single()
+
+        // Mandatory block is stroke rate (uint8, 0.5 spm) then stroke count.
+        assertEquals("stroke count is a plain uint16", 123, u16At(packet, 3))
+    }
+
+    @Test
+    fun `cross trainer resistance level is scaled to tenths on the wire`() {
+        // A Garmin datafield rendered a level of 6 as 0.6, so that consumer
+        // applies a 0.1 resolution to this field. Sending the level raw loses a
+        // factor of ten at the reader.
+        //
+        // Scoped to Cross Trainer deliberately - see the sibling test below.
+        val snapshot = FtmsMetricSnapshot(speedKph = 8.0, resistance = 7f)
+        val packet = FtmsDataEncoders.encode(
+            FtmsMachineProfile.ELLIPTICAL,
+            snapshot,
+            snapshot.speedKph,
+        ).single()
+
+        assertTrue("resistance is bit 7", flags(packet, 3).bitSet(7))
+        assertEquals("a level of 7 goes out as 70", 70, s16At(packet, 5))
+    }
+
+    @Test
+    fun `indoor bike and rower resistance are left unscaled`() {
+        // There is no hardware evidence for the resolution these two consumers
+        // expect, and the physical elliptical reports levels as whole numbers -
+        // so machine and watch already disagree on 0x2ACE. Changing 0x2AD2 and
+        // 0x2AD1 on that basis would be a guess applied to machines that cannot
+        // be tested. Recorded in the divergence register instead.
+        val snapshot = FtmsMetricSnapshot(speedKph = 8.0, resistance = 7f)
+
+        val bike = FtmsDataEncoders.encode(
+            FtmsMachineProfile.INDOOR_BIKE,
+            snapshot,
+            snapshot.speedKph,
+        ).single()
+        assertTrue("bike resistance is bit 5", flags(bike).bitSet(5))
+        assertEquals("bike resistance is unscaled", 7, s16At(bike, 4))
+
+        val rowerSnapshot = FtmsMetricSnapshot(cadence = 20.0, strokeCount = 1, resistance = 7f)
+        val rower = FtmsDataEncoders.encode(
+            FtmsMachineProfile.INDOOR_ROWER,
+            rowerSnapshot,
+            null,
+        ).single()
+        assertTrue("rower resistance is bit 7", flags(rower).bitSet(7))
+    }
+
+    @Test
+    fun `resistance scaling cannot overflow the sint16 field`() {
+        // Clamping after the multiply would let a wild upstream level wrap into
+        // a small, plausible-looking number rather than saturating.
+        assertEquals(32767, s16At(FtmsDataEncoders.crossTrainerResistanceField(9_000f), 0))
+        assertEquals(-32768, s16At(FtmsDataEncoders.crossTrainerResistanceField(-9_000f), 0))
+    }
+
+    @Test
+    fun `a fractional resistance level survives the encoder`() {
+        // The whole point of widening the snapshot field to Float: a compliant
+        // machine reporting 0.7 used to round to 1 before reaching here.
+        assertEquals(7, s16At(FtmsDataEncoders.crossTrainerResistanceField(0.7f), 0))
+        assertEquals(65, s16At(FtmsDataEncoders.crossTrainerResistanceField(6.5f), 0))
+    }
+
+    @Test
+    fun `cross trainer resistance round trips unchanged through the bridge`() {
+        // FitBridge is a bridge, so the scaling applied on decode and the scaling
+        // applied on encode must cancel exactly. Any characteristic where they do
+        // not is a defect by construction, which is how both the 10x resistance
+        // and the 10x stride count got in.
+        val rawFromMachine = 7
+        val decoded = rawFromMachine / 10.0f // BtEngineFtmsParsers, div10 = true
+        val reencoded = s16At(FtmsDataEncoders.crossTrainerResistanceField(decoded), 0)
+
+        assertEquals("what the machine sent must be what the client receives", rawFromMachine, reencoded)
+    }
+
+    @Test
+    fun `every cross trainer field is emitted in ascending flag bit order`() {
+        // Inclination is bit 6 and Resistance Level is bit 7, so inclination must
+        // come first. The central parser had these reversed and it stayed hidden
+        // because the two fields' widths cancel - 2 + 4 octets either way. Only
+        // the values are wrong, never the length, so nothing downstream faults.
+        for (payload in listOf(FtmsPacker.MAX_PAYLOAD, 182)) {
+            val packets = FtmsDataEncoders.encode(
+                FtmsMachineProfile.ELLIPTICAL,
+                full,
+                full.speedKph,
+                maxPayload = payload,
+            )
+            for (p in packets) {
+                val bits = (0..15).filter { flags(p, 3).bitSet(it) && it != 0 }
+                assertEquals("packet fields must ascend by bit", bits.sorted(), bits)
+            }
+        }
+    }
+
+    @Test
+    fun `compact framing rejects fields that are not in ascending bit order`() {
+        // The compact path bypasses FtmsPacker's ordering guard and its bit lists
+        // are literals, so it needs its own check.
+        val out = FtmsDataEncoders.encode(
+            FtmsMachineProfile.ELLIPTICAL,
+            full,
+            full.speedKph,
+            maxPayload = 20,
+            garminCompatibilityFraming = true,
+        )
+        for (p in out) {
+            val bits = (1..15).filter { flags(p, 3).bitSet(it) }
+            assertEquals("compact frame fields must ascend by bit", bits.sorted(), bits)
+        }
+        // Inclination (6) and resistance (7) are split across the two frames, so
+        // they can never be transposed within one - pin that, since it is the
+        // property that makes the compact layout safe rather than lucky.
+        assertTrue("resistance rides in frame 1", flags(out[0], 3).bitSet(7))
+        assertTrue("inclination rides in frame 2", flags(out[1], 3).bitSet(6))
+        assertTrue("frame 1 must not also carry inclination", !flags(out[0], 3).bitSet(6))
+    }
+
+    @Test
+    fun `Garmin compact framing carries the same resistance scaling`() {
+        // Compact framing relocates resistance into the first frame's spare
+        // bytes. It shares the field builder, so this pins that it stays shared.
+        val packets = FtmsDataEncoders.encode(
+            FtmsMachineProfile.ELLIPTICAL,
+            full,
+            full.speedKph,
+            maxPayload = 20,
+            garminCompatibilityFraming = true,
+        )
+
+        assertTrue("resistance rides in the first frame", flags(packets[0], 3).bitSet(7))
+        assertEquals("a level of 7 goes out as 70", 70, s16At(packets[0], 16))
     }
 
     @Test
@@ -348,10 +499,12 @@ class FtmsEncoderTest {
         assertEquals(12345, u24At(packets[0], 7))
         assertEquals(85, u16At(packets[0], 10))
         assertEquals(75, u16At(packets[0], 12))
-        // Stride count, spec-scaled 1:1 (TrackMyIndoorWorkout expands this by 10
-        // for a legacy Dart decoder that FitBridge does not have).
-        assertEquals(420, u16At(packets[0], 14))
-        assertEquals(7, s16At(packets[0], 16))
+        // Stride count 420, in tenths per the 2ACE DecimalExponent of -1.
+        assertEquals(4200, u16At(packets[0], 14))
+        // Resistance level 7, scaled by CROSS_TRAINER_RESISTANCE_SCALE. This
+        // asserted the raw 7 until 2026-08-06, when a Garmin datafield was found
+        // rendering a level of 6 as 0.6.
+        assertEquals(70, s16At(packets[0], 16))
         assertEquals(1830, u16At(packets[0], 18))
 
         val continuationFlags = flags(packets[1], 3)

@@ -46,8 +46,17 @@ data class FtmsMetricSnapshot(
     val caloriesTotal: Int? = null,
     val caloriesPerHour: Int? = null,
     val caloriesPerMinute: Int? = null,
-    /** Machine resistance level, unscaled. */
-    val resistance: Int? = null,
+    /**
+     * Machine resistance level, in public units - the number a console would
+     * show, not the wire encoding.
+     *
+     * Fractional, because Cross Trainer Data (`0x2ACE`) declares Resistance Level
+     * with `DecimalExponent -1`. This was an `Int` until 2026-08-06, which
+     * silently truncated every compliant machine's tenths on the way through the
+     * bridge: a level of 0.7 arrived as 1. Each encoder applies its own
+     * characteristic's scaling.
+     */
+    val resistance: Float? = null,
     /** Percent grade with 1 decimal place, e.g. -2.5 means -2.5%. */
     val inclinationPercent: Double? = null,
     /** Cumulative ascent/descent in metres. FTMS encodes each as uint16 metres. */
@@ -251,7 +260,7 @@ class FtmsMetricStore {
             powerWatts = current.powerWatts?.let { 0 },
             forceOnBeltNewtons = current.forceOnBeltNewtons?.let { 0 },
             heartRate = current.heartRate?.let { 0 },
-            resistance = current.resistance?.let { 0 },
+            resistance = current.resistance?.let { 0f },
             inclinationPercent = current.inclinationPercent?.let { 0.0 },
             caloriesPerHour = current.caloriesPerHour?.let { 0 },
             caloriesPerMinute = current.caloriesPerMinute?.let { 0 },

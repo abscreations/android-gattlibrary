@@ -204,8 +204,29 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.ELL_STEPCOUNT) != 0) off = readEllipticalCadence(emitter, value, off)
         if ((flags and Flags.ELL_STRIDECOUNT) != 0) off = readStrides(emitter, value, off, tenths = true)
         if ((flags and Flags.ELL_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 3)
-        if ((flags and Flags.ELL_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = true)
+        // Inclination (bit 6) precedes Resistance Level (bit 7) - FTMS Table 4.6,
+        // and [Flags.ELL_INCLINATION] = 0x40 / [Flags.ELL_RESISTANCE] = 0x80 say
+        // so too. These two were read in the opposite order until 2026-08-06,
+        // which silently swapped the fields whenever a machine set both bits.
+        //
+        // It hid because the widths cancel: resistance (2) + inclination pair (4)
+        // is the same six octets as inclination pair (4) + resistance (2), so
+        // power onwards stayed correctly aligned and nothing downstream looked
+        // wrong. A capture of a physical elliptical showed RESISTANCE tracking
+        // the machine's inclination field across all 179 frames.
+        //
+        // `div10` is correct here and is NOT part of that defect, though it was
+        // briefly removed as if it were. The published 2ACE XML gives Resistance
+        // Level `<DecimalExponent>-1</DecimalExponent>`, so this field is in
+        // tenths. Indoor Bike and Rower declare their own resolutions and are
+        // read without the divide; the flag is per-characteristic for that
+        // reason, not a per-device workaround.
+        //
+        // The two defects sat on the same line and looked like one: dividing the
+        // *inclination* field by ten yields a plausible resistance level, which
+        // is what made the field swap so quiet.
         if ((flags and Flags.ELL_INCLINATION) != 0) off = readInclineV2(emitter, value, off)
+        if ((flags and Flags.ELL_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = true)
         if ((flags and Flags.ELL_INSTPOWER) != 0) off = readPower(emitter, value, off)
         if ((flags and Flags.ELL_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
         if ((flags and Flags.ELL_EXPENERGY) != 0) off = readEnergy(emitter, value, off)

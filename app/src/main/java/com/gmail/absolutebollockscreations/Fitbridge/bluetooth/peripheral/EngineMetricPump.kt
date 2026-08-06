@@ -119,7 +119,9 @@ class EngineMetricPump(
             // writes the FTMS "not available" sentinels for them.
             caloriesPerHour = null,
             caloriesPerMinute = null,
-            resistance = engineState.resistance.value?.roundToInt(),
+            // Not rounded: 0x2ACE Resistance Level is in tenths, so rounding here
+            // discarded the fractional part of every compliant machine's level.
+            resistance = engineState.resistance.value?.toFloat(),
             inclinationPercent = engineState.inclination.value,
             positiveElevationGainMeters = engineState.elevationGainPos.value,
             negativeElevationGainMeters = engineState.elevationGainNeg.value,
