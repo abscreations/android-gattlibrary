@@ -329,7 +329,11 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             UUID_FITNESS_MACHINE_CONTROL_POINT -> handleControlPointIndication(engine, gatt, value)
             UUID_FITNESS_MACHINE_STATUS        -> handleFitnessMachineStatus(engine, value)
             UUID_TREADMILL_DATA                -> BtEngineFtmsParsers.doTreadmill(emitter, value)
-            UUID_ELLIPTICAL_DATA               -> BtEngineFtmsParsers.doElliptical(emitter, value)
+            UUID_ELLIPTICAL_DATA               -> BtEngineFtmsParsers.doElliptical(
+                emitter,
+                value,
+                resistanceToLevel = { raw -> ellipticalResistanceLevel(engine.state, raw) },
+            )
             UUID_STAIR_STEPPER_DATA            -> BtEngineFtmsParsers.doStepper(emitter, value)
             UUID_STAIR_CLIMBER_DATA            -> BtEngineFtmsParsers.doClimber(emitter, value)
             UUID_ROWING_MACHINE_DATA           -> BtEngineFtmsParsers.doRower(emitter, value)
@@ -770,4 +774,36 @@ internal fun decodeTargetResistanceStatus(value: ByteArray): Float? {
         else -> return null
     }
     return raw / FTMS_RESISTANCE_SCALE
+}
+
+/**
+ * Cross Trainer Resistance Level: wire value -> public level, honouring a
+ * machine that contradicts the spec's `DecimalExponent -1`.
+ *
+ * Owns the latch described on [BtEngineState.resistanceIsRawLevels]. Once a
+ * machine has produced one sample that can only be raw levels, every later
+ * sample is read that way for the rest of the connection, including the zeroes
+ * it reports at rest which carry no evidence either way.
+ */
+internal fun ellipticalResistanceLevel(state: BtEngineState, raw: Int): Double {
+    if (state.resistanceIsRawLevels) return raw.toDouble()
+
+    val encoding = FtmsResistanceScale.decide(
+        raw = raw,
+        min = state.resistanceMin,
+        max = state.resistanceMax,
+        incr = state.resistanceIncr,
+        known = state.resistanceRangeKnown,
+    )
+    if (encoding == FtmsResistanceScale.Encoding.RAW_LEVELS) {
+        state.resistanceIsRawLevels = true
+        Timber.tag(BtEngineState.TAG).i(
+            "Cross Trainer resistance reads as raw levels, not tenths: raw=%d is outside the " +
+                "machine's declared range %.1f-%.1f when divided by ten. Latched for this " +
+                "connection.",
+            raw, state.resistanceMin, state.resistanceMax,
+        )
+        return raw.toDouble()
+    }
+    return raw / 10.0
 }

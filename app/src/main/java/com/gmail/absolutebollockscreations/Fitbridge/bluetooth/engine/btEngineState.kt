@@ -241,6 +241,7 @@ class BtEngineState : HrmStateSink {
         speedMin = 0f; speedMax = 0f; speedIncr = 0f; speedRangeKnown = false
         inclineMin = 0f; inclineMax = 0f; inclineIncr = 0f; inclineRangeKnown = false
         resistanceMin = 0f; resistanceMax = 0f; resistanceIncr = 0f; resistanceRangeKnown = false
+        resistanceIsRawLevels = false
         powerMin = 0f; powerMax = 0f; powerIncr = 0f; powerRangeKnown = false
 
         ftmsCapabilities = FtmsCapabilities()
@@ -291,6 +292,20 @@ class BtEngineState : HrmStateSink {
     var resistanceMax = 0f
     var resistanceIncr = 0f
     var resistanceRangeKnown = false
+
+    /**
+     * Latched once a machine's Cross Trainer resistance field has been shown to
+     * carry raw levels rather than the spec's tenths. See [FtmsResistanceScale].
+     *
+     * Latched rather than re-decided per sample because the evidence is only
+     * present while the machine is under load. At rest it reports 0, which is
+     * outside its own declared range under either reading and therefore falls
+     * back to the spec - so a per-sample decision would flip interpretation
+     * every time the user stopped pedalling and put a 10x step in the recorded
+     * activity. Cleared with the rest of the capability block on disconnect.
+     */
+    @Volatile
+    var resistanceIsRawLevels = false
 
     var powerMin = 0f
     var powerMax = 0f

@@ -113,7 +113,7 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.BIKE_CADENCE) != 0) off = readCadence(emitter, value, off, halfUnits = true)
         if ((flags and Flags.BIKE_AVGCAD) != 0) off = readAvgCadence(emitter, value, off, halfUnits = true)
         if ((flags and Flags.BIKE_TOTALDIST) != 0) off = readDistance(emitter, value, off)
-        if ((flags and Flags.BIKE_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = false)
+        if ((flags and Flags.BIKE_RESISTANCE) != 0) off = readResistance(emitter, value, off) { it.toDouble() }
         if ((flags and Flags.BIKE_INSTPOWER) != 0) off = readPower(emitter, value, off)
         if ((flags and Flags.BIKE_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
         if ((flags and Flags.BIKE_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
@@ -147,7 +147,7 @@ internal object BtEngineFtmsParsers {
         }
         if ((flags and Flags.ROW_INSTPOWER) != 0) off = readPower(emitter, value, off)
         if ((flags and Flags.ROW_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
-        if ((flags and Flags.ROW_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = false)
+        if ((flags and Flags.ROW_RESISTANCE) != 0) off = readResistance(emitter, value, off) { it.toDouble() }
         if ((flags and Flags.ROW_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
         if ((flags and Flags.ROW_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
@@ -185,7 +185,18 @@ internal object BtEngineFtmsParsers {
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doElliptical(emitter: MetricEmitter, value: ByteArray) {
+    /**
+     * @param resistanceToLevel wire value -> public level for `0x2ACE`.
+     * Defaults to the spec's tenths. The caller overrides it when the machine's
+     * Supported Resistance Level Range contradicts that reading - see
+     * [FtmsResistanceScale], and note that the elliptical captured on
+     * 2026-08-06 is one such machine.
+     */
+    fun doElliptical(
+        emitter: MetricEmitter,
+        value: ByteArray,
+        resistanceToLevel: (Int) -> Double = { it / 10.0 },
+    ) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Elliptical (2ACE) len=%d %s", value.size, value.toHex())
         }
@@ -226,7 +237,9 @@ internal object BtEngineFtmsParsers {
         // *inclination* field by ten yields a plausible resistance level, which
         // is what made the field swap so quiet.
         if ((flags and Flags.ELL_INCLINATION) != 0) off = readInclineV2(emitter, value, off)
-        if ((flags and Flags.ELL_RESISTANCE) != 0) off = readResistance(emitter, value, off, div10 = true)
+        if ((flags and Flags.ELL_RESISTANCE) != 0) {
+            off = readResistance(emitter, value, off, resistanceToLevel)
+        }
         if ((flags and Flags.ELL_INSTPOWER) != 0) off = readPower(emitter, value, off)
         if ((flags and Flags.ELL_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
         if ((flags and Flags.ELL_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
@@ -434,15 +447,28 @@ internal object BtEngineFtmsParsers {
         return off
     }
 
-    private fun readResistance(emitter: MetricEmitter, b: ByteArray, off0: Int, div10: Boolean): Int {
+    /**
+     * @param toLevel wire value -> public level. Per-characteristic, because the
+     * resolution is declared per characteristic: Cross Trainer `0x2ACE` gives
+     * Resistance Level `DecimalExponent -1`, Indoor Bike `0x2AD2` and Rower
+     * `0x2AD1` declare no exponent on the same-named field. Passed in rather
+     * than chosen here so a machine that contradicts its own spec can be
+     * accommodated at the call site without this reader knowing about devices.
+     */
+    private fun readResistance(
+        emitter: MetricEmitter,
+        b: ByteArray,
+        off0: Int,
+        toLevel: (Int) -> Double,
+    ): Int {
         var off = off0
         if (has(b, off, 2)) {
-            var res = s16(b, off).toDouble()
+            val raw = s16(b, off)
             off += 2
-            if (div10) res /= 10.0
+            val res = toLevel(raw)
 
             if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS resistance (level): %.1f", res)
+                Timber.tag(TAG).d("FTMS resistance (level): %.1f [raw %d]", res, raw)
             }
 
             emitter.emit(MetricKind.RESISTANCE, res)
