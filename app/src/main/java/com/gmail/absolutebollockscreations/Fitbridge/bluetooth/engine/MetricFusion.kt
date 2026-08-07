@@ -203,6 +203,9 @@ internal class MetricFusion(
     private var persona: FusionPersona = FusionPersona.RIDE
     private var machineConnectionId: ConnectionId? = null
 
+    /** Whether the current strap dropout has already been marked in the series. */
+    private var heartRateStaleMarked: Boolean = false
+
     fun submit(sample: MetricSample): FusionSubmission = synchronized(lock) {
         if (!isDomainValid(sample)) return@synchronized FusionSubmission.REJECTED_INVALID
         // §0.7a: every sample passes through here, so this is the one place that
@@ -352,9 +355,79 @@ internal class MetricFusion(
 
     private fun MetricSample.candidateKey() = MetricCandidateKey(sourceId, sourceClass, quality)
 
+    /**
+     * Heart-rate candidates, restricted to the strap once one is present.
+     *
+     * ### The defect this fixes
+     *
+     * `priorityRank` already puts [MetricSourceClass.HRM] above
+     * [MetricSourceClass.FTMS], so a fresh strap always outranked a machine.
+     * But ranking only decides between candidates that survive the freshness
+     * filter, and a strap that misses a notification or two drops out of it -
+     * `HEART_RATE_FRESHNESS_MS` is 4 s and BLE straps notify about once a
+     * second. The machine then became the best *remaining* candidate and the
+     * metric silently changed hands until the next strap packet took it back.
+     *
+     * Observed 2026-08-06 with a strap reading 54-58 bpm against a TMIW tablet
+     * reporting 120-140: the graph alternated between the two. Nothing was
+     * ranked wrongly; the strap was simply absent from the contest at the moment
+     * each machine packet arrived.
+     *
+     * ### The rule
+     *
+     * Once a connected strap has produced **one** reading, machine heart rate is
+     * excluded from selection entirely. Not ranked lower - excluded, so a stale
+     * strap cannot yield the metric. `onDisconnected` purges a source's
+     * candidates, so "an HRM candidate exists" already means "an HRM is
+     * connected"; no separate connection tracking is needed.
+     *
+     * Machine heart rate is still used up to the strap's first reading, so the
+     * seconds between clipping a strap on and it finding a pulse do not read as
+     * a fault.
+     */
+    private fun heartRateCandidates(
+        all: Map<MetricCandidateKey, MetricSample>,
+    ): Map<MetricCandidateKey, MetricSample> {
+        val strapOnly = all.filterKeys { it.sourceClass == MetricSourceClass.HRM }
+        return if (strapOnly.isEmpty()) all else strapOnly
+    }
+
+    /**
+     * A connected strap has gone silent past its freshness window.
+     *
+     * The graph gets an explicit 0 so the gap is visible as a gap rather than as
+     * a flat line held at the last reading, while the numeric readout blanks -
+     * asserting "your heart rate is 0" would be a stronger claim than the data
+     * supports. The average is deliberately left alone: a dropout is missing
+     * data, not a zero-bpm interval, and folding it in would drag the session
+     * average down for a strap problem.
+     */
+    private fun projectStaleHeartRate() {
+        // Once per dropout, not once per machine packet. Machine data keeps
+        // arriving at over 1 Hz while the strap is quiet, and every one of those
+        // re-runs selection; without this the series would fill with zeros and
+        // the "gap" would be indistinguishable from a long flat run at zero.
+        if (heartRateStaleMarked) return
+        heartRateStaleMarked = true
+
+        state.setHeartRate(null)
+        state.setExternalHeartRate(null)
+        state.setHeartRateSource(BtEngineState.HrSource.UNKNOWN)
+        state.appendHeartRateSeriesPoint(0.0, seriesClock.nowMs())
+        publishHeartRateZones()
+    }
+
     private fun reselect(metric: MetricKind, nowMs: Long) {
-        val bySource = candidates[metric].orEmpty()
+        val allCandidates = candidates[metric].orEmpty()
         val pinned = manualAssignments[metric]
+
+        // A connected strap owns heart rate outright - see [heartRateCandidates].
+        val bySource = if (metric == MetricKind.HEART_RATE && pinned == null) {
+            heartRateCandidates(allCandidates)
+        } else {
+            allCandidates
+        }
+
         val winner = if (pinned != null) {
             bySource.values
                 .asSequence()
@@ -371,6 +444,11 @@ internal class MetricFusion(
             if (previous != null) {
                 selectedByMetric.remove(metric)
                 clearProjection(metric)
+            }
+            // A strap that has gone quiet must read as "no pulse", not as the
+            // machine's number and not as the strap's last one held forever.
+            if (metric == MetricKind.HEART_RATE && bySource.isNotEmpty()) {
+                projectStaleHeartRate()
             }
             return
         }
@@ -516,6 +594,7 @@ internal class MetricFusion(
         when (sample.metric) {
             MetricKind.HEART_RATE -> {
                 val bpm = value.roundToInt()
+                heartRateStaleMarked = false
                 if (sample.sourceClass == MetricSourceClass.HRM) {
                     state.setExternalHeartRate(bpm)
                     state.updateLastExternalAt(arrivalAt)

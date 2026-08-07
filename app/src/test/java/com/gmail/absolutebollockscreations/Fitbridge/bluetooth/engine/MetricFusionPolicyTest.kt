@@ -93,8 +93,19 @@ class MetricFusionPolicyTest {
         fusion.submit(sample(MetricKind.HEART_RATE, 150.0, 1_000, hrm, MetricSourceClass.HRM, eventMs = 99_999))
         fusion.submit(sample(MetricKind.HEART_RATE, 130.0, 4_999, ftms, MetricSourceClass.FTMS, eventMs = 1))
         assertEquals(hrm, fusion.selectedSource(MetricKind.HEART_RATE))
+
+        // This used to assert that the machine took over once the strap aged out
+        // of the 4 s window. That was the reported 2026-08-06 defect rather than
+        // the intended policy: a strap missing one or two notifications handed
+        // heart rate to a machine reading 120-140 against a strap's 54-58, and
+        // the graph alternated between them. A connected strap now owns the
+        // metric, and its going quiet reads as no pulse rather than as the
+        // machine's number.
         fusion.refresh(5_001)
-        assertEquals(ftms, fusion.selectedSource(MetricKind.HEART_RATE))
+        assertNull(
+            "a stale strap must not hand heart rate to the machine",
+            fusion.selectedSource(MetricKind.HEART_RATE),
+        )
 
         fusion.submit(sample(MetricKind.POWER, 210.0, 10_000, ftms, MetricSourceClass.FTMS, eventMs = Long.MAX_VALUE))
         fusion.refresh(13_001)
@@ -113,8 +124,19 @@ class MetricFusionPolicyTest {
         fusion.refresh(10_000)
         assertEquals(hrm, fusion.selectedSource(MetricKind.HEART_RATE))
 
+        // Clearing the pin resumes automatic selection. That no longer means the
+        // machine wins: with a strap connected, automatic selection considers
+        // only the strap, and this one is stale.
         fusion.clearAssignment(MetricKind.HEART_RATE, nowMs = 10_000)
-        assertEquals(ftms, fusion.selectedSource(MetricKind.HEART_RATE))
+        assertNull(
+            "automatic selection must not fall back to the machine",
+            fusion.selectedSource(MetricKind.HEART_RATE),
+        )
+
+        // Proving selection genuinely resumed rather than merely staying empty:
+        // a fresh strap reading is picked up without another assign().
+        fusion.submit(sample(MetricKind.HEART_RATE, 146.0, 10_100, hrm, MetricSourceClass.HRM))
+        assertEquals(hrm, fusion.selectedSource(MetricKind.HEART_RATE))
     }
 
     @Test

@@ -1162,6 +1162,20 @@ class BtEngineState : HrmStateSink {
      */
 
     /** Append a heart rate sample (bpm); updates averageHeartRate and series. */
+    /**
+     * Adds a point to the heart-rate graph without touching the readout, the
+     * running total or the average.
+     *
+     * Exists for the strap-dropout marker: a gap should be visible on the chart,
+     * but it is missing data rather than a measured zero. Folding it into the
+     * average would drag a session's mean down because a chest strap lost
+     * contact for a few seconds.
+     */
+    fun appendHeartRateSeriesPoint(value: Double, tsMillis: Long = System.currentTimeMillis()) {
+        _hrSeries.value = _hrSeries.value + TimedSample(tsMillis, value)
+        Timber.tag(TAG).v("appendHeartRateSeriesPoint value=%.0f seriesSize=%d", value, _hrSeries.value.size)
+    }
+
     fun appendHeartRateSample(bpm: Int, tsMillis: Long = System.currentTimeMillis()) {
         _heartRate.value = bpm
         hrSum += bpm
