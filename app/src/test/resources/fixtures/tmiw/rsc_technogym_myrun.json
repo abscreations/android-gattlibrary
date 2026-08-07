@@ -1,0 +1,32 @@
+{
+  "family": "rsc.technogym_myrun",
+  "source": "TMIW@85f2ee7 test/technogym_myrun_rsc_test.dart",
+  "source_commit": "85f2ee7520705c99ce81db7355df1be7f4b72ecf",
+  "captured": "2026-08-06",
+  "acquisition": "transcribed",
+  "acquisition_note": "Transcribed rather than generated. Plan 5.1 classifies TMIW as generate-only because several of its tests build packets with Random() and assert against descriptor internals; the four RSC corpora do neither. They are literal TestPair lists, so transcription preserves the language-neutral guarantee D4 asks for at a fraction of the cost.",
+  "characteristic": "00002a53-0000-1000-8000-00805f9b34fb",
+  "note": "Technogym MyRun treadmill. Flags 0x02: total distance without stride length, which shifts the distance field four octets earlier than the technogym_run layout.",
+  "cases": [
+    {
+      "name": "packet-0",
+      "packet": [
+        2,
+        185,
+        0,
+        51,
+        138,
+        2,
+        0,
+        0
+      ],
+      "expect": {
+        "speedKph": 2.6015625,
+        "cadenceStepsPerMinute": 51,
+        "strideLengthMetres": null,
+        "totalDistanceMetres": 65.0,
+        "walking": false
+      }
+    }
+  ]
+}

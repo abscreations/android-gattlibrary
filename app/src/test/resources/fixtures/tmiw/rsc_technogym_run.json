@@ -1,0 +1,56 @@
+{
+  "family": "rsc.technogym_run",
+  "source": "TMIW@85f2ee7 test/technogym_run_rsc_test.dart",
+  "source_commit": "85f2ee7520705c99ce81db7355df1be7f4b72ecf",
+  "captured": "2026-08-06",
+  "acquisition": "transcribed",
+  "acquisition_note": "Transcribed rather than generated. Plan 5.1 classifies TMIW as generate-only because several of its tests build packets with Random() and assert against descriptor internals; the four RSC corpora do neither. They are literal TestPair lists, so transcription preserves the language-neutral guarantee D4 asks for at a fraction of the cost.",
+  "characteristic": "00002a53-0000-1000-8000-00805f9b34fb",
+  "note": "Technogym Run treadmill. Flags 0x03: both optional fields present. TMIW skips stride length; FitBridge decodes it, so the strideLengthMetres expectations here are FitBridge-authored rather than transcribed.",
+  "cases": [
+    {
+      "name": "packet-0",
+      "packet": [
+        3,
+        92,
+        3,
+        161,
+        130,
+        0,
+        246,
+        9,
+        0,
+        0
+      ],
+      "expect": {
+        "speedKph": 12.09375,
+        "cadenceStepsPerMinute": 161,
+        "strideLengthMetres": 1.3,
+        "totalDistanceMetres": 255.0,
+        "walking": false
+      }
+    },
+    {
+      "name": "packet-1",
+      "packet": [
+        3,
+        185,
+        1,
+        133,
+        94,
+        0,
+        13,
+        12,
+        0,
+        0
+      ],
+      "expect": {
+        "speedKph": 6.2015625000000005,
+        "cadenceStepsPerMinute": 133,
+        "strideLengthMetres": 0.94,
+        "totalDistanceMetres": 308.5,
+        "walking": false
+      }
+    }
+  ]
+}

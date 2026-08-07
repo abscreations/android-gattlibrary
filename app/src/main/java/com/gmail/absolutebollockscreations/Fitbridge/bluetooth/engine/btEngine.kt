@@ -638,6 +638,13 @@ class BtEngine internal constructor(
         if (BtEngineState.BtServiceType.HeartRate in services) {
             addAll(handlerFactory.createForConnection(ProtocolKey.HRM))
         }
+        // Independent of the HRM branch on purpose: a running strap advertises
+        // both 0x180D and 0x1814 on one connection, and both handlers must
+        // activate. Phase 0.5 made that possible; this is the first device
+        // family that actually needs it.
+        if (BtEngineState.BtServiceType.RSC in services) {
+            addAll(handlerFactory.createForConnection(ProtocolKey.RSC))
+        }
     }.distinctBy { handler -> handler::class.java.name to handler.primaryServices }
 
     private fun recoveryTarget(
@@ -1060,6 +1067,7 @@ class BtEngine internal constructor(
         }
         val protocol = when (serviceType) {
             BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
+            BtEngineState.BtServiceType.RSC -> ProtocolKey.RSC
             else -> return@guardConnectPerm false
         }
         val activated = state.connectionRegistry.activateHandlerOn(

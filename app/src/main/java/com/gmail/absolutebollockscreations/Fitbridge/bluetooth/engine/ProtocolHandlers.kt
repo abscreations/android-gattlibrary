@@ -39,6 +39,7 @@ internal data class ProtocolKey(val value: String) {
     companion object {
         val FTMS = ProtocolKey("ftms")
         val HRM = ProtocolKey("hrm")
+        val RSC = ProtocolKey("rsc")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -66,6 +67,7 @@ internal class HandlerFactory(
             val builders = mutableMapOf<ProtocolKey, () -> BtEngineGattCore.ProtocolHandler>(
                 ProtocolKey.FTMS to ::FtmsProtocolHandler,
                 ProtocolKey.HRM to ::HrmProtocolHandler,
+                ProtocolKey.RSC to ::RscProtocolHandler,
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)
