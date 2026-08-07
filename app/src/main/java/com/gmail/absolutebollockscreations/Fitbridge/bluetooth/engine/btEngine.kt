@@ -645,15 +645,13 @@ class BtEngine internal constructor(
         machineConnection: Boolean,
     ): List<BtEngineGattCore.ProtocolHandler> = buildList {
         if (machineConnection) addAll(handlerFactory.createForConnection(ProtocolKey.FTMS))
-        if (BtEngineState.BtServiceType.HeartRate in services) {
-            addAll(handlerFactory.createForConnection(ProtocolKey.HRM))
-        }
-        // Independent of the HRM branch on purpose: a running strap advertises
-        // both 0x180D and 0x1814 on one connection, and both handlers must
-        // activate. Phase 0.5 made that possible; this is the first device
-        // family that actually needs it.
-        if (BtEngineState.BtServiceType.RSC in services) {
-            addAll(handlerFactory.createForConnection(ProtocolKey.RSC))
+        // One handler per assigned service that has one, with no per-service
+        // branches: a running strap advertises both 0x180D and 0x1814 on one
+        // connection and both must activate, which Phase 0.5 made possible and
+        // Phase 1 was the first family to need. See [sensorProtocolFor] for why
+        // the mapping is not repeated here.
+        services.mapNotNull(::sensorProtocolFor).distinct().forEach { protocol ->
+            addAll(handlerFactory.createForConnection(protocol))
         }
     }.distinctBy { handler -> handler::class.java.name to handler.primaryServices }
 
@@ -884,7 +882,29 @@ class BtEngine internal constructor(
                     activateServiceAtAddress(address, serviceType)
                 }
             }
-            if (assignedServices.any { it != BtEngineState.BtServiceType.HeartRate }) {
+            // A new sensor link is admissible when a handler exists that can decode
+            // the service being asked for.
+            //
+            // This used to read `assignedServices.any { it != HeartRate } -> false`,
+            // dating from when HRM was the only sensor handler. It outlived that:
+            // Phase 1 added RSC to the picker, and selecting a footpod that was not
+            // already connected returned false with no log line at all. Same-link
+            // activation worked - the branch above - so adding RSC to an
+            // already-connected strap succeeded while a dedicated footpod was
+            // silently refused. That is the exact §4a case, failing in the exact
+            // half that §4a exists to protect, observed 2026-08-07 with a Zwift
+            // RunPod.
+            //
+            // Deriving the gate from the handler factory instead of naming a
+            // service means Phases 2 and 3 open CSC and CPS by registering their
+            // handlers, with nothing here to remember to change.
+            val handlers = handlersForServices(assignedServices, machineConnection = false)
+            if (handlers.isEmpty()) {
+                Timber.tag(BtEngineState.TAG).w(
+                    "connectSensor refused: no handler is registered for %s on %s",
+                    assignedServices,
+                    address,
+                )
                 return@guardConnectPerm false
             }
             stopScan()
@@ -893,10 +913,7 @@ class BtEngine internal constructor(
                 Timber.tag(BtEngineState.TAG).w("connectSensor: invalid address %s", address)
                 return@guardConnectPerm false
             }
-            val connection = state.openAdditionalSensorContext(
-                address,
-                handlers = handlersForServices(assignedServices, machineConnection = false),
-            )
+            val connection = state.openAdditionalSensorContext(address, handlers = handlers)
             if (BtEngineState.BtServiceType.CSC in assignedServices) {
                 state.setCscRoleCapability(connection, candidateCscCapability)
             }
@@ -1075,11 +1092,7 @@ class BtEngine internal constructor(
             )
             return@guardConnectPerm false
         }
-        val protocol = when (serviceType) {
-            BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
-            BtEngineState.BtServiceType.RSC -> ProtocolKey.RSC
-            else -> return@guardConnectPerm false
-        }
+        val protocol = sensorProtocolFor(serviceType) ?: return@guardConnectPerm false
         val activated = state.connectionRegistry.activateHandlerOn(
             address,
             handlerFactory.create(protocol),

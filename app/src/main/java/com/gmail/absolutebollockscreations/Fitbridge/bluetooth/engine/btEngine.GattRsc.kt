@@ -10,6 +10,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.Debugging
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_RSC_FEATURE
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_RSC_MEASUREMENT
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_RSC_SERVICE
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_SENSOR_LOCATION
 import java.util.UUID
 import timber.log.Timber
 
@@ -43,6 +44,7 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
     override val extraCharacteristics: Set<UUID> = setOf(
         UUID_RSC_MEASUREMENT,
         UUID_RSC_FEATURE,
+        UUID_SENSOR_LOCATION,
     )
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -88,6 +90,14 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // decodes correctly.
         service.getCharacteristic(UUID_RSC_FEATURE)?.let {
             engine.pushRead(context, UUID_RSC_FEATURE)
+        }
+
+        // Sensor Location says whether this device is on a foot or on a torso, and
+        // plan §4.1's "RSC beats FTMS for running speed" is only true for the
+        // former. Best-effort like the feature read: a device that declines it
+        // keeps its priority rather than losing it for staying quiet.
+        service.getCharacteristic(UUID_SENSOR_LOCATION)?.let {
+            engine.pushRead(context, UUID_SENSOR_LOCATION)
         }
 
         return true
@@ -151,6 +161,27 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
         value: ByteArray,
         status: Int,
     ) {
+        if (ch.uuid == UUID_SENSOR_LOCATION) {
+            if (status != BluetoothGatt.GATT_SUCCESS || value.isEmpty()) {
+                Timber.tag(BtEngineState.TAG).i(
+                    "RSC sensor location unavailable on %s (status=%d len=%d); " +
+                        "speed priority falls back to the provisional rule",
+                    gatt.device?.address,
+                    status,
+                    value.size,
+                )
+                return
+            }
+            val code = value[0].toInt() and 0xFF
+            Timber.tag(BtEngineState.TAG).i(
+                "RSC sensor location on %s: %s (foot-mounted=%s)",
+                gatt.device?.address,
+                RscMeasurement.describeSensorLocation(code),
+                RscMeasurement.isFootMounted(code)?.toString() ?: "undetermined",
+            )
+            return
+        }
+
         if (ch.uuid != UUID_RSC_FEATURE) return
         if (status != BluetoothGatt.GATT_SUCCESS || value.size < 2) {
             Timber.tag(BtEngineState.TAG).d(

@@ -77,6 +77,13 @@ class FtmsPeripheralAdvertiser(
     private val context: Context,
     private val controlSink: FtmsControlSink,
     private val listener: Listener,
+    /**
+     * Every address FitBridge currently holds a **central-role** link to, read
+     * live on each admission decision.
+     *
+     * A snapshot cannot answer this. See [isPhantomDownstream].
+     */
+    private val centralRoleAddresses: () -> Set<String> = { emptySet() },
 ) {
 
     interface Listener {
@@ -1334,11 +1341,20 @@ class FtmsPeripheralAdvertiser(
     }
 
     /**
-     * A device we must never treat as a downstream client: the upstream machine,
-     * or anything that was already connected when we opened the server.
+     * A device we must never treat as a downstream client.
+     *
+     * See [isPhantomDownstream] for what counts and why the live central-role set
+     * is consulted rather than only the snapshot taken at server-open.
      */
-    private fun isExcluded(device: BluetoothDevice): Boolean =
-        isUpstream(device) || excludedAddresses.contains(addressKey(device))
+    private fun isExcluded(device: BluetoothDevice): Boolean = isPhantomDownstream(
+        deviceAddress = device.address,
+        upstreamAddress = upstreamAddress,
+        seededExclusions = excludedAddresses,
+        centralRoleAddresses = runCatching(centralRoleAddresses).getOrElse { failure ->
+            Timber.tag(TAG).w(failure, "could not read central-role addresses; admitting on snapshot only")
+            emptySet()
+        },
+    )
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun seedExcludedAddresses(manager: BluetoothManager) {
@@ -1789,3 +1805,56 @@ internal fun shouldPinGarminConnection(
 
 /** Garmin public-address prefix observed in the failing Connect IQ capture. */
 private val GARMIN_PUBLIC_ADDRESS_PREFIXES = setOf("38:F9:F5")
+
+/**
+ * Whether a device reported by the GATT server is a phantom rather than a client.
+ *
+ * ### What Android does, and why it needs undoing
+ *
+ * `BluetoothGattServer` reports a connection callback for *any* device linked to
+ * this phone, including devices FitBridge itself connected to as a **central**. A
+ * treadmill or a heart-rate strap therefore arrives looking exactly like a watch
+ * that wants our data. Admitting one costs a client slot, pauses advertising
+ * while we wait for an engagement that will never come, and locks out the real
+ * downstream client until a watchdog gives up on it.
+ *
+ * ### The defect this fixes (session of 2026-08-07, 15:59)
+ *
+ * Exclusion used to be two things, both fixed at a moment in time: a single
+ * `upstreamAddress` - only ever the machine - and a snapshot of connected devices
+ * taken **before** opening the server. Sensors are connected by the user *after*
+ * the server opens, so they were in neither.
+ *
+ * A Garmin HRM-Pro connected five seconds after the server opened, dropped, and
+ * reconnected. The reconnection was admitted as a downstream client:
+ *
+ * ```
+ * 16:00:04.150  connection request #f0c438; pausing advertising (awaiting engagement)
+ * 16:01:19.162  engagement watchdog fired #f0c438 after 75000ms
+ * ```
+ *
+ * Seventy-five of the session's ninety-five seconds with no advertisement, so a
+ * watch scanning in that window found nothing. `#f0c438` is the address hash of
+ * the strap FitBridge was itself reading.
+ *
+ * ### Why all three inputs are kept
+ *
+ * - [centralRoleAddresses] is read live, so a link opened at any point during the
+ *   session is covered. This is the fix; the registry lists a device from the
+ *   moment its context opens, which is before the server callback can fire.
+ * - [seededExclusions] still covers devices connected by *other apps* before we
+ *   opened, which FitBridge's own registry knows nothing about.
+ * - [upstreamAddress] is retained because it is set explicitly by the controller
+ *   and does not depend on the registry having caught up.
+ */
+internal fun isPhantomDownstream(
+    deviceAddress: String?,
+    upstreamAddress: String?,
+    seededExclusions: Set<String>,
+    centralRoleAddresses: Set<String>,
+): Boolean {
+    val key = deviceAddress?.lowercase()?.takeIf { it.isNotBlank() } ?: return false
+    if (upstreamAddress?.lowercase() == key) return true
+    if (seededExclusions.any { it.lowercase() == key }) return true
+    return centralRoleAddresses.any { it.lowercase() == key }
+}

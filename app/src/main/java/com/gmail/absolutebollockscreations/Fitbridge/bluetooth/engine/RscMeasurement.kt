@@ -137,6 +137,44 @@ internal object RscMeasurement {
         return if (named.isEmpty()) "none advertised" else named.joinToString(", ")
     }
 
+    /**
+     * Where the sensor is mounted, from `0x2A5D`.
+     *
+     * The enumeration is shared with CSC and CPS, so most values are cycling
+     * positions that cannot occur on a running sensor. Only the four that can are
+     * named here; anything else is reported by number rather than guessed at.
+     */
+    fun describeSensorLocation(code: Int): String = when (code) {
+        0 -> "other"
+        1 -> "top of shoe"
+        2 -> "in shoe"
+        3 -> "hip"
+        14 -> "chest"
+        else -> "code $code"
+    }
+
+    /**
+     * Whether a sensor at [code] measures the foot directly.
+     *
+     * ### Why this exists
+     *
+     * Plan §4.1 ranks RSC above FTMS for running speed, on the assumption that RSC
+     * means a foot pod - which measures the runner and beats a treadmill's declared
+     * belt speed. A chest strap reports the same characteristic while inferring
+     * speed from torso accelerometry, and it is not the better source: hardware
+     * session 948b recorded a Garmin HRM-Pro reporting 19.11 km/h at a cadence of
+     * 49, which is 6.5 m per cadence unit and impossible for a human.
+     *
+     * `null` means the device did not say. That is not the same as "chest": a
+     * device that declines the read must not lose priority for it, so callers fall
+     * back to the provisional rule in `MetricFusion.speedCandidates`.
+     */
+    fun isFootMounted(code: Int): Boolean? = when (code) {
+        1, 2 -> true
+        3, 14 -> false
+        else -> null
+    }
+
     private fun u16(b: ByteArray, at: Int): Int =
         (b[at].toInt() and 0xFF) or ((b[at + 1].toInt() and 0xFF) shl 8)
 

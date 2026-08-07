@@ -44,6 +44,41 @@ internal data class ProtocolKey(val value: String) {
     }
 }
 
+/**
+ * The single place that says which BLE service a **sensor** handler exists for.
+ *
+ * ### Why this is a function rather than three `when` blocks
+ *
+ * Until 2026-08-07 the answer was encoded in three places: the handler list built
+ * at connect time, the protocol lookup used for same-link activation, and a guard
+ * in `connectSensor` that refused any new sensor link whose services were not all
+ * `HeartRate`. The first two gained RSC in Phase 1. The third did not, because it
+ * named a service instead of asking a question.
+ *
+ * The result was a split that no test caught and that reads as absurd once stated:
+ * adding RSC to an **already connected** strap worked, while connecting a dedicated
+ * footpod - the better sensor, and the entire point of §4a - returned false with no
+ * log line. Observed with a Zwift RunPod.
+ *
+ * Phases 2 and 3 open CSC and CPS by returning a key here and registering the
+ * handler in [HandlerFactory.standard]. There is no third place to remember.
+ *
+ * `null` means no sensor handler exists yet. `FTMS` is null on purpose: it is the
+ * machine role, admitted through the machine path, not the secondary-sensor path.
+ */
+internal fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): ProtocolKey? =
+    when (serviceType) {
+        BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
+        BtEngineState.BtServiceType.RSC -> ProtocolKey.RSC
+        // Phase 2 and Phase 3 respectively; no handler yet.
+        BtEngineState.BtServiceType.CSC,
+        BtEngineState.BtServiceType.Power,
+        // Not secondary sensors.
+        BtEngineState.BtServiceType.FTMS,
+        BtEngineState.BtServiceType.Glucose,
+        -> null
+    }
+
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
 internal class HandlerFactory(
     private val builders: Map<ProtocolKey, () -> BtEngineGattCore.ProtocolHandler>,

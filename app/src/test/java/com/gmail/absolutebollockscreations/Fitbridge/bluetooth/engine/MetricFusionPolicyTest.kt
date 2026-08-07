@@ -114,6 +114,178 @@ class MetricFusionPolicyTest {
     }
 
     @Test
+    fun `a sample that arrives mid-parse of another packet is not stale`() {
+        // Regression, hardware session 948b of 2026-08-07.
+        //
+        // An FTMS packet carries fifteen fields under one arrival stamp taken when
+        // the packet landed, and parsing it takes tens of milliseconds. A strap
+        // notification arriving in that window is stamped LATER than the packet
+        // being parsed. `submit` reselects with the submitting sample's own
+        // arrivalMs, so the strap's sample was in the future relative to "now",
+        // `isFresh` computed a negative age, and the `age >= 0` guard threw out a
+        // sample forty milliseconds old.
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val hrm = source(sensorConnection, MetricProtocol.HRM, 40)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 41)
+
+        // The machine's packet lands at 10_000 and the strap's at 10_014 - inside
+        // the parse. The machine's heart-rate field is submitted last, still
+        // carrying the packet's own 10_000 stamp.
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 10_014, hrm, MetricSourceClass.HRM))
+        val seriesBefore = state.hrSeries.value.size
+        fusion.submit(sample(MetricKind.HEART_RATE, 148.0, 10_000, ftms, MetricSourceClass.FTMS))
+
+        assertEquals(
+            "the strap is 14 ms old, not stale",
+            hrm,
+            fusion.selectedSource(MetricKind.HEART_RATE),
+        )
+        assertEquals(58, state.heartRate.value)
+        assertEquals(BtEngineState.HrSource.EXTERNAL_HRM, state.heartRateSource.value)
+        assertEquals(
+            "no dropout may be projected into the graph",
+            seriesBefore,
+            state.hrSeries.value.size,
+        )
+    }
+
+    @Test
+    fun `a genuinely silent strap still reads as a dropout`() {
+        // The counterpart to the test above: widening the freshness reference must
+        // not disable staleness. Nothing may arrive after the strap, or the newest
+        // evidence would carry the window along with it.
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val hrm = source(sensorConnection, MetricProtocol.HRM, 42)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, hrm, MetricSourceClass.HRM))
+        assertEquals(58, state.heartRate.value)
+
+        fusion.refresh(5_001)
+
+        assertNull(fusion.selectedSource(MetricKind.HEART_RATE))
+        assertNull(state.heartRate.value)
+        assertEquals(BtEngineState.HrSource.UNKNOWN, state.heartRateSource.value)
+        assertEquals(
+            "a real dropout is still marked with an explicit zero",
+            0.0,
+            state.hrSeries.value.last().v,
+            1e-9,
+        )
+    }
+
+    @Test
+    fun `machine packets do not drag a live strap out of the freshness window`() {
+        // The session-shaped case: the machine notifies at over 1 Hz for a minute
+        // while the strap notifies about every 0.75 s, and every machine packet
+        // re-runs selection. Five spurious zeros reached the graph in ninety
+        // seconds of real hardware; none may reach it here.
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val hrm = source(sensorConnection, MetricProtocol.HRM, 43)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 44)
+
+        var t = 1_000L
+        repeat(40) {
+            // Machine packet lands, then the strap lands 14 ms into its parse, then
+            // the machine's heart-rate field is submitted with the older stamp.
+            val machineArrival = t
+            fusion.submit(sample(MetricKind.HEART_RATE, 58.0, machineArrival + 14, hrm, MetricSourceClass.HRM))
+            fusion.submit(sample(MetricKind.HEART_RATE, 148.0, machineArrival, ftms, MetricSourceClass.FTMS))
+            t += 750
+        }
+
+        assertEquals(hrm, fusion.selectedSource(MetricKind.HEART_RATE))
+        assertEquals(58, state.heartRate.value)
+        assertNull(
+            "the machine's heart rate must never reach the graph",
+            state.hrSeries.value.firstOrNull { it.v > 100.0 },
+        )
+        assertNull(
+            "and neither may a spurious dropout",
+            state.hrSeries.value.firstOrNull { it.v == 0.0 },
+        )
+    }
+
+    @Test
+    fun `a foot pod keeps priority over a machine, as section 4-1 requires`() {
+        // The half of §4.1 that must survive: RSC > FTMS for running speed. A pod
+        // with no heart rate on its link is a foot pod, and it still wins.
+        val fusion = MetricFusion(BtEngineState())
+        val pod = source(sensorConnection, MetricProtocol.RSC, 50)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 51)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.submit(sample(MetricKind.SPEED, 3.0, 1_000, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.SPEED, 11.5, 1_010, pod, MetricSourceClass.RSC))
+
+        assertEquals(pod, fusion.selectedSource(MetricKind.SPEED))
+    }
+
+    @Test
+    fun `a torso strap stands aside from speed while a machine reports`() {
+        // Session 948b: one link carrying both HRM and RSC - a chest strap by
+        // construction, since a foot pod does not measure heart rate - reported
+        // 19.11 km/h at cadence 49 beside a treadmill steady at 3.00.
+        val fusion = MetricFusion(BtEngineState())
+        val strapLink = ConnectionId("AA:00:00:00:00:09", 4)
+        val strapHrm = MetricSourceId(strapLink, MetricProtocol.HRM, UUID(0, 52))
+        val strapRsc = MetricSourceId(strapLink, MetricProtocol.RSC, UUID(0, 53))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 54)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, strapHrm, MetricSourceClass.HRM))
+        fusion.submit(sample(MetricKind.SPEED, 3.0, 1_005, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.SPEED, 19.11, 1_010, strapRsc, MetricSourceClass.RSC))
+
+        assertEquals(ftms, fusion.selectedSource(MetricKind.SPEED))
+
+        // Cadence is untouched: the treadmill does not report it at all, and a
+        // torso strap counts steps perfectly well even when it cannot measure pace.
+        fusion.submit(sample(MetricKind.CADENCE, 49.0, 1_011, strapRsc, MetricSourceClass.RSC))
+        assertEquals(strapRsc, fusion.selectedSource(MetricKind.CADENCE))
+    }
+
+    @Test
+    fun `a torso strap supplies speed again once the machine is gone`() {
+        // Setting aside must not strand the metric. With no machine candidate the
+        // strap's estimate is better than nothing.
+        val fusion = MetricFusion(BtEngineState())
+        val strapLink = ConnectionId("AA:00:00:00:00:0A", 5)
+        val strapHrm = MetricSourceId(strapLink, MetricProtocol.HRM, UUID(0, 55))
+        val strapRsc = MetricSourceId(strapLink, MetricProtocol.RSC, UUID(0, 56))
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, strapHrm, MetricSourceClass.HRM))
+        fusion.submit(sample(MetricKind.SPEED, 5.2, 1_010, strapRsc, MetricSourceClass.RSC))
+
+        assertEquals(strapRsc, fusion.selectedSource(MetricKind.SPEED))
+    }
+
+    @Test
+    fun `a manual pin overrides the torso-strap exclusion`() {
+        val fusion = MetricFusion(BtEngineState())
+        val strapLink = ConnectionId("AA:00:00:00:00:0B", 6)
+        val strapHrm = MetricSourceId(strapLink, MetricProtocol.HRM, UUID(0, 57))
+        val strapRsc = MetricSourceId(strapLink, MetricProtocol.RSC, UUID(0, 58))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 59)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, strapHrm, MetricSourceClass.HRM))
+        fusion.submit(sample(MetricKind.SPEED, 3.0, 1_005, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.SPEED, 19.11, 1_010, strapRsc, MetricSourceClass.RSC))
+        assertEquals(ftms, fusion.selectedSource(MetricKind.SPEED))
+
+        fusion.assign(MetricKind.SPEED, strapRsc, 1_011)
+        assertEquals(
+            "an explicit choice is not second-guessed by a heuristic",
+            strapRsc,
+            fusion.selectedSource(MetricKind.SPEED),
+        )
+    }
+
+    @Test
     fun `manual pin survives staleness and clear resumes automatic selection`() {
         val fusion = MetricFusion(BtEngineState())
         val hrm = source(sensorConnection, MetricProtocol.HRM, 30)

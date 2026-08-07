@@ -393,6 +393,58 @@ internal class MetricFusion(
     }
 
     /**
+     * Speed candidates, with torso-mounted RSC set aside while a machine reports.
+     *
+     * ### Why this is not simply "the machine wins"
+     *
+     * Plan §4.1, accepted per D7, ranks **RSC above FTMS** for running speed, and
+     * that is right when RSC means a foot pod: a Stryd or a Zwift RunPod measures
+     * the runner, where a treadmill reports the speed it was told to run at. This
+     * does not overturn that.
+     *
+     * What it excludes is a *chest strap* reporting the same characteristic while
+     * inferring speed from torso accelerometry. Hardware session 948b of
+     * 2026-08-07 recorded a Garmin HRM-Pro reporting 19.11 km/h at a cadence of 49
+     * - 6.5 m per cadence unit, roughly triple a sprinter's stride - against a
+     * treadmill steady at 3.00 km/h. Published speed alternated between the two.
+     *
+     * ### The provisional test, and why it is provisional
+     *
+     * A device that reports **both** RSC and HRM on one physical link is worn on
+     * the torso by construction: a foot pod does not measure heart rate. That is
+     * the rule implemented here, and it is a proxy.
+     *
+     * The real discriminator is Sensor Location, `0x2A5D`, which distinguishes
+     * "in shoe" from "chest" directly. [RscProtocolHandler] now reads it and logs
+     * what each device answers. **Once there is evidence of what real devices
+     * report, this should be replaced by that read** - the proxy misclassifies a
+     * hypothetical foot pod that also exposes HRM, and says nothing at all about a
+     * hip-mounted sensor. See the implementation log entry for 2026-08-07.
+     *
+     * Set aside, not down-ranked: the heart-rate lesson was that ranking alone
+     * loses to a freshness gap, and the loser then takes the metric silently.
+     */
+    private fun speedCandidates(
+        all: Map<MetricCandidateKey, MetricSample>,
+    ): Map<MetricCandidateKey, MetricSample> {
+        if (all.values.none { it.sourceClass == MetricSourceClass.FTMS }) return all
+
+        val torsoLinks = candidates[MetricKind.HEART_RATE].orEmpty().values
+            .asSequence()
+            .filter { it.sourceClass == MetricSourceClass.HRM }
+            .mapTo(mutableSetOf()) { it.sourceId.connectionId }
+        if (torsoLinks.isEmpty()) return all
+
+        val kept = all.filterValues { sample ->
+            sample.sourceClass != MetricSourceClass.RSC ||
+                sample.sourceId.connectionId !in torsoLinks
+        }
+        // Never strand the metric: if setting the strap aside would leave nothing,
+        // its estimate is still better than no speed at all.
+        return kept.ifEmpty { all }
+    }
+
+    /**
      * A connected strap has gone silent past its freshness window.
      *
      * The graph gets an explicit 0 so the gap is visible as a gap rather than as
@@ -421,11 +473,40 @@ internal class MetricFusion(
         val allCandidates = candidates[metric].orEmpty()
         val pinned = manualAssignments[metric]
 
-        // A connected strap owns heart rate outright - see [heartRateCandidates].
-        val bySource = if (metric == MetricKind.HEART_RATE && pinned == null) {
-            heartRateCandidates(allCandidates)
-        } else {
-            allCandidates
+        // Freshness is measured from the newest evidence in hand, not from the
+        // packet that happened to trigger this pass.
+        //
+        // ### The defect this fixes (observed 2026-08-07, session 948b)
+        //
+        // `submit` calls `reselect(metric, sample.arrivalMs)`. An FTMS packet
+        // carries fifteen fields under **one** arrival stamp taken when the packet
+        // landed, and parsing it takes tens of milliseconds. A strap notification
+        // arriving in that window is stamped later than the packet being parsed.
+        // When the packet finally submits its heart-rate field, the strap's sample
+        // is in the future relative to `nowMs`, `isFresh` computes a negative age,
+        // and the `age >= 0` guard rejects a sample that is forty milliseconds old.
+        //
+        // Selection then found no fresh candidate at all and projected a dropout:
+        // five spurious `appendHeartRateSeriesPoint(0.0)` calls in ninety seconds,
+        // against a strap whose largest gap all session was 1.50 s. The 2026-08-06
+        // HRM lockout stopped the machine's number being published but turned the
+        // graph spikes into zeros rather than removing them.
+        //
+        // Taking the maximum is the whole fix: a sample cannot be stale relative to
+        // an instant before it existed. The `age >= 0` guard is kept for genuinely
+        // corrupt stamps, which this no longer misclassifies.
+        val effectiveNow = maxOf(nowMs, allCandidates.values.maxOfOrNull { it.arrivalMs } ?: nowMs)
+
+        // A manual pin overrides every automatic exclusion below: an explicit user
+        // choice is not something to second-guess with a heuristic.
+        val bySource = when {
+            pinned != null -> allCandidates
+            // A connected strap owns heart rate outright - see [heartRateCandidates].
+            metric == MetricKind.HEART_RATE -> heartRateCandidates(allCandidates)
+            // Torso-mounted RSC stands aside for a machine - see [speedCandidates].
+            metric == MetricKind.SPEED || metric == MetricKind.AVERAGE_SPEED ->
+                speedCandidates(allCandidates)
+            else -> allCandidates
         }
 
         val winner = if (pinned != null) {
@@ -436,7 +517,7 @@ internal class MetricFusion(
         } else {
             bySource.values
                 .asSequence()
-                .filter { isFresh(it, nowMs) }
+                .filter { isFresh(it, effectiveNow) }
                 .minWithOrNull(sampleComparator(metric))
         }
         val previous = selectedByMetric[metric]

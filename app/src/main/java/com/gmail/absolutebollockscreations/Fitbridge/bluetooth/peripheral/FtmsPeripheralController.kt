@@ -126,6 +126,13 @@ class FtmsPeripheralController(
         context = context,
         controlSink = controlSink,
         listener = this,
+        // Read live rather than snapshotted: the user connects sensors after the
+        // GATT server is already open, and one of those reconnecting used to be
+        // admitted as a downstream client. The registry lists a device from the
+        // moment its context opens, which precedes any server callback for it.
+        centralRoleAddresses = {
+            engineState.connectedDevices.value.mapTo(mutableSetOf()) { it.address.lowercase() }
+        },
     )
     private val notifier = FtmsPeripheralNotifier(advertiser, store)
     private val pump = EngineMetricPump(engineState, store) { profile }
