@@ -209,6 +209,134 @@ class MetricFusionPolicyTest {
     }
 
     @Test
+    fun `a session boundary does not hand heart rate back to the machine`() {
+        // Regression, session 0b04 of 2026-08-07. resetSessionState clears every
+        // candidate, and it runs on both startSession and endSession - neither of
+        // which unclips the strap. The machine notifies faster, so it won the
+        // first sample of each new session:
+        //   16:17:17.095  appendHeartRateSample bpm=145 avg=145 seriesSize=1
+        //   16:17:17.521  heartRateSource UNKNOWN → EXTERNAL_HRM  bpm=63
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val hrm = source(sensorConnection, MetricProtocol.HRM, 60)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 61)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, hrm, MetricSourceClass.HRM))
+        assertEquals(58, state.heartRate.value)
+
+        fusion.startSession(FusionPersona.RUN, 2_000)
+
+        // The machine's packet arrives first after the boundary, as it always does.
+        fusion.submit(sample(MetricKind.HEART_RATE, 145.0, 2_100, ftms, MetricSourceClass.FTMS))
+        assertNull(
+            "the machine must not win the first sample of a session",
+            fusion.selectedSource(MetricKind.HEART_RATE),
+        )
+        assertNull(state.heartRate.value)
+        assertNull(
+            "and its number must not reach the graph",
+            state.hrSeries.value.firstOrNull { it.v > 100.0 },
+        )
+
+        // The strap reclaims it on its next packet, as it did in the log.
+        fusion.submit(sample(MetricKind.HEART_RATE, 63.0, 2_400, hrm, MetricSourceClass.HRM))
+        assertEquals(hrm, fusion.selectedSource(MetricKind.HEART_RATE))
+        assertEquals(63, state.heartRate.value)
+    }
+
+    @Test
+    fun `the machine still supplies heart rate before any strap has been seen`() {
+        // The exclusion must not become "no machine heart rate, ever". The seconds
+        // between starting a session and clipping a strap on are not a fault.
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 62)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 145.0, 1_000, ftms, MetricSourceClass.FTMS))
+
+        assertEquals(ftms, fusion.selectedSource(MetricKind.HEART_RATE))
+        assertEquals(145, state.heartRate.value)
+    }
+
+    @Test
+    fun `disconnecting the strap returns heart rate to the machine`() {
+        // Only a disconnect means the strap has gone, and it must actually work -
+        // otherwise the fix above would strand heart rate forever.
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val hrm = source(sensorConnection, MetricProtocol.HRM, 63)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 64)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, hrm, MetricSourceClass.HRM))
+        fusion.onDisconnected(sensorConnection, 1_100)
+        fusion.submit(sample(MetricKind.HEART_RATE, 145.0, 1_200, ftms, MetricSourceClass.FTMS))
+
+        assertEquals(ftms, fusion.selectedSource(MetricKind.HEART_RATE))
+        assertEquals(145, state.heartRate.value)
+    }
+
+    @Test
+    fun `sensor location decides speed priority, not the shared-link proxy`() {
+        // Session 0b04: the Zwift RunPod reports "top of shoe", the Garmin HRM-Pro
+        // reports "chest". A pod that also exposed heart rate would have been
+        // misclassified by the proxy alone; 0x2A5D gets it right.
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val podLink = ConnectionId("AA:00:00:00:00:0C", 7)
+        val podHrm = MetricSourceId(podLink, MetricProtocol.HRM, UUID(0, 65))
+        val podRsc = MetricSourceId(podLink, MetricProtocol.RSC, UUID(0, 66))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 67)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        // Shares a link with heart rate, so the proxy alone would set it aside.
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, podHrm, MetricSourceClass.HRM))
+        fusion.setRscMounting(podLink, footMounted = true)
+
+        fusion.submit(sample(MetricKind.SPEED, 3.0, 1_005, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.SPEED, 11.5, 1_010, podRsc, MetricSourceClass.RSC))
+
+        assertEquals(
+            "0x2A5D says foot, so §4.1 applies and the pod wins",
+            podRsc,
+            fusion.selectedSource(MetricKind.SPEED),
+        )
+    }
+
+    @Test
+    fun `a chest-mounted sensor stands aside even with no heart rate on its link`() {
+        // The converse: 0x2A5D reports chest, but the device does not expose HRM,
+        // so the proxy would have kept it. The read is authoritative.
+        val fusion = MetricFusion(BtEngineState())
+        val strapLink = ConnectionId("AA:00:00:00:00:0D", 8)
+        val strapRsc = MetricSourceId(strapLink, MetricProtocol.RSC, UUID(0, 68))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 69)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.setRscMounting(strapLink, footMounted = false)
+        fusion.submit(sample(MetricKind.SPEED, 3.0, 1_005, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.SPEED, 19.11, 1_010, strapRsc, MetricSourceClass.RSC))
+
+        assertEquals(ftms, fusion.selectedSource(MetricKind.SPEED))
+    }
+
+    @Test
+    fun `a device that declines sensor location falls back to the shared-link proxy`() {
+        val fusion = MetricFusion(BtEngineState())
+        val strapLink = ConnectionId("AA:00:00:00:00:0E", 9)
+        val strapHrm = MetricSourceId(strapLink, MetricProtocol.HRM, UUID(0, 70))
+        val strapRsc = MetricSourceId(strapLink, MetricProtocol.RSC, UUID(0, 71))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 72)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 1_000, strapHrm, MetricSourceClass.HRM))
+        fusion.setRscMounting(strapLink, footMounted = null)
+        fusion.submit(sample(MetricKind.SPEED, 3.0, 1_005, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.SPEED, 19.11, 1_010, strapRsc, MetricSourceClass.RSC))
+
+        assertEquals(ftms, fusion.selectedSource(MetricKind.SPEED))
+    }
+
+    @Test
     fun `a foot pod keeps priority over a machine, as section 4-1 requires`() {
         // The half of §4.1 that must survive: RSC > FTMS for running speed. A pod
         // with no heart rate on its link is a foot pod, and it still wins.

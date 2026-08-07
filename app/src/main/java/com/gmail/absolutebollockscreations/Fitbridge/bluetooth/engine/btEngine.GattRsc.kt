@@ -173,12 +173,19 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 return
             }
             val code = value[0].toInt() and 0xFF
+            val footMounted = RscMeasurement.isFootMounted(code)
             Timber.tag(BtEngineState.TAG).i(
                 "RSC sensor location on %s: %s (foot-mounted=%s)",
                 gatt.device?.address,
                 RscMeasurement.describeSensorLocation(code),
-                RscMeasurement.isFootMounted(code)?.toString() ?: "undetermined",
+                footMounted?.toString() ?: "undetermined",
             )
+            // Speed priority depends on this: plan §4.1 puts RSC above FTMS for
+            // running, which holds for a foot pod and not for a chest strap
+            // estimating pace from torso movement.
+            engine.state.connectionRegistry.contextForGatt(gatt)?.let { context ->
+                engine.metricFusion.setRscMounting(context.connectionId, footMounted)
+            }
             return
         }
 

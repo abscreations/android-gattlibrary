@@ -206,6 +206,55 @@ internal class MetricFusion(
     /** Whether the current strap dropout has already been marked in the series. */
     private var heartRateStaleMarked: Boolean = false
 
+    /**
+     * Links that have produced a heart-rate reading from a strap, kept independently
+     * of whether a candidate is currently held.
+     *
+     * ### Why candidate presence was the wrong test
+     *
+     * [heartRateCandidates] originally asked "does an HRM candidate exist?" and its
+     * comment argued that `onDisconnected` purges a source's candidates, so the
+     * question already meant "is a strap connected?".
+     *
+     * That was incomplete. `resetSessionState` also clears every candidate, and it
+     * runs on both [startSession] and [endSession] - neither of which unclips the
+     * strap from the user's chest. For the moment after each boundary no HRM
+     * candidate existed, so the machine was admitted, and because a treadmill
+     * notifies faster than a strap it won the first sample every time:
+     *
+     * ```
+     * 16:17:17.095  appendHeartRateSample bpm=145 avg=145 seriesSize=1
+     * 16:17:17.521  heartRateSource UNKNOWN → EXTERNAL_HRM
+     * 16:17:17.521  appendHeartRateSample bpm=63  avg=104 seriesSize=2
+     * ```
+     *
+     * Ten such samples in one session, each self-correcting within a second - but
+     * each one starts the graph and the session average on the machine's number.
+     *
+     * Cleared only by [onDisconnected], which is the event that actually means the
+     * strap has gone.
+     */
+    private val heartRateStrapLinks = mutableSetOf<ConnectionId>()
+
+    /**
+     * Where each RSC source is worn, from Sensor Location `0x2A5D`.
+     *
+     * `true` foot, `false` torso or hip, absent when the device did not say. See
+     * [speedCandidates].
+     */
+    private val rscFootMounted = mutableMapOf<ConnectionId, Boolean>()
+
+    /**
+     * Record what an RSC device reports for Sensor Location `0x2A5D`.
+     *
+     * Survives session boundaries for the same reason [heartRateStrapLinks] does:
+     * a session ending does not move the sensor.
+     */
+    fun setRscMounting(connectionId: ConnectionId, footMounted: Boolean?) = synchronized(lock) {
+        if (footMounted == null) rscFootMounted.remove(connectionId)
+        else rscFootMounted[connectionId] = footMounted
+    }
+
     fun submit(sample: MetricSample): FusionSubmission = synchronized(lock) {
         if (!isDomainValid(sample)) return@synchronized FusionSubmission.REJECTED_INVALID
         // §0.7a: every sample passes through here, so this is the one place that
@@ -222,6 +271,11 @@ internal class MetricFusion(
         val previous = bySource[candidateKey]
         if (previous != null && sample.arrivalMs < previous.arrivalMs) {
             return@synchronized FusionSubmission.REJECTED_STALE
+        }
+        if (sample.metric == MetricKind.HEART_RATE &&
+            sample.sourceClass == MetricSourceClass.HRM
+        ) {
+            heartRateStrapLinks += sample.sourceId.connectionId
         }
         val filtered = filter(sample)
         bySource[candidateKey] = filtered
@@ -290,6 +344,9 @@ internal class MetricFusion(
         }
         if (machineConnectionId == connectionId) machineConnectionId = null
         heartRateFilters.keys.removeAll { it.connectionId == connectionId }
+        // The one event that actually means the strap and the pod have gone.
+        heartRateStrapLinks -= connectionId
+        rscFootMounted -= connectionId
         affected.forEach { reselect(it, nowMs) }
     }
 
@@ -389,7 +446,14 @@ internal class MetricFusion(
         all: Map<MetricCandidateKey, MetricSample>,
     ): Map<MetricCandidateKey, MetricSample> {
         val strapOnly = all.filterKeys { it.sourceClass == MetricSourceClass.HRM }
-        return if (strapOnly.isEmpty()) all else strapOnly
+        if (strapOnly.isNotEmpty()) return strapOnly
+        // No strap candidate right now. That is not the same as no strap: a session
+        // boundary clears every candidate without unclipping anything, and the
+        // machine used to win the first sample of each new session. Empty rather
+        // than `all`, so heart rate simply waits for the strap's next packet -
+        // which is also why no dropout is projected here, the caller requiring a
+        // non-empty candidate set for that.
+        return if (heartRateStrapLinks.isEmpty()) all else emptyMap()
     }
 
     /**
@@ -408,18 +472,21 @@ internal class MetricFusion(
      * - 6.5 m per cadence unit, roughly triple a sprinter's stride - against a
      * treadmill steady at 3.00 km/h. Published speed alternated between the two.
      *
-     * ### The provisional test, and why it is provisional
+     * ### The test, and the evidence behind it
      *
-     * A device that reports **both** RSC and HRM on one physical link is worn on
-     * the torso by construction: a foot pod does not measure heart rate. That is
-     * the rule implemented here, and it is a proxy.
+     * Sensor Location `0x2A5D` is authoritative and both devices in question
+     * answer it (2026-08-07, session `0b04`):
      *
-     * The real discriminator is Sensor Location, `0x2A5D`, which distinguishes
-     * "in shoe" from "chest" directly. [RscProtocolHandler] now reads it and logs
-     * what each device answers. **Once there is evidence of what real devices
-     * report, this should be replaced by that read** - the proxy misclassifies a
-     * hypothetical foot pod that also exposes HRM, and says nothing at all about a
-     * hip-mounted sensor. See the implementation log entry for 2026-08-07.
+     * ```
+     * RSC sensor location on 3C:E4:B0:68:EB:A2: top of shoe (foot-mounted=true)
+     * RSC sensor location on F4:55:89:A3:47:42: chest      (foot-mounted=false)
+     * ```
+     *
+     * A device that declines the read falls back to a proxy: RSC and HRM on one
+     * physical link means a torso device, because a foot pod does not measure
+     * heart rate. That proxy shipped alone on 2026-08-07 and is now the fallback
+     * rather than the rule - it misclassifies a foot pod that also exposes HRM,
+     * and says nothing about a hip-mounted sensor, which `0x2A5D` reports exactly.
      *
      * Set aside, not down-ranked: the heart-rate lesson was that ranking alone
      * loses to a freshness gap, and the loser then takes the metric silently.
@@ -429,20 +496,23 @@ internal class MetricFusion(
     ): Map<MetricCandidateKey, MetricSample> {
         if (all.values.none { it.sourceClass == MetricSourceClass.FTMS }) return all
 
-        val torsoLinks = candidates[MetricKind.HEART_RATE].orEmpty().values
-            .asSequence()
-            .filter { it.sourceClass == MetricSourceClass.HRM }
-            .mapTo(mutableSetOf()) { it.sourceId.connectionId }
-        if (torsoLinks.isEmpty()) return all
-
         val kept = all.filterValues { sample ->
-            sample.sourceClass != MetricSourceClass.RSC ||
-                sample.sourceId.connectionId !in torsoLinks
+            sample.sourceClass != MetricSourceClass.RSC || wornOnFoot(sample.sourceId.connectionId)
         }
         // Never strand the metric: if setting the strap aside would leave nothing,
         // its estimate is still better than no speed at all.
         return kept.ifEmpty { all }
     }
+
+    /**
+     * Whether an RSC link measures the foot, and so keeps its §4.1 priority.
+     *
+     * Sensor Location first; the shared-link proxy only when the device stayed
+     * silent about where it is. Unknown resolves to "foot" so a sensor that
+     * declines the read is not demoted for declining it.
+     */
+    private fun wornOnFoot(connectionId: ConnectionId): Boolean =
+        rscFootMounted[connectionId] ?: (connectionId !in heartRateStrapLinks)
 
     /**
      * A connected strap has gone silent past its freshness window.

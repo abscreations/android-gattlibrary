@@ -716,12 +716,23 @@ class FtmsPeripheralAdvertiser(
             // already connected when we opened the server - are ignored entirely,
             // in both directions. They never become clients or affect advertising.
             if (isExcluded(device)) {
-                if (FTMS_VERBOSE_LOGGING) {
-                    Timber.tag(TAG).d(
-                        "ignoring phantom/upstream callback %s status=%d newState=%d",
-                        deviceLabel(device), status, newState,
-                    )
-                }
+                // Logged at info, not behind FTMS_VERBOSE_LOGGING.
+                //
+                // This used to be a verbose-only line, which made the exclusion
+                // unfalsifiable: a working filter and a filter that never ran
+                // produced byte-identical logs. After the 2026-08-07 fix a session
+                // was captured in which no phantom was admitted and no phantom was
+                // reported either, and there was no way to tell which had happened.
+                //
+                // A device FitBridge holds a central link to being reported as a
+                // server connection is worth one line whenever it occurs. It is
+                // rare - a handful per session, not per packet - so this is not
+                // the per-MAC spam that flag exists to suppress.
+                Timber.tag(TAG).i(
+                    "ignoring phantom/upstream callback %s status=%d newState=%d " +
+                        "(central-role link, never a downstream client)",
+                    deviceLabel(device), status, newState,
+                )
                 return
             }
 
