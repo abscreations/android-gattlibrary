@@ -499,6 +499,16 @@ class BtEngine internal constructor(
     val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>>
         get() = state.connectedDevices
 
+    /**
+     * Whether the radio is actually scanning.
+     *
+     * Exposed because the engine stops its own scan on connect - see [connectFtms] and
+     * [connectSensor] - and a UI holding a second, independent scanning flag would silently
+     * drift out of step with the radio the first time that happened.
+     */
+    val isScanning: StateFlow<Boolean>
+        get() = state.isScanning
+
     /* Clear the canonical discovery registry. */
     fun clearDiscovered() {
         state.putDiscoveredDevices(emptyMap())
