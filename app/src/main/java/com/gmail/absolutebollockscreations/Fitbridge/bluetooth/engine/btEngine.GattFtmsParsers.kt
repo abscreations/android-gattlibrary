@@ -61,6 +61,21 @@
  * IMPLEMENTATION NOTES
  *  - The object itself is stateless; canonical state projection is owned by [MetricFusion].
  *  - Uses small byte helpers (has / u8 / u16 / s16 / skip) for every optional field.
+ *
+ * BOUNDS FAILURE ENDS THE WALK (plan D38, 2026-08-10)
+ *  A flagged field that does not fit the packet leaves the cursor pointing at bytes belonging
+ *  to a different field. Every reader therefore returns the ABORTED sentinel rather than the
+ *  unchanged offset, and short-circuits when handed one, so the abort runs to the end of the
+ *  walk. Fields decoded before the failure are still emitted; nothing after it is.
+ *
+ *  This replaces a continue-on-failure policy that produced real wrong values rather than
+ *  merely missing ones. On a Matrix Performance treadmill packet (flags 0x1F9E, length 20) the
+ *  five-octet energy block does not fit, so the one-octet heart-rate read that followed it
+ *  landed on the total-energy LSB and published it as a heart rate — inside the plausibility
+ *  window, and therefore believed. See FtmsOffsetDesyncCharacterizationTest and plan §12.1 V7.
+ *
+ *  Non-conforming machines whose flags overpromise are handled by this rule rather than by a
+ *  per-device quirk: both Matrix layouts are ordinary spec-order frames with an absent tail.
  */
 
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
@@ -121,7 +136,7 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.BIKE_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
         if ((flags and Flags.BIKE_METABOLIC) != 0) off = readMet(emitter, value, off)
         if ((flags and Flags.BIKE_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.BIKE_REMAINING) != 0) skip(off, 2)
+        if ((flags and Flags.BIKE_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -153,7 +168,7 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.ROW_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
         if ((flags and Flags.ROW_METABOLIC) != 0) off = readMet(emitter, value, off)
         if ((flags and Flags.ROW_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.ROW_REMAINING) != 0) skip(off, 2)
+        if ((flags and Flags.ROW_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -180,7 +195,7 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.TREAD_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
         if ((flags and Flags.TREAD_METABOLIC) != 0) off = readMet(emitter, value, off)
         if ((flags and Flags.TREAD_ELAPSEDTIME) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.TREAD_REMAININGTIME) != 0) off = skip(off, 2)
+        if ((flags and Flags.TREAD_REMAININGTIME) != 0) off = skip(value, off, 2)
         if ((flags and Flags.TREAD_BELTFORCEPOWER) != 0) readBeltForce(emitter, value, off)
     }
 
@@ -247,7 +262,7 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.ELL_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
         if ((flags and Flags.ELL_METABOLIC) != 0) off = readMet(emitter, value, off)
         if ((flags and Flags.ELL_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.ELL_REMAINING) != 0) skip(off, 2)
+        if ((flags and Flags.ELL_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -271,7 +286,7 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.STEP_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
         if ((flags and Flags.STEP_METABOLIC) != 0) off = readMet(emitter, value, off)
         if ((flags and Flags.STEP_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.STEP_REMAINING) != 0) skip(off, 2)
+        if ((flags and Flags.STEP_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -296,7 +311,7 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.CLIMB_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
         if ((flags and Flags.CLIMB_METABOLIC) != 0) off = readMet(emitter, value, off)
         if ((flags and Flags.CLIMB_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.CLIMB_REMAINING) != 0) skip(off, 2)
+        if ((flags and Flags.CLIMB_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -304,51 +319,47 @@ internal object BtEngineFtmsParsers {
     // ─────────────────────────────────────────────────────────────
 
     private fun readFtmsHeartRate(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 1)) {
-            val hr = u8(b, off)
-            emitter.emit(MetricKind.HEART_RATE, hr)
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS HR sample (bpm): %d", hr)
-            }
-            off += 1
+        if (!has(b, off0, 1)) return ABORTED
+
+        val hr = u8(b, off0)
+        emitter.emit(MetricKind.HEART_RATE, hr)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS HR sample (bpm): %d", hr)
         }
-        return off
+        return off0 + 1
     }
 
     private fun readStrokes(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 1)) {
-            val sr = u8(b, off) / 2.0
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("Rower strokeRate (spm): %.1f", sr)
-            }
-            emitter.emit(MetricKind.STROKE_RATE, sr)
-            off += 1
+        if (!has(b, off0, 1)) return ABORTED
+
+        val sr = u8(b, off0) / 2.0
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("Rower strokeRate (spm): %.1f", sr)
         }
-        if (has(b, off, 2)) {
-            val count = u16(b, off)
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("Rower strokeCount: %d", count)
-            }
-            emitter.emit(MetricKind.STROKE_COUNT, count)
-            off += 2
+        emitter.emit(MetricKind.STROKE_RATE, sr)
+        var off = off0 + 1
+
+        if (!has(b, off, 2)) return ABORTED
+        val count = u16(b, off)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("Rower strokeCount: %d", count)
         }
+        emitter.emit(MetricKind.STROKE_COUNT, count)
+        off += 2
+
         return off
     }
 
     private fun readAvgStrokes(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 1)) {
-            val avg = u8(b, off) / 2.0
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("Rower average strokeRate (spm): %.1f", avg)
-            }
-            emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
-            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, avg, quality = MetricQuality.DERIVED)
-            off += 1
+        if (!has(b, off0, 1)) return ABORTED
+
+        val avg = u8(b, off0) / 2.0
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("Rower average strokeRate (spm): %.1f", avg)
         }
-        return off
+        emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
+        emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, avg, quality = MetricQuality.DERIVED)
+        return off0 + 1
     }
 
     // ─── Distance reader with rower branch (fixed to call state.*) ───────────────
@@ -358,7 +369,7 @@ internal object BtEngineFtmsParsers {
         off0: Int,
     ): Int {
         var off = off0
-        if (!has(b, off, 3)) return off
+        if (!has(b, off, 3)) return ABORTED
 
         var total = u16(b, off); off += 2
         total += (u8(b, off) shl 16); off += 1
@@ -379,21 +390,19 @@ internal object BtEngineFtmsParsers {
         times10: Boolean,
         per500m: Boolean = false,
     ): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            var pSecPerKm = u16(b, off).toDouble()
-            if (times10) pSecPerKm /= 10.0
-            if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
+        if (!has(b, off0, 2)) return ABORTED
 
-            emitter.emit(MetricKind.INSTANT_PACE, pSecPerKm / 60.0)
+        var pSecPerKm = u16(b, off0).toDouble()
+        if (times10) pSecPerKm /= 10.0
+        if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS instant pace sample (sec/km): %.1f", pSecPerKm)
-            }
+        emitter.emit(MetricKind.INSTANT_PACE, pSecPerKm / 60.0)
 
-            off += 2
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS instant pace sample (sec/km): %.1f", pSecPerKm)
         }
-        return off
+
+        return off0 + 2
     }
 
     private fun readAvgPace(
@@ -403,48 +412,41 @@ internal object BtEngineFtmsParsers {
         times10: Boolean,
         per500m: Boolean = false,
     ): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            var pSecPerKm = u16(b, off).toDouble()
-            if (times10) pSecPerKm /= 10.0
-            if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
+        if (!has(b, off0, 2)) return ABORTED
 
-            emitter.emit(MetricKind.AVERAGE_PACE, pSecPerKm / 60.0)
+        var pSecPerKm = u16(b, off0).toDouble()
+        if (times10) pSecPerKm /= 10.0
+        if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS average pace sample (sec/km): %.1f", pSecPerKm)
-            }
+        emitter.emit(MetricKind.AVERAGE_PACE, pSecPerKm / 60.0)
 
-            off += 2
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS average pace sample (sec/km): %.1f", pSecPerKm)
         }
-        return off
+
+        return off0 + 2
     }
 
     private fun readPower(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            val v = s16(b, off)
-            off += 2
+        if (!has(b, off0, 2)) return ABORTED
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS instant power (W): %d", v)
-            }
-            emitter.emit(MetricKind.POWER, v)
+        val v = s16(b, off0)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS instant power (W): %d", v)
         }
-        return off
+        emitter.emit(MetricKind.POWER, v)
+        return off0 + 2
     }
 
     private fun readAvgPower(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            val ap = s16(b, off)
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS average power (W): %d", ap)
-            }
-            emitter.emit(MetricKind.AVERAGE_POWER, ap)
-            off += 2
+        if (!has(b, off0, 2)) return ABORTED
+
+        val ap = s16(b, off0)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS average power (W): %d", ap)
         }
-        return off
+        emitter.emit(MetricKind.AVERAGE_POWER, ap)
+        return off0 + 2
     }
 
     /**
@@ -461,30 +463,39 @@ internal object BtEngineFtmsParsers {
         off0: Int,
         toLevel: (Int) -> Double,
     ): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            val raw = s16(b, off)
-            off += 2
-            val res = toLevel(raw)
+        if (!has(b, off0, 2)) return ABORTED
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS resistance (level): %.1f [raw %d]", res, raw)
-            }
+        val raw = s16(b, off0)
+        val res = toLevel(raw)
 
-            emitter.emit(MetricKind.RESISTANCE, res)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS resistance (level): %.1f [raw %d]", res, raw)
         }
-        return off
+
+        emitter.emit(MetricKind.RESISTANCE, res)
+        return off0 + 2
     }
 
+    /**
+     * Expended Energy block: total energy (uint16 kcal), energy per hour (uint16), energy per
+     * minute (uint8) — five octets, in that order.
+     *
+     * **Partial block (added with D38).** Some machines flag the block and then end the packet
+     * inside it. The Matrix Performance treadmill is the pinned example: flags `0x1F9E`, length
+     * 20, three octets left when the block starts. TMIW recovers the total from those first two
+     * bytes (`processExpandedEnergyFlag(partial: true)`), and it is genuinely present — total
+     * energy leads the block, so two remaining octets are unambiguously it.
+     *
+     * Recovering it is worth doing, but the walk still cannot continue: the block is short by
+     * definition, so every later field is unaligned. A partial read therefore emits the total
+     * and then returns [ABORTED]. Emitting the value and stopping is the whole point — the
+     * alternative shipped a heart rate read from this field's low byte.
+     */
     private fun readEnergy(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 5)) {
-            // Per FTMS spec: total energy (kcal) is uint16, followed by
-            // energy per hour (uint16) and energy per minute (uint8).
-            val machineKcal = u16(b, off)
-            val perHourRaw = u16(b, off + 2)
-            val perMinuteRaw = u8(b, off + 4)
-            off += 5
+        if (has(b, off0, 5)) {
+            val machineKcal = u16(b, off0)
+            val perHourRaw = u16(b, off0 + 2)
+            val perMinuteRaw = u8(b, off0 + 4)
 
             emitter.emit(
                 MetricKind.ENERGY,
@@ -501,21 +512,36 @@ internal object BtEngineFtmsParsers {
                     rate?.toString() ?: "unavailable"
                 )
             }
+            return off0 + 5
         }
-        return off
+
+        if (has(b, off0, 2)) {
+            val machineKcal = u16(b, off0)
+            emitter.emit(
+                MetricKind.ENERGY,
+                machineKcal,
+                nativeCumulative = machineKcal.toDouble(),
+            )
+            if (canLogMetrics()) {
+                Timber.tag(TAG).d(
+                    "FTMS energy: total=%d kcal from a truncated block; no rate, walk aborted",
+                    machineKcal,
+                )
+            }
+        }
+
+        return ABORTED
     }
 
     private fun readMet(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 1)) {
-            val met = u8(b, off).toDouble() / 10.0
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS MET value: %.1f", met)
-            }
-            emitter.emit(MetricKind.METABOLIC_EQUIVALENT, met)
-            off += 1
+        if (!has(b, off0, 1)) return ABORTED
+
+        val met = u8(b, off0).toDouble() / 10.0
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS MET value: %.1f", met)
         }
-        return off
+        emitter.emit(MetricKind.METABOLIC_EQUIVALENT, met)
+        return off0 + 1
     }
 
     /**
@@ -524,7 +550,7 @@ internal object BtEngineFtmsParsers {
     private fun readElapsed(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
         var off = off0
         if (!has(b, off, 2)) {
-            return off
+            return ABORTED
         }
 
         val ftmsElapsedSec = ((b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8))
@@ -540,33 +566,27 @@ internal object BtEngineFtmsParsers {
     }
 
     private fun readSpeed(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            val kph = u16(b, off) / 100.0
-            off += 2
+        if (!has(b, off0, 2)) return ABORTED
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS instant speed (km/h): %.2f", kph)
-            }
-
-            emitter.emit(MetricKind.SPEED, kph)
+        val kph = u16(b, off0) / 100.0
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS instant speed (km/h): %.2f", kph)
         }
-        return off
+
+        emitter.emit(MetricKind.SPEED, kph)
+        return off0 + 2
     }
 
     private fun readAvgSpeed(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            val kph = u16(b, off) / 100.0
-            off += 2
+        if (!has(b, off0, 2)) return ABORTED
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS average speed (km/h): %.2f", kph)
-            }
-
-            emitter.emit(MetricKind.AVERAGE_SPEED, kph)
+        val kph = u16(b, off0) / 100.0
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS average speed (km/h): %.2f", kph)
         }
-        return off
+
+        emitter.emit(MetricKind.AVERAGE_SPEED, kph)
+        return off0 + 2
     }
 
     /**
@@ -577,35 +597,35 @@ internal object BtEngineFtmsParsers {
      * raw value, which reported a -5 %..+10 % treadmill as -50..+100.
      */
     private fun readInclineV1(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
+        if (!has(b, off0, 4)) return ABORTED
+
         var off = off0
-        if (has(b, off, 4)) {
-            val inc = s16(b, off).toDouble() / 10.0; off += 2
-            val ramp = s16(b, off).toDouble() / 10.0; off += 2
+        val inc = s16(b, off).toDouble() / 10.0; off += 2
+        val ramp = s16(b, off).toDouble() / 10.0; off += 2
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
-            }
-
-            emitter.emit(MetricKind.INCLINATION, inc)
-            emitter.emit(MetricKind.RAMP_ANGLE, ramp)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
         }
+
+        emitter.emit(MetricKind.INCLINATION, inc)
+        emitter.emit(MetricKind.RAMP_ANGLE, ramp)
         return off
     }
 
     /** Cross Trainer Data (0x2ACE): inclination in 0.1 percent, ramp angle in 0.1 degree. */
     private fun readInclineV2(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
+        if (!has(b, off0, 4)) return ABORTED
+
         var off = off0
-        if (has(b, off, 4)) {
-            val inc = s16(b, off).toDouble() / 10.0; off += 2
-            val ramp = s16(b, off).toDouble() / 10.0; off += 2
+        val inc = s16(b, off).toDouble() / 10.0; off += 2
+        val ramp = s16(b, off).toDouble() / 10.0; off += 2
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
-            }
-
-            emitter.emit(MetricKind.INCLINATION, inc)
-            emitter.emit(MetricKind.RAMP_ANGLE, ramp)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
         }
+
+        emitter.emit(MetricKind.INCLINATION, inc)
+        emitter.emit(MetricKind.RAMP_ANGLE, ramp)
         return off
     }
 
@@ -613,116 +633,117 @@ internal object BtEngineFtmsParsers {
         var off = off0
         when (mode) {
             1 -> { // +gain only
-                if (has(b, off, 2)) {
-                    val pos = u16(b, off).toDouble(); off += 2
-                    if (canLogMetrics()) {
-                        Timber.tag(TAG).d("FTMS elevation gain + (m): %.1f", pos)
-                    }
-                    emitter.emitElevationGains(pos, null)
+                if (!has(b, off, 2)) return ABORTED
+                val pos = u16(b, off).toDouble(); off += 2
+                if (canLogMetrics()) {
+                    Timber.tag(TAG).d("FTMS elevation gain + (m): %.1f", pos)
                 }
+                emitter.emitElevationGains(pos, null)
             }
             2 -> { // +gain/10 and -gain/10
-                if (has(b, off, 4)) {
-                    val pos = u16(b, off).toDouble() / 10.0; off += 2
-                    val neg = u16(b, off).toDouble() / 10.0; off += 2
-                    if (canLogMetrics()) {
-                        Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
-                    }
-                    emitter.emitElevationGains(pos, neg)
+                if (!has(b, off, 4)) return ABORTED
+                val pos = u16(b, off).toDouble() / 10.0; off += 2
+                val neg = u16(b, off).toDouble() / 10.0; off += 2
+                if (canLogMetrics()) {
+                    Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
                 }
+                emitter.emitElevationGains(pos, neg)
             }
             3 -> { // +gain and -gain
-                if (has(b, off, 4)) {
-                    val pos = u16(b, off).toDouble(); off += 2
-                    val neg = u16(b, off).toDouble(); off += 2
-                    if (canLogMetrics()) {
-                        Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
-                    }
-                    emitter.emitElevationGains(pos, neg)
+                if (!has(b, off, 4)) return ABORTED
+                val pos = u16(b, off).toDouble(); off += 2
+                val neg = u16(b, off).toDouble(); off += 2
+                if (canLogMetrics()) {
+                    Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
                 }
+                emitter.emitElevationGains(pos, neg)
             }
+            // No other mode is reachable from the six walkers. An unknown mode reads nothing
+            // and consumes nothing, so it cannot desynchronise the cursor.
         }
         return off
     }
 
     private fun readBeltForce(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
+        if (!has(b, off0, 4)) return ABORTED
+
         var off = off0
-        if (has(b, off, 4)) {
-            val force = s16(b, off); off += 2
-            val inst = s16(b, off); off += 2
+        val force = s16(b, off); off += 2
+        val inst = s16(b, off); off += 2
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS beltForce (N-ish): %d, derived power (W): %d", force, inst)
-            }
-
-            emitter.emit(MetricKind.FORCE_ON_BELT, force)
-            emitter.emit(MetricKind.POWER, inst, quality = MetricQuality.DERIVED)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS beltForce (N-ish): %d, derived power (W): %d", force, inst)
         }
+
+        emitter.emit(MetricKind.FORCE_ON_BELT, force)
+        emitter.emit(MetricKind.POWER, inst, quality = MetricQuality.DERIVED)
         return off
     }
 
     private fun readEllipticalCadence(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
+        if (!has(b, off0, 4)) return ABORTED
+
         var off = off0
-        if (has(b, off, 4)) {
-            val inst = u16(b, off).toDouble(); off += 2
-            val avg  = u16(b, off).toDouble(); off += 2
+        val inst = u16(b, off).toDouble(); off += 2
+        val avg  = u16(b, off).toDouble(); off += 2
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d(
-                    "Elliptical cadence (spm): instant=%.1f, avg=%.1f",
-                    inst, avg
-                )
-            }
-
-            emitter.emit(MetricKind.CADENCE, inst)
-            emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
-            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, inst, quality = MetricQuality.DERIVED)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d(
+                "Elliptical cadence (spm): instant=%.1f, avg=%.1f",
+                inst, avg
+            )
         }
+
+        emitter.emit(MetricKind.CADENCE, inst)
+        emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
+        emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, inst, quality = MetricQuality.DERIVED)
         return off
     }
 
     private fun readCadence(emitter: MetricEmitter, b: ByteArray, off0: Int, halfUnits: Boolean): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            var inst = u16(b, off).toDouble(); off += 2
-            if (halfUnits) inst /= 2.0
+        if (!has(b, off0, 2)) return ABORTED
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS cadence (spm): instant=%.1f", inst)
-            }
+        var inst = u16(b, off0).toDouble()
+        if (halfUnits) inst /= 2.0
 
-            emitter.emit(MetricKind.CADENCE, inst)
-            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, inst, quality = MetricQuality.DERIVED)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS cadence (spm): instant=%.1f", inst)
         }
-        return off
+
+        emitter.emit(MetricKind.CADENCE, inst)
+        emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, inst, quality = MetricQuality.DERIVED)
+        return off0 + 2
     }
 
     private fun readAvgCadence(emitter: MetricEmitter, b: ByteArray, off0: Int, halfUnits: Boolean): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            var avg = u16(b, off).toDouble(); off += 2
-            if (halfUnits) avg /= 2.0
+        if (!has(b, off0, 2)) return ABORTED
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS average cadence (spm): %.1f", avg)
-            }
+        var avg = u16(b, off0).toDouble()
+        if (halfUnits) avg /= 2.0
 
-            emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
-            emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, avg, quality = MetricQuality.DERIVED)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS average cadence (spm): %.1f", avg)
         }
-        return off
+
+        emitter.emit(MetricKind.AVERAGE_CADENCE, avg)
+        emitter.emit(MetricKind.LAP_CADENCE_SAMPLE, avg, quality = MetricQuality.DERIVED)
+        return off0 + 2
     }
 
     private fun readFloors(emitter: MetricEmitter, b: ByteArray, off0: Int, mode: Int): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            val floors = u16(b, off); off += 2
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d("FTMS totalFloors: %d", floors)
-            }
-            emitter.emit(MetricKind.TOTAL_FLOORS, floors)
+        if (!has(b, off0, 2)) return ABORTED
+
+        val floors = u16(b, off0)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS totalFloors: %d", floors)
         }
-        if (mode == 2 && has(b, off, 2)) {
+        emitter.emit(MetricKind.TOTAL_FLOORS, floors)
+        var off = off0 + 2
+
+        // Mode 1 declares floors alone; only mode 2 carries the step count beside it, so its
+        // absence in mode 1 is not a truncation and must not abort the walk.
+        if (mode == 2) {
+            if (!has(b, off, 2)) return ABORTED
             val steps = u16(b, off); off += 2
             if (canLogMetrics()) {
                 Timber.tag(TAG).d("FTMS totalSteps: %d", steps)
@@ -733,36 +754,55 @@ internal object BtEngineFtmsParsers {
     }
 
     private fun readStrides(emitter: MetricEmitter, b: ByteArray, off0: Int, tenths: Boolean): Int {
-        var off = off0
-        if (has(b, off, 2)) {
-            var strides = u16(b, off).toDouble(); off += 2
-            if (tenths) strides /= 10.0
-            val steps = (strides * STRIDES_TO_STEPS).toInt()
+        if (!has(b, off0, 2)) return ABORTED
 
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d(
-                    "FTMS strides: %.1f, derived steps: %d (×%.1f)",
-                    strides, steps, STRIDES_TO_STEPS
-                )
-            }
+        var strides = u16(b, off0).toDouble()
+        if (tenths) strides /= 10.0
+        val steps = (strides * STRIDES_TO_STEPS).toInt()
 
-            emitter.emit(MetricKind.TOTAL_STRIDES, strides)
-            emitter.emit(MetricKind.TOTAL_STEPS, steps, quality = MetricQuality.DERIVED)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d(
+                "FTMS strides: %.1f, derived steps: %d (×%.1f)",
+                strides, steps, STRIDES_TO_STEPS
+            )
         }
-        return off
+
+        emitter.emit(MetricKind.TOTAL_STRIDES, strides)
+        emitter.emit(MetricKind.TOTAL_STEPS, steps, quality = MetricQuality.DERIVED)
+        return off0 + 2
     }
 
     // ─────────────────────────────────────────────────────────────
     // Byte helpers
     // ─────────────────────────────────────────────────────────────
 
-    private fun has(b: ByteArray, off: Int, need: Int) = b.size >= off + need
+    /**
+     * Offset sentinel meaning "this walk is over" (plan D38).
+     *
+     * A flagged field that does not fit the packet leaves the cursor pointing at bytes that
+     * belong to some other field. Every reader therefore returns [ABORTED] rather than the
+     * unchanged offset, and every reader short-circuits on an already-aborted offset, so the
+     * abort propagates to the end of the walk without the six callers needing to test for it.
+     *
+     * Negative rather than [Int.MIN_VALUE] so that an accidental `off + n` stays negative and
+     * keeps failing the `off >= 0` guard instead of wrapping into a valid-looking index.
+     */
+    private const val ABORTED = -1
+
+    /** True when [need] bytes are readable at [off] and the walk has not already aborted. */
+    private fun has(b: ByteArray, off: Int, need: Int) = off >= 0 && b.size >= off + need
     private fun u8(b: ByteArray, off: Int): Int = b[off].toInt() and 0xFF
     private fun u16(b: ByteArray, off: Int): Int =
         (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
     private fun s16(b: ByteArray, off: Int): Int =
         (b[off].toInt() and 0xFF) or (b[off + 1].toInt() shl 8)
-    private fun skip(off: Int, n: Int) = off + n
+
+    /**
+     * Step over a present-but-unused field. Bounds-checked like any read: bytes that are not
+     * there cannot be stepped over, and pretending otherwise is what desynchronises the walk.
+     */
+    private fun skip(b: ByteArray, off: Int, n: Int): Int =
+        if (has(b, off, n)) off + n else ABORTED
 
     private fun ByteArray.toHex(): String = joinToString(" ") { "%02X".format(it) }
 
