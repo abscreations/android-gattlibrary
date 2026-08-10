@@ -76,6 +76,12 @@ internal data class CccdTarget(
     val characteristicUuid: UUID,
 )
 
+/** Bounded result of claiming the next CCCD recovery attempt for one connection context. */
+internal sealed interface CccdRecoveryDecision {
+    data class Retry(val attempt: Int) : CccdRecoveryDecision
+    data object Terminate : CccdRecoveryDecision
+}
+
 /** CCCD enable plan, readiness, and recovery state owned by one physical GATT link. */
 internal class CccdState {
     private val lock = Any()
@@ -138,9 +144,15 @@ internal class CccdState {
         if (clearPlan) enablePlan.clear()
     }
 
-    fun nextRecoveryAttempt(): Int = synchronized(lock) {
-        recoveryAttemptsValue += 1
-        recoveryAttemptsValue
+    /** Atomically claim one retry, or terminate once the context-owned bound is exhausted. */
+    fun nextRecoveryDecision(maxAttempts: Int): CccdRecoveryDecision = synchronized(lock) {
+        require(maxAttempts >= 0)
+        if (recoveryAttemptsValue >= maxAttempts) {
+            CccdRecoveryDecision.Terminate
+        } else {
+            recoveryAttemptsValue += 1
+            CccdRecoveryDecision.Retry(recoveryAttemptsValue)
+        }
     }
 
     fun resetRecoveryAttempts() = synchronized(lock) {

@@ -624,6 +624,24 @@ class MetricFusionPolicyTest {
     }
 
     @Test
+    fun `first RSC distance is a session baseline and the next sample contributes its delta`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val rsc = source(sensorConnection, MetricProtocol.RSC, 81)
+
+        fusion.startSession(FusionPersona.RUN, 100)
+        fusion.submit(
+            sample(MetricKind.DISTANCE, 1_234.0, 101, rsc, MetricSourceClass.RSC)
+        )
+        assertEquals(0, state.totalDistanceMeters.value)
+
+        fusion.submit(
+            sample(MetricKind.DISTANCE, 1_237.0, 102, rsc, MetricSourceClass.RSC)
+        )
+        assertEquals(3, state.totalDistanceMeters.value)
+    }
+
+    @Test
     fun `machine elapsed wins while fresh and the session clock is the fallback`() {
         val state = BtEngineState()
         val fusion = MetricFusion(state)

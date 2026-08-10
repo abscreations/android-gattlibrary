@@ -42,6 +42,12 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+/** Exact eight-octet value returned by the downstream Fitness Machine Feature (`0x2ACC`). */
+internal fun buildFtmsFeaturePayload(
+    profile: FtmsMachineProfile,
+    targets: TargetCapabilities,
+): ByteArray = u32le(profile.featureBits) + u32le(targets.toTargetFeatureBits())
+
 /**
  * Owns the local GATT server and the LE advertiser.
  *
@@ -1340,8 +1346,7 @@ class FtmsPeripheralAdvertiser(
 
     // ── payloads ──────────────────────────────────────────────────────────────
 
-    private fun featurePayload(): ByteArray =
-        u32le(profile.featureBits) + u32le(targets.toTargetFeatureBits())
+    private fun featurePayload(): ByteArray = buildFtmsFeaturePayload(profile, targets)
 
     private fun trainingStatusPayload(conn: PeripheralConnection): ByteArray =
         conn.procedure.trainingStatusPayload()

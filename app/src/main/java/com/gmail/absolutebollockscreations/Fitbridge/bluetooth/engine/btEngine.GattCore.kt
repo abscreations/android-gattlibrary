@@ -862,14 +862,23 @@ internal object BtEngineGattCore {
                     StackEntry.Op.DESC_WRITE,
                     charUuid,
                     descriptor.uuid,
+                    descriptor,
                 )
+                descriptor.uuid == BluetoothIds.UUID_CCCD ->
+                    engine.handleCccdWriteFailureRecovery(
+                        context,
+                        gatt,
+                        descriptor,
+                        CccdWriteFailureCause.Callback(status),
+                    )
                 else -> engine.queueFail(
-                    context,
-                    gatt,
-                    StackEntry.Op.DESC_WRITE,
-                    charUuid,
-                    descriptor.uuid,
-                    "descriptor write failed status=$status uuid=${safeUuid(descriptor)}",
+                    context = context,
+                    callbackGatt = gatt,
+                    callbackOp = StackEntry.Op.DESC_WRITE,
+                    callbackCharUuid = charUuid,
+                    callbackDescriptorUuid = descriptor.uuid,
+                    reason = "descriptor write failed status=$status uuid=${safeUuid(descriptor)}",
+                    callbackDescriptorIdentity = descriptor,
                 )
             }
 
@@ -896,6 +905,9 @@ internal object BtEngineGattCore {
             }
 
             if (cccdPlanBecameReady) {
+                // One successful descriptor is not enough in a merged multi-handler plan.
+                // Reset the bounded failure counter only after every CCCD has completed.
+                engine.resetCccdRecoveryAttemptsFor(context)
                 // §0.7a: the liveness clock starts here, not at connect. The
                 // device has demonstrably accepted every subscription, so from
                 // this instant silence is the machine's doing rather than ours.

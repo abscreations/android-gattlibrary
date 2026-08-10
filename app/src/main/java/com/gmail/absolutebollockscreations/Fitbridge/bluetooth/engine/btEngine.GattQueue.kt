@@ -106,7 +106,7 @@ import java.util.UUID
 /* Internal state for recovery attempts                                          */
 /* ────────────────────────────────────────────────────────────────────────────── */
 
-private const val MAX_CCCD_RECOVERY_ATTEMPTS = 2
+internal const val MAX_CCCD_RECOVERY_ATTEMPTS = 2
 
 // Simple IO scope for background retries in the queue
 private val queueIoScope = CoroutineScope(Dispatchers.IO)
@@ -120,6 +120,9 @@ internal data class StackEntry(
     val charUuid: UUID? = null,
     val data: ByteArray? = null,
     val descriptor: BluetoothGattDescriptor? = null,
+    val descriptorUuid: UUID? = descriptor?.uuid,
+    /** Testable identity token; production descriptor entries use the descriptor instance. */
+    val descriptorIdentity: Any? = descriptor,
 ) {
     enum class Op { READ, WRITE, DESC_WRITE }
 }
@@ -131,11 +134,61 @@ internal fun <T> queueCompletionMatches(
     callbackOp: StackEntry.Op,
     callbackCharUuid: UUID?,
     callbackDescriptorUuid: UUID? = null,
+    callbackDescriptorIdentity: Any? = null,
 ): Boolean {
     if (contextGatt !== callbackGatt || head == null || head.op != callbackOp) return false
     if (head.charUuid != callbackCharUuid) return false
-    return callbackOp != StackEntry.Op.DESC_WRITE ||
-        head.descriptor?.uuid == callbackDescriptorUuid
+    if (callbackOp != StackEntry.Op.DESC_WRITE) return true
+    if (head.descriptorUuid != callbackDescriptorUuid) return false
+    return callbackDescriptorIdentity == null ||
+        head.descriptorIdentity === callbackDescriptorIdentity
+}
+
+/** Typed origin for diagnostics; every form enters the same recovery coordinator. */
+internal sealed interface CccdWriteFailureCause {
+    val detail: String
+
+    data class Api33Dispatch(val status: Int) : CccdWriteFailureCause {
+        override val detail: String = "dispatch-api33-status=$status"
+    }
+
+    data object LegacyDispatchRejected : CccdWriteFailureCause {
+        override val detail: String = "dispatch-legacy-rejected"
+    }
+
+    data class Callback(val status: Int) : CccdWriteFailureCause {
+        override val detail: String = "callback-status=$status"
+    }
+}
+
+/** Identity and generation ownership check used before and after every delayed recovery step. */
+internal fun <T> cccdRecoveryStillOwned(
+    contextGatt: T?,
+    recoveryGatt: T,
+    contextActive: Boolean,
+): Boolean = contextActive && contextGatt === recoveryGatt
+
+/** Match and consume a failed descriptor head exactly once without draining later work. */
+internal fun <T> consumeMatchedDescriptorFailure(
+    contextGatt: T?,
+    callbackGatt: T,
+    queue: GattQueue,
+    callbackCharUuid: UUID?,
+    callbackDescriptorUuid: UUID?,
+    callbackDescriptorIdentity: Any?,
+): StackEntry? {
+    val head = queue.head()
+    if (!queue.isBusy || !queueCompletionMatches(
+            contextGatt,
+            callbackGatt,
+            head,
+            StackEntry.Op.DESC_WRITE,
+            callbackCharUuid,
+            callbackDescriptorUuid,
+            callbackDescriptorIdentity,
+        )
+    ) return null
+    return queue.finishIfHead(head!!)
 }
 
 /** `BluetoothGatt.readCharacteristic` reports request acceptance as Boolean on every API level. */
@@ -208,6 +261,8 @@ internal fun BtEngine.pushDescriptorWrite(
             op = StackEntry.Op.DESC_WRITE,
             charUuid = descriptor.characteristic?.uuid,
             descriptor = descriptor,
+            descriptorUuid = descriptor.uuid,
+            descriptorIdentity = descriptor,
             data = payload,
         )
     )
@@ -455,12 +510,11 @@ internal fun BtEngine.handleStack(context: ConnectionContext) {
                                     false
                                 }
                                 if (!legacyOk) {
-                                    handleCccdWriteFailureRecovery(
+                                    handleDescriptorDispatchFailure(
                                         context,
                                         tgtGatt,
                                         desc,
-                                        rcApi33 = rcRetry,
-                                        rcApi32 = null
+                                        CccdWriteFailureCause.Api33Dispatch(rcRetry),
                                     )
                                 }
                             }
@@ -486,12 +540,11 @@ internal fun BtEngine.handleStack(context: ConnectionContext) {
                     }
 
                     if (!legacyOk) {
-                        handleCccdWriteFailureRecovery(
+                        handleDescriptorDispatchFailure(
                             context,
                             tgtGatt,
                             desc,
-                            rcApi33 = rc,
-                            rcApi32 = null
+                            CccdWriteFailureCause.Api33Dispatch(rc),
                         )
                         return
                     } else {
@@ -539,12 +592,11 @@ internal fun BtEngine.handleStack(context: ConnectionContext) {
                                 }
 
                                 if (!okRetry) {
-                                    handleCccdWriteFailureRecovery(
+                                    handleDescriptorDispatchFailure(
                                         context,
                                         tgtGatt,
                                         desc,
-                                        rcApi33 = null,
-                                        rcApi32 = false
+                                        CccdWriteFailureCause.LegacyDispatchRejected,
                                     )
                                 } // else: wait for onDescriptorWrite
                             }
@@ -756,12 +808,14 @@ internal fun BtEngine.queueSucceed(
     callbackOp: StackEntry.Op,
     callbackCharUuid: UUID?,
     callbackDescriptorUuid: UUID? = null,
+    callbackDescriptorIdentity: Any? = null,
 ): Boolean = completeQueueCallback(
     context,
     callbackGatt,
     callbackOp,
     callbackCharUuid,
     callbackDescriptorUuid,
+    callbackDescriptorIdentity,
     failureReason = null,
 )
 
@@ -773,12 +827,14 @@ internal fun BtEngine.queueFail(
     callbackCharUuid: UUID?,
     callbackDescriptorUuid: UUID? = null,
     reason: String,
+    callbackDescriptorIdentity: Any? = null,
 ): Boolean = completeQueueCallback(
     context,
     callbackGatt,
     callbackOp,
     callbackCharUuid,
     callbackDescriptorUuid,
+    callbackDescriptorIdentity,
     failureReason = reason,
 )
 
@@ -789,6 +845,7 @@ private fun BtEngine.completeQueueCallback(
     callbackOp: StackEntry.Op,
     callbackCharUuid: UUID?,
     callbackDescriptorUuid: UUID?,
+    callbackDescriptorIdentity: Any?,
     failureReason: String?,
 ): Boolean {
     val head = context.queue.head()
@@ -799,6 +856,7 @@ private fun BtEngine.completeQueueCallback(
             callbackOp,
             callbackCharUuid,
             callbackDescriptorUuid,
+            callbackDescriptorIdentity,
         )
     ) {
         Timber.tag(BtEngineState.TAG).w(
@@ -815,9 +873,6 @@ private fun BtEngine.completeQueueCallback(
     }
 
     val finished = context.queue.finishIfHead(head!!) ?: return false
-    if (failureReason == null && finished.op == StackEntry.Op.DESC_WRITE) {
-        resetCccdRecoveryAttemptsFor(context)
-    }
     Timber.tag(BtEngineState.TAG).d(
         "Queue %s (%s %s) → next (size=%d context=%s)",
         if (failureReason == null) "OK" else "FAIL: $failureReason",
@@ -835,43 +890,72 @@ private fun BtEngine.completeQueueCallback(
 /* ────────────────────────────────────────────────────────────────────────────── */
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-private fun BtEngine.handleCccdWriteFailureRecovery(
+private fun BtEngine.handleDescriptorDispatchFailure(
     connection: ConnectionContext,
     gatt: BluetoothGatt,
     desc: BluetoothGattDescriptor,
-    rcApi33: Int? = null,
-    rcApi32: Boolean? = null
+    cause: CccdWriteFailureCause,
 ) {
-    val rcText = when {
-        rcApi33 != null -> "rc=$rcApi33"
-        rcApi32 != null -> "ok=$rcApi32"
-        else -> "rc=?"
+    if (desc.uuid == UUID_CCCD) {
+        handleCccdWriteFailureRecovery(connection, gatt, desc, cause)
+    } else {
+        failAndContinue(connection, "Descriptor dispatch failed ${desc.uuid} (${cause.detail})")
     }
-    Timber.tag(BtEngineState.TAG)
-        .w("CCCD write failed %s on %s (%s)", desc.uuid, gattLabel(gatt), rcText)
+}
 
-    // Pause queue by consuming the failed head
-    connection.queue.finishHead()
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+internal fun BtEngine.handleCccdWriteFailureRecovery(
+    connection: ConnectionContext,
+    gatt: BluetoothGatt,
+    desc: BluetoothGattDescriptor,
+    cause: CccdWriteFailureCause,
+): Boolean {
+    val failed = consumeMatchedDescriptorFailure(
+        contextGatt = connection.gatt,
+        callbackGatt = gatt,
+        queue = connection.queue,
+        callbackCharUuid = desc.characteristic?.uuid,
+        callbackDescriptorUuid = desc.uuid,
+        callbackDescriptorIdentity = desc,
+    ) ?: run {
+        Timber.tag(BtEngineState.TAG).w(
+            "Ignoring mismatched CCCD failure context=%s characteristic=%s cause=%s",
+            connection.connectionId,
+            desc.characteristic?.uuid,
+            cause.detail,
+        )
+        return false
+    }
+
+    Timber.tag(BtEngineState.TAG)
+        .w(
+            "CCCD write failed %s for %s on %s (%s)",
+            desc.uuid,
+            failed.charUuid,
+            gattLabel(gatt),
+            cause.detail,
+        )
+    connection.cccd.markEnablePlanFailed()
+    state.connectionRegistry.setCccdReady(connection, false)
 
     val dev = gatt.device
     val mac = dev.address ?: "?"
 
     val previousAttempts = connection.cccd.recoveryAttempts
-    if (previousAttempts >= MAX_CCCD_RECOVERY_ATTEMPTS) {
-        Timber.tag(BtEngineState.TAG).w(
-            "CCCD recovery: reached max attempts (%d) for %s → giving up",
-            previousAttempts,
-            mac
-        )
-        // Continue the queue without further intervention
-        handleStack(connection)
-        return
+    val decision = connection.cccd.nextRecoveryDecision(MAX_CCCD_RECOVERY_ATTEMPTS)
+    if (decision == CccdRecoveryDecision.Terminate) {
+        val reason = "CCCD setup failed after $previousAttempts recovery attempts"
+        Timber.tag(BtEngineState.TAG).e("%s for %s context=%s", reason, mac, connection.connectionId)
+        state.setGattErrorFor(gatt, reason)
+        connection.queue.clear()
+        connection.terminationHook?.invoke(reason)
+        return true
     }
-    val attemptsNow = connection.cccd.nextRecoveryAttempt()
+    val attemptsNow = (decision as CccdRecoveryDecision.Retry).attempt
 
     queueIoScope.launch {
         try {
-            if (connection.gatt !== gatt) return@launch
+            if (!cccdRecoveryStillOwned(connection.gatt, gatt, connection.isActive)) return@launch
             val wasBonded = (dev.bondState == BluetoothDevice.BOND_BONDED)
 
             // Bonding policy (see connectFtms in btEngine.kt): never bond
@@ -914,7 +998,7 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
             delay(300)
 
             // Re-arm the complete context plan contributed by every active handler.
-            if (connection.gatt !== gatt) {
+            if (!cccdRecoveryStillOwned(connection.gatt, gatt, connection.isActive)) {
                 Timber.tag(BtEngineState.TAG).d(
                     "CCCD recovery cancelled for stale context %s",
                     connection.connectionId,
@@ -941,10 +1025,13 @@ private fun BtEngine.handleCccdWriteFailureRecovery(
                     .w("CCCD recovery: cccdReady not observed within timeout")
             }
         } finally {
-            // Resume any remaining queue work
-            handleStack(connection)
+            // A disconnected generation owns no more queue work.
+            if (cccdRecoveryStillOwned(connection.gatt, gatt, connection.isActive)) {
+                handleStack(connection)
+            }
         }
     }
+    return true
 }
 
 /* ────────────────────────────────────────────────────────────────────────────── */

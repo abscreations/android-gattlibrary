@@ -668,6 +668,11 @@ internal class MetricFusion(
         val totalBefore = cumulativeTotals[metric]
         val activeSource = cumulativeActiveSource[metric]
         val canonical = when {
+            // An RSC sensor's total-distance counter may have started long before this
+            // FitBridge session. Its first value establishes the origin; only later deltas
+            // belong to the session (plan D28).
+            totalBefore == null && metric == MetricKind.DISTANCE &&
+                sample.sourceClass == MetricSourceClass.RSC -> 0.0
             totalBefore == null -> native
             activeSource != sample.sourceId || previousSource != sample.sourceId -> totalBefore
             native < (cumulativeLastNative[metric] ?: native) -> totalBefore

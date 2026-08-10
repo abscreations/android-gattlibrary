@@ -1,0 +1,47 @@
+{
+  "family": "rsc.zwift-runpod",
+  "source": "capture-20260810_082949-8a96-central.ndjson",
+  "source_sha256": "bdfbfc5b079bdf850133c3b977be3750626f648ae880fa44dc4746b104cbcfe7",
+  "captured": "2026-08-10",
+  "acquisition": "hardware-redacted-ndjson",
+  "session": "8a96",
+  "device_label": "Zwift RunPod A2",
+  "firmware": null,
+  "service": "00001814-0000-1000-8000-00805f9b34fb",
+  "characteristic": "00002a53-0000-1000-8000-00805f9b34fb",
+  "feature_hex": "0700",
+  "sensor_location_hex": "01",
+  "note": "Selected consecutive hardware notifications. Connection labels are capture-local; device addresses are structurally redacted. Firmware was not read, so this fixture supports hardware-observed behavior but not a complete tier-H verification claim.",
+  "cases": [
+    {
+      "seq": 294,
+      "t": 1786365003857,
+      "hex": "032601387b0024000000",
+      "expect": { "speedKph": 4.134375, "cadenceStepsPerMinute": 56, "strideLengthMetres": 1.23, "totalDistanceMetres": 3.6, "walking": false }
+    },
+    {
+      "seq": 333,
+      "t": 1786365005324,
+      "hex": "03400136930033000000",
+      "expect": { "speedKph": 4.5, "cadenceStepsPerMinute": 54, "strideLengthMetres": 1.47, "totalDistanceMetres": 5.1, "walking": false }
+    },
+    {
+      "seq": 423,
+      "t": 1786365008820,
+      "hex": "03260135830040000000",
+      "expect": { "speedKph": 4.134375, "cadenceStepsPerMinute": 53, "strideLengthMetres": 1.31, "totalDistanceMetres": 6.4, "walking": false }
+    },
+    {
+      "seq": 570,
+      "t": 1786365014656,
+      "hex": "032901377d004d000000",
+      "expect": { "speedKph": 4.1765625, "cadenceStepsPerMinute": 55, "strideLengthMetres": 1.25, "totalDistanceMetres": 7.7, "walking": false }
+    },
+    {
+      "seq": 625,
+      "t": 1786365016598,
+      "hex": "032901367c0059000000",
+      "expect": { "speedKph": 4.1765625, "cadenceStepsPerMinute": 54, "strideLengthMetres": 1.24, "totalDistanceMetres": 8.9, "walking": false }
+    }
+  ]
+}

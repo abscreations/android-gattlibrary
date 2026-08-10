@@ -282,8 +282,14 @@ class ConnectionContextTest {
         hrm.queue.enqueue(StackEntry(StackEntry.Op.READ, charUuid = java.util.UUID.randomUUID()))
         ftms.queue.beginDispatch()
         hrm.queue.beginDispatch()
-        ftms.cccd.nextRecoveryAttempt()
-        hrm.cccd.nextRecoveryAttempt()
+        assertEquals(
+            CccdRecoveryDecision.Retry(1),
+            ftms.cccd.nextRecoveryDecision(MAX_CCCD_RECOVERY_ATTEMPTS),
+        )
+        assertEquals(
+            CccdRecoveryDecision.Retry(1),
+            hrm.cccd.nextRecoveryDecision(MAX_CCCD_RECOVERY_ATTEMPTS),
+        )
 
         registry.clear(LegacyConnectionRole.FTMS)
 

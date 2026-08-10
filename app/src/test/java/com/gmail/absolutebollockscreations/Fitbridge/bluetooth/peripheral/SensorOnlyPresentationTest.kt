@@ -3,6 +3,18 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.ConnectedServiceTag
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.ConnectionId
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FusionPersona
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricEmitter
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricFusion
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricProtocol
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricSourceClass
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricSourceId
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RscMeasurement
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.emitRscMetrics
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.sensorOnlyProviderCapabilities
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.sensorOnlySessionModes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,11 +24,12 @@ import org.junit.Test
 
 /**
  * Phase 1's downstream criterion: *"an RSC-only session presents as a downstream FTMS Treadmill
- * with speed, cadence, and distance, and with **no** target-setting capability bits set."*
+ * with speed and distance, and with **no** target-setting capability bits set."* RSC cadence is
+ * internal-only because FTMS Treadmill Data has no cadence field (plan D27).
  *
  * ### Why the target bits are the part that matters
  *
- * Speed, cadence and distance are just data; getting them wrong shows up immediately. The
+ * Speed and distance are just data; getting them wrong shows up immediately. The
  * capability bits are a **promise**. A watch reading a speed-target bit is being told it can
  * ask FitBridge to change the belt speed — and in a sensor-only session there is no belt. The
  * user would set a target, see it accepted, and nothing would happen.
@@ -26,14 +39,53 @@ import org.junit.Test
  */
 class SensorOnlyPresentationTest {
 
-    /** What `BtEngine.sensorOnlyProviderCapabilities()` builds: settled, and supporting nothing. */
-    private val sensorOnly = BtEngineState.FtmsCapabilities(
-        featuresRead = true,
-        supportsSpeed = false,
-        supportsInclination = false,
-        supportsResistance = false,
-        supportsPower = false,
-    )
+    private val sensorOnly = sensorOnlyProviderCapabilities()
+
+    @Test
+    fun `RSC samples reach downstream Feature and Treadmill Data without cadence or controls`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        fusion.startSession(FusionPersona.RUN, nowMs = 100)
+        val source = MetricSourceId(
+            ConnectionId("RUNPOD", 1),
+            MetricProtocol.RSC,
+            BluetoothIds.UUID_RSC_MEASUREMENT,
+        )
+
+        emitRscMetrics(
+            RscMeasurement.parse(hex("032601387b0024000000"))!!,
+            MetricEmitter(fusion, source, MetricSourceClass.RSC, arrivalMs = 101),
+        )
+        emitRscMetrics(
+            RscMeasurement.parse(hex("03260135830042000000"))!!,
+            MetricEmitter(fusion, source, MetricSourceClass.RSC, arrivalMs = 102),
+        )
+
+        val store = FtmsMetricStore()
+        EngineMetricPump(state, store) { FtmsMachineProfile.TREADMILL }.sampleOnce()
+        val snapshot = store.snapshot
+        assertEquals(4.134375, snapshot.speedKph ?: 0.0, 1e-9)
+        assertEquals(3, snapshot.distanceMeters)
+        assertEquals("cadence remains available to fusion only", 53.0, snapshot.cadence ?: 0.0, 0.0)
+
+        val treadmillData = FtmsDataEncoders.encode(
+            FtmsMachineProfile.TREADMILL,
+            snapshot,
+            snapshot.speedKph,
+        ).single()
+        val dataFlags = u16(treadmillData, 0)
+        assertTrue("Total Distance must be present", dataFlags and (1 shl 2) != 0)
+        assertEquals(3, u24(treadmillData, optionalOffset(dataFlags, bit = 2)))
+
+        val targets = TargetCapabilities.fromEngineCapabilities(sensorOnly)
+        val feature = buildFtmsFeaturePayload(FtmsMachineProfile.TREADMILL, targets)
+        assertEquals(8, feature.size)
+        assertEquals(0, u32(feature, 4))
+        assertFalse(
+            "FTMS Treadmill must not claim its internal RSC cadence",
+            u32(feature, 0) and (1 shl FtmsSpec.Feature.CADENCE) != 0,
+        )
+    }
 
     @Test
     fun `a sensor-only session advertises no target-setting capability at all`() {
@@ -116,4 +168,24 @@ class SensorOnlyPresentationTest {
             sensorOnlySessionModes(setOf(ConnectedServiceTag.RSC, ConnectedServiceTag.HRM)),
         )
     }
+
+    private fun optionalOffset(flags: Int, bit: Int): Int {
+        var offset = 4 // two flag octets + mandatory instantaneous speed
+        if (bit > 1 && flags and (1 shl 1) != 0) offset += 2
+        return offset
+    }
+
+    private fun u16(value: ByteArray, offset: Int): Int =
+        (value[offset].toInt() and 0xFF) or ((value[offset + 1].toInt() and 0xFF) shl 8)
+
+    private fun u24(value: ByteArray, offset: Int): Int =
+        (value[offset].toInt() and 0xFF) or
+            ((value[offset + 1].toInt() and 0xFF) shl 8) or
+            ((value[offset + 2].toInt() and 0xFF) shl 16)
+
+    private fun u32(value: ByteArray, offset: Int): Int =
+        u16(value, offset) or (u16(value, offset + 2) shl 16)
+
+    private fun hex(value: String): ByteArray =
+        value.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 }

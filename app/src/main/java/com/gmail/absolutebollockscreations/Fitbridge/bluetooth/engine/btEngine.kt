@@ -132,6 +132,20 @@ import java.util.UUID
 const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
 const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
 
+/**
+ * Settled capabilities for a session supplied only by sensors.
+ *
+ * There is no upstream machine to read or control, so every target capability and range must
+ * remain absent. `featuresRead` means the answer is final, not that a `0x2ACC` read occurred.
+ */
+internal fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
+    featuresRead = true,
+    supportsSpeed = false,
+    supportsInclination = false,
+    supportsResistance = false,
+    supportsPower = false,
+)
+
 class BtEngine internal constructor(
     internal val context: Context,
     private val handlerFactory: HandlerFactory,
@@ -239,29 +253,6 @@ class BtEngine internal constructor(
     /** Whether an upstream fitness machine is currently supplying this session. */
     private fun hasUpstreamMachine(): Boolean =
         connectionState.value == android.bluetooth.BluetoothProfile.STATE_CONNECTED
-
-    /**
-     * Capabilities to advertise for a **sensor-only** session — Phase 1's downstream criterion.
-     *
-     * A session driven by a foot pod and a strap has no machine behind it, so there is nothing
-     * to read `0x2ACC` or the Supported-* ranges from, and nothing that could honour a target
-     * if a watch set one. Every `supports*` flag is therefore false, which
-     * [TargetCapabilities.toTargetFeatureBits] turns into **no target-setting bits** in the
-     * downstream Feature characteristic. That is not a conservative default; it is the accurate
-     * statement. A watch that saw a speed-target bit here would be told it could drive a
-     * treadmill that does not exist.
-     *
-     * `featuresRead = true` is not a claim that anything was read. It reports that capabilities
-     * are settled and will not converge further, which is what the readiness gate is asking:
-     * without it a sensor-only session would wait forever for a machine that is not coming.
-     */
-    private fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
-        featuresRead = true,
-        supportsSpeed = false,
-        supportsInclination = false,
-        supportsResistance = false,
-        supportsPower = false,
-    )
 
     /**
      * Entry point to be called when we have inferred a provider persona (FtmsMachineProfile)

@@ -14,6 +14,75 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothI
 import java.util.UUID
 import timber.log.Timber
 
+internal enum class RscGattOperationKind { ENABLE_NOTIFICATIONS, READ }
+
+internal data class RscGattOperation(
+    val kind: RscGattOperationKind,
+    val characteristicUuid: UUID,
+)
+
+internal data class RscDiscoveryPlan(
+    val activate: Boolean,
+    val operations: List<RscGattOperation>,
+)
+
+/** Required Measurement first, followed by the two best-effort reads in stable queue order. */
+internal fun planRscDiscovery(characteristicUuids: Set<UUID>): RscDiscoveryPlan {
+    if (UUID_RSC_MEASUREMENT !in characteristicUuids) {
+        return RscDiscoveryPlan(activate = false, operations = emptyList())
+    }
+    return RscDiscoveryPlan(
+        activate = true,
+        operations = buildList {
+            add(RscGattOperation(RscGattOperationKind.ENABLE_NOTIFICATIONS, UUID_RSC_MEASUREMENT))
+            if (UUID_RSC_FEATURE in characteristicUuids) {
+                add(RscGattOperation(RscGattOperationKind.READ, UUID_RSC_FEATURE))
+            }
+            if (UUID_SENSOR_LOCATION in characteristicUuids) {
+                add(RscGattOperation(RscGattOperationKind.READ, UUID_SENSOR_LOCATION))
+            }
+        },
+    )
+}
+
+internal sealed interface RscReadOutcome {
+    data class Features(val bits: Int) : RscReadOutcome
+    data class SensorLocation(val code: Int, val footMounted: Boolean?) : RscReadOutcome
+    data class Unavailable(val characteristicUuid: UUID) : RscReadOutcome
+    data object Ignored : RscReadOutcome
+}
+
+internal fun decodeRscRead(
+    characteristicUuid: UUID,
+    value: ByteArray,
+    success: Boolean,
+): RscReadOutcome = when (characteristicUuid) {
+    UUID_SENSOR_LOCATION -> if (!success || value.isEmpty()) {
+        RscReadOutcome.Unavailable(characteristicUuid)
+    } else {
+        val code = value[0].toInt() and 0xFF
+        RscReadOutcome.SensorLocation(code, RscMeasurement.isFootMounted(code))
+    }
+
+    UUID_RSC_FEATURE -> if (!success || value.size < 2) {
+        RscReadOutcome.Unavailable(characteristicUuid)
+    } else {
+        RscReadOutcome.Features(
+            (value[0].toInt() and 0xFF) or ((value[1].toInt() and 0xFF) shl 8),
+        )
+    }
+
+    else -> RscReadOutcome.Ignored
+}
+
+internal fun emitRscMetrics(reading: RscMeasurement.Reading, emitter: MetricEmitter) {
+    emitter.emit(MetricKind.SPEED, reading.speedKph)
+    emitter.emit(MetricKind.CADENCE, reading.cadenceStepsPerMinute.toDouble())
+    reading.totalDistanceMetres?.let {
+        emitter.emit(MetricKind.DISTANCE, it, nativeCumulative = it)
+    }
+}
+
 /**
  * Running Speed and Cadence (`0x1814`) — plan Phase 1.
  *
@@ -65,8 +134,9 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
             return false
         }
 
-        val measurement = service.getCharacteristic(UUID_RSC_MEASUREMENT)
-        if (measurement == null) {
+        val characteristics = service.characteristics.associateBy { it.uuid }
+        val plan = planRscDiscovery(characteristics.keys)
+        if (!plan.activate) {
             // 0x1814 without 0x2A53 is a device advertising a capability it does
             // not implement. Declining activation leaves the link to whichever
             // other handler can use it, rather than holding it open for a stream
@@ -78,26 +148,17 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
             return false
         }
 
-        Timber.tag(BtEngineState.TAG).i(
-            "Queue CCCD enable for RSC Measurement on %s",
-            gatt.device?.address,
-        )
-        engine.enableNotifications(context, measurement)
-
-        // Best-effort: the feature bits say which optional fields the device can
-        // ever send. Useful for triage, never required - the per-packet flags are
-        // authoritative for layout, so a device that refuses this read still
-        // decodes correctly.
-        service.getCharacteristic(UUID_RSC_FEATURE)?.let {
-            engine.pushRead(context, UUID_RSC_FEATURE)
-        }
-
-        // Sensor Location says whether this device is on a foot or on a torso, and
-        // plan §4.1's "RSC beats FTMS for running speed" is only true for the
-        // former. Best-effort like the feature read: a device that declines it
-        // keeps its priority rather than losing it for staying quiet.
-        service.getCharacteristic(UUID_SENSOR_LOCATION)?.let {
-            engine.pushRead(context, UUID_SENSOR_LOCATION)
+        plan.operations.forEach { operation ->
+            when (operation.kind) {
+                RscGattOperationKind.ENABLE_NOTIFICATIONS -> {
+                    Timber.tag(BtEngineState.TAG).i(
+                        "Queue CCCD enable for RSC Measurement on %s",
+                        gatt.device?.address,
+                    )
+                    engine.enableNotifications(context, characteristics.getValue(operation.characteristicUuid))
+                }
+                RscGattOperationKind.READ -> engine.pushRead(context, operation.characteristicUuid)
+            }
         }
 
         return true
@@ -128,11 +189,7 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
             sourceClass = MetricSourceClass.RSC,
         ) ?: return
 
-        emitter.emit(MetricKind.SPEED, reading.speedKph)
-        emitter.emit(MetricKind.CADENCE, reading.cadenceStepsPerMinute.toDouble())
-        reading.totalDistanceMetres?.let {
-            emitter.emit(MetricKind.DISTANCE, it, nativeCumulative = it)
-        }
+        emitRscMetrics(reading, emitter)
 
         // Stride length and the walking/running flag are decoded by
         // [RscMeasurement] and deliberately NOT emitted yet: there is no
@@ -161,50 +218,48 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
         value: ByteArray,
         status: Int,
     ) {
-        if (ch.uuid == UUID_SENSOR_LOCATION) {
-            if (status != BluetoothGatt.GATT_SUCCESS || value.isEmpty()) {
-                Timber.tag(BtEngineState.TAG).i(
-                    "RSC sensor location unavailable on %s (status=%d len=%d); " +
-                        "speed priority falls back to the provisional rule",
-                    gatt.device?.address,
-                    status,
-                    value.size,
-                )
-                return
+        when (val outcome = decodeRscRead(ch.uuid, value, status == BluetoothGatt.GATT_SUCCESS)) {
+            is RscReadOutcome.Unavailable -> {
+                if (outcome.characteristicUuid == UUID_SENSOR_LOCATION) {
+                    Timber.tag(BtEngineState.TAG).i(
+                        "RSC sensor location unavailable on %s (status=%d len=%d); " +
+                            "speed priority falls back to the provisional rule",
+                        gatt.device?.address,
+                        status,
+                        value.size,
+                    )
+                } else {
+                    Timber.tag(BtEngineState.TAG).d(
+                        "RSC feature read unavailable on %s (status=%d len=%d)",
+                        gatt.device?.address,
+                        status,
+                        value.size,
+                    )
+                }
             }
-            val code = value[0].toInt() and 0xFF
-            val footMounted = RscMeasurement.isFootMounted(code)
-            Timber.tag(BtEngineState.TAG).i(
-                "RSC sensor location on %s: %s (foot-mounted=%s)",
-                gatt.device?.address,
-                RscMeasurement.describeSensorLocation(code),
-                footMounted?.toString() ?: "undetermined",
-            )
-            // Speed priority depends on this: plan §4.1 puts RSC above FTMS for
-            // running, which holds for a foot pod and not for a chest strap
-            // estimating pace from torso movement.
-            engine.state.connectionRegistry.contextForGatt(gatt)?.let { context ->
-                engine.metricFusion.setRscMounting(context.connectionId, footMounted)
-            }
-            return
-        }
 
-        if (ch.uuid != UUID_RSC_FEATURE) return
-        if (status != BluetoothGatt.GATT_SUCCESS || value.size < 2) {
-            Timber.tag(BtEngineState.TAG).d(
-                "RSC feature read unavailable on %s (status=%d len=%d)",
+            is RscReadOutcome.SensorLocation -> {
+                Timber.tag(BtEngineState.TAG).i(
+                    "RSC sensor location on %s: %s (foot-mounted=%s)",
+                    gatt.device?.address,
+                    RscMeasurement.describeSensorLocation(outcome.code),
+                    outcome.footMounted?.toString() ?: "undetermined",
+                )
+                // Speed priority depends on this: a foot pod owns running speed,
+                // while a torso strap's estimate is excluded beside a machine.
+                engine.state.connectionRegistry.contextForGatt(gatt)?.let { context ->
+                    engine.metricFusion.setRscMounting(context.connectionId, outcome.footMounted)
+                }
+            }
+
+            is RscReadOutcome.Features -> Timber.tag(BtEngineState.TAG).i(
+                "RSC features on %s: 0x%04X (%s)",
                 gatt.device?.address,
-                status,
-                value.size,
+                outcome.bits,
+                RscMeasurement.describeFeatures(outcome.bits),
             )
-            return
+
+            RscReadOutcome.Ignored -> Unit
         }
-        val features = (value[0].toInt() and 0xFF) or ((value[1].toInt() and 0xFF) shl 8)
-        Timber.tag(BtEngineState.TAG).i(
-            "RSC features on %s: 0x%04X (%s)",
-            gatt.device?.address,
-            features,
-            RscMeasurement.describeFeatures(features),
-        )
     }
 }
