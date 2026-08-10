@@ -1,0 +1,84 @@
+{
+  "family": "csc.standard",
+  "source": "capture-20260810_131952-be87-central.ndjson",
+  "source_sha256": "0ca02e1d7a18e87190cfd5c4276237d11dc817296f583a68e07b7b13ada17477",
+  "captured": "2026-08-10",
+  "acquisition": "simulator-redacted-ndjson",
+  "session": "be87",
+  "device_label": "TMIW-Bike",
+  "simulator_revision": null,
+  "service": "00001816-0000-1000-8000-00805f9b34fb",
+  "characteristic": "00002a5b-0000-1000-8000-00805f9b34fb",
+  "feature_hex": "0300",
+  "wheel_circumference_mm": 2405,
+  "observed_notification_count": 63,
+  "note": "Consecutive combined wheel-and-crank frames from capture-local connection c1. TMIW-Bike advertised FTMS, CSC, and CPS together, so this is tier-S simulator evidence and not physical combined-sensor verification.",
+  "cases": [
+    {
+      "seq": 127,
+      "t": 1786382417145,
+      "hex": "036d000000b59426004294",
+      "baseline": true,
+      "expect": {
+        "cumulativeWheelRevolutions": 109,
+        "lastWheelEventTimeTicks": 38069,
+        "cumulativeCrankRevolutions": 38,
+        "lastCrankEventTimeTicks": 37954
+      }
+    },
+    {
+      "seq": 128,
+      "t": 1786382417851,
+      "hex": "0370000000a29727001597",
+      "expect": {
+        "cumulativeWheelRevolutions": 112,
+        "lastWheelEventTimeTicks": 38818,
+        "cumulativeCrankRevolutions": 39,
+        "lastCrankEventTimeTicks": 38677,
+        "wheelDeltaRevolutions": 3,
+        "wheelDeltaTicks": 749,
+        "crankDeltaRevolutions": 1,
+        "crankDeltaTicks": 723,
+        "speedKph": 35.510515353805076,
+        "cadenceRpm": 84.97925311203319,
+        "distanceMetres": 7.215
+      }
+    },
+    {
+      "seq": 134,
+      "t": 1786382418558,
+      "hex": "03730000008d9a2800e999",
+      "expect": {
+        "cumulativeWheelRevolutions": 115,
+        "lastWheelEventTimeTicks": 39565,
+        "cumulativeCrankRevolutions": 40,
+        "lastCrankEventTimeTicks": 39401,
+        "wheelDeltaRevolutions": 3,
+        "wheelDeltaTicks": 747,
+        "crankDeltaRevolutions": 1,
+        "crankDeltaTicks": 724,
+        "speedKph": 35.60559036144578,
+        "cadenceRpm": 84.86187845303867,
+        "distanceMetres": 14.43
+      }
+    },
+    {
+      "seq": 141,
+      "t": 1786382419264,
+      "hex": "0376000000789d2900bc9c",
+      "expect": {
+        "cumulativeWheelRevolutions": 118,
+        "lastWheelEventTimeTicks": 40312,
+        "cumulativeCrankRevolutions": 41,
+        "lastCrankEventTimeTicks": 40124,
+        "wheelDeltaRevolutions": 3,
+        "wheelDeltaTicks": 747,
+        "crankDeltaRevolutions": 1,
+        "crankDeltaTicks": 723,
+        "speedKph": 35.60559036144578,
+        "cadenceRpm": 84.97925311203319,
+        "distanceMetres": 21.645
+      }
+    }
+  ]
+}
