@@ -41,6 +41,7 @@ internal data class ProtocolKey(val value: String) {
         val HRM = ProtocolKey("hrm")
         val RSC = ProtocolKey("rsc")
         val CSC = ProtocolKey("csc")
+        val CPS = ProtocolKey("cps")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -72,8 +73,7 @@ internal fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): Protoc
         BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
         BtEngineState.BtServiceType.RSC -> ProtocolKey.RSC
         BtEngineState.BtServiceType.CSC -> ProtocolKey.CSC
-        // Phase 3; no handler yet.
-        BtEngineState.BtServiceType.Power,
+        BtEngineState.BtServiceType.Power -> ProtocolKey.CPS
         // Not secondary sensors.
         BtEngineState.BtServiceType.FTMS,
         BtEngineState.BtServiceType.Glucose,
@@ -105,6 +105,7 @@ internal class HandlerFactory(
                 ProtocolKey.HRM to ::HrmProtocolHandler,
                 ProtocolKey.RSC to ::RscProtocolHandler,
                 ProtocolKey.CSC to { CscProtocolHandler() },
+                ProtocolKey.CPS to { CpsProtocolHandler() },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)

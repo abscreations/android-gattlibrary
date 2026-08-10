@@ -7,6 +7,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CscNativeEventSnapshot
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CpsNativeEventSnapshot
 import java.util.UUID
 import kotlin.math.floor
 
@@ -184,6 +185,7 @@ object CyclingSensorEncoders {
     const val CSC_FEATURE_WHEEL_AND_CRANK = 0x0003
     const val CPS_FEATURE_CRANK_REVOLUTION_DATA = 1 shl 3
     const val CPS_FLAG_CRANK_REVOLUTION_DATA_PRESENT = 1 shl 5
+    const val CPS_FLAG_WHEEL_REVOLUTION_DATA_PRESENT = 1 shl 4
     const val SENSOR_LOCATION_REAR_HUB = 0x0D
 
     fun cscMeasurement(revolutions: CyclingRevolutionSnapshot): ByteArray =
@@ -196,16 +198,27 @@ object CyclingSensorEncoders {
     fun cyclingPowerMeasurement(
         instantaneousPowerWatts: Int,
         revolutions: CyclingRevolutionSnapshot,
-    ): ByteArray =
-        u16le(CPS_FLAG_CRANK_REVOLUTION_DATA_PRESENT) +
+        native: CpsNativeEventSnapshot? = null,
+    ): ByteArray {
+        val nativeWheel = native?.cumulativeWheelRevolutions?.let { count ->
+            native.lastWheelEventTimeTicks?.let { time -> count to time }
+        }
+        val nativeCrank = native?.cumulativeCrankRevolutions?.let { count ->
+            native.lastCrankEventTimeTicks?.let { time -> count to time }
+        }
+        val flags = CPS_FLAG_CRANK_REVOLUTION_DATA_PRESENT or
+            if (nativeWheel != null) CPS_FLAG_WHEEL_REVOLUTION_DATA_PRESENT else 0
+        return u16le(flags) +
             s16le(
                 instantaneousPowerWatts.coerceIn(
                     Short.MIN_VALUE.toInt(),
                     Short.MAX_VALUE.toInt(),
                 ),
             ) +
-            u16le(revolutions.cumulativeCrankRevolutions) +
-            u16le(revolutions.lastCrankEventTime)
+            (nativeWheel?.let { u32leLong(it.first) + u16le(it.second) } ?: byteArrayOf()) +
+            u16le(nativeCrank?.first ?: revolutions.cumulativeCrankRevolutions) +
+            u16le(nativeCrank?.second ?: revolutions.lastCrankEventTime)
+    }
 
     fun cscFeature(): ByteArray = u16le(CSC_FEATURE_WHEEL_AND_CRANK)
 

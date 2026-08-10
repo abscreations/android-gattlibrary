@@ -425,6 +425,7 @@ class FtmsPeripheralNotifier(
                     val payload = CyclingSensorEncoders.cyclingPowerMeasurement(
                         snapshot.powerWatts ?: 0,
                         revolutions,
+                        snapshot.cpsNativeEvents,
                     )
                     countCyclingOutcome(
                         outcome = advertiser.notifyCyclingPowerMeasurement(conn.device, payload),

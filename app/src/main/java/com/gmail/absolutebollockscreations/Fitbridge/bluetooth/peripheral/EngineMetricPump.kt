@@ -128,6 +128,7 @@ class EngineMetricPump(
             floors = engineState.totalFloors.value,
             strokeCount = strokeCount,
             cscNativeEvents = engineState.cscNativeEvents.snapshot(),
+            cpsNativeEvents = engineState.cpsNativeEvents.snapshot(),
             updatedAtMs = SystemClock.elapsedRealtime(),
         )
     }

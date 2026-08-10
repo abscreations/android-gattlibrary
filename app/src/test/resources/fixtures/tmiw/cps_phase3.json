@@ -1,0 +1,51 @@
+{
+  "schema": "fitbridge.tmiw-fixture.v1",
+  "source_project": "TrackMyIndoorWorkout/TrackMyIndoorWorkout",
+  "source_commit": "85f2ee7520705c99ce81db7355df1be7f4b72ecf",
+  "source_recovery_commit": "bcf37c37",
+  "sources": [
+    "test/power_meter_sensor_test.dart",
+    "lib/devices/gadgets/cycling_power_meter_sensor.dart"
+  ],
+  "license": "Apache-2.0",
+  "acquisition": "transcribed",
+  "characteristic": "00002a63-0000-1000-8000-00805f9b34fb",
+  "cases": [
+    {
+      "id": "tmiw-sample",
+      "packet": [44, 0, 103, 0, 209, 181, 228, 0, 72, 85],
+      "expect": {
+        "powerWatts": 103,
+        "accumulatedTorqueRaw": 46545,
+        "cumulativeCrankRevolutions": 228,
+        "lastCrankEventTimeTicks": 21832
+      }
+    },
+    {
+      "id": "stages-sc3-baseline",
+      "packet": [44, 0, 139, 0, 221, 102, 6, 12, 178, 74],
+      "expect": {
+        "powerWatts": 139,
+        "cumulativeCrankRevolutions": 3078,
+        "lastCrankEventTimeTicks": 19122
+      }
+    },
+    {
+      "id": "stages-sc3-next",
+      "packet": [44, 0, 141, 0, 202, 105, 7, 12, 221, 78],
+      "expect": {
+        "powerWatts": 141,
+        "cumulativeCrankRevolutions": 3079,
+        "lastCrankEventTimeTicks": 20189,
+        "cadenceRpmRounded": 58
+      }
+    },
+    {
+      "id": "negative-power-divergence",
+      "packet": [0, 0, 253, 255],
+      "expect": { "powerWatts": -3 },
+      "tmiwValue": 65533,
+      "divergenceReason": "TMIW ShortMetricDescriptor reads the mandatory SInt16 as unsigned; FitBridge follows the Bluetooth SIG signed type."
+    }
+  ]
+}
