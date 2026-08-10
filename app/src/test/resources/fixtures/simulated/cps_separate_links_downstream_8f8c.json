@@ -1,0 +1,43 @@
+{
+  "schema": "fitbridge.simulated-separate-link-evidence.v1",
+  "tier": "S",
+  "captured": "2026-08-10",
+  "session": "8f8c",
+  "archive": "fitbridge-logs-20260810_153419.zip",
+  "archive_sha256": "1bb295a06a6c8a482b94d7455d68eb6d19cf25068df1c4d65d8698229cf88f87",
+  "central_source_sha256": "5e893734ced053160adfdcfb4ebaaca7d03a53cb275e2b48ea4e0f67b5b8823b",
+  "peripheral_source_sha256": "15639a993a11320ea191f13244c9a396927e5af736111f8b9b484d74de6eb0d1",
+  "acquisition": "simulator-redacted-central-and-peripheral-ndjson",
+  "global_event_seq_first": 13371,
+  "global_event_seq_last": 23161,
+  "global_event_count": 9791,
+  "bike": {
+    "persona": "INDOOR_BIKE",
+    "machine": {"connection": "c9", "generation": 8, "handlers": ["FTMS"]},
+    "sensor": {"connection": "c10", "generation": 9, "handlers": ["CSC", "CPS"]},
+    "notification_counts": {"ftms": 195, "csc": 181, "cps": 179},
+    "three_stream_overlap_ms": 127113,
+    "active_session_ms": 121657,
+    "downstream": {"profile": "INDOOR_BIKE", "clientConnected": true, "measurementCccd": false, "deliveredRecords": 0}
+  },
+  "elliptical": {
+    "persona": "ELLIPTICAL",
+    "machine": {"connection": "c12", "generation": 11, "handlers": ["FTMS"]},
+    "sensor": {"connection": "c13", "failedGeneration": 12, "generation": 13, "handlers": ["CSC", "CPS"]},
+    "notification_counts": {"ftms": 149, "csc": 127, "cps": 121},
+    "three_stream_overlap_ms": 85730,
+    "active_session_ms": 67551,
+    "downstream": {"profile": "ELLIPTICAL", "connection": "c14", "measurementCccd": true, "crossTrainerNotifications": 90, "logicalUpdatePairs": 45, "durationMs": 44951, "diagnosticDeliveredRecords": 36},
+    "source_snapshot": {
+      "csc": {"cadenceRpm": 87.39687055476529, "totalStrides": 34.0, "speedKph": 8.390099573257466, "distanceMetres": 54.40000000000003},
+      "cps": {"seq": 21295, "hex": "2000ca004e007477", "powerWatts": 202},
+      "ftms": {"seq": 21297, "hex": "fe0bc60c020caf00a900930a000900c600b1003800c7020c8b3d01", "speedKph": 32.7, "cadenceRpm": 87.5, "powerWatts": 198.0}
+    },
+    "downstream_update": {
+      "core": {"seq": 21319, "hex": "9e2000c60c020c930a005800550054015a003d01"},
+      "extension": {"seq": 21320, "hex": "010700ca00b1003800ffffff"},
+      "expect": {"speedKph": 32.7, "averageSpeedKph": 30.74, "distanceMetres": 2707.0, "cadenceRpm": 88.0, "averageCadenceRpm": 85.0, "totalStrides": 34.0, "resistance": 9.0, "elapsedSeconds": 317.0, "powerWatts": 202.0, "averagePowerWatts": 177.0, "energyKilocalories": 56.0}
+    }
+  },
+  "note": "Tier-S separate-link closure evidence. The bike client connected but did not subscribe before stop; downstream measurement delivery is proven by the elliptical session. No physical or tier-H claim."
+}
