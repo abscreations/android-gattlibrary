@@ -1,0 +1,74 @@
+{
+  "schema": "fitbridge.simulated-cps-evidence.v1",
+  "family": "cps.standard",
+  "tier": "S",
+  "captured": "2026-08-10",
+  "session": "8f8c",
+  "device_label": "TMIW-Bike",
+  "simulator_revision": null,
+  "archive": "fitbridge-logs-20260810_145520.zip",
+  "archive_sha256": "5926f598b80c09af46f722b8a3dd3f65ee8da4bb90bcf1515db469d9471d105d",
+  "source": "capture-20260810_145333-8f8c-central.ndjson",
+  "source_sha256": "7cb680b042c803296785b2106f5cd44d4eee3f38ac7a41d46e84d1af742189c3",
+  "acquisition": "simulator-redacted-ndjson",
+  "capture_event_seq_first": 58,
+  "capture_event_seq_last": 1594,
+  "advertised_services": ["1826", "1816", "1818"],
+  "service": "00001818-0000-1000-8000-00805f9b34fb",
+  "measurement_characteristic": "00002a63-0000-1000-8000-00805f9b34fb",
+  "feature_hex": "08000000",
+  "feature_bits": 8,
+  "sensor_location_hex": "0d",
+  "sensor_location": 13,
+  "cccd_result": "SUCCESS",
+  "observed_notification_count": 88,
+  "observed_power_min_watts": 163,
+  "observed_power_max_watts": 183,
+  "observed_interval_min_ms": 693,
+  "observed_interval_median_ms": 719,
+  "observed_interval_mean_ms": 716.9,
+  "observed_interval_max_ms": 740,
+  "note": "Tier-S combined CSC+CPS same-link evidence; FTMS was advertised but its handler was not active. This is not physical or tier-H verification.",
+  "scenarios": [
+    {
+      "id": "steady-cadence",
+      "frames": [
+        {
+          "seq": 365,
+          "hex": "2000b6003d00c09e",
+          "expect": {"powerWatts": 182, "crankRevolutions": 61, "crankEventTimeTicks": 40640}
+        },
+        {
+          "seq": 375,
+          "hex": "2000b6003e0091a1",
+          "expect": {"powerWatts": 182, "crankRevolutions": 62, "crankEventTimeTicks": 41361, "deltaRevolutions": 1, "deltaTicks": 721, "cadenceRpm": 85.21497919556172}
+        },
+        {
+          "seq": 383,
+          "hex": "2000b7003f0062a4",
+          "expect": {"powerWatts": 183, "crankRevolutions": 63, "crankEventTimeTicks": 42082, "deltaRevolutions": 1, "deltaTicks": 721, "cadenceRpm": 85.21497919556172}
+        }
+      ]
+    },
+    {
+      "id": "event-time-rollover",
+      "frames": [
+        {
+          "seq": 720,
+          "hex": "2000a8005f0083ff",
+          "expect": {"powerWatts": 168, "crankRevolutions": 95, "crankEventTimeTicks": 65411}
+        },
+        {
+          "seq": 735,
+          "hex": "2000a70060006202",
+          "expect": {"powerWatts": 167, "crankRevolutions": 96, "crankEventTimeTicks": 610, "deltaRevolutions": 1, "deltaTicks": 735, "cadenceRpm": 83.59183673469387}
+        }
+      ]
+    }
+  ],
+  "last_frame": {
+    "seq": 1523,
+    "hex": "2000a70094005198",
+    "expect": {"powerWatts": 167, "crankRevolutions": 148, "crankEventTimeTicks": 38993}
+  }
+}
