@@ -52,6 +52,8 @@ internal fun netElevationChangeMeters(
 
 class BtEngineState : HrmStateSink {
 
+    internal val cscNativeEvents = CscNativeEventStore()
+
     /* ───────────────────────────── types & constants ───────────────────────────── */
 
     companion object {

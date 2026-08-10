@@ -170,6 +170,13 @@ internal class CscProtocolHandler(
             !engine.isSelectedEllipticalCsc(context)
         ) return
         val capability = context.cscRoleCapability ?: return
+        if (session.persona == CscWorkoutPersona.BIKE) {
+            engine.state.cscNativeEvents.publish(
+                context.connectionId,
+                update.reading,
+                context.cscAssignedRoles,
+            )
+        }
         val metrics = derivation.derive(
             update = update,
             persona = session.persona,

@@ -127,6 +127,7 @@ class EngineMetricPump(
             negativeElevationGainMeters = engineState.elevationGainNeg.value,
             floors = engineState.totalFloors.value,
             strokeCount = strokeCount,
+            cscNativeEvents = engineState.cscNativeEvents.snapshot(),
             updatedAtMs = SystemClock.elapsedRealtime(),
         )
     }

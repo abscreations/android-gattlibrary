@@ -2,8 +2,10 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CscNativeEventSnapshot
 
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class CyclingSensorEncodersTest {
@@ -38,5 +40,54 @@ class CyclingSensorEncodersTest {
             CyclingSensorEncoders.cyclingPowerFeature(),
         )
         assertArrayEquals(byteArrayOf(0x0D), CyclingSensorEncoders.sensorLocation())
+    }
+
+    @Test
+    fun `native wheel and synthetic crank fields merge independently and encode byte exact`() {
+        val merged = revolutions.withNativeEvents(
+            CscNativeEventSnapshot(
+                cumulativeWheelRevolutions = 0xFEDC_BA98L,
+                lastWheelEventTimeTicks = 0xFFFF,
+            ),
+        )
+
+        assertArrayEquals(
+            byteArrayOf(
+                0x03,
+                0x98.toByte(), 0xBA.toByte(), 0xDC.toByte(), 0xFE.toByte(),
+                0xFF.toByte(), 0xFF.toByte(),
+                0x08, 0x07,
+                0x0A, 0x09,
+            ),
+            CyclingSensorEncoders.cscMeasurement(merged),
+        )
+    }
+
+    @Test
+    fun `native crank and synthetic wheel fields merge independently`() {
+        assertEquals(
+            CyclingRevolutionSnapshot(
+                cumulativeWheelRevolutions = 0x0102_0304L,
+                lastWheelEventTime = 0x0506,
+                cumulativeCrankRevolutions = 0xFFFE,
+                lastCrankEventTime = 0xFFFF,
+            ),
+            revolutions.withNativeEvents(
+                CscNativeEventSnapshot(
+                    cumulativeCrankRevolutions = 0xFFFE,
+                    lastCrankEventTimeTicks = 0xFFFF,
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `incomplete native field pair falls back to the complete synthetic pair`() {
+        assertEquals(
+            revolutions,
+            revolutions.withNativeEvents(
+                CscNativeEventSnapshot(cumulativeWheelRevolutions = 99),
+            ),
+        )
     }
 }

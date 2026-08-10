@@ -2,9 +2,11 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CscNativeEventSnapshot
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -37,6 +39,27 @@ class CscControlPointTest {
         assertArrayEquals(
             byteArrayOf(0x10, 0x01, 0x01),
             CscControlPoint.response(CscControlPoint.SET_CUMULATIVE_VALUE, CscControlPoint.SUCCESS),
+        )
+    }
+
+    @Test
+    fun `cumulative reset is allowed for synthesis and rejected for native wheel pass-through`() {
+        assertTrue(FtmsMetricSnapshot().allowsCscCumulativeWheelReset())
+        assertTrue(
+            FtmsMetricSnapshot(
+                cscNativeEvents = CscNativeEventSnapshot(
+                    cumulativeCrankRevolutions = 2,
+                    lastCrankEventTimeTicks = 3,
+                ),
+            ).allowsCscCumulativeWheelReset(),
+        )
+        assertFalse(
+            FtmsMetricSnapshot(
+                cscNativeEvents = CscNativeEventSnapshot(
+                    cumulativeWheelRevolutions = 4,
+                    lastWheelEventTimeTicks = 5,
+                ),
+            ).allowsCscCumulativeWheelReset(),
         )
     }
 }

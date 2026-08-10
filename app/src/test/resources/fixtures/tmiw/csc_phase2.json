@@ -1,0 +1,27 @@
+{
+  "family": "csc.standard",
+  "sources": [
+    "test/cycling_speed_and_cadence_sensor_test.dart",
+    "test/native_biking_sensors_test.dart"
+  ],
+  "source_commit": "85f2ee7520705c99ce81db7355df1be7f4b72ecf",
+  "captured": "2026-08-10",
+  "acquisition": "transcribed",
+  "characteristic": "00002a5b-0000-1000-8000-00805f9b34fb",
+  "cases": [
+    {
+      "name": "combined-packet-with-four-trailing-octets",
+      "packet": [3, 100, 0, 0, 0, 200, 0, 50, 0, 100, 0, 0, 0, 0, 0],
+      "expect": {
+        "cumulativeWheelRevolutions": 100,
+        "lastWheelEventTimeTicks": 200,
+        "cumulativeCrankRevolutions": 50,
+        "lastCrankEventTimeTicks": 100
+      }
+    }
+  ],
+  "native_biking_preference": {
+    "enabledDefault": false,
+    "fitbridgeDivergence": "TMIW points users to its Equipment wheel-size setting. FitBridge D9 instead owns a dedicated global CSC Wheel Circumference setting, default 2405 mm, on the Settings page. Both keep native biking opt-in; the setting label/location intentionally differs."
+  }
+}

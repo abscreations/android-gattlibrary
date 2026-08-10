@@ -255,6 +255,7 @@ class FtmsPeripheralNotifier(
     }
 
     fun setCumulativeWheelRevolutions(value: Long): Boolean {
+        if (!store.snapshot.allowsCscCumulativeWheelReset()) return false
         val accumulator = cyclingAccumulator ?: return false
         accumulator.setCumulativeWheelRevolutions(value)
         return true
@@ -457,7 +458,9 @@ class FtmsPeripheralNotifier(
     private fun advanceCyclingAccumulator(nowMs: Long) {
         val accumulator = cyclingAccumulator ?: return
         val snapshot = store.snapshotForNotification(nowMs) ?: return
-        latestRevolutions = accumulator.update(snapshot.speedKph, snapshot.cadence, nowMs)
+        latestRevolutions = accumulator
+            .update(snapshot.speedKph, snapshot.cadence, nowMs)
+            .withNativeEvents(snapshot.cscNativeEvents)
     }
 
     private suspend fun notifyOne(

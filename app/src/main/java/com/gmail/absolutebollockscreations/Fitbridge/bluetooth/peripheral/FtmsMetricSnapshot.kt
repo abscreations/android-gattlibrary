@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CscNativeEventSnapshot
 import kotlin.math.atan
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -66,6 +67,8 @@ data class FtmsMetricSnapshot(
     val floors: Int? = null,
     /** Strokes, strides or steps depending on persona. */
     val strokeCount: Int? = null,
+    /** Exact selected upstream CSC counters/event times, if this is a CSC bike session. */
+    val cscNativeEvents: CscNativeEventSnapshot? = null,
     /**
      * `SystemClock.elapsedRealtime()` when [EngineMetricPump] **sampled** this
      * snapshot — not when the upstream machine sent the data.

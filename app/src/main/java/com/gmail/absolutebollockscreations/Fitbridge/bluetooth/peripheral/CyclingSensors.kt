@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CscNativeEventSnapshot
 import java.util.UUID
 import kotlin.math.floor
 
@@ -51,6 +52,30 @@ data class CyclingRevolutionSnapshot(
     val cumulativeCrankRevolutions: Int = 0,
     val lastCrankEventTime: Int = 0,
 )
+
+/** Prefer each exact upstream CSC field pair independently; synthesize only its missing peer. */
+internal fun CyclingRevolutionSnapshot.withNativeEvents(
+    native: CscNativeEventSnapshot?,
+): CyclingRevolutionSnapshot {
+    val nativeWheel = native?.cumulativeWheelRevolutions?.let { revolutions ->
+        native.lastWheelEventTimeTicks?.let { eventTime -> revolutions to eventTime }
+    }
+    val nativeCrank = native?.cumulativeCrankRevolutions?.let { revolutions ->
+        native.lastCrankEventTimeTicks?.let { eventTime -> revolutions to eventTime }
+    }
+    return copy(
+        cumulativeWheelRevolutions = nativeWheel?.first ?: cumulativeWheelRevolutions,
+        lastWheelEventTime = nativeWheel?.second ?: lastWheelEventTime,
+        cumulativeCrankRevolutions = nativeCrank?.first ?: cumulativeCrankRevolutions,
+        lastCrankEventTime = nativeCrank?.second ?: lastCrankEventTime,
+    )
+}
+
+/** A native wheel counter cannot be reset locally without violating D31's verbatim guarantee. */
+internal fun FtmsMetricSnapshot.allowsCscCumulativeWheelReset(): Boolean =
+    cscNativeEvents?.let {
+        it.cumulativeWheelRevolutions == null || it.lastWheelEventTimeTicks == null
+    } ?: true
 
 /**
  * Converts instantaneous bike speed and cadence into physical-sensor events.
