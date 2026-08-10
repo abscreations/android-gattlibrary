@@ -6,6 +6,8 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.Fitbridge.ActiveCscHandler
+import com.gmail.absolutebollockscreations.Fitbridge.DebugLevel
+import com.gmail.absolutebollockscreations.Fitbridge.Debugging
 import com.gmail.absolutebollockscreations.Fitbridge.cscRoleCapabilityFromFeature
 import com.gmail.absolutebollockscreations.Fitbridge.resolveCscFeatureRoles
 import java.util.UUID
@@ -68,7 +70,10 @@ internal fun decodeCscFeatureRead(
 /** Cycling Speed and Cadence (`0x1816`) production central handler. */
 internal class CscProtocolHandler(
     private val tracker: CscMeasurementTracker = CscMeasurementTracker(),
+    private val derivation: CscDerivationState = CscDerivationState(),
 ) : BtEngineGattCore.ProtocolHandler {
+
+    private var sessionGeneration: Long? = null
 
     override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_CSC_SERVICE)
 
@@ -83,11 +88,15 @@ internal class CscProtocolHandler(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun onConnected(engine: BtEngine, gatt: BluetoothGatt) {
         tracker.reset()
+        derivation.reset()
+        sessionGeneration = null
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun onDisconnected(engine: BtEngine) {
         tracker.reset()
+        derivation.reset()
+        sessionGeneration = null
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -132,19 +141,72 @@ internal class CscProtocolHandler(
         value: ByteArray,
     ) {
         if (ch.uuid != BluetoothIds.UUID_CSC_MEASUREMENT) return
-        if (engine.state.connectionRegistry.contextForGatt(gatt) == null) {
+        val context = engine.state.connectionRegistry.contextForGatt(gatt)
+        if (context == null) {
             Timber.tag(BtEngineState.TAG).w("CSC measurement ignored for unregistered GATT")
             return
         }
-        if (acceptMeasurement(value) == null) {
+        val session = engine.cscSessionSnapshot()
+        if (session == null) {
+            acceptMeasurement(value)
+            sessionGeneration = null
+            return
+        }
+        if (sessionGeneration != session.generation) {
+            tracker.reset()
+            derivation.reset()
+            sessionGeneration = session.generation
+        }
+        val update = acceptMeasurement(value)
+        if (update == null) {
             Timber.tag(BtEngineState.TAG).w(
                 "CSC measurement malformed: %d octet(s) from %s",
                 value.size,
                 gatt.device?.address,
             )
+            return
         }
-        // Persona-aware metric derivation and selected native-event publication are the next
-        // Phase 2 work unit. This handler already owns the exact link-generation tracker.
+        if (session.persona == CscWorkoutPersona.ELLIPTICAL &&
+            !engine.isSelectedEllipticalCsc(context)
+        ) return
+        val capability = context.cscRoleCapability ?: return
+        val metrics = derivation.derive(
+            update = update,
+            persona = session.persona,
+            supportedRoles = capability.roles,
+            assignedRoles = context.cscAssignedRoles,
+            calibration = session.calibration,
+        )
+        if (metrics.isEmpty()) return
+        val arrivalMs = MonotonicMetricClock.SYSTEM.nowMs()
+        metrics.forEach { metric ->
+            val emitter = engine.metricEmitterFor(
+                gatt = gatt,
+                characteristicUuid = ch.uuid,
+                protocol = MetricProtocol.CSC,
+                sourceClass = metric.sourceClass,
+                arrivalMs = arrivalMs,
+            ) ?: return
+            emitter.emit(
+                metric = metric.metric,
+                value = metric.value,
+                nativeCumulative = metric.nativeCumulative,
+                quality = MetricQuality.DERIVED,
+            )
+            if (Debugging && DebugLevel > 4 &&
+                (metric.metric == MetricKind.SPEED || metric.metric == MetricKind.DISTANCE)
+            ) {
+                Timber.tag(BtEngineState.TAG).d(
+                    "CSC derived %s=%.3f persona=%s wheelMm=%d ellipticalStrideMm=%d roles=%s",
+                    metric.metric,
+                    metric.value,
+                    session.persona,
+                    session.calibration.wheelCircumferenceMm,
+                    session.calibration.ellipticalStrideLengthMm,
+                    context.cscAssignedRoles,
+                )
+            }
+        }
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -201,6 +263,7 @@ internal class CscProtocolHandler(
                                     .toLongOrNull() ?: Long.MAX_VALUE,
                                 address = link.address,
                                 capability = link.cscRoleCapability,
+                                assignedRoles = link.cscAssignedRoles,
                             )
                         },
                 )
@@ -210,6 +273,7 @@ internal class CscProtocolHandler(
                     outcome.bits,
                     capability.roles,
                 )
+                resolution?.let { engine.state.setCscAssignedRoles(context, it.assignedRoles) }
                 resolution?.disconnectConnectionKey?.let { loser ->
                     Timber.tag(BtEngineState.TAG).w(
                         "%s; disconnecting newer CSC link %s",

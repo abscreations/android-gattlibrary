@@ -105,6 +105,7 @@ class BtEngineState : HrmStateSink {
         val activeServices: Set<BtServiceType>,
         val machineConnection: Boolean,
         val cscRoleCapability: CscRoleCapability? = null,
+        val cscAssignedRoles: Set<CscRole> = emptySet(),
     )
 
     // ⬇️ Container types for provider-side capabilities snapshot
@@ -819,6 +820,13 @@ class BtEngineState : HrmStateSink {
         capability: CscRoleCapability?,
     ) {
         connectionRegistry.setCscRoleCapability(context, capability)
+    }
+
+    internal fun setCscAssignedRoles(
+        context: ConnectionContext,
+        assignedRoles: Set<CscRole>,
+    ) {
+        connectionRegistry.setCscAssignedRoles(context, assignedRoles)
     }
 
     /** Publish state by physical-link identity; legacy flows are registry projections. */

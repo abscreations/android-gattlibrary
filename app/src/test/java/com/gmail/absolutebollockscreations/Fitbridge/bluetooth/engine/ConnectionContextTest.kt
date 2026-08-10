@@ -373,7 +373,7 @@ class ConnectionContextTest {
     }
 
     @Test
-    fun `CSC role capability is projected by physical connection identity`() {
+    fun `CSC supported and assigned roles are projected by physical connection identity`() {
         val registry = ConnectionRegistry()
         val context = registry.openAdditional(
             "AA:BB:CC:DD:EE:03",
@@ -386,7 +386,12 @@ class ConnectionContextTest {
         )
 
         registry.setCscRoleCapability(context, capability)
+        registry.setCscAssignedRoles(context, setOf(BtEngineState.CscRole.SPEED))
 
         assertEquals(capability, registry.connectedDevices.value.single().cscRoleCapability)
+        assertEquals(
+            setOf(BtEngineState.CscRole.SPEED),
+            registry.connectedDevices.value.single().cscAssignedRoles,
+        )
     }
 }

@@ -74,7 +74,7 @@ internal enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = f
     FORCE_ON_BELT(MetricUnit.NEWTONS),
     TOTAL_FLOORS(MetricUnit.COUNT),
     TOTAL_STEPS(MetricUnit.COUNT),
-    TOTAL_STRIDES(MetricUnit.COUNT),
+    TOTAL_STRIDES(MetricUnit.COUNT, cumulative = true),
     LAP_CADENCE_SAMPLE(MetricUnit.STEPS_PER_MINUTE),
 }
 

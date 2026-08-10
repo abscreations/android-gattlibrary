@@ -516,6 +516,10 @@ class BtEngine internal constructor(
     @Volatile private var desiredAddress: String? = null
     @Volatile private var desiredActivity: ActivityType? = null
     @Volatile private var sessionElapsedJob: Job? = null
+    private val cscSessionLock = Any()
+    private var cscSessionGeneration = 0L
+    @Volatile private var cscCalibration = CscCalibration()
+    @Volatile private var activeCscSession: CscSessionSnapshot? = null
 
     // Android primitives
     private val btManager: BluetoothManager? = runCatching {
@@ -1249,6 +1253,7 @@ class BtEngine internal constructor(
     fun stop() = guardConnectPerm(op = "stop()", default = Unit) {
         synchronized(startLock) { isStarted = false }
         stopSessionElapsedClock()
+        clearCscSession()
         state.setIsRunning(false)
         state.setActiveSession(false)
         metricFusion.endSession()
@@ -1260,14 +1265,60 @@ class BtEngine internal constructor(
         desiredActivity = activity
         desiredAddress = address
         metricFusion.startSession(activity.fusionPersona())
+        synchronized(cscSessionLock) {
+            cscSessionGeneration += 1
+            activeCscSession = when (activity) {
+                ActivityType.BIKING -> CscSessionSnapshot(
+                    cscSessionGeneration,
+                    CscWorkoutPersona.BIKE,
+                    cscCalibration,
+                )
+                ActivityType.ELLIPTICAL -> CscSessionSnapshot(
+                    cscSessionGeneration,
+                    CscWorkoutPersona.ELLIPTICAL,
+                    cscCalibration,
+                )
+                else -> null
+            }
+        }
         state.setActiveSession(true)
         startSessionElapsedClock()
     }
 
     fun markSessionStopped() {
         stopSessionElapsedClock()
+        clearCscSession()
         state.setActiveSession(false)
         metricFusion.endSession()
+    }
+
+    fun setCscCalibration(wheelCircumferenceMm: Int, ellipticalStrideLengthMm: Int) {
+        val updated = CscCalibration(wheelCircumferenceMm, ellipticalStrideLengthMm)
+        synchronized(cscSessionLock) {
+            cscCalibration = updated
+            activeCscSession = activeCscSession?.copy(calibration = updated)
+        }
+        Timber.tag(BtEngineState.TAG).i(
+            "CSC calibration updated wheelMm=%d ellipticalStrideMm=%d",
+            wheelCircumferenceMm,
+            ellipticalStrideLengthMm,
+        )
+    }
+
+    internal fun cscSessionSnapshot(): CscSessionSnapshot? = activeCscSession
+
+    private fun clearCscSession() = synchronized(cscSessionLock) {
+        cscSessionGeneration += 1
+        activeCscSession = null
+    }
+
+    internal fun isSelectedEllipticalCsc(context: ConnectionContext): Boolean {
+        val selected = state.connectionRegistry.connectedDevices.value
+            .asSequence()
+            .filter { BtEngineState.BtServiceType.CSC in it.activeServices }
+            .minByOrNull { it.connectionKey.substringAfterLast('#').toLongOrNull() ?: Long.MAX_VALUE }
+            ?.connectionKey
+        return selected == "${context.connectionId.address}#${context.connectionId.linkGeneration}"
     }
 
     /**
@@ -1638,6 +1689,7 @@ class BtEngine internal constructor(
     // Manual reset hook — call from VM when RunMode closes
     fun clearAllTimeSeriesAndState() {
         stopSessionElapsedClock()
+        clearCscSession()
         metricFusion.endSession()
         runCatching { state.clearAllTimeSeries() }
             .onFailure {
