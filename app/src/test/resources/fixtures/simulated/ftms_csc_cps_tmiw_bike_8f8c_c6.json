@@ -1,0 +1,49 @@
+{
+  "schema": "fitbridge.simulated-multi-service-evidence.v1",
+  "tier": "S",
+  "captured": "2026-08-10",
+  "session": "8f8c-c6",
+  "capture_connection": "c6",
+  "link_generation": 5,
+  "device_label": "TMIW-Bike",
+  "simulator_revision": null,
+  "archive": "fitbridge-logs-20260810_152506.zip",
+  "archive_sha256": "d5d960d607351e6bbe480153b65688be63d8b1a2e8b46357022eb7295ec1e219",
+  "source": "capture-20260810_145333-8f8c-central.ndjson",
+  "source_sha256": "54137e0559a2493e2bd498dd380b97fea7856b76df1cd926e0a3572d8bbb6cb2",
+  "acquisition": "simulator-redacted-ndjson",
+  "capture_event_seq_first": 4733,
+  "capture_event_seq_last": 8022,
+  "capture_event_count": 3290,
+  "gatt_service_count": 8,
+  "advertised_services": ["1826", "1816", "1818"],
+  "active_handlers": ["FTMS", "CSC", "CPS"],
+  "activation_order": ["FTMS", "CSC", "CPS"],
+  "ftms_feature_hex": "875600000d000000",
+  "csc_feature_hex": "0300",
+  "cps_feature_hex": "08000000",
+  "cps_sensor_location_hex": "0d",
+  "successful_cccd_characteristics": ["2ad2", "2ada", "2ad9", "2a5b", "2a63"],
+  "triple_stream_overlap_ms": 81987,
+  "notification_counts": {"ftmsIndoorBike": 124, "csc": 119, "cps": 115},
+  "note": "Tier-S proof of FTMS+CSC+CPS handlers and concurrent notifications on one link. No separate CPS link, downstream client, physical verification, or tier-H claim.",
+  "frames": {
+    "ftmsIndoorBike": {
+      "seq": 4961,
+      "hex": "fe0bcc0b8e0ca800ad00b631000700aa00c100120163020a7f9205",
+      "expect": {"speedKph": 30.2, "cadenceRpm": 84.0, "powerWatts": 170.0}
+    },
+    "cscBaseline": {"seq": 4957, "hex": "03b0170000f64c0708d54a"},
+    "cscUpdate": {
+      "seq": 4981,
+      "hex": "03b3170000f64f0808b14d",
+      "expect": {"wheelDeltaRevolutions": 3, "wheelDeltaTicks": 768, "crankDeltaRevolutions": 1, "crankDeltaTicks": 732, "speedKph": 34.632, "cadenceRpm": 83.93442622950819}
+    },
+    "cpsBaseline": {"seq": 4982, "hex": "2000aa000808b14d", "expect": {"powerWatts": 170}},
+    "cpsUpdate": {
+      "seq": 5008,
+      "hex": "2000aa0009088d50",
+      "expect": {"powerWatts": 170, "crankDeltaRevolutions": 1, "crankDeltaTicks": 732, "cadenceRpm": 83.93442622950819}
+    }
+  }
+}
