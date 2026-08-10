@@ -35,11 +35,15 @@ class ProtocolHandlersTest {
         val secondFtms = factory.create(ProtocolKey.FTMS)
         val firstHrm = factory.create(ProtocolKey.HRM)
         val secondHrm = factory.create(ProtocolKey.HRM)
+        val firstCsc = factory.create(ProtocolKey.CSC)
+        val secondCsc = factory.create(ProtocolKey.CSC)
 
         assertTrue(firstFtms is FtmsProtocolHandler)
         assertTrue(firstHrm is HrmProtocolHandler)
+        assertTrue(firstCsc is CscProtocolHandler)
         assertNotSame(firstFtms, secondFtms)
         assertNotSame(firstHrm, secondHrm)
+        assertNotSame(firstCsc, secondCsc)
     }
 
     @Test
