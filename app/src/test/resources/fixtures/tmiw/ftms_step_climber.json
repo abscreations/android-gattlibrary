@@ -1,0 +1,16 @@
+{
+  "family": "ftms.step_climber",
+  "source": "TMIW@85f2ee7 test/step_climber_test.dart",
+  "source_commit": "85f2ee7520705c99ce81db7355df1be7f4b72ecf",
+  "captured": "2026-08-10",
+  "acquisition": "generated",
+  "acquisition_note": "Generated mechanically by TMIW's own decoder via tools/extract_tmiw_vectors.py and a scratch emitter test, per D39. Run in the user's TMIW working checkout rather than a throwaway clone per D40, after verifying that the diff from the pinned commit across every consumed path is empty and that the checkout's modifications are pure CRLF churn. No value in this file was transcribed by hand.",
+  "vendor": "Unknown",
+  "model": "Generic Step Climber",
+  "fourCC": "GSpC",
+  "sport": "StairStepper",
+  "characteristic": "00002acf-0000-1000-8000-00805f9b34fb",
+  "flagByteSize": 2,
+  "cases": [],
+  "note": "TMIW's step_climber_test.dart contains flag-layout assertions only and no byte vectors, so this family imports zero cases. That is a gap in the reference corpus, not an omission here: step climber coverage must be built from scratch under plan §5.4 before the persona can be called covered."
+}
