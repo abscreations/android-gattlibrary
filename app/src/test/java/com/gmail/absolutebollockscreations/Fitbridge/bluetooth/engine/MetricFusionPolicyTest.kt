@@ -303,6 +303,100 @@ class MetricFusionPolicyTest {
     }
 
     @Test
+    fun `a foot pod owns speed across its own notification gaps`() {
+        // Session 8a96 of 2026-08-10. A Zwift RunPod notifies on stride completion, so at
+        // walking pace its gaps ran to 5.8 s - seven of eleven exceeded the old 3 s window.
+        // Ranking was right throughout and lost anyway, because the pod was absent from the
+        // contest each time a treadmill packet arrived. Published speed alternated:
+        //   10.48  4.13  4.50  10.50  4.13  10.52  …  4.18  4.18  10.55
+        val fusion = MetricFusion(BtEngineState())
+        val podLink = ConnectionId("AA:00:00:00:00:10", 10)
+        val pod = MetricSourceId(podLink, MetricProtocol.RSC, UUID(0, 80))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 81)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.setRscMounting(podLink, footMounted = true)
+        fusion.submit(sample(MetricKind.SPEED, 4.13, 1_000, pod, MetricSourceClass.RSC))
+        assertEquals(pod, fusion.selectedSource(MetricKind.SPEED))
+
+        // Five seconds of treadmill packets with no pod packet at all. Every one of these
+        // used to take the metric.
+        var t = 1_500L
+        repeat(7) {
+            fusion.submit(sample(MetricKind.SPEED, 10.5, t, ftms, MetricSourceClass.FTMS))
+            assertEquals(
+                "the machine must not take speed while a foot pod is connected",
+                pod,
+                fusion.selectedSource(MetricKind.SPEED),
+            )
+            t += 700
+        }
+    }
+
+    @Test
+    fun `RSC freshness outlasts a walking-pace stride gap`() {
+        // The exclusion alone would blank speed during those gaps rather than flapping, which
+        // is not obviously better. The longer window is what keeps a reading on screen.
+        val fusion = MetricFusion(BtEngineState())
+        val podLink = ConnectionId("AA:00:00:00:00:11", 11)
+        val pod = MetricSourceId(podLink, MetricProtocol.RSC, UUID(0, 82))
+        fusion.setPersona(FusionPersona.RUN, 0)
+        fusion.setRscMounting(podLink, footMounted = true)
+
+        fusion.submit(sample(MetricKind.SPEED, 4.13, 1_000, pod, MetricSourceClass.RSC))
+
+        fusion.refresh(1_000 + 5_800)
+        assertEquals(
+            "5.8 s was the pod's longest observed gap and is not a fault",
+            pod,
+            fusion.selectedSource(MetricKind.SPEED),
+        )
+
+        fusion.refresh(1_000 + 9_000)
+        assertNull("but a genuinely dead pod must not hold speed forever", fusion.selectedSource(MetricKind.SPEED))
+    }
+
+    @Test
+    fun `a foot pod claims speed only on a run, never on a bike or a rower`() {
+        // §4.1 ranks RSC above FTMS in the Run column and nowhere else. The first draft of the
+        // foot-pod exclusion ignored persona, so a pod registered during a run went on
+        // displacing an indoor rower's own speed afterwards.
+        val fusion = MetricFusion(BtEngineState())
+        val podLink = ConnectionId("AA:00:00:00:00:13", 13)
+        val pod = MetricSourceId(podLink, MetricProtocol.RSC, UUID(0, 85))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 86)
+        fusion.setRscMounting(podLink, footMounted = true)
+
+        fusion.setPersona(FusionPersona.RUN, 0)
+        fusion.submit(sample(MetricKind.SPEED, 11.0, 1_000, pod, MetricSourceClass.RSC))
+        fusion.submit(sample(MetricKind.SPEED, 10.5, 1_010, ftms, MetricSourceClass.FTMS))
+        assertEquals(pod, fusion.selectedSource(MetricKind.SPEED))
+
+        fusion.setPersona(FusionPersona.RIDE, 1_020)
+        assertEquals("a bike's own speed is authoritative", ftms, fusion.selectedSource(MetricKind.SPEED))
+
+        fusion.setPersona(FusionPersona.ROW_PADDLE, 1_030)
+        assertEquals(ftms, fusion.selectedSource(MetricKind.SPEED))
+    }
+
+    @Test
+    fun `a chest strap does not claim speed the way a foot pod does`() {
+        // The exclusion is keyed on mounting, not on being RSC. Otherwise the 2026-08-07 fix
+        // would be undone by the 2026-08-10 one.
+        val fusion = MetricFusion(BtEngineState())
+        val strapLink = ConnectionId("AA:00:00:00:00:12", 12)
+        val strapRsc = MetricSourceId(strapLink, MetricProtocol.RSC, UUID(0, 83))
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 84)
+        fusion.setPersona(FusionPersona.RUN, 0)
+
+        fusion.setRscMounting(strapLink, footMounted = false)
+        fusion.submit(sample(MetricKind.SPEED, 19.11, 1_000, strapRsc, MetricSourceClass.RSC))
+        fusion.submit(sample(MetricKind.SPEED, 10.5, 1_010, ftms, MetricSourceClass.FTMS))
+
+        assertEquals(ftms, fusion.selectedSource(MetricKind.SPEED))
+    }
+
+    @Test
     fun `a chest-mounted sensor stands aside even with no heart rate on its link`() {
         // The converse: 0x2A5D reports chest, but the device does not expose HRM,
         // so the proxy would have kept it. The read is authoritative.

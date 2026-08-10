@@ -236,6 +236,33 @@ class BtEngine internal constructor(
         return true
     }
 
+    /** Whether an upstream fitness machine is currently supplying this session. */
+    private fun hasUpstreamMachine(): Boolean =
+        connectionState.value == android.bluetooth.BluetoothProfile.STATE_CONNECTED
+
+    /**
+     * Capabilities to advertise for a **sensor-only** session — Phase 1's downstream criterion.
+     *
+     * A session driven by a foot pod and a strap has no machine behind it, so there is nothing
+     * to read `0x2ACC` or the Supported-* ranges from, and nothing that could honour a target
+     * if a watch set one. Every `supports*` flag is therefore false, which
+     * [TargetCapabilities.toTargetFeatureBits] turns into **no target-setting bits** in the
+     * downstream Feature characteristic. That is not a conservative default; it is the accurate
+     * statement. A watch that saw a speed-target bit here would be told it could drive a
+     * treadmill that does not exist.
+     *
+     * `featuresRead = true` is not a claim that anything was read. It reports that capabilities
+     * are settled and will not converge further, which is what the readiness gate is asking:
+     * without it a sensor-only session would wait forever for a machine that is not coming.
+     */
+    private fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
+        featuresRead = true,
+        supportsSpeed = false,
+        supportsInclination = false,
+        supportsResistance = false,
+        supportsPower = false,
+    )
+
     /**
      * Entry point to be called when we have inferred a provider persona (FtmsMachineProfile)
      * from upstream FEATURES / data. This does **not** start advertising immediately; instead it
@@ -318,16 +345,25 @@ class BtEngine internal constructor(
                         continue
                     }
 
-                    val connected =
-                        (connectionState.value == android.bluetooth.BluetoothProfile.STATE_CONNECTED)
-                    if (!connected) {
+                    // A sensor-only session has no upstream machine by definition, so neither
+                    // the link check nor the capability wait below can ever be satisfied - both
+                    // interrogate a machine that is not there. Before Phase 1 that was
+                    // harmless, because every session had a machine. An RSC-only session is
+                    // the first that does not, and it must still advertise downstream.
+                    val sensorOnly = !hasUpstreamMachine() && state.activeSession.value
+                    if (!sensorOnly && !hasUpstreamMachine()) {
                         Timber.tag(BtEngineState.TAG).d(
-                            "Provider advertising retry: upstream FTMS not connected; stopping loop"
+                            "Provider advertising retry: upstream FTMS not connected and no active " +
+                                "sensor-only session; stopping loop"
                         )
                         break
                     }
 
-                    val capabilities = state.ftmsCapabilities
+                    val capabilities = if (sensorOnly) {
+                        sensorOnlyProviderCapabilities()
+                    } else {
+                        state.ftmsCapabilities
+                    }
                     if (!capabilities.isReadyForProviderAdvertising()) {
                         Timber.tag(BtEngineState.TAG).d(
                             "Provider advertising retry: capabilities not ready yet (caps=%s); waiting",
@@ -431,9 +467,12 @@ class BtEngine internal constructor(
         }
 
         providerAdvertProfile = profile
-        if (connectionState.value != android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
+        if (!hasUpstreamMachine() && !state.activeSession.value) {
+            // No machine and no session yet: record the persona and wait. A sensor-only
+            // session starting will come back through here.
             Timber.tag(BtEngineState.TAG).i(
-                "Session mode override=%s recorded without an upstream FTMS connection",
+                "Session mode override=%s recorded without an upstream FTMS connection " +
+                    "or an active session",
                 profile,
             )
             return

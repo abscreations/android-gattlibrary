@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
 import java.util.UUID
 import kotlin.math.roundToInt
+import timber.log.Timber
 
 /** Protocol that produced a metric sample. */
 internal enum class MetricProtocol { FTMS, HRM, RSC, CSC, CPS, VENDOR, MOTION, GPS, SESSION }
@@ -137,7 +138,16 @@ internal fun interface MetricSeriesClock {
     }
 }
 
-internal enum class FusionSubmission { ACCEPTED, REJECTED_STALE, REJECTED_INVALID }
+internal enum class FusionSubmission {
+    ACCEPTED,
+    REJECTED_STALE,
+
+    /** Structurally impossible: a negative distance, a zero pace. */
+    REJECTED_INVALID,
+
+    /** Failed its §11b plausibility bound — see [PlausibilityBounds]. */
+    REJECTED_IMPLAUSIBLE,
+}
 
 internal enum class FusionPersona { RIDE, RUN, ROW_PADDLE }
 
@@ -244,6 +254,9 @@ internal class MetricFusion(
      */
     private val rscFootMounted = mutableMapOf<ConnectionId, Boolean>()
 
+    /** Links that have produced an RSC reading, tracked like [heartRateStrapLinks] and for the same reason. */
+    private val rscLinks = mutableSetOf<ConnectionId>()
+
     /**
      * Record what an RSC device reports for Sensor Location `0x2A5D`.
      *
@@ -257,6 +270,22 @@ internal class MetricFusion(
 
     fun submit(sample: MetricSample): FusionSubmission = synchronized(lock) {
         if (!isDomainValid(sample)) return@synchronized FusionSubmission.REJECTED_INVALID
+        if (!isPlausible(sample)) {
+            // §11b: dropped and captured, not published. Arming here rather than logging only
+            // is the whole point - a bound firing means a field was decoded wrongly, and the
+            // packets that caused it are still in the ring for another few seconds.
+            Timber.tag(BtEngineState.TAG).w(
+                "Implausible %s from %s: %.3f %s outside %s (persona=%s) - dropped",
+                sample.metric,
+                sample.sourceClass,
+                sample.value,
+                sample.unit,
+                PlausibilityBounds.describe(sample.metric, persona),
+                persona,
+            )
+            CaptureHooks.boundsRejection(sample, PlausibilityBounds.describe(sample.metric, persona))
+            return@synchronized FusionSubmission.REJECTED_IMPLAUSIBLE
+        }
         // §0.7a: every sample passes through here, so this is the one place that
         // sees a machine adapter proving it is alive. Deliberately before the
         // staleness check below - an out-of-order sample is still evidence the
@@ -276,6 +305,9 @@ internal class MetricFusion(
             sample.sourceClass == MetricSourceClass.HRM
         ) {
             heartRateStrapLinks += sample.sourceId.connectionId
+        }
+        if (sample.sourceClass == MetricSourceClass.RSC) {
+            rscLinks += sample.sourceId.connectionId
         }
         val filtered = filter(sample)
         bySource[candidateKey] = filtered
@@ -347,6 +379,7 @@ internal class MetricFusion(
         // The one event that actually means the strap and the pod have gone.
         heartRateStrapLinks -= connectionId
         rscFootMounted -= connectionId
+        rscLinks -= connectionId
         affected.forEach { reselect(it, nowMs) }
     }
 
@@ -496,6 +529,27 @@ internal class MetricFusion(
     ): Map<MetricCandidateKey, MetricSample> {
         if (all.values.none { it.sourceClass == MetricSourceClass.FTMS }) return all
 
+        // A connected foot pod owns speed outright, which is §4.1's "RSC > FTMS" for
+        // running - as an exclusion rather than a ranking, for the reason the heart-rate
+        // work established twice already: ranking loses to a freshness gap, and the loser
+        // then takes the metric back silently.
+        //
+        // Session 8a96 of 2026-08-10 is why. A Zwift RunPod notifies on stride completion,
+        // not on a timer, so at walking pace its gaps ran to 5.8 s against a 3 s window.
+        // Seven of its eleven gaps exceeded it, and published speed alternated:
+        //   10.48  4.13  4.50  10.50  4.13  10.52  …  4.18  4.18  10.55
+        // Ranking was correct throughout; the pod was simply absent from the contest each
+        // time a treadmill packet arrived. See also the longer RSC freshness window in
+        // [freshnessMs] - exclusion alone would blank speed during those gaps instead.
+        // RUN only. §4.1 ranks RSC above FTMS in the Run column and nowhere else: on a bike or
+        // a rower the machine owns speed and a foot pod has no claim on it at all. Applying
+        // this to every persona let a pod registered during a run displace an indoor rower's
+        // own speed reading - caught by `persona priority selects ride run and row defaults`.
+        if (persona == FusionPersona.RUN && rscLinks.any(::wornOnFoot)) {
+            val podOwned = all.filterValues { it.sourceClass != MetricSourceClass.FTMS }
+            if (podOwned.isNotEmpty()) return podOwned
+        }
+
         val kept = all.filterValues { sample ->
             sample.sourceClass != MetricSourceClass.RSC || wornOnFoot(sample.sourceId.connectionId)
         }
@@ -628,11 +682,28 @@ internal class MetricFusion(
     private fun isFresh(sample: MetricSample, nowMs: Long): Boolean {
         if (sample.sourceClass == MetricSourceClass.SESSION) return true
         val age = nowMs - sample.arrivalMs
-        return age >= 0L && age <= freshnessMs(sample.metric)
+        return age >= 0L && age <= freshnessMs(sample.metric, sample.sourceClass)
     }
 
-    private fun freshnessMs(metric: MetricKind): Long =
-        if (metric == MetricKind.HEART_RATE) HEART_RATE_FRESHNESS_MS else DEFAULT_FRESHNESS_MS
+    /**
+     * How long a sample stays usable, by metric and by the kind of source that sent it.
+     *
+     * A foot pod notifies on **stride completion**, not on a timer, so its period is set by
+     * the user's gait rather than by a connection interval. Session 8a96 recorded a Zwift
+     * RunPod at walking pace with gaps up to 5.8 s — seven of eleven gaps exceeded the 3 s
+     * default, and each one dropped it out of selection. That is not a stale sensor; it is a
+     * sensor doing exactly what it is for.
+     *
+     * Eight seconds covers a slow walk without letting a genuinely dead pod hold speed
+     * indefinitely. It is generous, and deliberately so: the plausibility bounds in
+     * [PlausibilityBounds] now catch an absurd value, so a slightly stale but sane reading is
+     * the lesser risk.
+     */
+    private fun freshnessMs(metric: MetricKind, sourceClass: MetricSourceClass): Long = when {
+        metric == MetricKind.HEART_RATE -> HEART_RATE_FRESHNESS_MS
+        sourceClass == MetricSourceClass.RSC -> RSC_FRESHNESS_MS
+        else -> DEFAULT_FRESHNESS_MS
+    }
 
     private fun sampleComparator(metric: MetricKind): Comparator<MetricSample> =
         compareBy<MetricSample> { qualityRank(it.quality) }
@@ -694,12 +765,30 @@ internal class MetricFusion(
         return if (index >= 0) index else 1_000 + source.ordinal
     }
 
+    /**
+     * Structural validity: a value that cannot be a reading of this metric at all.
+     *
+     * Distinct from the §11b plausibility bound in [isPlausible]. This rejects nonsense — a
+     * negative distance, a zero pace that would divide badly downstream. That catches
+     * physically impossible *readings*: a 921 km/h run, a 3000 W rower. Both drop the sample;
+     * only the second arms a capture, because only the second implies a decoding error worth
+     * diagnosing.
+     */
     private fun isDomainValid(sample: MetricSample): Boolean = when (sample.metric) {
         MetricKind.HEART_RATE -> sample.value in 1.0..254.0
         MetricKind.INSTANT_PACE, MetricKind.AVERAGE_PACE -> sample.value > 0.0
         MetricKind.INCLINATION, MetricKind.RAMP_ANGLE, MetricKind.RESISTANCE -> true
         else -> sample.value >= 0.0
     }
+
+    /**
+     * §11b: is this value physically possible for the activity in progress?
+     *
+     * Evaluated against the persona at the moment of arrival, so a bike's 60 km/h is admitted
+     * and a treadmill's is not. Bounds and their reasoning live in [PlausibilityBounds].
+     */
+    private fun isPlausible(sample: MetricSample): Boolean =
+        PlausibilityBounds.isPlausible(sample.metric, persona, sample.value)
 
     private fun clearProjection(metric: MetricKind) {
         when (metric) {
@@ -1001,6 +1090,9 @@ internal class MetricFusion(
     private companion object {
         const val HEART_RATE_FRESHNESS_MS = 4_000L
         const val DEFAULT_FRESHNESS_MS = 3_000L
+
+        /** RSC notifies per stride, not on a timer — see [freshnessMs]. */
+        const val RSC_FRESHNESS_MS = 8_000L
         const val DERIVED_PACE_CONFIDENCE = 0.75
         const val DISTANCE_PACE_MIN_MS = 5_000L
         const val DISTANCE_PACE_TARGET_MS = 10_000L

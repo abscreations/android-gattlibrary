@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.BleCapture
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CapturedCharacteristic
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CapturedService
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CaptureTrigger
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CccdEvent
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.ConnectEvent
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.DisconnectEvent
@@ -193,5 +194,23 @@ internal object CaptureHooks {
                 quality = sample.quality.name,
             ),
         )
+    }
+
+    /**
+     * A sample failed its §11b plausibility bound and was dropped.
+     *
+     * Arms the ring, which is the point: a bound firing means a field was decoded wrongly, and
+     * `CaptureTrigger.PARSER_REJECTION` exists precisely so the packets that produced it are
+     * already in the buffer when the user reports the symptom. §0.9.5's retroactive flush is
+     * what makes that worth anything — a capture starting at the trigger records the
+     * consequence and none of the cause.
+     *
+     * The sample itself is still emitted, so the capture shows what was decoded next to the
+     * bytes it came from. A rejected value is more diagnostic than an accepted one, not less;
+     * it just must not reach the user's session.
+     */
+    fun boundsRejection(sample: MetricSample, bound: String) {
+        BleCapture.arm(CaptureTrigger.PARSER_REJECTION)
+        sample(sample)
     }
 }
