@@ -48,6 +48,23 @@ class LinkRecoveryTest {
     }
 
     @Test
+    fun `CSC requested roles survive the bounded recovery target`() {
+        val cscTarget = LinkRecoveryTarget(
+            recoveryKey = "sensor:CSC",
+            address = "CSC",
+            machineConnection = false,
+            activeServices = setOf(BtEngineState.BtServiceType.CSC),
+            cscRequestedRoles = setOf(BtEngineState.CscRole.CADENCE),
+        )
+        val recovery = InSessionLinkRecovery(backoffMs = listOf(10))
+        recovery.registerSelection(cscTarget)
+
+        val attempt = recovery.onUnexpectedDisconnect(cscTarget.recoveryKey, 0)!!
+
+        assertEquals(setOf(BtEngineState.CscRole.CADENCE), attempt.target.cscRequestedRoles)
+    }
+
+    @Test
     fun `user disconnect and session end prevent every retry`() {
         val recovery = InSessionLinkRecovery(backoffMs = listOf(10))
         recovery.registerSelection(target)

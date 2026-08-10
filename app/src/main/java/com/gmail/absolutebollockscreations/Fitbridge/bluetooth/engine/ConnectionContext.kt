@@ -186,6 +186,7 @@ internal class ConnectionContext(
     var linkRecovery: LinkRecoveryState? = null,
     var cscRoleCapability: BtEngineState.CscRoleCapability? = null,
     var cscAssignedRoles: Set<BtEngineState.CscRole> = emptySet(),
+    var cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
 ) {
     /** Callback-owned, idempotent termination entry point used by explicit disconnects. */
     @Volatile
@@ -434,6 +435,14 @@ internal class ConnectionRegistry {
         publishConnectedDevices()
     }
 
+    fun setCscRequestedRoles(
+        context: ConnectionContext,
+        requestedRoles: Set<BtEngineState.CscRole>?,
+    ) = synchronized(lock) {
+        if (!context.isActive || contexts[context.connectionId] !== context) return@synchronized
+        context.cscRequestedRoles = requestedRoles
+    }
+
     private fun publishConnectedDevices() {
         _connectedDevices.value = contexts.values.map { context ->
             val handlerServices = context.handlers
@@ -488,6 +497,9 @@ internal class ConnectionRegistry {
         discoveredServiceUuids.clear()
         terminationHook = null
         handlerActivator = null
+        cscRoleCapability = null
+        cscAssignedRoles = emptySet()
+        cscRequestedRoles = null
         gatt = null
     }
 }

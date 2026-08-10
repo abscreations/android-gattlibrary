@@ -5,6 +5,7 @@ internal data class LinkRecoveryTarget(
     val address: String,
     val machineConnection: Boolean,
     val activeServices: Set<BtEngineState.BtServiceType>,
+    val cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
 ) {
     init {
         require(recoveryKey.isNotBlank())

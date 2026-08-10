@@ -264,6 +264,12 @@ internal class CscProtocolHandler(
                                 address = link.address,
                                 capability = link.cscRoleCapability,
                                 assignedRoles = link.cscAssignedRoles,
+                                requestedRoles = if (link.connectionKey == context.connectionKey()) {
+                                    context.cscRequestedRoles
+                                } else {
+                                    engine.state.connectionRegistry.contextForKey(link.connectionKey)
+                                        ?.cscRequestedRoles
+                                },
                             )
                         },
                 )

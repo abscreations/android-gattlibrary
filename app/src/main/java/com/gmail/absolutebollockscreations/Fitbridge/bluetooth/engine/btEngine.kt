@@ -693,11 +693,13 @@ class BtEngine internal constructor(
         address: String,
         machineConnection: Boolean,
         services: Set<BtEngineState.BtServiceType>,
+        cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
     ) = LinkRecoveryTarget(
         recoveryKey = recoveryKey(address, machineConnection),
         address = canonicalConnectionAddress(address),
         machineConnection = machineConnection,
         activeServices = services,
+        cscRequestedRoles = cscRequestedRoles,
     )
 
     private fun recoveryTargetFor(context: ConnectionContext): LinkRecoveryTarget {
@@ -709,7 +711,12 @@ class BtEngine internal constructor(
                 else BtEngineState.BtServiceType.HeartRate
             )
         }
-        return recoveryTarget(context.address, context.machineConnection, activeServices)
+        return recoveryTarget(
+            context.address,
+            context.machineConnection,
+            activeServices,
+            context.cscRequestedRoles,
+        )
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -879,13 +886,20 @@ class BtEngine internal constructor(
     fun connectSensor(
         address: String,
         serviceType: BtEngineState.BtServiceType,
-    ): Boolean = connectSensorInternal(address, setOf(serviceType), recoveryAttempt = false)
+        cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
+    ): Boolean = connectSensorInternal(
+        address,
+        setOf(serviceType),
+        recoveryAttempt = false,
+        cscRequestedRoles = cscRequestedRoles,
+    )
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun connectSensorInternal(
         address: String,
         assignedServices: Set<BtEngineState.BtServiceType>,
         recoveryAttempt: Boolean,
+        cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
     ): Boolean = guardConnectPerm("connectSensor(address=$address, services=$assignedServices)", false) {
             Timber.tag(BtEngineState.TAG).i(
                 "connectSensor %s services=%s recovery=%s",
@@ -913,7 +927,7 @@ class BtEngine internal constructor(
             }
             if (state.connectionRegistry.contextsForAddress(address).isNotEmpty()) {
                 return@guardConnectPerm assignedServices.all { serviceType ->
-                    activateServiceAtAddress(address, serviceType)
+                    activateServiceAtAddress(address, serviceType, cscRequestedRoles)
                 }
             }
             // A new sensor link is admissible when a handler exists that can decode
@@ -950,6 +964,7 @@ class BtEngine internal constructor(
             val connection = state.openAdditionalSensorContext(address, handlers = handlers)
             if (BtEngineState.BtServiceType.CSC in assignedServices) {
                 state.setCscRoleCapability(connection, candidateCscCapability)
+                state.connectionRegistry.setCscRequestedRoles(connection, cscRequestedRoles)
             }
             val cb = BtEngineGattCore.build(this@BtEngine, connection)
             val connectedGatt = connectLeGatt(dev, cb)
@@ -957,7 +972,12 @@ class BtEngine internal constructor(
             if (!attached) state.clearConnection(connection)
             if (attached && !recoveryAttempt) {
                 linkRecovery.registerSelection(
-                    recoveryTarget(address, machineConnection = false, assignedServices)
+                    recoveryTarget(
+                        address,
+                        machineConnection = false,
+                        assignedServices,
+                        cscRequestedRoles,
+                    )
                 )
             }
             attached
@@ -1085,6 +1105,7 @@ class BtEngine internal constructor(
                     address = attempt.target.address,
                     assignedServices = attempt.target.activeServices,
                     recoveryAttempt = true,
+                    cscRequestedRoles = attempt.target.cscRequestedRoles,
                 )
             }
             if (!connected) {
@@ -1110,6 +1131,7 @@ class BtEngine internal constructor(
     private fun activateServiceAtAddress(
         address: String,
         serviceType: BtEngineState.BtServiceType,
+        cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
     ): Boolean = guardConnectPerm("activateServiceAtAddress($address, $serviceType)", default = false) {
         val candidateCscCapability = cscRoleCapabilityForAddress(address)
         if (!canAssignSensorService(
@@ -1127,6 +1149,11 @@ class BtEngine internal constructor(
             return@guardConnectPerm false
         }
         val protocol = sensorProtocolFor(serviceType) ?: return@guardConnectPerm false
+        if (serviceType == BtEngineState.BtServiceType.CSC) {
+            state.connectionRegistry.contextsForAddress(address).firstOrNull()?.let { context ->
+                state.connectionRegistry.setCscRequestedRoles(context, cscRequestedRoles)
+            }
+        }
         val activated = state.connectionRegistry.activateHandlerOn(
             address,
             handlerFactory.create(protocol),
@@ -1153,9 +1180,10 @@ class BtEngine internal constructor(
     fun activateServiceOn(
         connectionKey: String,
         serviceType: BtEngineState.BtServiceType,
+        cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
     ): Boolean {
         val context = state.connectionRegistry.contextForKey(connectionKey) ?: return false
-        return activateServiceAtAddress(context.address, serviceType)
+        return activateServiceAtAddress(context.address, serviceType, cscRequestedRoles)
     }
 
     /** Manual hook to force a pairing UI for a known MAC (e.g., user action) */
