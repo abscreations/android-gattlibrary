@@ -1,0 +1,117 @@
+{
+  "family": "csc.standard",
+  "captured": "2026-08-10",
+  "acquisition": "hardware-redacted-ndjson",
+  "service": "00001816-0000-1000-8000-00805f9b34fb",
+  "characteristic": "00002a5b-0000-1000-8000-00805f9b34fb",
+  "wheel_circumference_mm": 2405,
+  "elliptical_stride_length_mm": 1600,
+  "note": "Selected consecutive physical-sensor frames. Capture labels are local and addresses are structurally redacted. Manufacturer, model, and firmware values were not read, so this fixture proves hardware-observed behavior but does not by itself complete the tier-H archive.",
+  "sources": [
+    {
+      "source": "capture-20260810_132416-e5db-central.ndjson",
+      "source_sha256": "53afe432760ead5c5a5d2c4b617844547e34175e9b3bd5ad018cae6a207bfe38",
+      "device_label": "23653-1",
+      "firmware": null
+    },
+    {
+      "source": "capture-20260810_132416-e5db-central.ndjson",
+      "source_sha256": "ff153c43a25fbd9551c808563b2cb02221b6a53390337eb0e068ecdfe5c63cc9",
+      "device_label": "33289-1",
+      "firmware": null
+    },
+    {
+      "source": "capture-20260810_132955-4ba7-central.ndjson",
+      "source_sha256": "ffd2810349c946f9ed4152ceaa2c726aa908321adf99520b467728c98e0e5aee",
+      "device_label": "23653-1 + 33289-1",
+      "firmware": null
+    }
+  ],
+  "sessions": [
+    {
+      "id": "e5db-23653-elliptical",
+      "source_sha256": "53afe432760ead5c5a5d2c4b617844547e34175e9b3bd5ad018cae6a207bfe38",
+      "device_label": "23653-1",
+      "connection": "c1",
+      "feature_hex": "0100",
+      "persona": "ELLIPTICAL",
+      "supported_roles": ["SPEED"],
+      "assigned_roles": ["SPEED"],
+      "observed_notification_count": 149,
+      "frames": [
+        { "seq": 5503, "t": 1786382717633, "hex": "012900000085a0", "baseline": true, "expect": { "counter": 41, "event_ticks": 41093 } },
+        { "seq": 5505, "t": 1786382718664, "hex": "012a000000c6a2", "expect": { "counter": 42, "event_ticks": 41670, "delta_revolutions": 1, "delta_ticks": 577, "cadence_per_minute": 106.48180242634315, "total_strides": 1, "speed_kph": 10.222253032928943, "distance_metres": 1.6 } },
+        { "seq": 5512, "t": 1786382719013, "hex": "012b000000bba5", "expect": { "counter": 43, "event_ticks": 42427, "delta_revolutions": 1, "delta_ticks": 757, "cadence_per_minute": 81.16248348745046, "total_strides": 2, "speed_kph": 7.791598414795244, "distance_metres": 3.2 } },
+        { "seq": 5520, "t": 1786382719702, "hex": "012c00000077a8", "expect": { "counter": 44, "event_ticks": 43127, "delta_revolutions": 1, "delta_ticks": 700, "cadence_per_minute": 87.77142857142857, "total_strides": 3, "speed_kph": 8.426057142857143, "distance_metres": 4.8 } }
+      ]
+    },
+    {
+      "id": "e5db-33289-elliptical",
+      "source_sha256": "ff153c43a25fbd9551c808563b2cb02221b6a53390337eb0e068ecdfe5c63cc9",
+      "device_label": "33289-1",
+      "connection": "c3",
+      "feature_hex": "0100",
+      "persona": "ELLIPTICAL",
+      "supported_roles": ["SPEED"],
+      "assigned_roles": ["SPEED"],
+      "observed_notification_count": 88,
+      "frames": [
+        { "seq": 11553, "t": 1786382823048, "hex": "018f000000475d", "baseline": true, "expect": { "counter": 143, "event_ticks": 23879 } },
+        { "seq": 11598, "t": 1786382825802, "hex": "01900000004062", "expect": { "counter": 144, "event_ticks": 25152, "delta_revolutions": 1, "delta_ticks": 1273, "cadence_per_minute": 48.26394344069128, "total_strides": 1, "speed_kph": 4.633338570306363, "distance_metres": 1.6 } },
+        { "seq": 11605, "t": 1786382826145, "hex": "01910000003967", "expect": { "counter": 145, "event_ticks": 26425, "delta_revolutions": 1, "delta_ticks": 1273, "cadence_per_minute": 48.26394344069128, "total_strides": 2, "speed_kph": 4.633338570306363, "distance_metres": 3.2 } },
+        { "seq": 11614, "t": 1786382827174, "hex": "0193000000b270", "expect": { "counter": 147, "event_ticks": 28850, "delta_revolutions": 2, "delta_ticks": 2425, "cadence_per_minute": 50.672164948453606, "total_strides": 4, "speed_kph": 4.864527835051548, "distance_metres": 6.4 } }
+      ]
+    },
+    {
+      "id": "4ba7-23653-speed-bike",
+      "source_sha256": "ffd2810349c946f9ed4152ceaa2c726aa908321adf99520b467728c98e0e5aee",
+      "device_label": "23653-1",
+      "connection": "c1",
+      "feature_hex": "0100",
+      "persona": "BIKE",
+      "supported_roles": ["SPEED"],
+      "assigned_roles": ["SPEED"],
+      "observed_notification_count": 134,
+      "frames": [
+        { "seq": 5423, "t": 1786383048338, "hex": "01440100007a52", "baseline": true, "expect": { "counter": 324, "event_ticks": 21114 } },
+        { "seq": 5727, "t": 1786383050405, "hex": "0145010000d955", "expect": { "counter": 325, "event_ticks": 21977, "delta_revolutions": 1, "delta_ticks": 863, "speed_kph": 10.27322363847045, "distance_metres": 2.405 } },
+        { "seq": 5784, "t": 1786383050747, "hex": "0146010000d257", "expect": { "counter": 326, "event_ticks": 22482, "delta_revolutions": 1, "delta_ticks": 505, "speed_kph": 17.55602376237624, "distance_metres": 4.81 } },
+        { "seq": 5862, "t": 1786383051779, "hex": "0147010000cb59", "expect": { "counter": 327, "event_ticks": 22987, "delta_revolutions": 1, "delta_ticks": 505, "speed_kph": 17.55602376237624, "distance_metres": 7.215 } }
+      ]
+    },
+    {
+      "id": "4ba7-dual-bike-cadence",
+      "source_sha256": "ffd2810349c946f9ed4152ceaa2c726aa908321adf99520b467728c98e0e5aee",
+      "device_label": "23653-1",
+      "connection": "c1",
+      "feature_hex": "0200",
+      "persona": "BIKE",
+      "supported_roles": ["CADENCE"],
+      "assigned_roles": ["CADENCE"],
+      "observed_notification_count": 83,
+      "frames": [
+        { "seq": 11325, "t": 1786383318309, "hex": "0211006e54", "baseline": true, "expect": { "counter": 17, "event_ticks": 21614 } },
+        { "seq": 11464, "t": 1786383320028, "hex": "0212003f59", "expect": { "counter": 18, "event_ticks": 22847, "delta_revolutions": 1, "delta_ticks": 1233, "cadence_per_minute": 49.82968369829684 } },
+        { "seq": 11492, "t": 1786383321063, "hex": "021300245e", "expect": { "counter": 19, "event_ticks": 24100, "delta_revolutions": 1, "delta_ticks": 1253, "cadence_per_minute": 49.034317637669595 } },
+        { "seq": 11500, "t": 1786383321406, "hex": "021400af62", "expect": { "counter": 20, "event_ticks": 25263, "delta_revolutions": 1, "delta_ticks": 1163, "cadence_per_minute": 52.828890799656065 } }
+      ]
+    },
+    {
+      "id": "4ba7-dual-bike-speed",
+      "source_sha256": "ffd2810349c946f9ed4152ceaa2c726aa908321adf99520b467728c98e0e5aee",
+      "device_label": "33289-1",
+      "connection": "c3",
+      "feature_hex": "0100",
+      "persona": "BIKE",
+      "supported_roles": ["SPEED"],
+      "assigned_roles": ["SPEED"],
+      "observed_notification_count": 70,
+      "frames": [
+        { "seq": 11388, "t": 1786383318808, "hex": "01c30100009ccc", "baseline": true, "expect": { "counter": 451, "event_ticks": 52380 } },
+        { "seq": 11392, "t": 1786383319152, "hex": "01c401000012cf", "expect": { "counter": 452, "event_ticks": 53010, "delta_revolutions": 1, "delta_ticks": 630, "speed_kph": 14.072685714285713, "distance_metres": 2.405 } },
+        { "seq": 11435, "t": 1786383319840, "hex": "01c501000078d1", "expect": { "counter": 453, "event_ticks": 53624, "delta_revolutions": 1, "delta_ticks": 614, "speed_kph": 14.439400651465798, "distance_metres": 4.81 } },
+        { "seq": 11485, "t": 1786383320186, "hex": "01c6010000f9d3", "expect": { "counter": 454, "event_ticks": 54265, "delta_revolutions": 1, "delta_ticks": 641, "speed_kph": 13.831188767550701, "distance_metres": 7.215 } }
+      ]
+    }
+  ]
+}
