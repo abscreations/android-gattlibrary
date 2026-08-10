@@ -91,6 +91,30 @@ class CaptureRoutingTest {
     }
 
     @Test
+    fun `capture recreates its header after writer reset and file deletion`() {
+        val subject = tree()
+        try {
+            subject.log(4, BleCapture.TAG, """{"t":1,"seq":1,"ev":"dropped","n":1}""", null)
+            assertTrue(subject.flush())
+            val captureFile = File(temp.root, CaptureTree.CAPTURES_DIR_NAME)
+                .listFiles()!!
+                .single()
+            assertTrue("capture writer reset timed out", subject.resetAfterClear())
+            assertTrue("reset must release the capture for deletion", captureFile.delete())
+            subject.log(4, BleCapture.TAG, """{"t":2,"seq":2,"ev":"dropped","n":2}""", null)
+            assertTrue(subject.flush())
+
+            val lines = captureLines()
+            assertEquals(2, lines.size)
+            assertTrue(lines[0].startsWith("""{"capture_version":1"""))
+            assertTrue(lines[1].contains("\"seq\":2"))
+            assertEquals(1, lines.count { it.contains("capture_version") })
+        } finally {
+            subject.close()
+        }
+    }
+
+    @Test
     fun `a tree that records nothing leaves no orphan file`() {
         val subject = tree()
         try {

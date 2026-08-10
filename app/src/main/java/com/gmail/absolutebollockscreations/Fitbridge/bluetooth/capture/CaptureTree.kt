@@ -94,8 +94,10 @@ internal class CaptureTree(
         // directly must not be able to put a human line - or the other role's
         // events - into this file.
         if (tag != role.tag) return
-        writeHeaderOnce()
-        sink.write(message)
+        synchronized(lock) {
+            writeHeaderOnce()
+            sink.write(message)
+        }
     }
 
     /**
@@ -114,6 +116,15 @@ internal class CaptureTree(
 
     /** Blocks until buffered events reach disk. Called before export. */
     fun flush(timeoutMs: Long = DEFAULT_FLUSH_TIMEOUT_MS): Boolean = sink.flush(timeoutMs)
+
+    /**
+     * Closes a file removed by Clear Logs and restores lazy header creation for its replacement.
+     */
+    fun resetAfterClear(timeoutMs: Long = DEFAULT_FLUSH_TIMEOUT_MS): Boolean = synchronized(lock) {
+        val reset = sink.resetFile(timeoutMs)
+        if (reset) headerWritten = false
+        reset
+    }
 
     fun close() = sink.close()
 
