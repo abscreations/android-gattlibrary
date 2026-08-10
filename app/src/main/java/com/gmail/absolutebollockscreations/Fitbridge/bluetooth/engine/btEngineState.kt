@@ -1205,7 +1205,9 @@ class BtEngineState : HrmStateSink {
         _speedKph.value = kph
         speedKphSum += kph
         speedCount += 1
-        _avgSpeedKph.value = speedKphSum / speedCount
+        val averageKph = speedKphSum / speedCount
+        _avgSpeedKph.value = averageKph
+        _avgSpeedDisplay.value = if (_units.value == 1) averageKph / 1.609344 else averageKph
         _speedSeriesKph.value = _speedSeriesKph.value + TimedSample(tsMillis, kph)
         Timber.tag(TAG).v(
             "appendSpeedKphSample kph=%.2f avg=%.2f seriesSize=%d",
@@ -1297,6 +1299,7 @@ class BtEngineState : HrmStateSink {
         speedKphSum = 0.0
         speedCount = 0
         _avgSpeedKph.value = null
+        _avgSpeedDisplay.value = null
 
         cadenceSpmSum = 0.0
         cadenceCount = 0

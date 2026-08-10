@@ -58,9 +58,11 @@ class CscDownstreamEndToEndTest {
         ).single()
 
         val flags = u16(packet, 0)
+        assertTrue(flags and (1 shl 1) != 0)
         assertTrue(flags and (1 shl 2) != 0)
         assertTrue(flags and (1 shl 4) != 0)
         assertEquals(1_732, u16(packet, 2))
+        assertEquals(1_732, u16(packet, 4))
         val cadenceOffset = 4 + if (flags and (1 shl 1) != 0) 2 else 0
         assertEquals(120, u16(packet, cadenceOffset))
         var distanceOffset = cadenceOffset + 2

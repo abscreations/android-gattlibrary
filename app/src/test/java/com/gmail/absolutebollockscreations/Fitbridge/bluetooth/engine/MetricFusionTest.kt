@@ -117,6 +117,67 @@ class MetricFusionTest {
     }
 
     @Test
+    fun `instant CSC speed samples publish simple average in metric display units`() {
+        val state = BtEngineState().apply { setUnits(0) }
+        val fusion = MetricFusion(state)
+
+        fusion.submit(
+            sample(
+                MetricKind.SPEED,
+                12.0,
+                arrivalMs = 100,
+                protocol = MetricProtocol.CSC,
+                sourceClass = MetricSourceClass.CSC_WHEEL,
+            ),
+        )
+        fusion.submit(
+            sample(
+                MetricKind.SPEED,
+                18.0,
+                arrivalMs = 101,
+                protocol = MetricProtocol.CSC,
+                sourceClass = MetricSourceClass.CSC_WHEEL,
+            ),
+        )
+
+        assertEquals(15.0, state.avgSpeedKph.value!!, 0.0)
+        assertEquals(15.0, state.avgSpeedDisplay.value!!, 0.0)
+
+        state.setActiveSession(true)
+
+        assertEquals(null, state.avgSpeedKph.value)
+        assertEquals(null, state.avgSpeedDisplay.value)
+    }
+
+    @Test
+    fun `instant CSC speed average is converted for imperial display units`() {
+        val state = BtEngineState().apply { setUnits(1) }
+        val fusion = MetricFusion(state)
+
+        fusion.submit(
+            sample(
+                MetricKind.SPEED,
+                16.09344,
+                arrivalMs = 100,
+                protocol = MetricProtocol.CSC,
+                sourceClass = MetricSourceClass.CSC_WHEEL,
+            ),
+        )
+        fusion.submit(
+            sample(
+                MetricKind.SPEED,
+                32.18688,
+                arrivalMs = 101,
+                protocol = MetricProtocol.CSC,
+                sourceClass = MetricSourceClass.CSC_WHEEL,
+            ),
+        )
+
+        assertEquals(24.14016, state.avgSpeedKph.value!!, 0.000001)
+        assertEquals(15.0, state.avgSpeedDisplay.value!!, 0.000001)
+    }
+
+    @Test
     fun `pass through projects HR energy pace and resistance`() {
         val state = BtEngineState()
         val fusion = MetricFusion(state, seriesClock = MetricSeriesClock { 1_785_000_000_000L })
