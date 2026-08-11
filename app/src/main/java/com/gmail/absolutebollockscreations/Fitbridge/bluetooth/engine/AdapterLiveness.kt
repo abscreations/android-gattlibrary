@@ -123,40 +123,113 @@ internal class AdapterLivenessCoordinator(
         synchronized(lock) { policies[connectionId]?.snapshot()?.state }
 
     /**
-     * The adapters plausibly able to drive this link.
+     * Which adapter is currently driving this link, or null when no candidate matched.
      *
-     * One entry today. The evidence is structural — the device exposed the FTMS
-     * GATT service — which is exactly the kind of fact §0.7 says to prefer over a
-     * device-name guess.
+     * Visible for tests and diagnostics. Needed from Phase 5a onward because a link can now
+     * have more than one candidate: on a PM5 advertising both FTMS and the Concept2 Erg
+     * service, the state alone no longer says which path the data is coming from (D6).
+     */
+    fun selectedAdapterId(connectionId: ConnectionId): String? =
+        synchronized(lock) { policies[connectionId]?.snapshot()?.selected?.adapterId }
+
+    /**
+     * The adapters plausibly able to drive this link, best first.
+     *
+     * The evidence is structural in every case — the device exposed a particular GATT service —
+     * which is the kind of fact §0.7 says to prefer over a device-name guess.
+     *
+     * ## Why a PM5 can produce two candidates (D6, plan §5a)
+     *
+     * A Concept2 PM5 may advertise both the standard Fitness Machine Service and its own Erg
+     * service. TMIW resolves this by hard-skipping its proprietary Concept2 descriptor whenever
+     * FTMS is advertised. D6 rejects that: **both** candidates are registered, FTMS ranked
+     * higher because older PM5 firmware genuinely serves usable FTMS Rower data, and the
+     * Concept2 candidate left live behind the §0.7a liveness timeout.
+     *
+     * The difference matters for a firmware revision that advertises FTMS and then sends
+     * nothing. Under a hard skip that is a dead session with no recovery. Here the FTMS
+     * candidate times out, §0.7a demotes once, and the proprietary path takes over
+     * automatically — which is the whole point of ranking candidates rather than choosing one.
      */
     private fun candidatesFor(context: ConnectionContext): List<AdapterCandidate> {
-        val hasFtms = context.discoveredServiceUuids.contains(BluetoothIds.UUID_FTMS_SERVICE)
-        if (!hasFtms) return emptyList()
-        return listOf(
-            MachineAdapterCandidate(
-                adapterId = FTMS_ADAPTER_ID,
-                evidence = MatchEvidence(
-                    listOf(
-                        MatchEvidenceFact(
-                            kind = MatchEvidenceKind.GATT_SERVICE,
-                            structuralValue = BluetoothIds.UUID_FTMS_SERVICE.toString(),
-                            weight = 40,
-                            collisionRisk = CollisionRisk.LOW,
-                            note = "FTMS service present in the discovered GATT database",
+        val services = context.discoveredServiceUuids
+        return buildList {
+            if (BluetoothIds.UUID_FTMS_SERVICE in services) {
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = FTMS_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_SERVICE,
+                                    structuralValue = BluetoothIds.UUID_FTMS_SERVICE.toString(),
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.LOW,
+                                    note = "FTMS service present in the discovered GATT database",
+                                ),
+                            ),
                         ),
+                        rank = RANK_FTMS,
+                        requiresSetup = false,
+                        livenessTimeoutMs = livenessTimeoutMs,
                     ),
-                ),
-                rank = 100,
-                requiresSetup = false,
-                livenessTimeoutMs = livenessTimeoutMs,
-            ),
-        )
+                )
+            }
+            if (BluetoothIds.UUID_C2_ERG_SERVICE in services) {
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = CONCEPT2_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_SERVICE,
+                                    // A full 128-bit vendor UUID, resolved from Concept2's
+                                    // published specification rather than a four-character
+                                    // alias — see the Phase 5a evidence record.
+                                    structuralValue = BluetoothIds.UUID_C2_ERG_SERVICE.toString(),
+                                    // Deliberately equal to the FTMS fact's weight, not higher.
+                                    //
+                                    // `MachineAdapterPolicy` orders candidates by evidence
+                                    // weight *before* rank, so a heavier fact wins outright and
+                                    // `rank` never gets a say. A 128-bit vendor UUID is arguably
+                                    // the stronger fingerprint, but both facts are certain
+                                    // structural identifications of a device that is present —
+                                    // there is no doubt to discriminate. Preference between two
+                                    // certain matches belongs in `rank`, which is where D6 puts
+                                    // it. Inflating this to 50 would silently invert D6 and put
+                                    // the proprietary path first.
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.LOW,
+                                    note = "Concept2 Erg service present in the discovered GATT database",
+                                ),
+                            ),
+                        ),
+                        rank = RANK_CONCEPT2,
+                        requiresSetup = false,
+                        livenessTimeoutMs = livenessTimeoutMs,
+                    ),
+                )
+            }
+        }
     }
 
     companion object {
         private const val TAG = "AdapterLiveness"
 
         const val FTMS_ADAPTER_ID = "ftms.generic"
+        const val CONCEPT2_ADAPTER_ID = "concept2.pm"
+
+        /**
+         * Standard FTMS outranks the Concept2 proprietary path on a PM5 that advertises both.
+         *
+         * Not because FTMS is better evidence — the Concept2 Erg service is a full 128-bit
+         * vendor UUID and carries *more* weight as a fingerprint — but because a PM5 serving
+         * FTMS Rower data is serving a standard both ends already agree on, and older PM5
+         * firmware does so usably. The proprietary path is the richer one and stays available
+         * behind the liveness timeout; it is second choice, not a worse one.
+         */
+        const val RANK_FTMS = 100
+        const val RANK_CONCEPT2 = 80
 
         /**
          * 30 s from subscription completion.

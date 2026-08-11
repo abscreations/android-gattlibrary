@@ -115,6 +115,120 @@ class AdapterLivenessCoordinatorTest {
         )
     }
 
+    // ── D6: a PM5 advertising both standards produces two candidates ─────────────
+
+    @Test
+    fun `a PM5 advertising FTMS and the Erg service registers both candidates`() {
+        // TMIW hard-skips its proprietary Concept2 descriptor whenever FTMS is advertised. D6
+        // rejects that: both are registered, FTMS ranked higher, and the proprietary path stays
+        // available rather than being discarded at discovery.
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context(
+            services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+        )
+
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+
+        assertEquals(AdapterPolicyState.AWAITING_DATA, coordinator.stateOf(ctx.connectionId))
+        assertEquals(
+            "FTMS is the first choice on a PM5 that serves it",
+            AdapterLivenessCoordinator.FTMS_ADAPTER_ID,
+            coordinator.selectedAdapterId(ctx.connectionId),
+        )
+    }
+
+    @Test
+    fun `a silent FTMS advertisement falls back to the Concept2 path instead of dying`() {
+        // The case D6 exists for: a firmware revision that advertises 0x1826 and then sends
+        // nothing. Under a hard skip this is a dead session with no recovery.
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context(
+            services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+        )
+
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+        coordinator.tick(1_000L)
+
+        assertEquals(
+            "the proprietary path must take over rather than the session going dead",
+            AdapterLivenessCoordinator.CONCEPT2_ADAPTER_ID,
+            coordinator.selectedAdapterId(ctx.connectionId),
+        )
+        assertTrue("the demotion is still the evidence that matters", BleCapture.isArmed())
+    }
+
+    @Test
+    fun `a Concept2-only PM is driven by the proprietary path from the start`() {
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context(services = setOf(BluetoothIds.UUID_C2_ERG_SERVICE))
+
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+
+        assertEquals(
+            AdapterLivenessCoordinator.CONCEPT2_ADAPTER_ID,
+            coordinator.selectedAdapterId(ctx.connectionId),
+        )
+    }
+
+    @Test
+    fun `a working FTMS PM5 never demotes to the proprietary path`() {
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context(
+            services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+        )
+
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+        coordinator.onSample(sample(ctx, atMs = 400L))
+        coordinator.tick(10_000L)
+
+        assertEquals(AdapterPolicyState.READY, coordinator.stateOf(ctx.connectionId))
+        assertEquals(
+            AdapterLivenessCoordinator.FTMS_ADAPTER_ID,
+            coordinator.selectedAdapterId(ctx.connectionId),
+        )
+        assertFalse(BleCapture.isArmed())
+    }
+
+    @Test
+    fun `FTMS outranks Concept2, and evidence weight must not override that`() {
+        assertTrue(
+            AdapterLivenessCoordinator.RANK_FTMS > AdapterLivenessCoordinator.RANK_CONCEPT2,
+        )
+
+        // The rank constants alone do not settle the ordering. `MachineAdapterPolicy` sorts by
+        // evidence weight *first* and only then by rank, so a heavier Concept2 fact would win
+        // outright and D6 would be silently inverted while these constants still read correctly.
+        //
+        // This is the assertion that actually holds the ordering, and it is why the Concept2
+        // fact carries the same weight as the FTMS one rather than the larger weight a 128-bit
+        // vendor UUID might seem to deserve.
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context(
+            services = setOf(BluetoothIds.UUID_C2_ERG_SERVICE, BluetoothIds.UUID_FTMS_SERVICE),
+        )
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+
+        assertEquals(
+            "evidence weight must not promote the proprietary path ahead of FTMS",
+            AdapterLivenessCoordinator.FTMS_ADAPTER_ID,
+            coordinator.selectedAdapterId(ctx.connectionId),
+        )
+    }
+
+    @Test
+    fun `a machine with neither service registers no candidate`() {
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context(services = setOf(BluetoothIds.UUID_HRM_SERVICE))
+
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+        coordinator.tick(10_000L)
+
+        assertNull(
+            "a strap is not a machine adapter and must not be demoted as one",
+            coordinator.selectedAdapterId(ctx.connectionId),
+        )
+    }
+
     @Test
     fun `a sample from another connection does not clear this one`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
