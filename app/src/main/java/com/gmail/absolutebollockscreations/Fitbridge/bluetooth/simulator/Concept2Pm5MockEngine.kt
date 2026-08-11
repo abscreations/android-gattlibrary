@@ -6,6 +6,11 @@ import kotlin.math.sin
 
 enum class Concept2Scenario { STEADY, INCREASING, RECOVERY, INTERVALS, FINISH }
 
+internal object Concept2Pm5OperationalState {
+    const val READY = 1
+    const val WORKOUT = 2
+}
+
 /** One coherent, protocol-rich PM5 workout snapshot. Values are in documented wire units. */
 data class Concept2Pm5Snapshot(
     val elapsedCentiseconds: Int,
@@ -38,6 +43,15 @@ data class Concept2Pm5Snapshot(
     val restTimeCentiseconds: Int = 0,
     val projectedWorkTimeSeconds: Int = 1800,
     val projectedWorkDistanceMetres: Int = 7000,
+    val operationalState: Int = Concept2Pm5OperationalState.WORKOUT,
+    val workoutVerificationState: Int = 0,
+    val screenNumber: Int = 0,
+    val lastError: Int = 0,
+    val calibrationMode: Int = 0,
+    val calibrationState: Int = 0,
+    val calibrationStatus: Int = 0,
+    val gameId: Int = 0,
+    val gameScore: Int = 0,
     val machineType: Int,
     val splitSequence: Int = 0,
     val summarySequence: Int = 0,
@@ -124,6 +138,13 @@ class Concept2Pm5MockEngine(
             restTimeCentiseconds = if (intervalRest) ((elapsedSeconds.toInt() % 30) * 100) else 0,
             projectedWorkTimeSeconds = 1800,
             projectedWorkDistanceMetres = (averageSpeed * 1800.0).roundToInt(),
+            // The autonomous simulator is already exercising when a client connects. CSAFE is
+            // not required to enter WORKOUT; FINISH returns the virtual monitor to READY.
+            operationalState = if (finished) {
+                Concept2Pm5OperationalState.READY
+            } else {
+                Concept2Pm5OperationalState.WORKOUT
+            },
             machineType = machine.wireMachineType,
             splitSequence = if (scenario == Concept2Scenario.INTERVALS) elapsedSeconds.toInt() / 30 else 0,
             summarySequence = if (finished) 1 else 0,

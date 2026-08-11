@@ -18,6 +18,7 @@ object Concept2Pm5Encoder {
         BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY -> additionalWorkoutSummary(s, multiplexed = false)
         BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO -> heartRateBeltInformation()
         BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2 -> additionalWorkoutSummary2(s)
+        BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3 -> additionalStatus3(s)
         else -> null
     }
 
@@ -34,6 +35,7 @@ object Concept2Pm5Encoder {
             0x3A -> additionalWorkoutSummary(s, multiplexed = true)
             0x3B -> heartRateBeltInformation()
             0x3C -> additionalWorkoutSummary2(s)
+            0x3E -> additionalStatus3(s)
             else -> return null
         }
         return byteArrayOf(id.toByte()) + payload
@@ -111,6 +113,13 @@ object Concept2Pm5Encoder {
 
     private fun additionalWorkoutSummary2(s: Concept2Pm5Snapshot) = packet {
         u16(0); u16(0); u16(s.averagePaceCentiseconds / 10); u8(0); u16(0); u8(s.machineType)
+    }
+
+    private fun additionalStatus3(s: Concept2Pm5Snapshot) = packet {
+        u8(s.operationalState); u8(s.workoutVerificationState)
+        u16(s.screenNumber); u16(s.lastError)
+        u8(s.calibrationMode); u8(s.calibrationState); u8(s.calibrationStatus)
+        u8(s.gameId); u16(s.gameScore)
     }
 
     /** One complete force curve, split into PM5 frames that always fit ATT MTU 23. */

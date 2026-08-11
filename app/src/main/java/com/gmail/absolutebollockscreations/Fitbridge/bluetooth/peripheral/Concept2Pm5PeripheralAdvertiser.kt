@@ -53,6 +53,7 @@ class Concept2Pm5PeripheralAdvertiser(
         val session = Concept2Pm5Session()
         var mtu = 23
         var nextDueMs = 0L
+        var nextAdditionalStatus3DueMs = 0L
         var lastSplitSequence = 0
         var lastSummarySequence = 0
         var lastForceCurveSequence = 0
@@ -235,7 +236,10 @@ class Concept2Pm5PeripheralAdvertiser(
                 BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE -> {
                     val ok = structurallyWritable && value.size == 1 &&
                         client.session.setSampleRate(value[0].toInt() and 0xFF)
-                    if (ok) client.nextDueMs = 0L
+                    if (ok) {
+                        client.nextDueMs = 0L
+                        client.nextAdditionalStatus3DueMs = 0L
+                    }
                     if (ok) BluetoothGatt.GATT_SUCCESS else BluetoothGatt.GATT_FAILURE
                 }
                 BluetoothIds.UUID_C2_HEART_RATE_RECEIVE -> {
@@ -282,6 +286,16 @@ class Concept2Pm5PeripheralAdvertiser(
             val ok = descriptor.uuid == BluetoothIds.UUID_CCCD && !preparedWrite && offset == 0 && (enable || disable)
             if (ok) client.session.setSubscribed(descriptor.characteristic.uuid, enable)
             if (responseNeeded) server?.sendResponse(device, requestId, if (ok) BluetoothGatt.GATT_SUCCESS else BluetoothGatt.GATT_FAILURE, 0, null)
+            if (ok && enable && descriptor.characteristic.uuid == BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3) {
+                latest?.let {
+                    enqueueAdditionalStatus3(
+                        client,
+                        it,
+                        force = true,
+                        nowMs = android.os.SystemClock.elapsedRealtime(),
+                    )
+                }
+            }
             listener.onState(isAdvertising, clients.isNotEmpty(), anySubscribed(), null)
         }
 
@@ -314,6 +328,12 @@ class Concept2Pm5PeripheralAdvertiser(
                 val now = android.os.SystemClock.elapsedRealtime()
                 val snapshot = latest
                 if (snapshot != null) clients.values.forEach { client ->
+                    enqueueAdditionalStatus3(
+                        client,
+                        snapshot,
+                        force = now >= client.nextAdditionalStatus3DueMs,
+                        nowMs = now,
+                    )
                     if (now >= client.nextDueMs) {
                         client.nextDueMs = now + client.session.periodMs
                         enqueueLive(client, snapshot)
@@ -327,8 +347,10 @@ class Concept2Pm5PeripheralAdvertiser(
     private fun enqueueLive(client: Client, snapshot: Concept2Pm5Snapshot) {
         LIVE_IDS.forEach { id ->
             val uuid = Concept2Pm5Session.uuidForId(id) ?: return@forEach
-            if (client.session.isSubscribed(uuid)) {
-                Concept2Pm5Encoder.individual(uuid, snapshot)?.let { enqueue(client, Frame(uuid, it, true)) }
+            if (id != ADDITIONAL_STATUS_3_ID && client.session.isSubscribed(uuid)) {
+                Concept2Pm5Encoder.individual(uuid, snapshot)?.let {
+                    enqueue(client, Frame(uuid, it, true))
+                }
             }
         }
         client.session.nextMuxId(LIVE_IDS)?.let { id ->
@@ -354,6 +376,21 @@ class Concept2Pm5PeripheralAdvertiser(
                     Frame(BluetoothIds.UUID_C2_FORCE_CURVE_DATA, it, false)
                 },
             )
+        }
+    }
+
+    private fun enqueueAdditionalStatus3(
+        client: Client,
+        snapshot: Concept2Pm5Snapshot,
+        force: Boolean,
+        nowMs: Long,
+    ) {
+        val uuid = BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3
+        if (!client.session.isSubscribed(uuid)) return
+        val value = Concept2Pm5Encoder.individual(uuid, snapshot) ?: return
+        if (client.session.shouldEmitAdditionalStatus3(value, force)) {
+            client.nextAdditionalStatus3DueMs = nowMs + client.session.periodMs
+            enqueue(client, Frame(uuid, value, true))
         }
     }
 
@@ -427,6 +464,7 @@ class Concept2Pm5PeripheralAdvertiser(
 
     companion object {
         private const val MAX_PENDING = 24
-        private val LIVE_IDS = listOf(0x31, 0x32, 0x33, 0x35, 0x36, 0x3B)
+        private const val ADDITIONAL_STATUS_3_ID = 0x3E
+        private val LIVE_IDS = listOf(0x31, 0x32, 0x33, 0x35, 0x36, 0x3B, ADDITIONAL_STATUS_3_ID)
     }
 }

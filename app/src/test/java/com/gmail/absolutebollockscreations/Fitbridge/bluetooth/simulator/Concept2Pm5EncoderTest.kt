@@ -58,6 +58,61 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
+    fun `additional status 3 has exact documented individual and mux layout`() {
+        val status = sample.copy(
+            operationalState = 2,
+            workoutVerificationState = 3,
+            screenNumber = 0x1234,
+            lastError = 0x5678,
+            calibrationMode = 4,
+            calibrationState = 5,
+            calibrationStatus = 6,
+            gameId = 2,
+            gameScore = 0x9ABC,
+        )
+        val expected = byteArrayOf(
+            0x02, 0x03, 0x34, 0x12, 0x78, 0x56,
+            0x04, 0x05, 0x06, 0x02, 0xBC.toByte(), 0x9A.toByte(),
+        )
+
+        val individual = Concept2Pm5Encoder.individual(
+            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3,
+            status,
+        )!!
+        assertTrue(expected.contentEquals(individual))
+
+        val multiplexed = Concept2Pm5Encoder.multiplexed(0x3E, status)!!
+        assertEquals(13, multiplexed.size)
+        assertEquals(0x3E, multiplexed[0].toInt() and 0xFF)
+        assertTrue(expected.contentEquals(multiplexed.copyOfRange(1, multiplexed.size)))
+    }
+
+    @Test
+    fun `additional status 3 saturates every unsigned field`() {
+        val status = sample.copy(
+            operationalState = -1,
+            workoutVerificationState = Int.MAX_VALUE,
+            screenNumber = -1,
+            lastError = Int.MAX_VALUE,
+            calibrationMode = -1,
+            calibrationState = Int.MAX_VALUE,
+            calibrationStatus = -1,
+            gameId = Int.MAX_VALUE,
+            gameScore = -1,
+        )
+        val packet = Concept2Pm5Encoder.individual(
+            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3,
+            status,
+        )!!
+
+        assertEquals(12, packet.size)
+        assertEquals(
+            listOf(0, 0xFF, 0, 0, 0xFF, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0),
+            packet.map { it.toInt() and 0xFF },
+        )
+    }
+
+    @Test
     fun `device and status packets carry each persona machine type`() {
         Concept2Machine.entries.forEach { machine ->
             val snapshot = Concept2Pm5MockEngine(machine).tick(1.0)
@@ -116,6 +171,42 @@ class Concept2Pm5EncoderTest {
         first.reset()
         assertEquals(500L, first.periodMs)
         assertFalse(first.isSubscribed(BluetoothIds.UUID_C2_GENERAL_STATUS))
+    }
+
+    @Test
+    fun `additional status 3 individual subscription suppresses its mux frame`() {
+        val session = Concept2Pm5Session()
+        val ids = listOf(0x3E, 0x31)
+        session.setSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, true)
+        assertEquals(0x3E, session.nextMuxId(ids))
+
+        session.setSubscribed(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, true)
+        assertEquals(0x31, session.nextMuxId(ids))
+
+        session.setSubscribed(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, false)
+        assertEquals(0x3E, session.nextMuxId(ids))
+    }
+
+    @Test
+    fun `additional status 3 delivery detects initial changes and forced rate ticks`() {
+        val session = Concept2Pm5Session()
+        val initial = byteArrayOf(2, 0, 0)
+        assertTrue(session.shouldEmitAdditionalStatus3(initial))
+        initial[0] = 7
+        assertFalse(session.shouldEmitAdditionalStatus3(byteArrayOf(2, 0, 0)))
+        assertTrue(session.shouldEmitAdditionalStatus3(byteArrayOf(1, 0, 0)))
+        assertFalse(session.shouldEmitAdditionalStatus3(byteArrayOf(1, 0, 0)))
+        assertTrue(session.shouldEmitAdditionalStatus3(byteArrayOf(1, 0, 0), force = true))
+
+        session.reset()
+        assertTrue(session.shouldEmitAdditionalStatus3(byteArrayOf(1, 0, 0)))
+    }
+
+    @Test
+    fun `autonomous PM5 begins in workout state and finishes ready without CSAFE`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, Concept2Scenario.FINISH)
+        assertEquals(Concept2Pm5OperationalState.WORKOUT, engine.snapshot().operationalState)
+        assertEquals(Concept2Pm5OperationalState.READY, engine.tick(60.0).operationalState)
     }
 
     @Test

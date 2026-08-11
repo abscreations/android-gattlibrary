@@ -7,6 +7,7 @@ import java.util.UUID
 class Concept2Pm5Session {
     private val subscriptions = mutableSetOf<UUID>()
     private var heartRateInputBytes: ByteArray? = null
+    private var lastAdditionalStatus3Bytes: ByteArray? = null
     var sampleRate: Int = DEFAULT_SAMPLE_RATE
         private set
     var muxPosition: Int = 0
@@ -52,9 +53,19 @@ class Concept2Pm5Session {
         return result
     }
 
+    /** Per-link edge detector for the status stream; forced emissions represent its rate tick. */
+    @Synchronized
+    fun shouldEmitAdditionalStatus3(value: ByteArray, force: Boolean = false): Boolean {
+        val changed = lastAdditionalStatus3Bytes?.contentEquals(value) != true
+        if (!force && !changed) return false
+        lastAdditionalStatus3Bytes = value.copyOf()
+        return true
+    }
+
     fun reset() {
         subscriptions.clear(); sampleRate = DEFAULT_SAMPLE_RATE; muxPosition = 0
         heartRateInputBytes = null
+        lastAdditionalStatus3Bytes = null
     }
 
     companion object {
