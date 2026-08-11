@@ -234,7 +234,49 @@ internal class DeviceMatcherRegistry private constructor(
                 ),
                 sigDefinition("sig.rsc", 0x1814, 0x2a53..0x2a53, KnownBleService.RSC, 300),
                 sigDefinition("sig.csc", 0x1816, 0x2a5b..0x2a5b, KnownBleService.CSC, 200),
+                concept2Definition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
+            ),
+        )
+
+        /**
+         * Concept2 PM, the first non-SIG definition in the registry (plan §5a).
+         *
+         * `MatchDefinition` already carries an arbitrary [CanonicalUuid], so a vendor family
+         * needs no new machinery — only a constructor that does not assume a 16-bit assigned
+         * number. Every UUID here is expanded from the base quoted in Concept2's published
+         * specification; see `docs/evidence/phase-5/2026-08-10-concept2-pm5-uuid-resolution.md`.
+         *
+         * **Preference sits below `sig.csc`, not above `sig.ftms`.** A PM5 advertising both
+         * services must still be *matched* as a Concept2 device — that is what makes the
+         * proprietary path available at all — but which adapter drives the link is D6's
+         * question, answered by `AdapterLivenessCoordinator` ranking. Preference here orders
+         * matcher candidates; it is not a second, competing statement of that decision.
+         *
+         * The persona characteristics are the four FitBridge consumes plus the multiplexed
+         * characteristic. Any of them is a decisive fingerprint: no other vendor uses this base.
+         *
+         * **No local-name pattern, deliberately.** A `^pm[0-9]` pattern was tried and removed.
+         * It contributes nothing when structural evidence is present — every PM exposes the Erg
+         * service — so the only case it changes is a device advertising *nothing* Concept2 while
+         * calling itself `PM5`, which is precisely the case where a match must not be claimed.
+         * §0.7 says to prefer structural evidence over a name; for a family whose fingerprint is
+         * this unmistakable, the name is not weak evidence but no evidence.
+         *
+         * The name still selects the *persona* once a match exists — RowErg, SkiErg, BikeErg —
+         * which is `concept2PersonaFor`'s job and a different question from identity.
+         */
+        private fun concept2Definition() = MatchDefinition(
+            candidateId = "vendor.concept2.pm",
+            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ERG_SERVICE),
+            knownService = null,
+            preference = 150,
+            personaCharacteristicUuids = linkedSetOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_GENERAL_STATUS),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
             ),
         )
 
