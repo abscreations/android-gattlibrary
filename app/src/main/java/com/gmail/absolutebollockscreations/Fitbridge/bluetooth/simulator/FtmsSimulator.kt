@@ -61,18 +61,23 @@ class FtmsSimulator(
      */
     interface SimulatorPeripheralHost {
         /** Publish the GATT database and advertise. Blocking; returns success. */
-        fun startAdvertising(profile: FtmsMachineProfile, targets: TargetCapabilities): Boolean
+        fun startAdvertising(persona: SimulatorPersona, targets: TargetCapabilities): Boolean
 
         fun stopAdvertising()
 
         /** Route Control Point procedures to [sink], or back to the machine on null. */
         fun setControlOverride(sink: FtmsControlSink?)
 
+        /** Publish the latest rich PM5 snapshot to the PM5 measurement scheduler. */
+        fun publishConcept2(snapshot: Concept2Pm5Snapshot) {}
+
         val isAdvertising: Boolean
     }
 
     data class State(
         val running: Boolean = false,
+        val persona: SimulatorPersona? = null,
+        val concept2Scenario: Concept2Scenario? = null,
         val machine: FtmsMachineProfile? = null,
         val controlsEnabled: Boolean = false,
         val controlsAvailable: Boolean = false,
@@ -94,6 +99,7 @@ class FtmsSimulator(
 
     @Volatile
     private var engine: FtmsMockEngine? = null
+    private var concept2Engine: Concept2Pm5MockEngine? = null
 
     /**
      * Control Point target while the simulator owns the machine.
@@ -178,6 +184,21 @@ class FtmsSimulator(
      * Blocking on the advertising verdict, so call it off the main thread.
      */
     fun start(machine: FtmsMachineProfile, enableControls: Boolean) {
+        start(SimulatorPersona.Ftms(machine), enableControls)
+    }
+
+    /** Protocol-level entry point. PM5 remains deliberately gated until its server is available. */
+    fun start(
+        persona: SimulatorPersona,
+        enableControls: Boolean = false,
+        concept2Scenario: Concept2Scenario = Concept2Scenario.STEADY,
+    ) {
+        if (persona is SimulatorPersona.Concept2Pm5) {
+            startConcept2(persona, concept2Scenario)
+            return
+        }
+        val machine = (persona as? SimulatorPersona.Ftms)?.profile
+            ?: return
         if (realMachineAttached()) {
             _state.value = _state.value.copy(
                 lastError = "Disconnect the physical machine before simulating data",
@@ -204,7 +225,7 @@ class FtmsSimulator(
         peripheral.setControlOverride(controlSink)
 
         val started = runCatching {
-            peripheral.startAdvertising(machine, mockEngine.controlCapabilities)
+            peripheral.startAdvertising(persona, mockEngine.controlCapabilities)
         }.getOrElse { t ->
             Timber.tag(TAG).w(t, "simulator advertising threw")
             false
@@ -235,6 +256,7 @@ class FtmsSimulator(
 
         _state.value = State(
             running = true,
+            persona = persona,
             machine = machine,
             controlsEnabled = effectiveControls,
             controlsAvailable = controlsAvailableFor(machine),
@@ -260,6 +282,7 @@ class FtmsSimulator(
         job?.cancel()
         job = null
         engine = null
+        concept2Engine = null
         FitBridgeWakeLock.releaseCpu(wakeLockOwner)
         peripheral.setControlOverride(null)
         runCatching { peripheral.stopAdvertising() }
@@ -277,6 +300,75 @@ class FtmsSimulator(
 
         _state.value = State(controlsAvailable = _state.value.controlsAvailable)
         Timber.tag(TAG).i("simulator stopped")
+    }
+
+    private fun startConcept2(persona: SimulatorPersona.Concept2Pm5, scenario: Concept2Scenario) {
+        if (realMachineAttached()) {
+            _state.value = State(persona = persona, lastError = "Disconnect the physical machine before simulating data")
+            return
+        }
+        if (_state.value.running) stop()
+        val pm5 = Concept2Pm5MockEngine(persona.machine, scenario)
+        concept2Engine = pm5
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            concept2Engine = null
+            _state.value = State(persona = persona, lastError = "Could not start advertising as ${persona.advertisedName}")
+            return
+        }
+        connectionContext = engineState.openConnectionContext(
+            LegacyConnectionRole.FTMS,
+            address = "SIMULATOR-PM5",
+            handlers = emptyList(),
+        ).also { engineState.setConnectionState(it, SIMULATED_CONNECTED_STATE) }
+        engineState.setActiveSession(true)
+        engineState.setIsRunning(true)
+        engineState.setHaveControl(false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            concept2Scenario = scenario,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        publishConcept2(pm5.snapshot())
+        job = scope.launch {
+            while (isActive) {
+                delay(PERIOD_MS)
+                val active = concept2Engine ?: break
+                publishConcept2(active.tick(PERIOD_MS / 1000.0))
+            }
+        }
+        Timber.tag(TAG).i("PM5 simulator started machine=%s firmware=%s", persona.machine, persona.firmware)
+    }
+
+    private fun publishConcept2(snapshot: Concept2Pm5Snapshot) {
+        peripheral.publishConcept2(snapshot)
+        val speedKph = snapshot.speedMillimetresPerSecond / 1000.0 * 3.6
+        publish(
+            FtmsMockSample(
+                elapsedSeconds = snapshot.elapsedCentiseconds / 100,
+                heartRate = snapshot.heartRate,
+                caloriesTotal = snapshot.totalCalories,
+                caloriesPerHour = snapshot.caloriesPerHour,
+                caloriesPerMinute = snapshot.caloriesPerHour / 60,
+                speedKph = speedKph,
+                averageSpeedKph = if (snapshot.elapsedCentiseconds > 0) {
+                    (snapshot.distanceDecimetres / 10.0) / (snapshot.elapsedCentiseconds / 100.0) * 3.6
+                } else speedKph,
+                distanceMeters = snapshot.distanceDecimetres / 10,
+                cadence = snapshot.strokeRate.toDouble(),
+                powerWatts = snapshot.currentPowerWatts,
+                instantPaceMinPerKm = snapshot.currentPaceCentiseconds / 100.0 / 500.0,
+                averagePaceMinPerKm = snapshot.averagePaceCentiseconds / 100.0 / 500.0,
+                movementCount = snapshot.strokeCount,
+            ),
+        )
     }
 
     fun dispose() {

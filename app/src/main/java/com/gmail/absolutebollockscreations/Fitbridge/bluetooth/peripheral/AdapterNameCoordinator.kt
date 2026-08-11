@@ -256,7 +256,8 @@ internal class AdapterNameCoordinator(
     }
 
     /** True for names this app assigns, so they are never saved as "original". */
-    private fun isSessionName(name: String): Boolean = name.startsWith(SESSION_NAME_PREFIX)
+    private fun isSessionName(name: String): Boolean =
+        name.startsWith(SESSION_NAME_PREFIX) || PM5_SESSION_NAME.matches(name)
 
     companion object {
         private const val TAG = "AdapterName"
@@ -276,5 +277,6 @@ internal class AdapterNameCoordinator(
          * `const val` is inlined, so this costs no class loading in a JVM test.
          */
         const val SESSION_NAME_PREFIX = BtServiceProfiles.DEVICE_NAME_PREFIX
+        private val PM5_SESSION_NAME = Regex("PM5 [0-9]{9}")
     }
 }

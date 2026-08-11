@@ -55,9 +55,9 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  *
  * ## Control
  *
- * None, permanently, per D11. CSAFE (`0x0020`–`0x0022`) is out of scope for this plan and no
- * later phase adds it, so these decoders have no control seam and none should be added here;
- * CSAFE would be a new machine-adapter capability rather than a change to this file.
+ * None in the central-role adapter, per amended D11. The downstream peripheral simulator owns
+ * its separate closed-loop CSAFE surface; these decoders retain no control seam and must not
+ * forward a simulator request to a physical Concept2 link.
  */
 internal object Concept2Measurement {
 

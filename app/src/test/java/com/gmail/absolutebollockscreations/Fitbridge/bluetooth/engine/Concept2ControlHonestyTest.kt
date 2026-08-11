@@ -7,46 +7,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Plan §11.7 (inverted per §13), §11.8 and D11 for the Concept2 PM.
+ * Plan §11.7, §11.8 and amended D11 for the Concept2 PM.
  *
  * §11.7 asks for control request/response tests **where control exists**. For a family that
  * cannot be tested on hardware, §13 inverts the obligation: prove the control path is
  * *unreachable* and that §9.2's capability row sets no target bits. That is the shape of test
  * this file contains, because for Concept2 the absence is the requirement rather than a gap.
  *
- * ## Why control is absent permanently, not merely unimplemented
+ * ## Why the peripheral CSAFE surface does not authorize upstream control
  *
- * D11 places CSAFE — the PM's control transport, characteristics `0x0020`–`0x0022` — outside
- * this plan entirely, and no later phase adds it. So this is not a stub awaiting completion:
- * adding control later would be a **new machine-adapter capability** with its own transport,
- * safety and state-machine work, not a modification of the Concept2 handler. These tests exist
- * to make an accidental future seam visible rather than to mark a to-do.
+ * D11 now permits `0x0020`-`0x0022` only in the downstream PM5 peripheral simulator. The
+ * central-role Concept2 handler remains measurement-only, and no FTMS target capability follows
+ * from simulator-local workout programming.
  */
 class Concept2ControlHonestyTest {
 
-    // ── The control transport is not referenced at all ───────────────────────────
+    // ── The central adapter still cannot reach the peripheral control transport ──
 
     @Test
-    fun `no CSAFE characteristic is known to the engine`() {
-        // 0x0020 control service, 0x0021 receive, 0x0022 transmit. If any of these ever appears
-        // in BluetoothIds, someone has begun a control path that D11 does not authorise.
-        val declared = BluetoothIds::class.java.declaredFields
-            .filter { it.name.startsWith("UUID_C2") }
-            .map { it.name }
-
-        assertEquals(
-            "only measurement-side Concept2 UUIDs may exist",
-            listOf(
-                "UUID_C2_ERG_SERVICE",
-                "UUID_C2_GENERAL_STATUS",
-                "UUID_C2_ADDITIONAL_STATUS_1",
-                "UUID_C2_ADDITIONAL_STATUS_2",
-                "UUID_C2_STATUS_SAMPLE_RATE",
-                "UUID_C2_ADDITIONAL_STROKE_DATA",
-                "UUID_C2_MULTIPLEXED_INFORMATION",
-            ).sorted(),
-            declared.sorted(),
+    fun `central Concept2 handler does not claim the CSAFE service or characteristics`() {
+        val handler = Concept2ProtocolHandler()
+        val claimed = handler.primaryServices + handler.extraCharacteristics
+        val peripheralOnly = setOf(
+            BluetoothIds.UUID_C2_PM_CONTROL_SERVICE,
+            BluetoothIds.UUID_C2_CSAFE_REQUEST,
+            BluetoothIds.UUID_C2_CSAFE_RESPONSE,
         )
+
+        assertTrue(claimed.intersect(peripheralOnly).isEmpty())
     }
 
     @Test

@@ -23,10 +23,10 @@ import java.util.UUID
  *
  * ## Control
  *
- * None, permanently, per D11. CSAFE (`0x0020`–`0x0022`) is out of scope for this plan and no
- * later phase adds it, so there is no control seam here and none should be added: CSAFE would
- * be a new machine-adapter capability rather than a change to this handler. No downstream
- * target-setting capability is advertised for this family.
+ * None in the central-role adapter, per amended D11. The downstream peripheral simulator owns
+ * its separate closed-loop CSAFE surface; there is no control seam here and no simulator request
+ * may be forwarded through this handler. No downstream target-setting capability is advertised
+ * for this family.
  */
 internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
