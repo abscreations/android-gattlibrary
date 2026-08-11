@@ -167,6 +167,58 @@ class FtmsOffsetDesyncCharacterizationTest {
     }
 
     /**
+     * FTMS "Data Not Available" for Expended Energy (plan §12.1 V8, resolved 2026-08-10).
+     *
+     * The three energy sub-fields share one flag bit, so a server that cannot compute a value
+     * has no flag to clear and sends `0xFFFF` instead. The specification states that this means
+     * Data Not Available for Total Energy and Energy Per Hour.
+     *
+     * This matters more than it looks. [MetricKind.ENERGY] is **deliberately unbounded** in
+     * [PlausibilityBounds] — cumulative metrics have no sensible ceiling and dropping a sample
+     * corrupts a delta chain — so nothing downstream would have caught 65535 kcal. It would
+     * have been published as a real cumulative reading and fed the session's energy continuity.
+     *
+     * The rate fields were already handled by `ftmsEnergyRateKcalPerHour`; the total was not.
+     */
+    @Test
+    fun `an unavailable total energy sentinel is dropped, not published as 65535 kcal`() {
+        val h = harness(BluetoothIds.UUID_BIKING_DATA)
+
+        // Flags 0x0101: bit 0 set so speed is absent, bit 8 for expended energy. Total 0xFFFF,
+        // per-hour 0xFFFF, per-minute 0xFF — a machine declaring it computes none of the three.
+        //
+        // Bit 0 matters: it is More Data, and its *clear* state is what makes speed present.
+        // With it clear the energy block starts two octets later and this test would pass by
+        // taking the truncated-block path rather than the sentinel path.
+        BtEngineFtmsParsers.doBike(
+            h.emitter,
+            bytes(0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF),
+        )
+
+        assertNull(
+            "0xFFFF means Data Not Available; ENERGY is unbounded so nothing else would catch it",
+            h.fusion.valueOf(MetricKind.ENERGY),
+        )
+        assertNull(h.fusion.valueOf(MetricKind.ENERGY_RATE))
+    }
+
+    /** A real total beside unavailable rates still publishes the total. */
+    @Test
+    fun `a known total energy with unavailable rates still publishes the total`() {
+        val h = harness(BluetoothIds.UUID_BIKING_DATA)
+
+        // Flags 0x0101 again: speed absent, expended energy present. Total 300 kcal, both
+        // rates unavailable.
+        BtEngineFtmsParsers.doBike(
+            h.emitter,
+            bytes(0x01, 0x01, 0x2C, 0x01, 0xFF, 0xFF, 0xFF),
+        )
+
+        assertEquals(300.0, h.fusion.valueOf(MetricKind.ENERGY)!!, 1e-9)
+        assertNull(h.fusion.valueOf(MetricKind.ENERGY_RATE))
+    }
+
+    /**
      * The control case. A conforming 14-byte Matrix treadmill packet (`0x1F00`, pinned in the
      * same TMIW file) has no failed guard anywhere in its walk, so every field lands on its
      * correct offset and FitBridge already agrees with TMIW exactly.

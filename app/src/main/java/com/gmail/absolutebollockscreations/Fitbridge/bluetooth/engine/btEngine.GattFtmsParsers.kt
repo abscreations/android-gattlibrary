@@ -650,11 +650,15 @@ internal object BtEngineFtmsParsers {
             val perHourRaw = u16(b, off0 + 2)
             val perMinuteRaw = u8(b, off0 + 4)
 
-            emitter.emit(
-                MetricKind.ENERGY,
-                machineKcal,
-                nativeCumulative = machineKcal.toDouble(),
-            )
+            if (machineKcal != ENERGY_NOT_AVAILABLE) {
+                emitter.emit(
+                    MetricKind.ENERGY,
+                    machineKcal,
+                    nativeCumulative = machineKcal.toDouble(),
+                )
+            } else if (canLogMetrics()) {
+                Timber.tag(TAG).d("FTMS total energy is 0xFFFF (data not available); dropped")
+            }
             val rate = ftmsEnergyRateKcalPerHour(perHourRaw, perMinuteRaw)
             rate?.let { emitter.emit(MetricKind.ENERGY_RATE, it) }
 
@@ -670,16 +674,18 @@ internal object BtEngineFtmsParsers {
 
         if (has(b, off0, 2)) {
             val machineKcal = u16(b, off0)
-            emitter.emit(
-                MetricKind.ENERGY,
-                machineKcal,
-                nativeCumulative = machineKcal.toDouble(),
-            )
-            if (canLogMetrics()) {
-                Timber.tag(TAG).d(
-                    "FTMS energy: total=%d kcal from a truncated block; no rate, walk aborted",
+            if (machineKcal != ENERGY_NOT_AVAILABLE) {
+                emitter.emit(
+                    MetricKind.ENERGY,
                     machineKcal,
+                    nativeCumulative = machineKcal.toDouble(),
                 )
+                if (canLogMetrics()) {
+                    Timber.tag(TAG).d(
+                        "FTMS energy: total=%d kcal from a truncated block; no rate, walk aborted",
+                        machineKcal,
+                    )
+                }
             }
         }
 
@@ -753,15 +759,24 @@ internal object BtEngineFtmsParsers {
         if (!has(b, off0, 4)) return ABORTED
 
         var off = off0
-        val inc = s16(b, off).toDouble() / 10.0; off += 2
-        val ramp = s16(b, off).toDouble() / 10.0; off += 2
+        val incRaw = s16(b, off); off += 2
+        val rampRaw = s16(b, off); off += 2
 
-        if (canLogMetrics()) {
-            Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
+        // The two share one flag bit, so either may be 0x7FFF while the other is real.
+        if (incRaw != SIGNED_NOT_AVAILABLE) {
+            emitter.emit(MetricKind.INCLINATION, incRaw.toDouble() / 10.0)
+        }
+        if (rampRaw != SIGNED_NOT_AVAILABLE) {
+            emitter.emit(MetricKind.RAMP_ANGLE, rampRaw.toDouble() / 10.0)
         }
 
-        emitter.emit(MetricKind.INCLINATION, inc)
-        emitter.emit(MetricKind.RAMP_ANGLE, ramp)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d(
+                "FTMS incline (%%): %s, rampAngle (deg): %s",
+                if (incRaw == SIGNED_NOT_AVAILABLE) "unavailable" else "${incRaw / 10.0}",
+                if (rampRaw == SIGNED_NOT_AVAILABLE) "unavailable" else "${rampRaw / 10.0}",
+            )
+        }
         return off
     }
 
@@ -770,15 +785,23 @@ internal object BtEngineFtmsParsers {
         if (!has(b, off0, 4)) return ABORTED
 
         var off = off0
-        val inc = s16(b, off).toDouble() / 10.0; off += 2
-        val ramp = s16(b, off).toDouble() / 10.0; off += 2
+        val incRaw = s16(b, off); off += 2
+        val rampRaw = s16(b, off); off += 2
 
-        if (canLogMetrics()) {
-            Timber.tag(TAG).d("FTMS incline (%%): %.1f, rampAngle (deg): %.1f", inc, ramp)
+        if (incRaw != SIGNED_NOT_AVAILABLE) {
+            emitter.emit(MetricKind.INCLINATION, incRaw.toDouble() / 10.0)
+        }
+        if (rampRaw != SIGNED_NOT_AVAILABLE) {
+            emitter.emit(MetricKind.RAMP_ANGLE, rampRaw.toDouble() / 10.0)
         }
 
-        emitter.emit(MetricKind.INCLINATION, inc)
-        emitter.emit(MetricKind.RAMP_ANGLE, ramp)
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d(
+                "FTMS incline (%%): %s, rampAngle (deg): %s",
+                if (incRaw == SIGNED_NOT_AVAILABLE) "unavailable" else "${incRaw / 10.0}",
+                if (rampRaw == SIGNED_NOT_AVAILABLE) "unavailable" else "${rampRaw / 10.0}",
+            )
+        }
         return off
     }
 
@@ -825,11 +848,17 @@ internal object BtEngineFtmsParsers {
         val inst = s16(b, off); off += 2
 
         if (canLogMetrics()) {
-            Timber.tag(TAG).d("FTMS beltForce (N-ish): %d, derived power (W): %d", force, inst)
+            Timber.tag(TAG).d("FTMS beltForce (N): %d, power (W): %d", force, inst)
         }
 
-        emitter.emit(MetricKind.FORCE_ON_BELT, force)
-        emitter.emit(MetricKind.POWER, inst, quality = MetricQuality.DERIVED)
+        // Force on Belt and Power Output share flag bit 12, so a treadmill that measures one
+        // and not the other sends 0x7FFF for the other rather than clearing the bit.
+        if (force != SIGNED_NOT_AVAILABLE) {
+            emitter.emit(MetricKind.FORCE_ON_BELT, force)
+        }
+        if (inst != SIGNED_NOT_AVAILABLE) {
+            emitter.emit(MetricKind.POWER, inst, quality = MetricQuality.DERIVED)
+        }
         return off
     }
 
@@ -941,6 +970,37 @@ internal object BtEngineFtmsParsers {
      * keeps failing the `off >= 0` guard instead of wrapping into a valid-looking index.
      */
     private const val ABORTED = -1
+
+    /**
+     * FTMS "Data Not Available" for the `uint16` Expended Energy fields (plan §12.1 V8).
+     *
+     * The specification defines this explicitly: the three energy sub-fields share a single
+     * flag bit, so a server that knows the total but not the rate — or knows neither — cannot
+     * signal absence by clearing a flag. It sends `0xFFFF` instead, and the spec states the
+     * value means Data Not Available for Total Energy and Energy Per Hour alike.
+     *
+     * Worth noting for later phases: the published GATT XML for `0x2ACD` and `0x2AD2` describes
+     * these fields as plain kilocalorie integers and mentions no reserved value at all. The
+     * characteristic summary is not a substitute for the service specification.
+     */
+    private const val ENERGY_NOT_AVAILABLE = 0xFFFF
+
+    /**
+     * FTMS "Data Not Available" for the `sint16` fields (plan §12.1 V9).
+     *
+     * The specification defines `0x7FFF` — 32767 — for Inclination, Ramp Angle Setting, Force on
+     * Belt and Power Output, on the same "flag is set but the server cannot compute it" basis as
+     * the energy sentinel. Each of those fields shares a flag bit with a partner, so a machine
+     * that knows one and not the other has no flag to clear: Inclination and Ramp Angle share
+     * bit 3 of `0x2ACD`, Force on Belt and Power Output share bit 12.
+     *
+     * Plausibility bounds would reject 3276.7 % and 32767 W anyway, but rejection is the wrong
+     * mechanism. A bounds rejection arms a capture trigger and reads as a decoding anomaly; a
+     * declared absence is normal traffic. The True treadmill vector in the pinned corpus sends
+     * `0x7FFF` for both ramp angle and force on belt, so this is ordinary behaviour on real
+     * hardware, not an edge case.
+     */
+    private const val SIGNED_NOT_AVAILABLE = 0x7FFF
 
     /** True when [need] bytes are readable at [off] and the walk has not already aborted. */
     private fun has(b: ByteArray, off: Int, need: Int) = off >= 0 && b.size >= off + need
