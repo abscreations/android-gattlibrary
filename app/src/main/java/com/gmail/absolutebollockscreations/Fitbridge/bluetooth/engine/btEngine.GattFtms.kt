@@ -460,98 +460,54 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         value: ByteArray
     ) {
         Timber.tag(BtEngineState.TAG).d("FTMS CP indication: %s", value.toHex())
-        if (value.size < 3) {
-            Timber.tag(BtEngineState.TAG).w("CP frame too short (len=%d)", value.size)
-            return
-        }
 
-        val header = value[0]
-        val requestOpcode = value[1]
-        val resultCode = value[2]
-        if (header != OPCODE_RESPONSE_CODE) {
-            Timber.tag(BtEngineState.TAG).w("Unexpected CP header 0x%02X", header)
-            return
-        }
-
-        if (requestOpcode == OPCODE_RESET) {
-            if (resultCode == RESULT_SUCCESS) {
-                engine.state.setHaveControl(false)
-                Timber.tag(BtEngineState.TAG).i("FTMS CP: RESET success; control cleared.")
-            } else {
-                engine.state.setGattErrorFor(
-                    gatt,
-                    "RESET failed (rc=0x%02X)".format(resultCode)
-                )
+        // Correlation itself lives in `correlateControlPointResponse` so it can be tested
+        // without a live GATT (plan §11.7). This handler keeps the GATT-shaped consequences.
+        val outcome = correlateControlPointResponse(value)
+        when (outcome) {
+            is CpResponseOutcome.Malformed -> {
+                Timber.tag(BtEngineState.TAG).w("CP response ignored: %s", outcome.why)
+                return
             }
-            return
+
+            is CpResponseOutcome.Unhandled -> {
+                // Always a FitBridge omission: a write was added without a response branch.
+                Timber.tag(BtEngineState.TAG).w(
+                    "CP response for unhandled opcode 0x%02X (rc=0x%02X)",
+                    outcome.requestOpcode,
+                    outcome.resultCode,
+                )
+                return
+            }
+
+            is CpResponseOutcome.ControlLost -> {
+                onControlLost(engine, gatt, outcome.detail)
+                return
+            }
+
+            is CpResponseOutcome.Rejected ->
+                engine.state.setGattErrorFor(gatt, outcome.detail)
+
+            is CpResponseOutcome.Accepted -> Unit
         }
 
-        fun resultToString(code: Byte) = when (code) {
-            RESULT_SUCCESS               -> "SUCCESS"
-            RESULT_OPCODE_NOT_SUPPORTED  -> "OPCODE_NOT_SUPPORTED"
-            RESULT_INVALID_PARAMETER     -> "INVALID_PARAMETER"
-            RESULT_OPERATION_FAILED      -> "OPERATION_FAILED"
-            RESULT_CONTROL_NOT_PERMITTED -> "CONTROL_NOT_PERMITTED"
-            else                         -> "UNKNOWN(0x%02X)".format(code)
-        }
-        Timber.tag(BtEngineState.TAG).i(
-            "CP resp for 0x%02X → %s",
-            requestOpcode,
-            resultToString(resultCode)
-        )
-
-        when (requestOpcode) {
-            // REQUEST_CONTROL and START/RESUME are now only *sent* from higher layers,
-            // but we still fully interpret their responses here.
-
-            BluetoothIds.OPCODE_REQUEST_CONTROL -> when (resultCode) {
-                RESULT_SUCCESS -> {
+        // Everything above is now decided by the outcome. What remains is the state the
+        // outcome model deliberately does not express: the two opcodes that change whether
+        // FitBridge holds control of the machine at all.
+        if (outcome is CpResponseOutcome.Accepted) {
+            when (outcome.requestOpcode) {
+                BluetoothIds.OPCODE_REQUEST_CONTROL -> {
                     engine.state.setHaveControl(true)
                     Timber.tag(BtEngineState.TAG).i("Control granted")
                 }
-                RESULT_CONTROL_NOT_PERMITTED -> onControlLost(engine, gatt, "Request control: not permitted")
-                RESULT_OPCODE_NOT_SUPPORTED  -> onControlLost(engine, gatt, "Request control: not supported by device")
-                RESULT_OPERATION_FAILED      -> onControlLost(engine, gatt, "Request control: operation failed")
-            }
 
-            OPCODE_START_RESUME -> when (resultCode) {
-                RESULT_SUCCESS               -> Timber.tag(BtEngineState.TAG).i("Start/Resume accepted by device")
-                RESULT_CONTROL_NOT_PERMITTED -> onControlLost(engine, gatt, "Start/Resume: control not permitted")
-                RESULT_INVALID_PARAMETER     -> engine.state.setGattErrorFor(gatt, "Start/Resume: invalid parameter")
-                RESULT_OPCODE_NOT_SUPPORTED  -> engine.state.setGattErrorFor(gatt, "Start/Resume: opcode not supported")
-                RESULT_OPERATION_FAILED      -> engine.state.setGattErrorFor(gatt, "Start/Resume: operation failed")
-            }
+                OPCODE_RESET -> {
+                    engine.state.setHaveControl(false)
+                    Timber.tag(BtEngineState.TAG).i("FTMS CP: RESET success; control cleared")
+                }
 
-            OPCODE_STOP_PAUSE -> when (resultCode) {
-                RESULT_SUCCESS               -> Timber.tag(BtEngineState.TAG).i("Stop/Pause accepted by device")
-                RESULT_CONTROL_NOT_PERMITTED -> onControlLost(engine, gatt, "Stop/Pause: control not permitted")
-                RESULT_OPCODE_NOT_SUPPORTED  -> engine.state.setGattErrorFor(gatt, "Stop/Pause: opcode not supported")
-                RESULT_OPERATION_FAILED      -> engine.state.setGattErrorFor(gatt, "Stop/Pause: operation failed")
-            }
-
-            OPCODE_SET_TARGET_SPEED,
-            OPCODE_SET_TARGET_INCLINATION,
-            OPCODE_SET_TARGET_RESISTANCE,
-            OPCODE_SET_TARGET_POWER -> when (resultCode) {
-                RESULT_SUCCESS               -> Timber.tag(BtEngineState.TAG)
-                    .i("Set target 0x%02X accepted", requestOpcode)
-                RESULT_CONTROL_NOT_PERMITTED -> onControlLost(
-                    engine,
-                    gatt,
-                    "Set target 0x%02X: control not permitted".format(requestOpcode)
-                )
-                RESULT_INVALID_PARAMETER     -> engine.state.setGattErrorFor(
-                    gatt,
-                    "Set target 0x%02X: invalid parameter".format(requestOpcode)
-                )
-                RESULT_OPCODE_NOT_SUPPORTED  -> engine.state.setGattErrorFor(
-                    gatt,
-                    "Set target 0x%02X: not supported".format(requestOpcode)
-                )
-                RESULT_OPERATION_FAILED      -> engine.state.setGattErrorFor(
-                    gatt,
-                    "Set target 0x%02X: operation failed".format(requestOpcode)
-                )
+                else -> Timber.tag(BtEngineState.TAG)
+                    .i("CP 0x%02X accepted", outcome.requestOpcode)
             }
         }
     }
@@ -655,6 +611,98 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 }
 
 /** Applies the observable state and provider callbacks produced by upstream FTMS 0x2ADA. */
+/**
+ * What a Control Point response means, independent of any `BluetoothGatt`.
+ *
+ * Extracted 2026-08-10 for plan §11.7. Correlation logic previously lived inside a private
+ * handler that needs a live GATT, so **no upstream control response was testable at all** —
+ * which is how `0x11` came to be sent without a response branch: the write was added, the
+ * response fell through an inexhaustive `when`, and nothing failed.
+ *
+ * Mirrors the [applyFitnessMachineStatus] precedent: the caller keeps the GATT-shaped work
+ * (error text, sink notification) and this decides.
+ */
+internal sealed interface CpResponseOutcome {
+    /** Frame is not a Control Point response, or is too short to be one. */
+    data class Malformed(val why: String) : CpResponseOutcome
+
+    /** The machine accepted the request. */
+    data class Accepted(val requestOpcode: Byte) : CpResponseOutcome
+
+    /** The machine rejected it, and control is still held. */
+    data class Rejected(val requestOpcode: Byte, val resultCode: Byte, val detail: String) :
+        CpResponseOutcome
+
+    /** The machine says control is not ours. The session must stop believing it is. */
+    data class ControlLost(val requestOpcode: Byte, val detail: String) : CpResponseOutcome
+
+    /** A response arrived for an opcode with no branch. Always a FitBridge omission. */
+    data class Unhandled(val requestOpcode: Byte, val resultCode: Byte) : CpResponseOutcome
+}
+
+/**
+ * Correlate one Control Point indication against the request it answers.
+ *
+ * FTMS responses carry the originating opcode, so correlation is per frame rather than by
+ * queue position — a machine that answers out of order, or answers a request FitBridge never
+ * sent, is still interpreted against the opcode it names.
+ */
+internal fun correlateControlPointResponse(value: ByteArray): CpResponseOutcome {
+    if (value.size < 3) return CpResponseOutcome.Malformed("frame too short (len=${value.size})")
+
+    val header = value[0]
+    val requestOpcode = value[1]
+    val resultCode = value[2]
+    if (header != OPCODE_RESPONSE_CODE) {
+        return CpResponseOutcome.Malformed("unexpected header 0x%02X".format(header))
+    }
+
+    fun label(code: Byte) = when (code) {
+        RESULT_SUCCESS               -> "SUCCESS"
+        RESULT_OPCODE_NOT_SUPPORTED  -> "OPCODE_NOT_SUPPORTED"
+        RESULT_INVALID_PARAMETER     -> "INVALID_PARAMETER"
+        RESULT_OPERATION_FAILED      -> "OPERATION_FAILED"
+        RESULT_CONTROL_NOT_PERMITTED -> "CONTROL_NOT_PERMITTED"
+        else                         -> "UNKNOWN(0x%02X)".format(code)
+    }
+
+    val known = requestOpcode in setOf(
+        BluetoothIds.OPCODE_REQUEST_CONTROL,
+        OPCODE_RESET,
+        OPCODE_START_RESUME,
+        OPCODE_STOP_PAUSE,
+        OPCODE_SET_TARGET_SPEED,
+        OPCODE_SET_TARGET_INCLINATION,
+        OPCODE_SET_TARGET_RESISTANCE,
+        OPCODE_SET_TARGET_POWER,
+        BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION,
+    )
+    if (!known) return CpResponseOutcome.Unhandled(requestOpcode, resultCode)
+
+    return when {
+        resultCode == RESULT_SUCCESS -> CpResponseOutcome.Accepted(requestOpcode)
+
+        resultCode == RESULT_CONTROL_NOT_PERMITTED -> CpResponseOutcome.ControlLost(
+            requestOpcode,
+            "0x%02X: control not permitted".format(requestOpcode),
+        )
+
+        // Request Control is the one opcode where *any* failure means control was never
+        // established. Treating "not supported" as a mere rejection would leave the session
+        // believing it holds control of a machine that has never granted it.
+        requestOpcode == BluetoothIds.OPCODE_REQUEST_CONTROL -> CpResponseOutcome.ControlLost(
+            requestOpcode,
+            "request control: ${label(resultCode)}",
+        )
+
+        else -> CpResponseOutcome.Rejected(
+            requestOpcode,
+            resultCode,
+            "0x%02X: %s".format(requestOpcode, label(resultCode)),
+        )
+    }
+}
+
 internal fun applyFitnessMachineStatus(
     state: BtEngineState,
     serviceControlSink: BtServiceControlSink?,
