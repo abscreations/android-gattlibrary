@@ -155,10 +155,10 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.ROW_AVGSTROKE) != 0) off = readAvgStrokes(emitter, value, off)
         if ((flags and Flags.ROW_TOTALDIST) != 0) off = readDistance(emitter, value, off)
         if ((flags and Flags.ROW_INSTPACE) != 0) {
-            off = readPace(emitter, value, off, times10 = false, per500m = true)
+            off = readPace(emitter, value, off, per500m = true)
         }
         if ((flags and Flags.ROW_AVGPACE) != 0) {
-            off = readAvgPace(emitter, value, off, times10 = false, per500m = true)
+            off = readAvgPace(emitter, value, off, per500m = true)
         }
         if ((flags and Flags.ROW_INSTPOWER) != 0) off = readPower(emitter, value, off)
         if ((flags and Flags.ROW_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
@@ -171,8 +171,18 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.ROW_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
+    /**
+     * @param onNativePace receives the raw pace octets when the machine supplies them, so the
+     * downstream encoder can re-emit the same quantisation losslessly rather than synthesising
+     * a 6 km/h-resolution field from fused speed. See [TreadmillNativePaceStore]. Null for
+     * callers that only want metrics.
+     */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doTreadmill(emitter: MetricEmitter, value: ByteArray) {
+    fun doTreadmill(
+        emitter: MetricEmitter,
+        value: ByteArray,
+        onNativePace: ((instantaneousRaw: Int?, averageRaw: Int?) -> Unit)? = null,
+    ) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Treadmill (2ACD) len=%d %s", value.size, value.toHex())
         }
@@ -188,8 +198,19 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.TREAD_TOTALDISTANCE) != 0) off = readDistance(emitter, value, off)
         if ((flags and Flags.TREAD_INCLRAMPANGLE) != 0) off = readInclineV1(emitter, value, off)
         if ((flags and Flags.TREAD_ELEVATIONGAIN) != 0) off = readElevation(emitter, value, off, mode = 2)
-        if ((flags and Flags.TREAD_INSTANTPACE) != 0) off = readPace(emitter, value, off, times10 = true)
-        if ((flags and Flags.TREAD_AVGPACE) != 0) off = readAvgPace(emitter, value, off, times10 = true)
+        var instantPaceRaw: Int? = null
+        var averagePaceRaw: Int? = null
+        if ((flags and Flags.TREAD_INSTANTPACE) != 0) {
+            if (has(value, off, 1)) instantPaceRaw = u8(value, off)
+            off = readTreadmillPace(emitter, value, off, MetricKind.INSTANT_PACE)
+        }
+        if ((flags and Flags.TREAD_AVGPACE) != 0) {
+            if (has(value, off, 1)) averagePaceRaw = u8(value, off)
+            off = readTreadmillPace(emitter, value, off, MetricKind.AVERAGE_PACE)
+        }
+        if (instantPaceRaw != null || averagePaceRaw != null) {
+            onNativePace?.invoke(instantPaceRaw, averagePaceRaw)
+        }
         if ((flags and Flags.TREAD_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
         if ((flags and Flags.TREAD_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
@@ -383,17 +404,64 @@ internal object BtEngineFtmsParsers {
         return off
     }
 
+    /**
+     * Treadmill Data (`0x2ACD`) Instantaneous and Average Pace.
+     *
+     * **This field is one octet, and it is a speed.** The Bluetooth SIG definition of
+     * `0x2ACD` gives both pace fields as `uint8`, unit kilometre **per minute**, decimal
+     * exponent -1. Until 2026-08-10 this parser read two octets and treated the value as
+     * seconds per kilometre, which was wrong twice over:
+     *
+     *  - **Width.** Reading `uint16` consumed one octet too many per pace field, so on a
+     *    treadmill that reports both, everything after them — expended energy, heart rate,
+     *    MET, elapsed time, force on belt, power — decoded from the wrong offsets. The True
+     *    treadmill vector in the pinned corpus is 32 octets and the old walk demanded 34.
+     *  - **Semantics.** Kilometres per minute is a speed, so minutes per kilometre is its
+     *    reciprocal, not a division by sixty.
+     *
+     * It stayed hidden because every treadmill capture and fixture FitBridge had until the
+     * Phase 4a corpus arrived left both pace bits clear, so the misread never fired. Found by
+     * `FtmsFixtureParityTest`; see the implementation log for 2026-08-10.
+     *
+     * A raw zero means the belt is not moving. There is no finite minutes-per-kilometre for
+     * zero speed, so nothing is emitted and the octet is still consumed — an absent pace is
+     * visibly absent, where a zero would read as infinite speed downstream.
+     */
+    private fun readTreadmillPace(
+        emitter: MetricEmitter,
+        b: ByteArray,
+        off0: Int,
+        metric: MetricKind,
+    ): Int {
+        if (!has(b, off0, 1)) return ABORTED
+
+        val kmPerMinute = u8(b, off0) / 10.0
+        if (kmPerMinute > 0.0) {
+            val minutesPerKm = 1.0 / kmPerMinute
+            emitter.emit(metric, minutesPerKm)
+            if (canLogMetrics()) {
+                Timber.tag(TAG).d(
+                    "FTMS treadmill %s: %.2f km/min -> %.2f min/km",
+                    metric.name, kmPerMinute, minutesPerKm,
+                )
+            }
+        } else if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS treadmill %s: belt stopped, no pace emitted", metric.name)
+        }
+
+        return off0 + 1
+    }
+
+    /** Rower Data (`0x2AD1`) Instantaneous Pace: `uint16` seconds per 500 m. */
     private fun readPace(
         emitter: MetricEmitter,
         b: ByteArray,
         off0: Int,
-        times10: Boolean,
         per500m: Boolean = false,
     ): Int {
         if (!has(b, off0, 2)) return ABORTED
 
         var pSecPerKm = u16(b, off0).toDouble()
-        if (times10) pSecPerKm /= 10.0
         if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
         emitter.emit(MetricKind.INSTANT_PACE, pSecPerKm / 60.0)
@@ -405,17 +473,16 @@ internal object BtEngineFtmsParsers {
         return off0 + 2
     }
 
+    /** Rower Data (`0x2AD1`) Average Pace: `uint16` seconds per 500 m. */
     private fun readAvgPace(
         emitter: MetricEmitter,
         b: ByteArray,
         off0: Int,
-        times10: Boolean,
         per500m: Boolean = false,
     ): Int {
         if (!has(b, off0, 2)) return ABORTED
 
         var pSecPerKm = u16(b, off0).toDouble()
-        if (times10) pSecPerKm /= 10.0
         if (per500m) pSecPerKm = rowerSecondsPer500mToSecondsPerKm(pSecPerKm)
 
         emitter.emit(MetricKind.AVERAGE_PACE, pSecPerKm / 60.0)
