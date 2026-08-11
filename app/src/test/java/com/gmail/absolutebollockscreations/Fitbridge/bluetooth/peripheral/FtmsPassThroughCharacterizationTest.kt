@@ -32,6 +32,12 @@ class FtmsPassThroughCharacterizationTest {
         override fun setTargetInclinationPercent(percent: Float) = true
         override fun setTargetResistance(level: Float) = true
         override fun setTargetPowerWatts(watts: Int) = true
+        override fun setIndoorBikeSimulation(
+            windSpeedMps: Float,
+            gradePercent: Float,
+            rollingResistanceCoefficient: Float,
+            windResistanceCoefficient: Float,
+        ) = true
     }
 
     private class RecordingStatusSink : BtServiceControlSink {

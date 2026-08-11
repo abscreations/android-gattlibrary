@@ -248,13 +248,29 @@ class EngineFtmsControlSink(
     /** No upstream heart-rate target path exists on the facade. */
     override fun setTargetHeartRate(bpm: Int): Boolean = false
 
-    /** No upstream simulation path exists on the facade. */
+    /**
+     * Forwarded since 2026-08-10 (plan §9.5.6). This previously returned `false` with the
+     * comment "No upstream simulation path exists on the facade", which meant a riding app's
+     * road gradient was decoded correctly and then discarded — ERG target power passed through,
+     * simulation mode did not.
+     *
+     * The upstream write is gated on Target Setting Features bit 13, so a machine that never
+     * declared simulation support still reports failure rather than silent acceptance.
+     */
+    @SuppressLint("MissingPermission")
     override fun setIndoorBikeSimulation(
         windMps: Double,
         gradePercent: Double,
         crr: Double,
         cw: Double,
-    ): Boolean = false
+    ): Boolean = forwardTarget("setIndoorBikeSimulation") {
+        it.setIndoorBikeSimulation(
+            windMps.toFloat(),
+            gradePercent.toFloat(),
+            crr.toFloat(),
+            cw.toFloat(),
+        )
+    }
 
     /**
      * Session transitions: accept locally when no machine is attached, otherwise

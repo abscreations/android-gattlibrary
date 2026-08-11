@@ -177,6 +177,11 @@ data class TargetCapabilities(
                 // No upstream heart-rate target path exists, so the previous
                 // hardcoded 0..220 range is no longer advertised.
                 heartRate = false,
+                // §9.5.6: claim simulation only when the upstream machine declared Target
+                // Setting Features bit 13. Unlike the targets above there is no range
+                // characteristic to validate against — the honesty gate is the feature bit
+                // alone, which is why the upstream write is gated on the same bit.
+                indoorBikeSimulation = caps.supportsIndoorBikeSimulation,
                 speedRange = speed,
                 inclinationRange = inclination,
                 resistanceRange = resistance,

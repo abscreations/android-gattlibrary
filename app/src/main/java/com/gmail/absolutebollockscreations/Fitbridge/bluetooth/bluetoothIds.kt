@@ -170,6 +170,14 @@ object BluetoothIds {
     const val OPCODE_START_RESUME: Byte           = 0x07
     const val OPCODE_STOP_PAUSE: Byte             = 0x08
 
+    // Central-role opcodes added 2026-08-10 with the §9.5.6 upstream simulation work. The
+    // provider side has had all four since Phase 0 (`FtmsSpec.kt`); only the central registry
+    // was missing, which is the asymmetry §9.5.6 describes.
+    const val OPCODE_SET_INDOOR_BIKE_SIMULATION: Byte = 0x11 // wind/grade/crr/cw, 7-byte write
+    const val OPCODE_SET_WHEEL_CIRCUMFERENCE: Byte    = 0x12 // 0.1 mm units (UInt16)
+    const val OPCODE_SPIN_DOWN_CONTROL: Byte          = 0x13 // calibration, not a target
+    const val OPCODE_SET_TARGETED_CADENCE: Byte       = 0x14 // 0.5 /minute units (UInt16)
+
     // Response framing byte
     // [0]=0x80 (Response Code), [1]=Request OpCode, [2]=Result Code
     const val OPCODE_RESPONSE_CODE: Byte = -0x80 // 0x80 as signed byte

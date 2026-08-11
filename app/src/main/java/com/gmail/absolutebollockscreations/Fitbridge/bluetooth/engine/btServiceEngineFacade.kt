@@ -115,4 +115,19 @@ interface BtServiceEngineFacade {
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun setTargetPowerWatts(watts: Int): Boolean
+
+    /**
+     * FTMS `0x11` Set Indoor Bike Simulation Parameters (plan §9.5.6).
+     *
+     * Distinct from the target setters above: a riding app sends road gradient and coefficients
+     * and lets the machine compute resistance, rather than naming a watts figure. Gated upstream
+     * on Target Setting Features bit 13.
+     */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun setIndoorBikeSimulation(
+        windSpeedMps: Float,
+        gradePercent: Float,
+        rollingResistanceCoefficient: Float,
+        windResistanceCoefficient: Float,
+    ): Boolean
 }

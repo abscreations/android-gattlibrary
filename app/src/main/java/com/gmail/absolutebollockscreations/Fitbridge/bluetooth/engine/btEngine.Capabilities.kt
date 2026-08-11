@@ -79,6 +79,21 @@ internal object BtEngineCapabilities {
      */
     private const val MEAS_PACE_BIT = 0x20
 
+    /**
+     * Target Setting Features bit 13, Indoor Bike Simulation Parameters Supported.
+     *
+     * The target-setting word occupies bytes 4–7 of `0x2ACC`, but this parser read only byte 4
+     * until 2026-08-10, which put every bit above 7 out of reach. §9.5.6 needs bit 13 to decide
+     * whether an upstream `0x11` write is honest, so the read widens to the full 32 bits.
+     *
+     * Bit 15 (Spin Down Control) is decoded alongside it and is currently recorded but unused —
+     * spin-down is a calibration procedure with its own status sequence rather than a target,
+     * and its state machine is not built. Recording the bit now means the capability is
+     * available when that work happens, without claiming support in the meantime.
+     */
+    private const val TARGET_SIMULATION_BIT = 1 shl 13
+    private const val TARGET_SPIN_DOWN_BIT = 1 shl 15
+
     @SuppressLint("MissingPermission")
     fun parseFitnessMachineFeatures(engine: BtEngine, value: ByteArray) {
         if (value.size < 5) {
@@ -89,11 +104,21 @@ internal object BtEngineCapabilities {
         val controlFlags = value[4].toInt() and 0xFF
         val measurementFlags = value[0].toInt() and 0xFF
 
+        // Full 32-bit target-setting word. Bytes 5..7 are optional in practice — some machines
+        // return a short characteristic — so each is folded in only when present rather than
+        // indexed blindly.
+        var targetFlags = controlFlags
+        if (value.size >= 6) targetFlags = targetFlags or ((value[5].toInt() and 0xFF) shl 8)
+        if (value.size >= 7) targetFlags = targetFlags or ((value[6].toInt() and 0xFF) shl 16)
+        if (value.size >= 8) targetFlags = targetFlags or ((value[7].toInt() and 0xFF) shl 24)
+
         val supportsSpeed       = (controlFlags and CTRL_SPEED_BIT) != 0
         val supportsInclination = (controlFlags and CTRL_INCLINE_BIT) != 0
         val supportsResistance  = (controlFlags and CTRL_RESISTANCE_BIT) != 0
         val supportsPower       = (controlFlags and CTRL_POWER_BIT) != 0
         val supportsPaceMeasurement = (measurementFlags and MEAS_PACE_BIT) != 0
+        val supportsSimulation = (targetFlags and TARGET_SIMULATION_BIT) != 0
+        val supportsSpinDown = (targetFlags and TARGET_SPIN_DOWN_BIT) != 0
 
         // Legacy flags on state (engine-side logic / UI)
         engine.state.supportsSpeed       = supportsSpeed
@@ -101,6 +126,8 @@ internal object BtEngineCapabilities {
         engine.state.supportsResistance  = supportsResistance
         engine.state.supportsPower       = supportsPower
         engine.state.supportsPaceMeasurement = supportsPaceMeasurement
+        engine.state.supportsIndoorBikeSimulation = supportsSimulation
+        engine.state.supportsSpinDown    = supportsSpinDown
         engine.state.featuresRead        = true
 
         // New canonical capabilities snapshot for provider-side btService
@@ -110,7 +137,8 @@ internal object BtEngineCapabilities {
                 supportsSpeed       = supportsSpeed,
                 supportsInclination = supportsInclination,
                 supportsResistance  = supportsResistance,
-                supportsPower       = supportsPower
+                supportsPower       = supportsPower,
+                supportsIndoorBikeSimulation = supportsSimulation,
             )
         )
 

@@ -1550,6 +1550,23 @@ class BtEngine internal constructor(
             ok
         }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun setIndoorBikeSimulation(
+        windSpeedMps: Float,
+        gradePercent: Float,
+        rollingResistanceCoefficient: Float,
+        windResistanceCoefficient: Float,
+    ): Boolean =
+        guardConnectPerm(op = "setIndoorBikeSimulation()", default = false) {
+            BtEngineControlPoint.setIndoorBikeSimulation(
+                this,
+                windSpeedMps,
+                gradePercent,
+                rollingResistanceCoefficient,
+                windResistanceCoefficient,
+            )
+        }
+
     /* ───────────────────────────── Capability reads ───────────────────────────── */
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)

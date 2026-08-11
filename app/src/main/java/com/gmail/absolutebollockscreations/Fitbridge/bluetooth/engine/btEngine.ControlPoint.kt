@@ -92,6 +92,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothI
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.FTMS_SPEED_SCALE
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.OPCODE_REQUEST_CONTROL
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.OPCODE_RESET
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.OPCODE_SET_TARGET_INCLINATION
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.OPCODE_SET_TARGET_POWER
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.OPCODE_SET_TARGET_RESISTANCE
@@ -101,6 +102,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothI
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT
 import timber.log.Timber
 import kotlin.math.round
+import kotlin.math.roundToInt
 
 internal object BtEngineControlPoint {
 
@@ -164,6 +166,67 @@ internal object BtEngineControlPoint {
         val payload = byteArrayOf(OPCODE_SET_TARGET_SPEED) + u16le(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set speed → %.2f km/h (scaled=%d)", value, scaled)
+        return enqueueControlPointWrite(engine, payload)
+    }
+
+    /**
+     * FTMS `0x11` Set Indoor Bike Simulation Parameters (plan §9.5.6).
+     *
+     * Simulation mode is how a riding app expresses a route: it sends road gradient plus
+     * coefficients and lets the trainer compute resistance, rather than sending a target watts
+     * figure. FitBridge's downstream side has decoded this since Phase 0; the upstream side
+     * dropped it, so a gradient arrived, parsed correctly, and went nowhere.
+     *
+     * Payload is seven octets including the opcode:
+     *
+     * | Offset | Field | Type | Scale |
+     * |---|---|---|---|
+     * | 0 | Opcode `0x11` | uint8 | |
+     * | 1–2 | Wind speed | sint16 LE | m/s × 1000 |
+     * | 3–4 | Grade | sint16 LE | percent × 100 |
+     * | 5 | Rolling resistance coefficient | uint8 | × 10000 |
+     * | 6 | Wind resistance coefficient | uint8 | × 100 |
+     *
+     * Gated on Target Setting Features bit 13. Unlike a target write there is no range
+     * characteristic to snap against, so values are clamped to their field widths and nothing
+     * is invented: an out-of-range grade is pinned to the representable extreme rather than
+     * silently wrapped, which is the difference between a steep hill and a cliff in the
+     * opposite direction.
+     */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun setIndoorBikeSimulation(
+        engine: BtEngine,
+        windSpeedMps: Float,
+        gradePercent: Float,
+        rollingResistanceCoefficient: Float,
+        windResistanceCoefficient: Float,
+    ): Boolean {
+        if (!ensureCccdReady(engine, opName = "setIndoorBikeSimulation", requireControl = true)) {
+            return false
+        }
+        if (!precheck(
+                engine,
+                feature = "indoor bike simulation",
+                supported = engine.state.supportsIndoorBikeSimulation,
+            )
+        ) {
+            return false
+        }
+
+        val wind = (windSpeedMps * 1000f).roundToInt()
+            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+        val grade = (gradePercent * 100f).roundToInt()
+            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+        val crr = (rollingResistanceCoefficient * 10_000f).roundToInt().coerceIn(0, 0xFF)
+        val cw = (windResistanceCoefficient * 100f).roundToInt().coerceIn(0, 0xFF)
+
+        val payload = byteArrayOf(OPCODE_SET_INDOOR_BIKE_SIMULATION) +
+            s16le(wind) + s16le(grade) + byteArrayOf(crr.toByte(), cw.toByte())
+
+        Timber.tag(BtEngineState.TAG).i(
+            "CP: set simulation → wind %.3f m/s, grade %.2f %%, crr %.4f, cw %.2f",
+            windSpeedMps, gradePercent, rollingResistanceCoefficient, windResistanceCoefficient,
+        )
         return enqueueControlPointWrite(engine, payload)
     }
 

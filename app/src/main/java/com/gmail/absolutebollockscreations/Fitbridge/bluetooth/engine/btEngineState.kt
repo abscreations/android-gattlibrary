@@ -132,6 +132,8 @@ class BtEngineState : HrmStateSink {
         val supportsInclination: Boolean = false,
         val supportsResistance: Boolean = false,
         val supportsPower: Boolean = false,
+        /** Target Setting Features bit 13. Gates the downstream `indoorBikeSimulation` claim. */
+        val supportsIndoorBikeSimulation: Boolean = false,
 
         val speedMin: Float? = null,
         val speedMax: Float? = null,
@@ -178,6 +180,8 @@ class BtEngineState : HrmStateSink {
             supportsInclination   = update.supportsInclination   || old.supportsInclination,
             supportsResistance    = update.supportsResistance    || old.supportsResistance,
             supportsPower         = update.supportsPower         || old.supportsPower,
+            supportsIndoorBikeSimulation =
+                update.supportsIndoorBikeSimulation || old.supportsIndoorBikeSimulation,
 
             speedMin              = update.speedMin              ?: old.speedMin,
             speedMax              = update.speedMax              ?: old.speedMax,
@@ -210,6 +214,8 @@ class BtEngineState : HrmStateSink {
         // Must clear with the rest: a stale claim would advertise pace downstream for a machine
         // that never declared it.
         supportsPaceMeasurement = false
+        supportsIndoorBikeSimulation = false
+        supportsSpinDown = false
 
         speedMin = 0f; speedMax = 0f; speedIncr = 0f; speedRangeKnown = false
         inclineMin = 0f; inclineMax = 0f; inclineIncr = 0f; inclineRangeKnown = false
@@ -251,6 +257,25 @@ class BtEngineState : HrmStateSink {
      * deliberately separate from the four control flags above.
      */
     var supportsPaceMeasurement = false
+
+    /**
+     * Target Setting Features bit 13 — Indoor Bike Simulation Parameters Supported (§9.5.6).
+     *
+     * Gates the upstream `0x11` write and the downstream `indoorBikeSimulation` capability. A
+     * training app sending a road gradient must not be told the write succeeded by a machine
+     * that never declared it could accept one.
+     */
+    var supportsIndoorBikeSimulation = false
+
+    /**
+     * Target Setting Features bit 15 — Spin Down Control Supported.
+     *
+     * Recorded but not acted on. Spin-down is a calibration procedure with its own status
+     * sequence (requested → stop pedalling → success/error) rather than a single-acknowledgement
+     * target, so it needs a state machine and a longer timeout that are not built. Knowing the
+     * bit now costs nothing and claims nothing.
+     */
+    var supportsSpinDown = false
 
     /**
      * Legacy range fields (engine-side, usually in human-readable units such as km/h,
