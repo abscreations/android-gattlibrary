@@ -17,12 +17,37 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  * cross-characteristic alignment — a power reading and a distance reading can be known to
  * describe the same instant rather than merely to have arrived close together.
  *
- * ## Two delivery paths, one set of decoders
+ * ## Two delivery paths, and they are NOT the same payload
  *
  * The specification tells Android applications to subscribe to the multiplexed characteristic
- * `0x0080` "in lieu of" the individual ones. A multiplexed frame is an identification byte
- * followed by the same payload the individual characteristic would have carried, so [multiplexed]
- * dispatches on that byte into these same decoders (D41).
+ * `0x0080` "in lieu of" the individual ones (D41). It is tempting to assume a multiplexed frame
+ * is simply an identification byte followed by the payload the individual characteristic would
+ * have carried. **That is false**, and the specification carries a separate "C2 Multiplexed
+ * Information: Data Definitions" table because of it. QZ's `concept2skierg.cpp` states the same
+ * thing in a one-line warning: *"data packets are not exactly the same as separate
+ * characteristics"*.
+ *
+ * For the four characteristics FitBridge consumes:
+ *
+ * | ID | Individual | Multiplexed | Consumed fields |
+ * |---|---|---|---|
+ * | `0x31` | 19 B | 19 B | distance at 3–5 in both — same |
+ * | `0x32` | 17 B | 19 B | speed/rate/HR/pace at 3–8 in both — same; the extra octets are appended |
+ * | `0x33` | 20 B | 18 B | **different**: see below |
+ * | `0x36` | 15 B | 17 B | stroke power at 3–4 in both — same; the extra octets are appended |
+ *
+ * `0x33` is the one that actually diverges, and it diverges in the middle rather than at the
+ * tail:
+ *
+ * ```
+ *   individual : elapsed(0-2) intervalCount(3) avgPower(4-5)      totalCalories(6-7)
+ *   multiplexed: elapsed(0-2) intervalCount(3) totalCalories(4-5) splitAvgPace(6-7)
+ * ```
+ *
+ * Decoding a multiplexed `0x33` with the individual layout reads Split/Interval Average Pace as
+ * total calories and total calories as average power. Both land in plausible ranges, so nothing
+ * downstream would catch it — and since D41 makes the multiplexed path the *preferred* one, that
+ * would have been the default behaviour rather than an edge case.
  *
  * The two paths cannot double-deliver: the specification states that an identifier is
  * multiplexed **only** while the individual characteristic's notification is not enabled, so
@@ -74,7 +99,7 @@ internal object Concept2Measurement {
     }
 
     /**
-     * Decode a frame from an individual characteristic.
+     * Decode a frame received on an **individual** characteristic.
      *
      * @param id the characteristic's low byte, from [Id].
      */
@@ -87,16 +112,56 @@ internal object Concept2Measurement {
     }
 
     /**
-     * Decode a frame from the multiplexed characteristic `0x0080`: identification byte followed
-     * by the payload the corresponding individual characteristic would have carried.
+     * Decode a frame from the multiplexed characteristic `0x0080`.
+     *
+     * Dispatches on the identification byte into the **multiplexed** layouts, which are not the
+     * individual ones — see this object's documentation for the `0x33` divergence.
      *
      * An unrecognised identifier returns null rather than being guessed at. The PM multiplexes
-     * ten identifiers and FitBridge consumes four; the other six are real frames for other
+     * eleven identifiers and FitBridge consumes four; the others are real frames carrying other
      * data, not corruption, and must be skipped silently rather than misparsed.
      */
     fun multiplexed(data: ByteArray): Reading? {
         if (data.isEmpty()) return null
-        return parse(data[0].toInt() and 0xFF, data.copyOfRange(1, data.size))
+        val payload = data.copyOfRange(1, data.size)
+        return when (data[0].toInt() and 0xFF) {
+            // Identical layouts for every field FitBridge consumes; the multiplexed forms of
+            // 0x32 and 0x36 only append octets past the fields read here.
+            Id.GENERAL_STATUS -> generalStatus(payload)
+            Id.ADDITIONAL_STATUS_1 -> additionalStatus1(payload)
+            Id.ADDITIONAL_STROKE_DATA -> additionalStrokeData(payload)
+            // Diverges mid-frame. Must not reuse the individual layout.
+            Id.ADDITIONAL_STATUS_2 -> multiplexedAdditionalStatus2(payload)
+            else -> null
+        }
+    }
+
+    /**
+     * `0x0033` as carried on `0x0080`: 18 octets, and **average power is not present**.
+     *
+     * ```
+     *   0..2  Elapsed Time            uint24, 0.01 s
+     *   3     Interval Count          uint8                  (not consumed)
+     *   4..5  Total Calories          uint16, kcal
+     *   6..7  Split/Int Average Pace  uint16                 (not consumed)
+     *   8..   Split averages, last split time and distance   (not consumed)
+     * ```
+     *
+     * The individual form places average power at 4–5 and total calories at 6–7. Average power
+     * still reaches FitBridge on this path — the multiplexed `0x32` carries it at octets 16–17 —
+     * but it is not decoded here, because reading it from a frame that does not contain it is
+     * how this defect started.
+     */
+    fun multiplexedAdditionalStatus2(data: ByteArray): Reading? {
+        val cursor = Cursor(data)
+        val elapsed = cursor.u24() ?: return null
+        cursor.u8() ?: return Reading(Id.ADDITIONAL_STATUS_2, elapsed)
+        val calories = cursor.u16()
+        return Reading(
+            id = Id.ADDITIONAL_STATUS_2,
+            elapsedCentiseconds = elapsed,
+            totalCalories = calories,
+        )
     }
 
     // ── Individual characteristic decoders ───────────────────────────────────────

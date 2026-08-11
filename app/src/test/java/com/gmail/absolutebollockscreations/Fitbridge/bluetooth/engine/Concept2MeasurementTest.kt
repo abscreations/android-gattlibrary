@@ -191,22 +191,65 @@ class Concept2MeasurementTest {
     }
 
     @Test
-    fun `every consumed characteristic round-trips through the multiplexed path`() {
+    fun `the three unchanged layouts decode identically on both delivery paths`() {
+        // 0x31 is the same length and layout; 0x32 and 0x36 append octets past every field
+        // FitBridge reads, so the consumed fields are unmoved.
         val cases = listOf(
             Concept2Measurement.Id.GENERAL_STATUS to generalStatus,
             Concept2Measurement.Id.ADDITIONAL_STATUS_1 to tmiwStatus1[0],
-            Concept2Measurement.Id.ADDITIONAL_STATUS_2 to tmiwStatus2[0],
             Concept2Measurement.Id.ADDITIONAL_STROKE_DATA to strokeData,
         )
         for ((id, payload) in cases) {
-            val direct = Concept2Measurement.parse(id, payload)
-            val viaMultiplex = Concept2Measurement.multiplexed(bytes(id) + payload)
             assertEquals(
-                "0x%02X must decode identically on both delivery paths".format(id),
-                direct,
-                viaMultiplex,
+                "0x%02X is unchanged between delivery paths".format(id),
+                Concept2Measurement.parse(id, payload),
+                Concept2Measurement.multiplexed(bytes(id) + payload),
             )
         }
+    }
+
+    /**
+     * `0x33` diverges **mid-frame** between the two delivery paths, and this is the test that
+     * would have caught assuming otherwise.
+     *
+     * ```
+     *   individual : elapsed(0-2) intervalCount(3) avgPower(4-5)      totalCalories(6-7)
+     *   multiplexed: elapsed(0-2) intervalCount(3) totalCalories(4-5) splitAvgPace(6-7)
+     * ```
+     *
+     * Both interpretations of the same octets produce plausible numbers, so nothing downstream
+     * could have flagged it — and D41 makes the multiplexed path the preferred one, so the
+     * wrong reading would have been the default rather than an edge case. QZ's
+     * `concept2skierg.cpp` warns about exactly this: "data packets are not exactly the same as
+     * separate characteristics".
+     */
+    @Test
+    fun `additional status 2 is decoded differently on each delivery path`() {
+        // One frame body, read both ways. Individual: avgPower=19, calories=12.
+        val body = bytes(245, 46, 0, 0, 19, 0, 12, 0, 132, 103, 19, 0, 12, 0, 0, 0, 0, 179)
+
+        val individual = Concept2Measurement.parse(
+            Concept2Measurement.Id.ADDITIONAL_STATUS_2,
+            body,
+        )!!
+        assertEquals(19, individual.averagePowerWatts)
+        assertEquals(12, individual.totalCalories)
+
+        val muxed = Concept2Measurement.multiplexed(
+            bytes(Concept2Measurement.Id.ADDITIONAL_STATUS_2) + body,
+        )!!
+        // Octets 4..5 are total calories on this path, not average power.
+        assertEquals(19, muxed.totalCalories)
+        assertNull(
+            "average power is absent from the multiplexed 0x33; reading it here is the defect",
+            muxed.averagePowerWatts,
+        )
+
+        assertTrue(
+            "the two paths must not decode this frame identically",
+            individual.totalCalories != muxed.totalCalories,
+        )
+        assertEquals("the elapsed prefix is common to both", individual.elapsedCentiseconds, muxed.elapsedCentiseconds)
     }
 
     @Test
