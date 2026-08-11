@@ -348,7 +348,14 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             )
             UUID_STAIR_STEPPER_DATA            -> BtEngineFtmsParsers.doStepper(emitter, value)
             UUID_STAIR_CLIMBER_DATA            -> BtEngineFtmsParsers.doClimber(emitter, value)
-            UUID_ROWING_MACHINE_DATA           -> BtEngineFtmsParsers.doRower(emitter, value)
+            UUID_ROWING_MACHINE_DATA           -> BtEngineFtmsParsers.doRower(
+                emitter,
+                value,
+                // Phase 4c quirk selection. A name prefix is the only identity these machines
+                // expose; the flag word and packet length still have to match before any
+                // override fires.
+                deviceName = discoveredDeviceName(engine, gatt),
+            )
             UUID_BIKING_DATA                   -> BtEngineFtmsParsers.doBike(emitter, value)
             else -> Timber.tag(BtEngineState.TAG)
                 .w("Notify from unknown FTMS char %s: %s", short(ch.uuid), value.toHex())
@@ -575,6 +582,20 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         if (st.supportsInclination) engine.readSupportedInclinationRange()
         if (st.supportsResistance)  engine.readSupportedResistanceRange()
         if (st.supportsPower)       engine.readSupportedPowerRange()
+    }
+
+    /**
+     * Advertised name of the connected device, for Phase 4c quirk fingerprinting only.
+     *
+     * Plan §0.7 ranks name evidence below service and characteristic evidence and this does not
+     * change that: a name never selects a protocol here, it only narrows which non-conforming
+     * layout may apply, and the flag word and packet length must match as well before one does.
+     */
+    private fun discoveredDeviceName(engine: BtEngine, gatt: BluetoothGatt): String? {
+        val addr = gatt.device?.address ?: return null
+        return engine.state.devices.value.values
+            .firstOrNull { it.address.equals(addr, ignoreCase = true) }
+            ?.name
     }
 
     /** Get friendly label for the connected device’s machine feature (from DiscoveredDevice.machineFeature). */

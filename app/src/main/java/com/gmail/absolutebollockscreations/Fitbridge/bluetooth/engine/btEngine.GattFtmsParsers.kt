@@ -140,7 +140,11 @@ internal object BtEngineFtmsParsers {
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doRower(emitter: MetricEmitter, value: ByteArray) {
+    /**
+     * @param deviceName used only to select a Phase 4c quirk. Null disables quirk matching
+     * entirely, which is what every parity and unit test wants by default.
+     */
+    fun doRower(emitter: MetricEmitter, value: ByteArray, deviceName: String? = null) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Rower (2AD1) len=%d %s", value.size, value.toHex())
         }
@@ -149,6 +153,17 @@ internal object BtEngineFtmsParsers {
         val flags = u16(value, off); off += 2
         if (canLogMetrics()) {
             Timber.tag(TAG).d("Rower flags=0x%04X", flags)
+        }
+
+        val quirk = FtmsQuirkRegistry.find(
+            deviceName,
+            BluetoothIds.UUID_ROWING_MACHINE_DATA,
+            flags,
+            value.size,
+        )
+        if (quirk != null) {
+            applyQuirkLayout(emitter, value, quirk)
+            return
         }
 
         if ((flags and Flags.ROW_MORE) == 0) off = readStrokes(emitter, value, off)
@@ -333,6 +348,77 @@ internal object BtEngineFtmsParsers {
         if ((flags and Flags.CLIMB_METABOLIC) != 0) off = readMet(emitter, value, off)
         if ((flags and Flags.CLIMB_ELAPSED) != 0) off = readElapsed(emitter, value, off)
         if ((flags and Flags.CLIMB_REMAINING) != 0) skip(b = value, off = off, n = 2)
+    }
+
+    /**
+     * Execute a Phase 4c layout override.
+     *
+     * The quirk's fingerprint has already matched an exact flag word and packet length, so the
+     * layout's octet count is known to fit. It is still walked with the same bounds discipline
+     * as the standard parsers — a registry entry is a claim about one firmware revision, not a
+     * licence to index blindly, and D38's abort applies here for the same reason it applies
+     * everywhere else.
+     */
+    private fun applyQuirkLayout(emitter: MetricEmitter, b: ByteArray, quirk: FtmsQuirk) {
+        if (canLogMetrics()) {
+            Timber.tag(TAG).d("FTMS quirk '%s' applied to a %d-octet frame", quirk.id, b.size)
+        }
+        var off = 2
+        for (step in quirk.layout) {
+            when (step) {
+                is FtmsLayoutStep.Skip -> {
+                    if (!has(b, off, step.width)) return
+                    off += step.width
+                }
+
+                is FtmsLayoutStep.Read -> {
+                    if (!has(b, off, step.width)) return
+                    val raw = when (step.width) {
+                        1 -> u8(b, off)
+                        2 -> u16(b, off)
+                        3 -> u16(b, off) + (u8(b, off + 2) shl 16)
+                        else -> return
+                    }
+                    emitQuirkField(emitter, step.field, raw)
+                    off += step.width
+                }
+            }
+        }
+    }
+
+    private fun emitQuirkField(emitter: MetricEmitter, field: FtmsQuirkField, raw: Int) {
+        when (field) {
+            FtmsQuirkField.STROKE_RATE_HALF_SPM ->
+                emitter.emit(MetricKind.STROKE_RATE, raw / 2.0)
+
+            FtmsQuirkField.STROKE_COUNT ->
+                emitter.emit(MetricKind.STROKE_COUNT, raw)
+
+            FtmsQuirkField.TOTAL_DISTANCE_M ->
+                emitter.emit(MetricKind.DISTANCE, raw, nativeCumulative = raw.toDouble())
+
+            FtmsQuirkField.PACE_SECONDS_PER_500M ->
+                emitter.emit(
+                    MetricKind.INSTANT_PACE,
+                    rowerSecondsPer500mToSecondsPerKm(raw.toDouble()) / 60.0,
+                )
+
+            FtmsQuirkField.INSTANT_POWER_W ->
+                emitter.emit(MetricKind.POWER, raw)
+
+            FtmsQuirkField.TOTAL_ENERGY_KCAL ->
+                emitter.emit(MetricKind.ENERGY, raw, nativeCumulative = raw.toDouble())
+
+            // Per-hour is the rate FitBridge publishes; per-minute is decoded so the layout
+            // steps over it correctly but has no separate canonical metric.
+            FtmsQuirkField.ENERGY_PER_HOUR_KCAL ->
+                emitter.emit(MetricKind.ENERGY_RATE, raw)
+
+            FtmsQuirkField.ENERGY_PER_MINUTE_KCAL -> Unit
+
+            FtmsQuirkField.HEART_RATE_BPM ->
+                emitter.emit(MetricKind.HEART_RATE, raw)
+        }
     }
 
     // ─────────────────────────────────────────────────────────────

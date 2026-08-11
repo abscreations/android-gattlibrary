@@ -126,16 +126,27 @@ class FtmsFixtureParityTest {
     /**
      * Families that are *expected* to disagree until Phase 4c implements their quirk.
      *
-     * `mr_captain` reorders and resizes the interior of the expended-energy block, drops
-     * average pace despite its flag, and carries a one-octet broken elapsed field. Unlike the
-     * Matrix layouts this is not recoverable by a conforming walk, so a standard parser must
-     * disagree with TMIW here — see plan Phase 4c and §12.1 V7.
+     * Empty since 4c landed the Mr Captain layout override. It previously held
+     * `ftms.mr_captain`, which reorders and resizes the interior of the expended-energy block,
+     * drops average pace despite its flag, and carries a one-octet broken elapsed field — none
+     * of it recoverable by a conforming walk. It now parses through
+     * [FtmsQuirkRegistry] and is held to full parity below.
      *
-     * These are excluded from the parity assertion and asserted to *still* disagree in
-     * [pending quirk families still disagree], so the exclusion cannot silently outlive the
-     * fix: when 4c lands, that test fails and this list must shrink.
+     * Kept rather than deleted because Phase 4c still owes CardioStrong IB50 and the Life
+     * Fitness cadence, and either may arrive with corpus vectors before its quirk.
      */
-    private val PENDING_QUIRK = setOf("ftms.mr_captain")
+    private val PENDING_QUIRK = emptySet<String>()
+
+    /**
+     * Device names for families whose parsing depends on a Phase 4c fingerprint.
+     *
+     * Only supplied where a quirk needs it. Everything else parses with a null name, which
+     * disables quirk matching entirely — so a registry entry cannot quietly start affecting
+     * families it was never evidenced against.
+     */
+    private val DEVICE_NAME_BY_FAMILY = mapOf(
+        "ftms.mr_captain" to "XG-Rower",
+    )
 
     private fun load(name: String): Map<String, Any?> {
         val stream = javaClass.classLoader?.getResourceAsStream("fixtures/tmiw/$name.json")
@@ -157,13 +168,18 @@ class FtmsFixtureParityTest {
     private fun characteristicUuid(short: String): UUID =
         UUID.fromString("0000$short-0000-1000-8000-00805f9b34fb")
 
-    private fun parse(short: String, emitter: MetricEmitter, packet: ByteArray) {
+    private fun parse(
+        short: String,
+        emitter: MetricEmitter,
+        packet: ByteArray,
+        deviceName: String? = null,
+    ) {
         when (short) {
             "2acd" -> BtEngineFtmsParsers.doTreadmill(emitter, packet)
             "2ace" -> BtEngineFtmsParsers.doElliptical(emitter, packet)
             "2acf" -> BtEngineFtmsParsers.doStepper(emitter, packet)
             "2ad0" -> BtEngineFtmsParsers.doClimber(emitter, packet)
-            "2ad1" -> BtEngineFtmsParsers.doRower(emitter, packet)
+            "2ad1" -> BtEngineFtmsParsers.doRower(emitter, packet, deviceName)
             "2ad2" -> BtEngineFtmsParsers.doBike(emitter, packet)
             else -> error("no FitBridge parser for characteristic 0x$short")
         }
@@ -227,7 +243,7 @@ class FtmsFixtureParityTest {
                     arrivalMs = 1_000L,
                 )
 
-                parse(short, emitter, packetOf(case))
+                parse(short, emitter, packetOf(case), DEVICE_NAME_BY_FAMILY[family])
                 casesChecked++
 
                 val unquarantined = UNQUARANTINE_BY_CHARACTERISTIC[short].orEmpty()
@@ -266,48 +282,14 @@ class FtmsFixtureParityTest {
                 mismatches.joinToString("\n"),
             mismatches.isEmpty(),
         )
-        // Of 58 corpus cases: 7 are truncated packets TMIW refuses outright (covered by the
-        // divergence test below) and 7 belong to the pending mr_captain quirk, leaving 44.
+        // Of 58 corpus cases, 7 are truncated packets TMIW refuses outright — covered by the
+        // divergence test below — leaving 51. Since Phase 4c, mr_captain parses through its
+        // registry override and is held to full parity like every other family.
+        //
         // Exact counts rather than lower bounds, so a corpus that silently shrinks fails here
         // instead of quietly testing less.
-        assertEquals("cases exercised", 44, casesChecked)
-        assertEquals("directly-parsed fields compared", 426, fieldsChecked)
-    }
-
-    /**
-     * Guards [PENDING_QUIRK] against outliving its reason. If Phase 4c implements the Mr
-     * Captain layout and this test starts failing, that is the signal to delete the entry and
-     * fold the family back into the parity assertion — not to relax this test.
-     */
-    @Test
-    fun `pending quirk families still disagree`() {
-        for (name in corpora) {
-            val fixture = load(name)
-            if (FixtureJson.string(fixture["family"]) !in PENDING_QUIRK) continue
-            val short = FixtureJson.string(fixture["characteristic"]).substring(4, 8)
-            val persona = personaFor(FixtureJson.string(fixture["sport"]))
-
-            var disagreements = 0
-            for (raw in FixtureJson.array(fixture["cases"])) {
-                val case = FixtureJson.obj(raw)
-                val expect = case["expect"] ?: continue
-                val fusion = MetricFusion(BtEngineState()).also { it.setPersona(persona) }
-                parse(short, emitterFor(fusion, short, name, 1_000L), packetOf(case))
-
-                for ((field, reference) in FixtureJson.obj(expect)) {
-                    if (field in QUARANTINE) continue
-                    val metric = metricFor(field, short) ?: continue
-                    val expected = (reference as? Number)?.toDouble() ?: continue
-                    val actual = fusion.latestSample(metric)?.value
-                    if (actual == null || kotlin.math.abs(expected - actual) > 1e-6) disagreements++
-                }
-            }
-            assertTrue(
-                "${FixtureJson.string(fixture["family"])} now agrees with TMIW - if Phase 4c " +
-                    "implemented its quirk, remove it from PENDING_QUIRK",
-                disagreements > 0,
-            )
-        }
+        assertEquals("cases exercised", 51, casesChecked)
+        assertEquals("directly-parsed fields compared", 489, fieldsChecked)
     }
 
     /**
