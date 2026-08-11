@@ -1,0 +1,226 @@
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
+
+/**
+ * Bounds-checked decoders for the Concept2 PM Bluetooth Smart rowing characteristics.
+ *
+ * **Source of truth:** *Concept2 PM Bluetooth Smart Communication Interface Definition*,
+ * revision 1.30 (3/2/2022). Base UUID `CE06xxxx-43E5-11E4-916C-0800200C9A66`, discharged
+ * against the vendor document rather than inferred from a four-character alias (plan §10, §5a).
+ * Field offsets, widths, scales and lengths below are all from that document's field tables.
+ *
+ * ## The elapsed-time prefix is the point
+ *
+ * Every characteristic here begins with the same three octets: **Elapsed Time, uint24 LE, in
+ * 0.01 s**. TMIW discards it, so its four Concept2 streams have no common time base and can
+ * only be related by arrival order. FitBridge decodes it into [Reading.elapsedCentiseconds] and
+ * the handler carries it into `MetricSample.eventMs`, which gives fusion genuine
+ * cross-characteristic alignment — a power reading and a distance reading can be known to
+ * describe the same instant rather than merely to have arrived close together.
+ *
+ * ## Two delivery paths, one set of decoders
+ *
+ * The specification tells Android applications to subscribe to the multiplexed characteristic
+ * `0x0080` "in lieu of" the individual ones. A multiplexed frame is an identification byte
+ * followed by the same payload the individual characteristic would have carried, so [multiplexed]
+ * dispatches on that byte into these same decoders (D41).
+ *
+ * The two paths cannot double-deliver: the specification states that an identifier is
+ * multiplexed **only** while the individual characteristic's notification is not enabled, so
+ * arming an individual CCCD withdraws that ID from `0x0080` automatically.
+ *
+ * ## Control
+ *
+ * None, permanently, per D11. CSAFE (`0x0020`–`0x0022`) is out of scope for this plan and no
+ * later phase adds it, so these decoders have no control seam and none should be added here;
+ * CSAFE would be a new machine-adapter capability rather than a change to this file.
+ */
+internal object Concept2Measurement {
+
+    /** Low byte of the characteristic UUID, which is also the multiplexed identification byte. */
+    object Id {
+        const val GENERAL_STATUS = 0x31
+        const val ADDITIONAL_STATUS_1 = 0x32
+        const val ADDITIONAL_STATUS_2 = 0x33
+        const val ADDITIONAL_STROKE_DATA = 0x36
+    }
+
+    /** Documented payload lengths, used to reject a frame that cannot be what it claims. */
+    object Length {
+        const val GENERAL_STATUS = 19
+        const val ADDITIONAL_STATUS_1 = 17
+        const val ADDITIONAL_STATUS_2 = 20
+        const val ADDITIONAL_STROKE_DATA = 15
+    }
+
+    /**
+     * One decoded frame. Every field is optional except the elapsed-time prefix, because a
+     * frame that is truncated mid-field yields the values ahead of the cut and nothing after —
+     * the same discipline D38 established for FTMS.
+     */
+    data class Reading(
+        val id: Int,
+        /** Shared time base, uint24 in 0.01 s. */
+        val elapsedCentiseconds: Int,
+        val distanceMetres: Double? = null,
+        val speedMetresPerSecond: Double? = null,
+        val strokeRatePerMinute: Int? = null,
+        val heartRateBpm: Int? = null,
+        val paceSecondsPer500m: Double? = null,
+        val totalCalories: Int? = null,
+        val averagePowerWatts: Int? = null,
+        val strokePowerWatts: Int? = null,
+    ) {
+        val elapsedSeconds: Double get() = elapsedCentiseconds / 100.0
+    }
+
+    /**
+     * Decode a frame from an individual characteristic.
+     *
+     * @param id the characteristic's low byte, from [Id].
+     */
+    fun parse(id: Int, data: ByteArray): Reading? = when (id) {
+        Id.GENERAL_STATUS -> generalStatus(data)
+        Id.ADDITIONAL_STATUS_1 -> additionalStatus1(data)
+        Id.ADDITIONAL_STATUS_2 -> additionalStatus2(data)
+        Id.ADDITIONAL_STROKE_DATA -> additionalStrokeData(data)
+        else -> null
+    }
+
+    /**
+     * Decode a frame from the multiplexed characteristic `0x0080`: identification byte followed
+     * by the payload the corresponding individual characteristic would have carried.
+     *
+     * An unrecognised identifier returns null rather than being guessed at. The PM multiplexes
+     * ten identifiers and FitBridge consumes four; the other six are real frames for other
+     * data, not corruption, and must be skipped silently rather than misparsed.
+     */
+    fun multiplexed(data: ByteArray): Reading? {
+        if (data.isEmpty()) return null
+        return parse(data[0].toInt() and 0xFF, data.copyOfRange(1, data.size))
+    }
+
+    // ── Individual characteristic decoders ───────────────────────────────────────
+
+    /**
+     * `0x0031` General Status, 19 octets.
+     *
+     * ```
+     *   0..2  Elapsed Time   uint24, 0.01 s
+     *   3..5  Distance       uint24, 0.1 m
+     *   6     Workout Type   enum      (not consumed)
+     *   7     Interval Type  enum      (not consumed)
+     *   8     Workout State  enum      (not consumed)
+     *   9     Rowing State   enum      (not consumed)
+     *   10    Stroke State   enum      (not consumed)
+     *   11..  Total Work Distance, drag factor          (not consumed)
+     * ```
+     */
+    fun generalStatus(data: ByteArray): Reading? {
+        val cursor = Cursor(data)
+        val elapsed = cursor.u24() ?: return null
+        val distance = cursor.u24()?.let { it / 10.0 }
+        return Reading(
+            id = Id.GENERAL_STATUS,
+            elapsedCentiseconds = elapsed,
+            distanceMetres = distance,
+        )
+    }
+
+    /**
+     * `0x0032` Additional Status 1, 17 octets.
+     *
+     * ```
+     *   0..2  Elapsed Time   uint24, 0.01 s
+     *   3..4  Speed          uint16, 0.001 m/s
+     *   5     Stroke Rate    uint8,  strokes/min
+     *   6     Heart Rate     uint8,  bpm — 255 is documented as invalid
+     *   7..8  Current Pace   uint16, 0.01 s per 500 m
+     *   9..   Average Pace, rest distance, machine type            (not consumed)
+     * ```
+     */
+    fun additionalStatus1(data: ByteArray): Reading? {
+        val cursor = Cursor(data)
+        val elapsed = cursor.u24() ?: return null
+        val speed = cursor.u16()?.let { it / 1000.0 }
+        val strokeRate = cursor.u8()
+        // The specification names 255 explicitly as invalid rather than leaving it to a
+        // plausibility bound, so it is dropped at decode: an absent heart rate is visibly
+        // absent, and 255 bpm passed downstream would be a reading nobody sent.
+        val heartRate = cursor.u8()?.takeIf { it != HEART_RATE_INVALID }
+        val pace = cursor.u16()?.let { it / 100.0 }
+        return Reading(
+            id = Id.ADDITIONAL_STATUS_1,
+            elapsedCentiseconds = elapsed,
+            speedMetresPerSecond = speed,
+            strokeRatePerMinute = strokeRate,
+            heartRateBpm = heartRate,
+            paceSecondsPer500m = pace,
+        )
+    }
+
+    /**
+     * `0x0033` Additional Status 2, 20 octets.
+     *
+     * ```
+     *   0..2  Elapsed Time    uint24, 0.01 s
+     *   3     Interval Count  uint8                 (not consumed)
+     *   4..5  Average Power   uint16, W
+     *   6..7  Total Calories  uint16, kcal
+     *   8..   Split averages, speed, drag factor    (not consumed)
+     * ```
+     *
+     * Average power at 4..5 is not listed in plan §5a's table but is in the vendor field table,
+     * and is decoded here because it costs nothing and the frame must be walked past it anyway.
+     */
+    fun additionalStatus2(data: ByteArray): Reading? {
+        val cursor = Cursor(data)
+        val elapsed = cursor.u24() ?: return null
+        cursor.u8() ?: return Reading(Id.ADDITIONAL_STATUS_2, elapsed)
+        val averagePower = cursor.u16()
+        val calories = cursor.u16()
+        return Reading(
+            id = Id.ADDITIONAL_STATUS_2,
+            elapsedCentiseconds = elapsed,
+            totalCalories = calories,
+            averagePowerWatts = averagePower,
+        )
+    }
+
+    /**
+     * `0x0036` Additional Stroke Data, 15 octets.
+     *
+     * ```
+     *   0..2  Elapsed Time     uint24, 0.01 s
+     *   3..4  Stroke Power     uint16, W
+     *   5..6  Stroke Calories  uint16, cal/hr        (not consumed)
+     *   7..8  Stroke Count     uint16                (not consumed)
+     *   9..   Projected work time and distance       (not consumed)
+     * ```
+     */
+    fun additionalStrokeData(data: ByteArray): Reading? {
+        val cursor = Cursor(data)
+        val elapsed = cursor.u24() ?: return null
+        val power = cursor.u16()
+        return Reading(
+            id = Id.ADDITIONAL_STROKE_DATA,
+            elapsedCentiseconds = elapsed,
+            strokePowerWatts = power,
+        )
+    }
+
+    /** Documented invalid marker for the heart-rate octet. */
+    const val HEART_RATE_INVALID = 255
+
+    private class Cursor(private val data: ByteArray) {
+        private var offset = 0
+        fun u8(): Int? = if (offset < data.size) data[offset++].toInt() and 0xFF else null
+        fun u16(): Int? {
+            if (data.size - offset < 2) return null
+            return u8()!! or (u8()!! shl 8)
+        }
+        fun u24(): Int? {
+            if (data.size - offset < 3) return null
+            return u8()!! or (u8()!! shl 8) or (u8()!! shl 16)
+        }
+    }
+}
