@@ -148,6 +148,67 @@ class FtmsQuirkRegistryTest {
         assertEquals(84.0, h.fusion.valueOf(MetricKind.HEART_RATE)!!, 1e-9)
     }
 
+    // ── §11b bounds, per metric, for the untestable family ───────────────────────
+
+    /**
+     * Plan §11b: one bounds test per metric for a family FitBridge cannot test on hardware.
+     *
+     * Mr Captain is exactly that family — no physical unit, evidence from TMIW's pinned corpus
+     * only — and it is also a family whose own firmware is demonstrably unreliable, since its
+     * elapsed-time octet is known-broken. Bounds are the only thing standing between a
+     * misdecoded quirk layout and a user's history, so each metric the override can emit is
+     * checked at both ends of its declared range.
+     *
+     * Cumulative metrics are deliberately absent from this list: `DISTANCE` and `ENERGY` are
+     * unbounded by design, because a session total has no ceiling and dropping one sample
+     * corrupts a delta chain. Their protection is the sentinel filtering and the parity corpus,
+     * not a range.
+     */
+    @Test
+    fun `every bounded metric the mr captain layout emits rejects an implausible value`() {
+        val persona = FusionPersona.ROW_PADDLE
+        val bounded = listOf(
+            Triple(MetricKind.STROKE_RATE, 30.0, 500.0),
+            Triple(MetricKind.POWER, 250.0, 40_000.0),
+            Triple(MetricKind.HEART_RATE, 140.0, 900.0),
+            Triple(MetricKind.ENERGY_RATE, 600.0, 90_000.0),
+            Triple(MetricKind.INSTANT_PACE, 4.0, 10_000.0),
+        )
+
+        for ((metric, plausible, implausible) in bounded) {
+            assertTrue(
+                "$metric should accept $plausible for a rower",
+                PlausibilityBounds.isPlausible(metric, persona, plausible),
+            )
+            assertTrue(
+                "$metric must reject $implausible - §11b makes bounds the last line of " +
+                    "defence for a family with no hardware behind it",
+                !PlausibilityBounds.isPlausible(metric, persona, implausible),
+            )
+        }
+    }
+
+    @Test
+    fun `an implausible quirk decode is dropped rather than published`() {
+        // The layout is fixed, so a firmware that reordered its fields would present as
+        // absurd values rather than as a parse failure. Octet 2 is stroke rate in half-units:
+        // 0xFE is 127 spm, which no rower sustains.
+        val h = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
+
+        BtEngineFtmsParsers.doRower(
+            h.emitter,
+            bytes(60, 11, 0xFE, 2, 0, 10, 0, 0, 209, 0, 94, 1, 22, 0, 1, 0, 2, 2, 8, 0),
+            deviceName = "XG-Rower-01",
+        )
+
+        assertNull(
+            "127 spm is outside the stroke-rate bound and must not reach the session",
+            h.fusion.latestSample(MetricKind.STROKE_RATE)?.value,
+        )
+        // The rest of the frame still decodes: one implausible field does not void the packet.
+        assertEquals(350.0, h.fusion.latestSample(MetricKind.POWER)!!.value, 1e-9)
+    }
+
     // ── Registry invariants ──────────────────────────────────────────────────────
 
     @Test

@@ -304,6 +304,53 @@ class FtmsAdversarialParserTest {
         )
     }
 
+    /**
+     * Counter rollover (plan §11.3).
+     *
+     * FTMS cumulative counters are fixed-width and the specification defines no wrap behaviour:
+     * Total Distance is `uint24` and wraps at 16,777,216 m, Total Energy `uint16` at 65,535 —
+     * except 65,535 is the Data Not Available sentinel, so energy effectively wraps to a value
+     * that cannot be distinguished from "unknown".
+     *
+     * The parser's obligation stops at decoding each frame truthfully: a wrapped counter is a
+     * small number, and it must be reported as the small number the machine actually sent. What
+     * a *decrease* means for a session total is a cumulative-continuity question owned by
+     * fusion, exactly as CSC's V5/D30 settled for wheel revolutions — the parser must not
+     * silently add 16,777,216 to make the series monotonic, because that would invent distance
+     * on any machine that simply reset.
+     */
+    @Test
+    fun `a wrapped distance counter is decoded as the value on the wire`() {
+        // Flags 0x0011: no speed, total distance.
+        val ceiling = bike()
+        BtEngineFtmsParsers.doBike(ceiling.emitter, bytes(0x11, 0x00, 0xFF, 0xFF, 0xFF))
+        assertEquals(16_777_215.0, ceiling.fusion.valueOf(MetricKind.DISTANCE)!!, 1e-9)
+
+        // One metre later the counter is 0. The parser reports 0; it does not reconstruct
+        // 16,777,216, and it does not drop the frame.
+        val wrapped = bike()
+        BtEngineFtmsParsers.doBike(wrapped.emitter, bytes(0x11, 0x00, 0x00, 0x00, 0x00))
+        assertEquals(0.0, wrapped.fusion.valueOf(MetricKind.DISTANCE)!!, 1e-9)
+
+        // And the sample still carries its native cumulative counter, which is what fusion
+        // needs to decide whether this is a wrap, a reset, or a new machine.
+        val sample = wrapped.fusion.latestSample(MetricKind.DISTANCE)!!
+        assertEquals(0.0, sample.nativeCumulative!!, 1e-9)
+    }
+
+    @Test
+    fun `energy at the wrap boundary is a sentinel, one below it is a reading`() {
+        // 65535 is Data Not Available, so a uint16 energy counter cannot express a wrap to a
+        // full value — it lands on "unknown" instead. Pinned so the asymmetry is visible.
+        val na = bike()
+        BtEngineFtmsParsers.doBike(na.emitter, bytes(0x01, 0x01, 0xFF, 0xFF, 0x00, 0x00, 0x00))
+        assertNull(na.fusion.valueOf(MetricKind.ENERGY))
+
+        val wrapped = bike()
+        BtEngineFtmsParsers.doBike(wrapped.emitter, bytes(0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00))
+        assertEquals(0.0, wrapped.fusion.valueOf(MetricKind.ENERGY)!!, 1e-9)
+    }
+
     // ── Stepper 0x2ACF — the persona TMIW supplies no vectors for ────────────────
 
     @Test
