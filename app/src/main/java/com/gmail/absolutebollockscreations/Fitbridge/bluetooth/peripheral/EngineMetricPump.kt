@@ -129,6 +129,12 @@ class EngineMetricPump(
             strokeCount = strokeCount,
             cscNativeEvents = engineState.cscNativeEvents.snapshot(),
             cpsNativeEvents = engineState.cpsNativeEvents.snapshot(),
+            // Treadmill only: no other persona has the field, and it is never synthesised.
+            treadmillNativePace = if (profile == FtmsMachineProfile.TREADMILL) {
+                engineState.treadmillNativePace.snapshot()
+            } else {
+                null
+            },
             updatedAtMs = SystemClock.elapsedRealtime(),
         )
     }

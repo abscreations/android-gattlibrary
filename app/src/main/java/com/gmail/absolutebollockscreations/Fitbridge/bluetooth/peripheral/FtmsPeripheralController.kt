@@ -133,7 +133,12 @@ class FtmsPeripheralController(
         centralRoleAddresses = {
             engineState.connectedDevices.value.mapTo(mutableSetOf()) { it.address.lowercase() }
         },
-    )
+    ).apply {
+        // Mirror the bridged machine's Pace Supported bit. Read live for the same reason as
+        // the address set above: the upstream 0x2ACC read completes during machine setup and
+        // may land after the server is already open.
+        upstreamPaceSupported = { engineState.supportsPaceMeasurement }
+    }
     private val notifier = FtmsPeripheralNotifier(advertiser, store)
     private val pump = EngineMetricPump(engineState, store) { profile }
 

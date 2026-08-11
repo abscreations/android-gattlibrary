@@ -328,7 +328,19 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         when (ch.uuid) {
             UUID_FITNESS_MACHINE_CONTROL_POINT -> handleControlPointIndication(engine, gatt, value)
             UUID_FITNESS_MACHINE_STATUS        -> handleFitnessMachineStatus(engine, value)
-            UUID_TREADMILL_DATA                -> BtEngineFtmsParsers.doTreadmill(emitter, value)
+            UUID_TREADMILL_DATA                -> BtEngineFtmsParsers.doTreadmill(
+                emitter,
+                value,
+                onNativePace = { instantaneousRaw, averageRaw ->
+                    // Preserved raw so the downstream encoder re-emits this machine's own
+                    // quantisation instead of synthesising a 6 km/h-resolution field.
+                    engine.state.treadmillNativePace.publish(
+                        emitter.sourceId.connectionId,
+                        instantaneousRaw,
+                        averageRaw,
+                    )
+                },
+            )
             UUID_ELLIPTICAL_DATA               -> BtEngineFtmsParsers.doElliptical(
                 emitter,
                 value,

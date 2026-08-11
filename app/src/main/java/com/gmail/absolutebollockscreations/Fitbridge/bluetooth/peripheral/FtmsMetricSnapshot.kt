@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CscNativeEventSnapshot
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CpsNativeEventSnapshot
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.TreadmillNativePaceSnapshot
 import kotlin.math.atan
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -72,6 +73,12 @@ data class FtmsMetricSnapshot(
     val cscNativeEvents: CscNativeEventSnapshot? = null,
     /** Exact upstream CPS wheel/crank event fields for native CPS forwarding. */
     val cpsNativeEvents: CpsNativeEventSnapshot? = null,
+    /**
+     * Raw treadmill pace octets from the upstream machine, re-emitted verbatim. Never
+     * synthesised: the wire field resolves to 6 km/h per step, so a value derived from fused
+     * speed would contradict the Instantaneous Speed field in the same packet.
+     */
+    val treadmillNativePace: TreadmillNativePaceSnapshot? = null,
     /**
      * `SystemClock.elapsedRealtime()` when [EngineMetricPump] **sampled** this
      * snapshot — not when the upstream machine sent the data.

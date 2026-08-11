@@ -42,11 +42,26 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/** Exact eight-octet value returned by the downstream Fitness Machine Feature (`0x2ACC`). */
+/**
+ * Exact eight-octet value returned by the downstream Fitness Machine Feature (`0x2ACC`).
+ *
+ * @param upstreamPaceSupported the bridged machine's own Pace Supported bit. Treadmill pace is
+ * relayed verbatim rather than synthesised, so the claim is mirrored rather than asserted: we
+ * advertise pace exactly when the machine we are bridging advertises it. Claiming it otherwise
+ * would advertise a measurement FitBridge cannot supply; sending the field without the bit
+ * would be a protocol violation. Only the treadmill persona has the field.
+ */
 internal fun buildFtmsFeaturePayload(
     profile: FtmsMachineProfile,
     targets: TargetCapabilities,
-): ByteArray = u32le(profile.featureBits) + u32le(targets.toTargetFeatureBits())
+    upstreamPaceSupported: Boolean = false,
+): ByteArray {
+    var measurement = profile.featureBits
+    if (profile == FtmsMachineProfile.TREADMILL && upstreamPaceSupported) {
+        measurement = measurement or (1 shl FtmsSpec.Feature.PACE)
+    }
+    return u32le(measurement) + u32le(targets.toTargetFeatureBits())
+}
 
 /**
  * Owns the local GATT server and the LE advertiser.
@@ -141,6 +156,16 @@ class FtmsPeripheralAdvertiser(
 
     private var profile: FtmsMachineProfile = FtmsMachineProfile.INDOOR_BIKE
     private var targets: TargetCapabilities = TargetCapabilities.NONE
+
+    /**
+     * The bridged machine's own Pace Supported bit, mirrored into the downstream Feature.
+     *
+     * Read live in [featurePayload] rather than frozen at server start: the upstream `0x2ACC`
+     * read completes during machine setup, which may land after the server is open. A client
+     * that reads Feature before that completes sees pace unclaimed, which is the safe way round
+     * — unclaimed and unsent, rather than claimed and never delivered.
+     */
+    var upstreamPaceSupported: () -> Boolean = { false }
     private var includeTrainingStatus: Boolean = false
     private var cyclingConfig: CyclingSensorConfig = CyclingSensorConfig.DISABLED
 
@@ -1346,7 +1371,8 @@ class FtmsPeripheralAdvertiser(
 
     // ── payloads ──────────────────────────────────────────────────────────────
 
-    private fun featurePayload(): ByteArray = buildFtmsFeaturePayload(profile, targets)
+    private fun featurePayload(): ByteArray =
+        buildFtmsFeaturePayload(profile, targets, upstreamPaceSupported())
 
     private fun trainingStatusPayload(conn: PeripheralConnection): ByteArray =
         conn.procedure.trainingStatusPayload()

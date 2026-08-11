@@ -54,6 +54,7 @@ class BtEngineState : HrmStateSink {
 
     internal val cscNativeEvents = CscNativeEventStore()
     internal val cpsNativeEvents = CpsNativeEventStore()
+    internal val treadmillNativePace = TreadmillNativePaceStore()
 
     /* ───────────────────────────── types & constants ───────────────────────────── */
 
@@ -206,6 +207,9 @@ class BtEngineState : HrmStateSink {
         supportsInclination = false
         supportsResistance = false
         supportsPower = false
+        // Must clear with the rest: a stale claim would advertise pace downstream for a machine
+        // that never declared it.
+        supportsPaceMeasurement = false
 
         speedMin = 0f; speedMax = 0f; speedIncr = 0f; speedRangeKnown = false
         inclineMin = 0f; inclineMax = 0f; inclineIncr = 0f; inclineRangeKnown = false
@@ -238,6 +242,15 @@ class BtEngineState : HrmStateSink {
     var supportsInclination = false
     var supportsResistance = false
     var supportsPower = false
+
+    /**
+     * Pace Supported, from the upstream machine's own `0x2ACC` measurement word (bit 5).
+     *
+     * Mirrored into the downstream Feature so FitBridge claims pace exactly when the machine it
+     * is bridging claims it. Measurement capability, not a control capability, so it is
+     * deliberately separate from the four control flags above.
+     */
+    var supportsPaceMeasurement = false
 
     /**
      * Legacy range fields (engine-side, usually in human-readable units such as km/h,

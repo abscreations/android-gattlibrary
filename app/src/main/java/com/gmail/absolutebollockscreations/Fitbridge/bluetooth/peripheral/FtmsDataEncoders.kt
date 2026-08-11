@@ -253,6 +253,16 @@ object FtmsDataEncoders {
         if (s.positiveElevationGainMeters != null || s.negativeElevationGainMeters != null) {
             optionals += FtmsField(4, elevationPairField(s))
         }
+        // Instantaneous / Average Pace (bits 5, 6) are uint8 in 0.1 km/min — one raw step per
+        // 6 km/h. Only ever passed through from a machine that supplied the octet, never
+        // synthesised from fused speed: a derived value would contradict the Instantaneous
+        // Speed field in this same packet, which carries 0.01 km/h resolution.
+        s.treadmillNativePace?.instantaneousRaw?.let {
+            optionals += FtmsField(5, byteArrayOf((it and 0xFF).toByte()))
+        }
+        s.treadmillNativePace?.averageRaw?.let {
+            optionals += FtmsField(6, byteArrayOf((it and 0xFF).toByte()))
+        }
         if (s.caloriesTotal != null) optionals += FtmsField(7, energyField(s))
         s.heartRate?.let { optionals += FtmsField(8, hrField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(10, elapsedField(it)) }

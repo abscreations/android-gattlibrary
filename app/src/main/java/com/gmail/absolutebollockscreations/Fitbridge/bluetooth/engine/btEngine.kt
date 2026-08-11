@@ -1073,6 +1073,7 @@ class BtEngine internal constructor(
     internal fun onPhysicalLinkTerminating(context: ConnectionContext, reason: String) {
         state.cscNativeEvents.remove(context.connectionId)
         state.cpsNativeEvents.remove(context.connectionId)
+        state.treadmillNativePace.remove(context.connectionId)
         val target = recoveryTargetFor(context)
         if (reason.startsWith("platform disconnect") || reason == "recovery timeout") {
             linkRecovery.updateTarget(target)
@@ -1299,6 +1300,7 @@ class BtEngine internal constructor(
             cscSessionGeneration += 1
             state.cscNativeEvents.clear()
             state.cpsNativeEvents.clear()
+            state.treadmillNativePace.clear()
             activeCscSession = when (activity) {
                 ActivityType.BIKING -> CscSessionSnapshot(
                     cscSessionGeneration,
@@ -1344,6 +1346,7 @@ class BtEngine internal constructor(
         activeCscSession = null
         state.cscNativeEvents.clear()
         state.cpsNativeEvents.clear()
+        state.treadmillNativePace.clear()
     }
 
     internal fun isSelectedEllipticalCsc(context: ConnectionContext): Boolean {

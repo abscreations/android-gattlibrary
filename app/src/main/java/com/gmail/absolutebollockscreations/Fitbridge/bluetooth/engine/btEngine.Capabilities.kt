@@ -67,6 +67,18 @@ internal object BtEngineCapabilities {
     private const val CTRL_RESISTANCE_BIT = 0x04
     private const val CTRL_POWER_BIT      = 0x08
 
+    /**
+     * Measurement features occupy bytes 0-3 of `0x2ACC`; only the target-setting half at bytes
+     * 4-7 was parsed until 2026-08-10. Pace Supported is bit 5 of the measurement word, so it
+     * sits in byte 0.
+     *
+     * FitBridge relays the upstream treadmill's pace octet downstream verbatim rather than
+     * synthesising it, so the downstream Feature must claim pace exactly when the machine being
+     * bridged claims it. Mirroring the bit keeps that claim honest by construction instead of
+     * by policy — see [TreadmillNativePaceStore] for why the field is never derived.
+     */
+    private const val MEAS_PACE_BIT = 0x20
+
     @SuppressLint("MissingPermission")
     fun parseFitnessMachineFeatures(engine: BtEngine, value: ByteArray) {
         if (value.size < 5) {
@@ -75,17 +87,20 @@ internal object BtEngineCapabilities {
         }
 
         val controlFlags = value[4].toInt() and 0xFF
+        val measurementFlags = value[0].toInt() and 0xFF
 
         val supportsSpeed       = (controlFlags and CTRL_SPEED_BIT) != 0
         val supportsInclination = (controlFlags and CTRL_INCLINE_BIT) != 0
         val supportsResistance  = (controlFlags and CTRL_RESISTANCE_BIT) != 0
         val supportsPower       = (controlFlags and CTRL_POWER_BIT) != 0
+        val supportsPaceMeasurement = (measurementFlags and MEAS_PACE_BIT) != 0
 
         // Legacy flags on state (engine-side logic / UI)
         engine.state.supportsSpeed       = supportsSpeed
         engine.state.supportsInclination = supportsInclination
         engine.state.supportsResistance  = supportsResistance
         engine.state.supportsPower       = supportsPower
+        engine.state.supportsPaceMeasurement = supportsPaceMeasurement
         engine.state.featuresRead        = true
 
         // New canonical capabilities snapshot for provider-side btService
