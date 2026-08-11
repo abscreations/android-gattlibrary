@@ -145,6 +145,36 @@ object BluetoothIds {
     val UUID_CYCLING_POWER_CONTROL_POINT: UUID = shortUuid(0x2A66) // write / indicate
 
     // ─────────────────────────────────────────────────────────────
+    // Concept2 PM (proprietary, base CE06xxxx-43E5-11E4-916C-0800200C9A66)
+    // ─────────────────────────────────────────────────────────────
+    /**
+     * Build a Concept2 PM UUID from its 16-bit alias.
+     *
+     * The base is quoted from the *Concept2 PM Bluetooth Smart Communication Interface
+     * Definition*, revision 1.30 — `docs/PM5_BluetoothSmartInterfaceDefinition.pdf` — and not
+     * inferred from TMIW's four-character aliases. Plan §10 forbids deriving a 128-bit UUID
+     * from an alias, and §5a requires this confirmation to "actually be done, not assumed".
+     * See `docs/evidence/phase-5/2026-08-10-concept2-pm5-uuid-resolution.md`.
+     */
+    private fun concept2Uuid(alias: Int): UUID =
+        UUID.fromString(String.format("CE06%04X-43E5-11E4-916C-0800200C9A66", alias).lowercase())
+
+    val UUID_C2_ERG_SERVICE: UUID          = concept2Uuid(0x0030)
+    val C2_ERG_SERVICE_PARCEL: ParcelUuid  = ParcelUuid(UUID_C2_ERG_SERVICE)
+
+    val UUID_C2_GENERAL_STATUS: UUID          = concept2Uuid(0x0031) // notify, 19 B
+    val UUID_C2_ADDITIONAL_STATUS_1: UUID     = concept2Uuid(0x0032) // notify, 17 B
+    val UUID_C2_ADDITIONAL_STATUS_2: UUID     = concept2Uuid(0x0033) // notify, 20 B
+    val UUID_C2_STATUS_SAMPLE_RATE: UUID      = concept2Uuid(0x0034) // read/write, 1 B
+    val UUID_C2_ADDITIONAL_STROKE_DATA: UUID  = concept2Uuid(0x0036) // notify, 15 B
+
+    /**
+     * Multiplexed information, up to 20 B: one identification byte then the payload the
+     * corresponding individual characteristic would have carried (D41).
+     */
+    val UUID_C2_MULTIPLEXED_INFORMATION: UUID = concept2Uuid(0x0080)
+
+    // ─────────────────────────────────────────────────────────────
     // Glucose (Service 0x1808)
     // ─────────────────────────────────────────────────────────────
     val UUID_GLUCOSE_SERVICE: UUID         = shortUuid(0x1808)

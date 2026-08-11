@@ -42,6 +42,16 @@ internal data class ProtocolKey(val value: String) {
         val RSC = ProtocolKey("rsc")
         val CSC = ProtocolKey("csc")
         val CPS = ProtocolKey("cps")
+
+        /**
+         * Concept2 PM, proprietary (plan §5a). A **machine** protocol like FTMS, not a
+         * secondary sensor, so it is absent from [sensorProtocolFor] by the same reasoning.
+         *
+         * Registered here and buildable, but nothing selects it yet: choosing between this and
+         * FTMS on a PM5 that advertises both is the D6 conflict rule, which belongs to
+         * `MachineAdapterPolicy` rather than to the handler registry.
+         */
+        val CONCEPT2 = ProtocolKey("concept2")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -106,6 +116,7 @@ internal class HandlerFactory(
                 ProtocolKey.RSC to ::RscProtocolHandler,
                 ProtocolKey.CSC to { CscProtocolHandler() },
                 ProtocolKey.CPS to { CpsProtocolHandler() },
+                ProtocolKey.CONCEPT2 to { Concept2ProtocolHandler() },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)
