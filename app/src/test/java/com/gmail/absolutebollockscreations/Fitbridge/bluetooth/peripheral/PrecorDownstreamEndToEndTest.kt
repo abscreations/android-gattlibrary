@@ -107,6 +107,47 @@ class PrecorDownstreamEndToEndTest {
         )
     }
 
+    @Test
+    fun `a Precor-only machine context omits resistance from the measurement Feature word`() {
+        val profile = FtmsMachineProfile.INDOOR_BIKE
+        val capabilities = providerMeasurementCapabilities(
+            profile,
+            setOf(BluetoothIds.UUID_PRECOR_SERVICE),
+        )
+        val measurementWord = u32(
+            buildFtmsFeaturePayload(
+                profile = profile,
+                targets = TargetCapabilities.NONE,
+                measurementCapabilities = capabilities,
+            ),
+            0,
+        )
+
+        for (bit in listOf(0, 1, 2, 9, 10, 12, 14)) {
+            assertTrue("Chrono measurement Feature bit $bit must be present", measurementWord and (1L shl bit) != 0L)
+        }
+        assertEquals(
+            "the Chrono has no resistance measurement",
+            0L,
+            measurementWord and (1L shl FtmsSpec.Feature.RESISTANCE_LEVEL),
+        )
+    }
+
+    @Test
+    fun `the Precor override is not applied to a standard or simulated FTMS bike`() {
+        val profile = FtmsMachineProfile.INDOOR_BIKE
+
+        assertTrue(
+            providerMeasurementCapabilities(profile, emptySet()).resistance,
+        )
+        assertTrue(
+            providerMeasurementCapabilities(
+                profile,
+                setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
+            ).resistance,
+        )
+    }
+
     private fun u16(value: ByteArray, offset: Int): Int =
         (value[offset].toInt() and 0xFF) or ((value[offset + 1].toInt() and 0xFF) shl 8)
 

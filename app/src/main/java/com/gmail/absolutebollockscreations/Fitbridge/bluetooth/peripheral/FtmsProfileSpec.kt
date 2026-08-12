@@ -157,6 +157,40 @@ val FtmsMachineProfile.featureBits: Int
     get() = measurementCapabilities.toFeatureBits()
 
 /**
+ * Measurement fields the Chrono can supply to the downstream Indoor Bike encoder.
+ *
+ * Average values are generated from the native instantaneous samples; energy, heart rate and
+ * elapsed time are part of every encoder record through [FtmsMeasurementCapabilities]' defaults.
+ * Resistance is deliberately absent: neither the Chrono frame nor either reference project
+ * supplies it, so claiming bit 7 would be a source-family capability violation.
+ */
+internal val precorChronoMeasurementCapabilities = FtmsMeasurementCapabilities(
+    averageSpeed = true,
+    cadence = true,
+    totalDistance = true,
+    power = true,
+)
+
+/**
+ * Select the stable downstream measurement contract from the active machine context.
+ *
+ * A link exposing both FTMS and Precor remains on the standard FTMS contract because D6 ranks
+ * FTMS first. The override is intentionally limited to a Precor-only machine link; simulator
+ * bikes and ordinary FTMS bikes keep the established indoor-bike capabilities.
+ */
+internal fun providerMeasurementCapabilities(
+    profile: FtmsMachineProfile,
+    upstreamServiceUuids: Set<UUID>,
+): FtmsMeasurementCapabilities = when {
+    profile == FtmsMachineProfile.INDOOR_BIKE &&
+        BluetoothIds.UUID_PRECOR_SERVICE in upstreamServiceUuids &&
+        BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
+        precorChronoMeasurementCapabilities
+
+    else -> profile.measurementCapabilities
+}
+
+/**
  * Build the 3-octet FTMS Service Data payload (Flags + Fitness Machine Type).
  *
  * @param available value of the Fitness Machine Available flag (Table 3.2 bit 0).

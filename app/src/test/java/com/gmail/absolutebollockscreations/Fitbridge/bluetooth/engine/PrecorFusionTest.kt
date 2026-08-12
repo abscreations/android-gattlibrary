@@ -112,6 +112,33 @@ class PrecorFusionTest {
         assertEquals(14, state.expEnergyTotal.value)
     }
 
+    @Test
+    fun `same-link Chrono counter wrap never moves cumulative totals backwards`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state).also { it.setPersona(FusionPersona.RIDE, 0) }
+
+        emitChrono(
+            fusion,
+            generation = 1,
+            arrivalMs = 1_000,
+            distanceMetres = 0xFF_FFFD,
+            calories = 0xFFFD,
+        )
+        assertEquals(0xFF_FFFD, state.totalDistanceMeters.value)
+        assertEquals(0xFFFD, state.expEnergyTotal.value)
+
+        // Both native counters wrap on the same live connection. Fusion treats the decrease as
+        // a counter boundary, holds the canonical totals, and establishes the new native origin.
+        emitChrono(fusion, 1, 2_000, distanceMetres = 2, calories = 1)
+        assertEquals(0xFF_FFFD, state.totalDistanceMeters.value)
+        assertEquals(0xFFFD, state.expEnergyTotal.value)
+
+        // Post-wrap deltas resume from the new origin rather than freezing or jumping backward.
+        emitChrono(fusion, 1, 2_500, distanceMetres = 5, calories = 4)
+        assertEquals(0x10_00000, state.totalDistanceMeters.value)
+        assertEquals(0x1_0000, state.expEnergyTotal.value)
+    }
+
     private fun chronoFrame(
         elapsedSeconds: Int,
         heartRate: Int,

@@ -107,6 +107,33 @@ class PrecorProductionPlumbingTest {
     }
 
     @Test
+    fun `FTMS and Precor coexist as matcher candidates with standard FTMS first`() {
+        val matches = registry.rankedCandidates(
+            MatchObservation(
+                advertisedServiceUuids = setOf(
+                    uuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    uuid(BluetoothIds.UUID_PRECOR_SERVICE),
+                ),
+                discoveredServiceUuids = setOf(
+                    uuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    uuid(BluetoothIds.UUID_PRECOR_SERVICE),
+                ),
+                discoveredCharacteristicUuids = setOf(
+                    uuid(BluetoothIds.UUID_BIKING_DATA),
+                    uuid(BluetoothIds.UUID_PRECOR_MEASUREMENT),
+                ),
+            ),
+        )
+
+        assertEquals(listOf("sig.ftms", "vendor.precor.chrono"), matches.map { it.candidateId })
+        assertTrue(matches.all { it.machineRole })
+        assertTrue(
+            "the standard service remains D6's first choice while the proprietary path stays live",
+            matches.first().preference > matches.last().preference,
+        )
+    }
+
+    @Test
     fun `the Precor UUIDs are the ones recorded in plan section 10`() {
         // A UUID typo compiles, passes every parser test, and produces a device that never
         // connects. Pinning both strings is the cheapest possible guard against it.

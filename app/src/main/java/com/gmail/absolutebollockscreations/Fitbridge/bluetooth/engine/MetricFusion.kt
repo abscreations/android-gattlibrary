@@ -774,13 +774,12 @@ internal class MetricFusion(
      * Structural validity: a value that cannot be a reading of this metric at all.
      *
      * Distinct from the §11b plausibility bound in [isPlausible]. This rejects nonsense — a
-     * negative distance, a zero pace that would divide badly downstream. That catches
-     * physically impossible *readings*: a 921 km/h run, a 3000 W rower. Both drop the sample;
-     * only the second arms a capture, because only the second implies a decoding error worth
-     * diagnosing.
+     * negative distance, a zero heart rate, or a zero pace that would divide badly downstream.
+     * Finite positive values that exceed a physical ceiling belong to [isPlausible], where they
+     * arm the §11b diagnostic capture rather than disappearing as ordinary malformed input.
      */
     private fun isDomainValid(sample: MetricSample): Boolean = when (sample.metric) {
-        MetricKind.HEART_RATE -> sample.value in 1.0..254.0
+        MetricKind.HEART_RATE -> sample.value > 0.0
         MetricKind.INSTANT_PACE, MetricKind.AVERAGE_PACE -> sample.value > 0.0
         MetricKind.INCLINATION, MetricKind.RAMP_ANGLE, MetricKind.RESISTANCE -> true
         else -> sample.value >= 0.0

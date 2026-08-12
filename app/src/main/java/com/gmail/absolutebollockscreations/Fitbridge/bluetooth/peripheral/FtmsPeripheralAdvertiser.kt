@@ -55,8 +55,9 @@ internal fun buildFtmsFeaturePayload(
     profile: FtmsMachineProfile,
     targets: TargetCapabilities,
     upstreamPaceSupported: Boolean = false,
+    measurementCapabilities: FtmsMeasurementCapabilities = profile.measurementCapabilities,
 ): ByteArray {
-    var measurement = profile.featureBits
+    var measurement = measurementCapabilities.toFeatureBits()
     if (profile == FtmsMachineProfile.TREADMILL && upstreamPaceSupported) {
         measurement = measurement or (1 shl FtmsSpec.Feature.PACE)
     }
@@ -156,6 +157,8 @@ class FtmsPeripheralAdvertiser(
 
     private var profile: FtmsMachineProfile = FtmsMachineProfile.INDOOR_BIKE
     private var targets: TargetCapabilities = TargetCapabilities.NONE
+    private var measurementCapabilities: FtmsMeasurementCapabilities =
+        FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
 
     /**
      * The bridged machine's own Pace Supported bit, mirrored into the downstream Feature.
@@ -285,6 +288,7 @@ class FtmsPeripheralAdvertiser(
         includeTrainingStatus: Boolean,
         cyclingConfig: CyclingSensorConfig,
         upstreamAddress: String?,
+        measurementCapabilities: FtmsMeasurementCapabilities = profile.measurementCapabilities,
         onResult: (Result<Unit>) -> Unit,
     ) {
         // Invalidate all callbacks belonging to a previous server/advertiser.
@@ -301,6 +305,7 @@ class FtmsPeripheralAdvertiser(
 
         this.profile = profile
         this.targets = targets
+        this.measurementCapabilities = measurementCapabilities
         this.includeTrainingStatus = includeTrainingStatus
         this.cyclingConfig = cyclingConfig.effectiveFor(profile)
         this.upstreamAddress = upstreamAddress
@@ -1372,7 +1377,12 @@ class FtmsPeripheralAdvertiser(
     // ── payloads ──────────────────────────────────────────────────────────────
 
     private fun featurePayload(): ByteArray =
-        buildFtmsFeaturePayload(profile, targets, upstreamPaceSupported())
+        buildFtmsFeaturePayload(
+            profile,
+            targets,
+            upstreamPaceSupported(),
+            measurementCapabilities,
+        )
 
     private fun trainingStatusPayload(conn: PeripheralConnection): ByteArray =
         conn.procedure.trainingStatusPayload()

@@ -236,6 +236,7 @@ class FtmsPeripheralController(
         val upstreamAddress: String?,
         val targets: TargetCapabilities,
         val cyclingConfig: CyclingSensorConfig,
+        val measurementCapabilities: FtmsMeasurementCapabilities,
     )
 
     /**
@@ -302,6 +303,8 @@ class FtmsPeripheralController(
     @Volatile
     private var profile: FtmsMachineProfile? = null
     private var targetCapabilities: TargetCapabilities = TargetCapabilities.NONE
+    private var advertiserMeasurementCapabilities: FtmsMeasurementCapabilities =
+        FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
     private var cyclingConfig: CyclingSensorConfig = CyclingSensorConfig.DISABLED
 
     init {
@@ -325,13 +328,21 @@ class FtmsPeripheralController(
         upstreamAddress: String?,
         targets: TargetCapabilities,
         cyclingConfig: CyclingSensorConfig,
+        measurementCapabilities: FtmsMeasurementCapabilities = profile.measurementCapabilities,
         onResult: (Result<Unit>) -> Unit,
     ) {
         val effectiveCyclingConfig = cyclingConfig.effectiveFor(profile)
-        desiredStart = DesiredStart(profile, upstreamAddress, targets, effectiveCyclingConfig)
+        desiredStart = DesiredStart(
+            profile,
+            upstreamAddress,
+            targets,
+            effectiveCyclingConfig,
+            measurementCapabilities,
+        )
         if (
             runState == RunState.RUNNING && this.profile == profile &&
-            targetCapabilities == targets && this.cyclingConfig == effectiveCyclingConfig
+            targetCapabilities == targets && this.cyclingConfig == effectiveCyclingConfig &&
+            advertiserMeasurementCapabilities == measurementCapabilities
         ) {
             advertiser.updateUpstreamAddress(upstreamAddress)
             onResult(Result.success(Unit))
@@ -356,6 +367,7 @@ class FtmsPeripheralController(
 
         this.profile = profile
         targetCapabilities = targets
+        advertiserMeasurementCapabilities = measurementCapabilities
         this.cyclingConfig = effectiveCyclingConfig
         notifier.configureCycling(effectiveCyclingConfig)
         engineControlSink.beginSession(targets)
@@ -380,6 +392,7 @@ class FtmsPeripheralController(
                         targets = targets,
                         effectiveCyclingConfig = effectiveCyclingConfig,
                         upstreamAddress = upstreamAddress,
+                        measurementCapabilities = measurementCapabilities,
                         epoch = epoch,
                         onResult = onResult,
                     )
@@ -403,6 +416,7 @@ class FtmsPeripheralController(
         targets: TargetCapabilities,
         effectiveCyclingConfig: CyclingSensorConfig,
         upstreamAddress: String?,
+        measurementCapabilities: FtmsMeasurementCapabilities,
         epoch: Long,
         onResult: (Result<Unit>) -> Unit,
     ) {
@@ -412,6 +426,7 @@ class FtmsPeripheralController(
             includeTrainingStatus = true,
             cyclingConfig = effectiveCyclingConfig,
             upstreamAddress = upstreamAddress,
+            measurementCapabilities = measurementCapabilities,
         ) startCallback@{ result ->
             if (operationEpoch.get() != epoch) {
                 onResult(Result.failure(CancellationException("FTMS start was superseded")))
@@ -488,6 +503,7 @@ class FtmsPeripheralController(
     private fun rollbackSessionState() {
         profile = null
         targetCapabilities = TargetCapabilities.NONE
+        advertiserMeasurementCapabilities = FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
         cyclingConfig = CyclingSensorConfig.DISABLED
         notifier.configureCycling(CyclingSensorConfig.DISABLED)
         engineControlSink.endSession()
@@ -778,6 +794,7 @@ class FtmsPeripheralController(
             desired.upstreamAddress,
             desired.targets,
             desired.cyclingConfig,
+            desired.measurementCapabilities,
         ) { result ->
             result.onFailure { Timber.tag(TAG).w(it, "automatic FTMS restart failed") }
         }
