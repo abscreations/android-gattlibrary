@@ -3,8 +3,6 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 import android.content.Context
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.ConnectionContext
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.LegacyConnectionRole
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.Fitbridge.power.FitBridgeWakeLock
@@ -95,7 +93,7 @@ class FtmsSimulator(
     val state: StateFlow<State> = _state
 
     private var job: Job? = null
-    private var connectionContext: ConnectionContext? = null
+    private val sessionProjection = SimulatorSessionProjection(engineState)
 
     @Volatile
     private var engine: FtmsMockEngine? = null
@@ -241,14 +239,7 @@ class FtmsSimulator(
             return
         }
 
-        connectionContext = engineState.openConnectionContext(
-            LegacyConnectionRole.FTMS,
-            address = "SIMULATOR",
-            handlers = emptyList(),
-        ).also { engineState.setConnectionState(it, SIMULATED_CONNECTED_STATE) }
-        engineState.setActiveSession(true)
-        engineState.setIsRunning(true)
-        engineState.setHaveControl(effectiveControls)
+        sessionProjection.begin(haveControl = effectiveControls)
 
         // Keep the CPU up for as long as we are generating, so bridging survives
         // the screen going off. Paired with the release in stop().
@@ -288,15 +279,7 @@ class FtmsSimulator(
         runCatching { peripheral.stopAdvertising() }
             .onFailure { Timber.tag(TAG).w(it, "stopping simulator advertising threw") }
 
-        engineState.setHaveControl(false)
-        engineState.setIsRunning(false)
-        engineState.setActiveSession(false)
-        connectionContext?.let {
-            engineState.setConnectionState(it, SIMULATED_DISCONNECTED_STATE)
-            engineState.clearConnection(it)
-        }
-        connectionContext = null
-        clearEngineMetrics()
+        sessionProjection.end()
 
         _state.value = State(controlsAvailable = _state.value.controlsAvailable)
         Timber.tag(TAG).i("simulator stopped")
@@ -319,14 +302,7 @@ class FtmsSimulator(
             _state.value = State(persona = persona, lastError = "Could not start advertising as ${persona.advertisedName}")
             return
         }
-        connectionContext = engineState.openConnectionContext(
-            LegacyConnectionRole.FTMS,
-            address = "SIMULATOR-PM5",
-            handlers = emptyList(),
-        ).also { engineState.setConnectionState(it, SIMULATED_CONNECTED_STATE) }
-        engineState.setActiveSession(true)
-        engineState.setIsRunning(true)
-        engineState.setHaveControl(false)
+        sessionProjection.begin(haveControl = false)
         FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
         _state.value = State(
             running = true,
@@ -447,33 +423,6 @@ class FtmsSimulator(
         )
     }
 
-    /** Leave the state object as an idle machine would, not mid-workout. */
-    private fun clearEngineMetrics() {
-        engineState.setElapsedSeconds(null)
-        engineState.setSpeedKph(null)
-        engineState.setSpeedMph(null)
-        engineState.setAvgSpeedKph(null)
-        engineState.setTotalDistanceMeters(null)
-        engineState.setInstantCadence(null)
-        engineState.setAverageCadence(null)
-        engineState.setResistance(null)
-        engineState.setInclination(null)
-        engineState.setInstantPower(null)
-        engineState.setAveragePower(null)
-        engineState.setForceOnBelt(null)
-        engineState.setInstantPace(null)
-        engineState.setAvgPace(null)
-        engineState.setElevationGains(null, null)
-        engineState.setTotalFloors(null)
-        engineState.setTotalSteps(null)
-        engineState.setTotalStrides(null)
-        engineState.setStrokeCount(null)
-        engineState.setStrokeRate(null)
-        engineState.setExpEnergyTotal(null)
-        engineState.setExpEnergyRateKcalPerHour(null)
-        engineState.setHeartRate(null)
-    }
-
     companion object {
         private const val TAG = "FtmsSimulator"
 
@@ -486,10 +435,5 @@ class FtmsSimulator(
         const val PERIOD_MS = 500L
 
         private const val MILES_TO_KM = 1.609344
-
-        // BluetoothProfile.STATE_CONNECTED / STATE_DISCONNECTED, inlined so this
-        // class stays free of Android imports and unit-testable.
-        private const val SIMULATED_CONNECTED_STATE = 2
-        private const val SIMULATED_DISCONNECTED_STATE = 0
     }
 }
