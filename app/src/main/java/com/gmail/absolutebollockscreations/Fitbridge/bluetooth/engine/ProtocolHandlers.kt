@@ -47,9 +47,12 @@ internal data class ProtocolKey(val value: String) {
          * Concept2 PM, proprietary (plan §5a). A **machine** protocol like FTMS, not a
          * secondary sensor, so it is absent from [sensorProtocolFor] by the same reasoning.
          *
-         * Registered here and buildable, but nothing selects it yet: choosing between this and
-         * FTMS on a PM5 that advertises both is the D6 conflict rule, which belongs to
-         * `MachineAdapterPolicy` rather than to the handler registry.
+         * Offered on every machine connection via [MACHINE_PROTOCOLS] since 2026-08-12, and
+         * activated only when the Erg service is actually present. Before that it was
+         * registered and buildable but never constructed — see [MACHINE_PROTOCOLS].
+         *
+         * Which adapter drives a PM5 advertising both this and FTMS remains the D6 conflict
+         * rule, answered by `MachineAdapterPolicy` rather than by the handler registry.
          */
         val CONCEPT2 = ProtocolKey("concept2")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
@@ -89,6 +92,28 @@ internal fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): Protoc
         BtEngineState.BtServiceType.Glucose,
         -> null
     }
+
+/**
+ * The machine-role protocols, offered together on every machine connection.
+ *
+ * The counterpart to [sensorProtocolFor], and it exists for the same reason: the answer to
+ * "which handlers does a machine link get?" was previously written inline as `ProtocolKey.FTMS`
+ * at the single call site, so Phase 5a could add a fully working Concept2 adapter — decoders,
+ * matcher, adapter candidate, ranking — that no connection ever constructed.
+ *
+ * Offering all of them is safe because activation is service-gated: a handler whose
+ * `primaryServices` are absent from the discovered GATT database is discarded by
+ * [activateMatchingProtocolHandlers] before it sees a packet. The cost of an unused candidate
+ * is one short-lived object per connection; the cost of a forgotten one is a family that
+ * silently produces nothing.
+ *
+ * Order is FTMS first for readability only. Which adapter *drives* a link that matches more
+ * than one is D6's question and `MachineAdapterPolicy`'s answer, not this list's.
+ */
+internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
+    ProtocolKey.FTMS,
+    ProtocolKey.CONCEPT2,
+)
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
 internal class HandlerFactory(

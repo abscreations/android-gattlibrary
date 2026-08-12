@@ -678,7 +678,22 @@ class BtEngine internal constructor(
         services: Set<BtEngineState.BtServiceType>,
         machineConnection: Boolean,
     ): List<BtEngineGattCore.ProtocolHandler> = buildList {
-        if (machineConnection) addAll(handlerFactory.createForConnection(ProtocolKey.FTMS))
+        // Every machine protocol is offered as a candidate; the discovered service UUIDs
+        // decide which of them actually activates. `activateMatchingProtocolHandlers` retains
+        // only handlers whose `primaryServices` are present, so an FTMS-only treadmill still
+        // ends up with exactly one active handler and a Chrono with exactly one.
+        //
+        // **This also closes a Phase 5a gap.** Until 2026-08-12 this line named FTMS alone,
+        // so a Concept2 PM5 advertising its Erg service and no FTMS was given only an
+        // `FtmsProtocolHandler`, which could not activate — a dead session on a machine whose
+        // adapter, matcher, candidate ranking and decoders were all complete and correct. The
+        // handler registry and `MachineAdapterPolicy` both knew about Concept2; the one line
+        // that constructs handlers did not, and no test asked it to. Adding Precor beside it
+        // rather than adding a second special case is what keeps the next family from
+        // reproducing the same omission.
+        if (machineConnection) {
+            MACHINE_PROTOCOLS.forEach { addAll(handlerFactory.createForConnection(it)) }
+        }
         // One handler per assigned service that has one, with no per-service
         // branches: a running strap advertises both 0x180D and 0x1814 on one
         // connection and both must activate, which Phase 0.5 made possible and
