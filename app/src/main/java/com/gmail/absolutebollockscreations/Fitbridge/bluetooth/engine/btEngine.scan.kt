@@ -132,31 +132,22 @@ internal fun BtEngine.startScanImpl(
             captureAdvertisement(name, result)
 
             val candidates = detectServiceCandidates(result)
-            val primary = candidates.firstOrNull { it.knownService != null }
-            if (!useFtmsHardwareFilter && primary == null) return
 
-            when (primary?.knownService) {
-                KnownBleService.FTMS -> {
-                    upsertDiscoveredDevice(
-                        key, name, address, result, primary.serviceUuid.toUuid(),
-                        machineCandidate = true,
-                    )
-                }
-                KnownBleService.HRM,
-                KnownBleService.CSC,
-                KnownBleService.RSC,
-                KnownBleService.CPS,
-                KnownBleService.GLUCOSE -> {
-                    upsertDiscoveredDevice(
-                        key, name, address, result, primary.serviceUuid.toUuid(),
-                        machineCandidate = false,
-                    )
-                }
-                else -> {
-                    // If we get here with null on HW filter path, ignore
-                    if (!useFtmsHardwareFilter) return
-                }
-            }
+            // The best-ranked candidate of any kind, not the best-ranked *SIG* candidate.
+            //
+            // This previously read `firstOrNull { it.knownService != null }`, which discarded
+            // every proprietary family before the `when` below could consider it — the third of
+            // four independent reasons a PM5 never reached the scan list. A vendor definition
+            // legitimately has no `KnownBleService`; that is what makes it a vendor definition,
+            // not a reason to ignore it.
+            val primary = candidates.firstOrNull() ?: return
+
+            upsertDiscoveredDevice(
+                key, name, address, result, primary.serviceUuid.toUuid(),
+                // Declared per definition rather than inferred from `knownService == FTMS`,
+                // which no proprietary machine could ever satisfy.
+                machineCandidate = primary.machineRole,
+            )
 
             onDevice(name, address, result)
         }
@@ -346,21 +337,30 @@ private val deviceMatcherRegistry = DeviceMatcherRegistry.standard()
 internal fun rankedServiceCandidates(observation: MatchObservation): List<RankedMatchCandidate> =
     deviceMatcherRegistry.rankedCandidates(observation)
 
-internal fun hardwareScanServiceUuids(): List<UUID> = listOf(
-    KnownBleService.FTMS,
-    KnownBleService.HRM,
-    KnownBleService.CSC,
-    KnownBleService.RSC,
-    KnownBleService.CPS,
-).map { service ->
-    deviceMatcherRegistry.registeredServices()
-        .first { deviceMatcherRegistry.knownService(it) == service }
-        .toUuid()
-}
+/**
+ * The OS scan filter, derived from every registered family's advertised UUIDs.
+ *
+ * **This was a hardcoded list of five `KnownBleService` values until 2026-08-12, and that was a
+ * discovery defect, not a style problem.** A proprietary family carries no `KnownBleService`, so
+ * Concept2 could never appear here however correctly it was registered: Android discarded every
+ * PM5 advertisement before `onScanResult` ran. FitBridge could not see the PM5 its own
+ * peripheral simulator was advertising, while TMIW and MyWhoosh found it immediately.
+ *
+ * Deriving the list from the registry makes registering a family sufficient to discover one, and
+ * `DeviceMatchingTest` asserts the two can no longer drift apart.
+ *
+ * Note this returns *advertised* UUIDs. For every SIG profile that is the service UUID, but a PM
+ * advertises the C2 base UUID and serves the Erg service, and a filter built from the latter
+ * matches nothing.
+ */
+internal fun hardwareScanServiceUuids(): List<UUID> =
+    deviceMatcherRegistry.scanFilterServiceUuids().map(CanonicalUuid::toUuid)
 
 private fun detectServiceCandidates(result: ScanResult): List<RankedMatchCandidate> {
     val record = result.scanRecord ?: return emptyList()
-    val registeredServices = deviceMatcherRegistry.registeredServices()
+    // Advertised UUIDs, not served ones: service data is carried on the air, so it is keyed by
+    // whatever the family advertises.
+    val registeredServices = deviceMatcherRegistry.scanFilterServiceUuids()
     val manufacturerIds = buildSet {
         val data = record.manufacturerSpecificData
         for (index in 0 until data.size()) add(data.keyAt(index))
@@ -424,7 +424,9 @@ private fun KnownBleService.toServiceType(): BtEngineState.BtServiceType = when 
 }
 
 private val supportedAdvertisementServiceUuids =
-    deviceMatcherRegistry.registeredServices().map(CanonicalUuid::toUuid)
+    (deviceMatcherRegistry.registeredServices() + deviceMatcherRegistry.scanFilterServiceUuids())
+        .distinct()
+        .map(CanonicalUuid::toUuid)
 
 internal fun advertisedServiceTypes(
     advertisedUuids: Set<UUID>,

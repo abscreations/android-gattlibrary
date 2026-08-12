@@ -105,6 +105,7 @@ internal data class MatchObservation(
 
 internal data class MatchDefinition(
     val candidateId: String,
+    /** The service UUID present in the GATT database **after connecting**. */
     val serviceUuid: CanonicalUuid,
     val knownService: KnownBleService? = null,
     val preference: Int = 0,
@@ -112,7 +113,34 @@ internal data class MatchDefinition(
     val manufacturerCompanyIds: Set<Int> = emptySet(),
     val personaCharacteristicUuids: Set<CanonicalUuid> = emptySet(),
     val packetShape: PacketShapeRule? = null,
-)
+    /**
+     * The UUIDs this family puts in its **advertisement or scan response**, when they are not
+     * the same as [serviceUuid].
+     *
+     * For every SIG profile the two coincide — an HRM advertises `0x180D` and serves `0x180D` —
+     * which is why this distinction did not exist until a vendor family needed it. Concept2 is
+     * the counterexample: a PM advertises the C2 **base** UUID `CE060000-…` in its scan
+     * response and serves the Erg service `CE060030-…` after connecting. Matching an
+     * advertisement against the post-connection UUID finds nothing, and a scan filter built
+     * from it discards every PM5 before the app sees it.
+     *
+     * Empty means "advertises what it serves", which keeps every SIG definition unchanged.
+     */
+    val advertisedServiceUuids: Set<CanonicalUuid> = emptySet(),
+    /**
+     * Whether a match makes this device a **machine** candidate rather than a sensor.
+     *
+     * Previously inferred as `knownService == FTMS`, which silently excluded every proprietary
+     * machine: a vendor family carries no [KnownBleService], so a PM5 could not be a machine
+     * candidate even once discovered. Stated per definition so a new family declares its role
+     * instead of inheriting one from an enum it does not belong to.
+     */
+    val machineRole: Boolean = false,
+) {
+    /** The UUIDs to match an advertisement against, and to build a scan filter from. */
+    val effectiveAdvertisedUuids: Set<CanonicalUuid> =
+        advertisedServiceUuids.ifEmpty { setOf(serviceUuid) }
+}
 
 internal data class RankedMatchCandidate(
     val candidateId: String,
@@ -120,6 +148,8 @@ internal data class RankedMatchCandidate(
     val knownService: KnownBleService?,
     val evidence: MatchEvidence,
     val preference: Int,
+    /** True for FTMS and for every proprietary machine family; false for sensors. */
+    val machineRole: Boolean = false,
 ) {
     val rank: Int = evidence.rankingWeight
 }
@@ -136,6 +166,7 @@ internal class DeviceMatcherRegistry private constructor(
                 knownService = definition.knownService,
                 evidence = MatchEvidence(facts),
                 preference = definition.preference,
+                machineRole = definition.machineRole,
             )
         }.sortedWith(
             compareByDescending<RankedMatchCandidate> { it.rank }
@@ -145,6 +176,18 @@ internal class DeviceMatcherRegistry private constructor(
 
     fun registeredServices(): List<CanonicalUuid> = definitions.map { it.serviceUuid }.distinct()
 
+    /**
+     * Every UUID any registered family puts on the air, for building the OS scan filter.
+     *
+     * **This must be derived, never hand-listed.** Until 2026-08-12 the filter came from five
+     * hardcoded [KnownBleService] values in `btEngine.scan.kt`, so adding a vendor family to
+     * this registry did nothing at all: Android discarded its advertisements before FitBridge's
+     * scan callback ran, and no test noticed because every test worked on advertisements it had
+     * constructed itself. Deriving it means registering a family is sufficient to find one.
+     */
+    fun scanFilterServiceUuids(): List<CanonicalUuid> =
+        definitions.flatMap { it.effectiveAdvertisedUuids }.distinct()
+
     fun knownService(uuid: CanonicalUuid): KnownBleService? =
         definitions.firstOrNull { it.serviceUuid == uuid }?.knownService
 
@@ -153,14 +196,26 @@ internal class DeviceMatcherRegistry private constructor(
         observation: MatchObservation,
     ): List<MatchEvidenceFact> = buildList {
         val service = definition.serviceUuid
-        if (service in observation.advertisedServiceUuids) add(
-            fact(MatchEvidenceKind.ADVERTISED_SERVICE, service.value, 60, CollisionRisk.LOW,
-                "Full advertised service UUID match"),
-        )
-        if (service in observation.serviceDataUuids) add(
-            fact(MatchEvidenceKind.SERVICE_DATA, service.value, 70, CollisionRisk.LOW,
-                "Full service-data UUID match"),
-        )
+
+        // Advertisement and service-data evidence are matched against what the family puts on
+        // the air, which for a vendor family is not what it serves. See
+        // `MatchDefinition.advertisedServiceUuids`.
+        definition.effectiveAdvertisedUuids
+            .filter { it in observation.advertisedServiceUuids }
+            .forEach { advertised ->
+                add(
+                    fact(MatchEvidenceKind.ADVERTISED_SERVICE, advertised.value, 60,
+                        CollisionRisk.LOW, "Full advertised service UUID match"),
+                )
+            }
+        definition.effectiveAdvertisedUuids
+            .filter { it in observation.serviceDataUuids }
+            .forEach { advertised ->
+                add(
+                    fact(MatchEvidenceKind.SERVICE_DATA, advertised.value, 70,
+                        CollisionRisk.LOW, "Full service-data UUID match"),
+                )
+            }
         if (service in observation.discoveredServiceUuids) add(
             fact(MatchEvidenceKind.GATT_SERVICE, service.value, 75, CollisionRisk.LOW,
                 "Post-discovery full service UUID match"),
@@ -222,7 +277,10 @@ internal class DeviceMatcherRegistry private constructor(
 
         fun standard(): DeviceMatcherRegistry = of(
             listOf(
-                sigDefinition("sig.ftms", 0x1826, 0x2acd..0x2ad2, KnownBleService.FTMS, 600),
+                sigDefinition(
+                    "sig.ftms", 0x1826, 0x2acd..0x2ad2, KnownBleService.FTMS, 600,
+                    machineRole = true,
+                ),
                 sigDefinition("sig.cps", 0x1818, 0x2a63..0x2a63, KnownBleService.CPS, 500),
                 sigDefinition(
                     "sig.hrm",
@@ -270,6 +328,30 @@ internal class DeviceMatcherRegistry private constructor(
         private fun concept2Definition() = MatchDefinition(
             candidateId = "vendor.concept2.pm",
             serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ERG_SERVICE),
+            // **Both, deliberately — this is V1's resolution applied to a second family.**
+            //
+            // Concept2's specification says the base UUID `CE060000-…` is what a PM puts in its
+            // scan response and what an application should filter on, and FitBridge's own PM5
+            // peripheral simulator advertises exactly that (`Concept2Pm5AdvertisingPlan`). That
+            // is the authority and the corroboration, and it is why the base UUID is here at
+            // all: without it FitBridge could not discover the device FitBridge was itself
+            // advertising.
+            //
+            // The Erg service stays in the advertised set too, because TMIW matches a PM on
+            // `0030` from its advertisement digest and there is no evidence that *no* PM
+            // firmware ever advertises it. §12.1 V11 resolves the disagreement in the
+            // specification's favour for the question "what must FitBridge filter on", not for
+            // the stronger claim "the Erg service never appears on the air", which nothing
+            // establishes. Accepting both costs one extra scan-filter entry and cannot produce
+            // a false match: both UUIDs are exclusively Concept2's.
+            //
+            // Narrowing this to the base UUID alone would have been a guess dressed as rigour —
+            // and three of this repository's own tests said so immediately.
+            advertisedServiceUuids = setOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_DISCOVERY_SERVICE),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ERG_SERVICE),
+            ),
+            machineRole = true,
             knownService = null,
             preference = 150,
             personaCharacteristicUuids = linkedSetOf(
@@ -316,6 +398,17 @@ internal class DeviceMatcherRegistry private constructor(
         private fun precorDefinition() = MatchDefinition(
             candidateId = "vendor.precor.chrono",
             serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_PRECOR_SERVICE),
+            // **Assumed, not established.** No source records what a Chrono puts in its
+            // advertisement: QZ discovers services after connecting and TMIW matches on the
+            // name, so neither observed the advertising payload. Leaving this empty means
+            // FitBridge advertises-matches and scan-filters on the service UUID, which is the
+            // common case and is what the family is most likely to do — but Concept2 has just
+            // demonstrated that a vendor family need not.
+            //
+            // If a Chrono proves undiscoverable in the field, this is the first thing to check,
+            // and one advertisement capture settles it. Recorded as Q32 rather than left as an
+            // unexamined default.
+            machineRole = true,
             knownService = null,
             preference = 140,
             personaCharacteristicUuids = linkedSetOf(
@@ -330,12 +423,17 @@ internal class DeviceMatcherRegistry private constructor(
             knownService: KnownBleService,
             preference: Int,
             names: List<Regex> = emptyList(),
+            machineRole: Boolean = false,
         ) = MatchDefinition(
             candidateId = id,
             serviceUuid = registeredSig16(serviceAssignedNumber),
             knownService = knownService,
             preference = preference,
             localNamePatterns = names,
+            // A SIG profile advertises the service it serves, so `advertisedServiceUuids` stays
+            // empty and defaults to `serviceUuid`. Stated once here rather than repeated per
+            // definition.
+            machineRole = machineRole,
             personaCharacteristicUuids = characteristicAssignedNumbers
                 .mapTo(linkedSetOf(), ::registeredSig16),
         )

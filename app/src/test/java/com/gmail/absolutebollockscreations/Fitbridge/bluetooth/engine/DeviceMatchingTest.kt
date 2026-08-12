@@ -154,16 +154,38 @@ class DeviceMatchingTest {
     }
 
     @Test
-    fun `hardware scan services include FTMS HRM CSC RSC and CPS`() {
+    fun `hardware scan services cover every registered family, not only the SIG profiles`() {
+        // **This assertion used to be an equality against exactly these five UUIDs, and that
+        // was the discovery defect written down as a test.** The filter was a hardcoded list of
+        // five `KnownBleService` values, so no proprietary family could ever be scanned for;
+        // the test asserted the hardcoded list matched itself and passed while PM5s were
+        // invisible. Corrected 2026-08-12 to assert coverage of the registry, which is the
+        // property that actually matters.
+        val filter = hardwareScanServiceUuids().toSet()
+
+        for (sig in listOf(
+            BluetoothIds.UUID_FTMS_SERVICE,
+            BluetoothIds.UUID_HRM_SERVICE,
+            BluetoothIds.UUID_CSC_SERVICE,
+            BluetoothIds.UUID_RSC_SERVICE,
+            BluetoothIds.UUID_POWER_SERVICE,
+        )) {
+            assertTrue("$sig must remain scannable", sig in filter)
+        }
+
+        for (vendor in listOf(
+            BluetoothIds.UUID_C2_DISCOVERY_SERVICE,
+            BluetoothIds.UUID_PRECOR_SERVICE,
+        )) {
+            assertTrue("$vendor must be scannable", vendor in filter)
+        }
+
         assertEquals(
-            setOf(
-                BluetoothIds.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_HRM_SERVICE,
-                BluetoothIds.UUID_CSC_SERVICE,
-                BluetoothIds.UUID_RSC_SERVICE,
-                BluetoothIds.UUID_POWER_SERVICE,
-            ),
-            hardwareScanServiceUuids().toSet(),
+            "the filter is derived from the registry and must not drift from it",
+            DeviceMatcherRegistry.standard().scanFilterServiceUuids()
+                .map(CanonicalUuid::toUuid)
+                .toSet(),
+            filter,
         )
     }
 
