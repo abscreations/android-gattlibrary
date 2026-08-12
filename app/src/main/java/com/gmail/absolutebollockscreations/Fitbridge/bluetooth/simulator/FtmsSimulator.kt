@@ -363,7 +363,9 @@ class FtmsSimulator(
                 } else speedKph,
                 distanceMeters = snapshot.distanceDecimetres / 10,
                 cadence = snapshot.strokeRate.toDouble(),
+                averageCadence = snapshot.averageCadence,
                 powerWatts = snapshot.currentPowerWatts,
+                averagePowerWatts = snapshot.averagePowerWatts,
                 instantPaceMinPerKm = snapshot.currentPaceCentiseconds / 100.0 / 500.0,
                 averagePaceMinPerKm = snapshot.averagePaceCentiseconds / 100.0 / 500.0,
                 movementCount = snapshot.strokeCount,
@@ -409,9 +411,11 @@ class FtmsSimulator(
         sample.averageSpeedKph?.let { engineState.setAvgSpeedKph(it) }
         sample.distanceMeters?.let { engineState.setTotalDistanceMeters(it) }
         sample.cadence?.let { engineState.setInstantCadence(it) }
+        engineState.setAverageCadence(sample.averageCadence)
         sample.resistance?.let { engineState.setResistance(it.toDouble()) }
         sample.inclinationPercent?.let { engineState.setInclination(it) }
         sample.powerWatts?.let { engineState.setInstantPower(it) }
+        engineState.setAveragePower(sample.averagePowerWatts)
         sample.forceOnBeltNewtons?.let { engineState.appendForceOnBeltSample(it) }
         sample.instantPaceMinPerKm?.let { engineState.setInstantPace(it) }
         sample.averagePaceMinPerKm?.let { engineState.setAvgPace(it) }

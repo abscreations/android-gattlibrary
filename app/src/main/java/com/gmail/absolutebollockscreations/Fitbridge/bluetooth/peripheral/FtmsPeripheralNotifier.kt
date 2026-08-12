@@ -138,6 +138,7 @@ internal fun estimateDelivery(
 class FtmsPeripheralNotifier(
     private val advertiser: FtmsPeripheralAdvertiser,
     private val store: FtmsMetricStore,
+    private val onCountersChanged: () -> Unit = {},
 ) {
 
     @Volatile
@@ -435,7 +436,13 @@ class FtmsPeripheralNotifier(
                 }
             }
             pending.awaitAll()
+            if (pending.isNotEmpty()) reportCountersChanged()
         }
+    }
+
+    private fun reportCountersChanged() {
+        runCatching(onCountersChanged)
+            .onFailure { Timber.tag(TAG).w(it, "downstream counter status callback failed") }
     }
 
     private fun countCyclingOutcome(

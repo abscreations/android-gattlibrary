@@ -26,6 +26,33 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+/** Serializes lifecycle state and live diagnostic refreshes onto one status stream. */
+internal class FtmsPeripheralStatusRelay(
+    initial: FtmsPeripheralController.PeripheralStatus,
+    private val enrich: (FtmsPeripheralController.PeripheralStatus) ->
+        FtmsPeripheralController.PeripheralStatus,
+    private val onStatus: (FtmsPeripheralController.PeripheralStatus) -> Unit,
+) {
+    private var current = initial
+
+    @Synchronized
+    fun baseStatus(): FtmsPeripheralController.PeripheralStatus = current
+
+    @Synchronized
+    fun snapshot(): FtmsPeripheralController.PeripheralStatus = enrich(current)
+
+    @Synchronized
+    fun publish(next: FtmsPeripheralController.PeripheralStatus) {
+        current = next
+        onStatus(enrich(next))
+    }
+
+    @Synchronized
+    fun refreshDiagnostics() {
+        onStatus(enrich(current))
+    }
+}
+
 /**
  * Owns the peripheral lifecycle and the adapter-name save/restore dance.
  *
@@ -139,8 +166,17 @@ class FtmsPeripheralController(
         // may land after the server is already open.
         upstreamPaceSupported = { engineState.supportsPaceMeasurement }
     }
-    private val notifier = FtmsPeripheralNotifier(advertiser, store)
+    private val notifier = FtmsPeripheralNotifier(
+        advertiser,
+        store,
+        onCountersChanged = ::refreshPublishedDiagnostics,
+    )
     private val pump = EngineMetricPump(engineState, store) { profile }
+    private val statusRelay = FtmsPeripheralStatusRelay(
+        initial = PeripheralStatus(),
+        enrich = ::withDiagnostics,
+        onStatus = onStatus,
+    )
 
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -254,8 +290,8 @@ class FtmsPeripheralController(
     @Volatile
     private var runState: RunState = RunState.STOPPED
 
-    @Volatile
-    private var status = PeripheralStatus()
+    private val status: PeripheralStatus
+        get() = statusRelay.baseStatus()
 
     val isRunning: Boolean
         get() = runState == RunState.RUNNING
@@ -532,9 +568,11 @@ class FtmsPeripheralController(
         scope.cancel()
     }
 
-    fun currentStatus(): PeripheralStatus {
+    fun currentStatus(): PeripheralStatus = statusRelay.snapshot()
+
+    private fun withDiagnostics(base: PeripheralStatus): PeripheralStatus {
         val revolutions = notifier.cyclingRevolutions()
-        return status.copy(
+        return base.copy(
             packetsSent = notifier.packetsSent,
             metricsReceived = store.updateCount,
             completeRecords = notifier.completeRecords,
@@ -803,26 +841,10 @@ class FtmsPeripheralController(
     // ── status plumbing ───────────────────────────────────────────────────────
 
     private fun publish(next: PeripheralStatus) {
-        status = next
-        val revolutions = notifier.cyclingRevolutions()
-        onStatus(
-            next.copy(
-                packetsSent = notifier.packetsSent,
-                metricsReceived = store.updateCount,
-                completeRecords = notifier.completeRecords,
-                compactedRecords = notifier.compactedRecords,
-                fragmentedRecords = notifier.fragmentedRecords,
-                ftmsSubscribed = advertiser.anyFtmsSubscribed(),
-                cscSubscribed = advertiser.anyCscSubscribed(),
-                cpsSubscribed = advertiser.anyCpsSubscribed(),
-                ftmsPacketsSent = notifier.ftmsPacketsSent,
-                cscPacketsSent = notifier.cscPacketsSent,
-                cpsPacketsSent = notifier.cpsPacketsSent,
-                cumulativeWheelRevolutions = revolutions.cumulativeWheelRevolutions,
-                cumulativeCrankRevolutions = revolutions.cumulativeCrankRevolutions,
-            ),
-        )
+        statusRelay.publish(next)
     }
+
+    private fun refreshPublishedDiagnostics() = statusRelay.refreshDiagnostics()
 
     companion object {
         private const val TAG = "FtmsController"

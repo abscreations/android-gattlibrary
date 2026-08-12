@@ -216,9 +216,11 @@ data class FtmsMockSample(
     val averageSpeedKph: Double? = null,
     val distanceMeters: Int? = null,
     val cadence: Double? = null,
+    val averageCadence: Double? = null,
     val resistance: Int? = null,
     val inclinationPercent: Double? = null,
     val powerWatts: Int? = null,
+    val averagePowerWatts: Int? = null,
     val forceOnBeltNewtons: Int? = null,
     /** Minutes per km, matching BtEngineState.setInstantPace. */
     val instantPaceMinPerKm: Double? = null,
@@ -251,6 +253,8 @@ class FtmsMockEngine(
     private var caloriesKcal = 0.0
     private var movementCount = 0.0
     private var positiveElevationMeters = 0.0
+    private var cadenceIntegral = 0.0
+    private var powerIntegral = 0.0
     private var effort = INITIAL_EFFORT
     private var targetEffort = INITIAL_TARGET_EFFORT
     private var targetSecondsRemaining = 45.0
@@ -276,6 +280,8 @@ class FtmsMockEngine(
         caloriesKcal = 0.0
         movementCount = 0.0
         positiveElevationMeters = 0.0
+        cadenceIntegral = 0.0
+        powerIntegral = 0.0
         effort = INITIAL_EFFORT
         targetEffort = INITIAL_TARGET_EFFORT
         targetSecondsRemaining = 45.0
@@ -342,6 +348,7 @@ class FtmsMockEngine(
 
         speed?.let { distanceMeters += it / 3.6 * dtSeconds }
         cadence?.let { c ->
+            cadenceIntegral += c * dtSeconds
             if (profile.countPerCadence > 0.0) {
                 movementCount += c / 60.0 * dtSeconds * profile.countPerCadence
             }
@@ -349,6 +356,7 @@ class FtmsMockEngine(
                 positiveElevationMeters += c / 60.0 * dtSeconds * profile.verticalMetersPerStep
             }
         }
+        powerIntegral += power * dtSeconds
         caloriesKcal += kcalPerSecond() * dtSeconds
 
         return snapshot()
@@ -378,9 +386,21 @@ class FtmsMockEngine(
             },
             distanceMeters = if (s == null) null else distanceMeters.roundToInt(),
             cadence = cadence,
+            averageCadence = cadence?.let { current ->
+                if (elapsedSeconds > 0.0) cadenceIntegral / elapsedSeconds else current
+            },
             resistance = resistance?.roundToInt(),
             inclinationPercent = inclination,
             powerWatts = if (emitsPower) power.roundToInt() else null,
+            averagePowerWatts = if (emitsPower) {
+                if (elapsedSeconds > 0.0) {
+                    (powerIntegral / elapsedSeconds).roundToInt()
+                } else {
+                    power.roundToInt()
+                }
+            } else {
+                null
+            },
             // Treadmills report belt force alongside power; F = P / v.
             forceOnBeltNewtons = if (profile.isTreadmill && s != null) {
                 val metresPerSecond = s / 3.6

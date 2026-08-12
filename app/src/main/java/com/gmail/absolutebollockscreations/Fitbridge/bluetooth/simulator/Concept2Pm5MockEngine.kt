@@ -27,6 +27,7 @@ data class Concept2Pm5Snapshot(
     val caloriesPerHour: Int,
     val dragFactor: Int,
     val strokeCount: Int,
+    val averageCadence: Double = strokeRate.toDouble(),
     val workoutType: Int = 0,
     val intervalType: Int = 0,
     val workoutState: Int = 1,
@@ -68,6 +69,7 @@ class Concept2Pm5MockEngine(
     private var distanceMetres = 0.0
     private var energyKcal = 0.0
     private var powerIntegral = 0.0
+    private var cadenceIntegral = 0.0
     private var strokeCount = 0.0
 
     fun snapshot(): Concept2Pm5Snapshot = buildSnapshot(0.0)
@@ -101,6 +103,7 @@ class Concept2Pm5MockEngine(
         val power = 65.0 + 290.0 * scenarioEffort
         distanceMetres += speed * dt
         powerIntegral += power * dt
+        cadenceIntegral += rate * dt
         energyKcal += power * dt / (0.23 * 4184.0)
         strokeCount += rate * dt / 60.0
         val averagePower = if (elapsedSeconds > 0.0) powerIntegral / elapsedSeconds else power
@@ -131,6 +134,7 @@ class Concept2Pm5MockEngine(
             caloriesPerHour = (power / (0.23 * 4184.0) * 3600.0).roundToInt(),
             dragFactor = if (machine == Concept2Machine.BIKE_ERG) 100 else 120,
             strokeCount = strokeCount.toInt(),
+            averageCadence = if (elapsedSeconds > 0.0) cadenceIntegral / elapsedSeconds else rate,
             workoutState = if (finished) 10 else if (intervalRest) 8 else 1,
             rowingState = if (finished) 0 else if (intervalRest) 2 else 1,
             strokeState = strokeState,

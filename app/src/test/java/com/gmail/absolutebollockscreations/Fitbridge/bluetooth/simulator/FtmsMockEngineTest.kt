@@ -431,6 +431,39 @@ class FtmsMockEngineTest {
     }
 
     @Test
+    fun `average cadence and power are time weighted and reset with the workout`() {
+        val e = engine(FtmsMachineProfile.INDOOR_BIKE, controls = true)
+        assertTrue(e.setTarget(FtmsMockTarget.POWER, 100.0))
+        val first = e.tick(10.0)
+        assertEquals(100, first.averagePowerWatts)
+
+        assertTrue(e.setTarget(FtmsMockTarget.POWER, 300.0))
+        val second = e.tick(30.0)
+        assertEquals(250, second.averagePowerWatts)
+        assertEquals(
+            (first.cadence!! * 10.0 + second.cadence!! * 30.0) / 40.0,
+            second.averageCadence!!,
+            0.001,
+        )
+
+        e.reset()
+        val reset = e.snapshot()
+        assertEquals(reset.cadence!!, reset.averageCadence!!, 0.001)
+        assertEquals(reset.powerWatts, reset.averagePowerWatts)
+    }
+
+    @Test
+    fun `average metrics follow persona measurement availability`() {
+        val treadmill = engine(FtmsMachineProfile.TREADMILL).tick(1.0)
+        assertNull(treadmill.averageCadence)
+        assertNotNull(treadmill.averagePowerWatts)
+
+        val climber = engine(FtmsMachineProfile.STAIR_CLIMBER).tick(1.0)
+        assertNotNull(climber.averageCadence)
+        assertNull(climber.averagePowerWatts)
+    }
+
+    @Test
     fun `reset returns the engine to its starting condition`() {
         val e = engine(FtmsMachineProfile.INDOOR_BIKE, controls = true)
         e.setTarget(FtmsMockTarget.POWER, 300.0)

@@ -221,6 +221,20 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
+    fun `autonomous PM5 carries a time weighted average cadence for generated metrics`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG)
+        val first = engine.tick(10.0)
+        val second = engine.tick(20.0)
+
+        assertEquals(
+            (first.strokeRate * 10.0 + second.strokeRate * 20.0) / 30.0,
+            second.averageCadence,
+            0.51,
+        )
+        assertTrue(second.averagePowerWatts > 0)
+    }
+
+    @Test
     fun `heart rate receive input is exact width typed copied and connection scoped`() {
         val first = Concept2Pm5Session()
         val second = Concept2Pm5Session()
