@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -240,6 +241,30 @@ class PrecorProductionPlumbingTest {
     @Test
     fun `the persona is a bike and does not depend on the advertised name`() {
         assertEquals(FusionPersona.RIDE, PrecorProtocolHandler().persona())
+    }
+
+    @Test
+    fun `a validated Chrono becomes visibly a biking device`() {
+        val address = "C0:00:00:00:00:01"
+        val state = BtEngineState()
+        state.putDiscoveredDevices(
+            mapOf(
+                address to BtEngineState.DiscoveredDevice(
+                    name = "CHRONO",
+                    address = address,
+                    rssi = -50,
+                    lastSeenMs = 1,
+                    scanResult = null,
+                ),
+            ),
+        )
+
+        PrecorProtocolHandler().publishDeviceClassification(state, address)
+
+        assertEquals(
+            ActivityType.BIKING.ordinal,
+            state.discoveredDevices.value.getValue(address).machineFeature,
+        )
     }
 
     @Test

@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
+import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import timber.log.Timber
 import java.util.UUID
 
@@ -47,9 +48,13 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
     /** Frames rejected by the length/prefix gate on this link generation. */
     private var rejectedFrames = 0
 
+    /** Avoid rewriting the observable device type on every measurement notification. */
+    private var deviceClassificationPublished = false
+
     private fun reset() {
         cadenceHighOctetSeen = false
         rejectedFrames = 0
+        deviceClassificationPublished = false
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -119,6 +124,12 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
             Timber.tag(BtEngineState.TAG).i(PRECOR_CADENCE_HIGH_OCTET_OBSERVED)
         }
 
+        if (!deviceClassificationPublished) {
+            gatt.device?.address?.let { address ->
+                publishDeviceClassification(engine.state, address)
+            }
+        }
+
         val arrivalMs = MonotonicMetricClock.SYSTEM.nowMs()
         val emitter = engine.metricEmitterFor(
             gatt,
@@ -147,6 +158,12 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
      * would discard a fact for the sake of a shape.
      */
     internal fun persona(): FusionPersona = FusionPersona.RIDE
+
+    /** Publish the product's fixed bike identity only after the Chrono frame gate has passed. */
+    internal fun publishDeviceClassification(state: BtEngineState, address: String) {
+        state.updateDeviceMachineFeatureByAddress(address, ActivityType.BIKING.ordinal)
+        deviceClassificationPublished = true
+    }
 
     /** Frames rejected on this link, for the §11 evidence record and diagnostic capture. */
     internal fun rejectedFrameCount(): Int = rejectedFrames
