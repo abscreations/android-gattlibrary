@@ -398,16 +398,11 @@ internal class DeviceMatcherRegistry private constructor(
         private fun precorDefinition() = MatchDefinition(
             candidateId = "vendor.precor.chrono",
             serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_PRECOR_SERVICE),
-            // **Assumed, not established.** No source records what a Chrono puts in its
-            // advertisement: QZ discovers services after connecting and TMIW matches on the
-            // name, so neither observed the advertising payload. Leaving this empty means
-            // FitBridge advertises-matches and scan-filters on the service UUID, which is the
-            // common case and is what the family is most likely to do — but Concept2 has just
-            // demonstrated that a vendor family need not.
-            //
-            // If a Chrono proves undiscoverable in the field, this is the first thing to check,
-            // and one advertisement capture settles it. Recorded as Q32 rather than left as an
-            // unexamined default.
+            // User-approved tier-S evidence substitution (2026-08-12): the official Precor
+            // Spinning Connect client discovers and consumes FitBridge's Chrono simulator when
+            // it advertises this served service UUID. That establishes a valid discovery route
+            // for Phase 5b and closes Q32, without claiming that every physical firmware emits
+            // an identical advertising payload or promoting the central adapter to tier H.
             machineRole = true,
             knownService = null,
             preference = 140,
