@@ -12,13 +12,13 @@ import java.util.UUID
 /**
  * Precor Spinner Chrono Power protocol handler (plan §5b), measurement-only.
  *
- * ## One characteristic, one subscription, no plan object
+ * ## One characteristic, one subscription
  *
  * [Concept2ProtocolHandler] delegates to a `Concept2Plan` because a PM offers two delivery
  * paths, a fallback between them and a machine-type read that selects the persona. The Chrono
- * offers one notifying characteristic and is a bike whatever it says, so there is nothing to
- * plan. Adding a `PrecorPlan` for symmetry would create a file whose only content is the
- * absence of decisions.
+ * offers one notifying characteristic and is a bike whatever it says. [planPrecorDiscovery]
+ * still makes that small inventory contract explicit: the handler activates only when the
+ * service and measurement characteristic are both present, and it subscribes exactly once.
  *
  * ## Control
  *
@@ -51,17 +51,21 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
     /** Avoid rewriting the observable device type on every measurement notification. */
     private var deviceClassificationPublished = false
 
-    private fun reset() {
+    internal fun resetLinkState() {
         cadenceHighOctetSeen = false
         rejectedFrames = 0
         deviceClassificationPublished = false
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun onConnected(engine: BtEngine, gatt: BluetoothGatt) = reset()
+    internal fun recordRejectedFrame() {
+        rejectedFrames += 1
+    }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun onDisconnected(engine: BtEngine) = reset()
+    override fun onConnected(engine: BtEngine, gatt: BluetoothGatt) = resetLinkState()
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onDisconnected(engine: BtEngine) = resetLinkState()
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun onServicesDiscovered(
@@ -69,8 +73,11 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
         gatt: BluetoothGatt,
         services: List<BluetoothGattService>,
     ): Boolean {
-        val service = services.firstOrNull { it.uuid == BluetoothIds.UUID_PRECOR_SERVICE }
-            ?: return false
+        val operation = planPrecorDiscovery(
+            services.associate { service ->
+                service.uuid to service.characteristics.mapTo(linkedSetOf()) { it.uuid }
+            },
+        ).singleOrNull() ?: return false
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
             Timber.tag(BtEngineState.TAG).w("Precor discovery ignored for unregistered GATT")
             return false
@@ -79,15 +86,10 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // The service without its measurement characteristic is not a usable Chrono. Declining
         // to activate leaves the link free for any other handler that does match, which is the
         // §0.7a behaviour: a service UUID is evidence of identity, not a promise of data.
-        val measurement = service.characteristics
-            .firstOrNull { it.uuid == BluetoothIds.UUID_PRECOR_MEASUREMENT }
-            ?: run {
-                Timber.tag(BtEngineState.TAG).w(
-                    "Precor service on %s exposes no measurement characteristic",
-                    gatt.device?.address,
-                )
-                return false
-            }
+        val measurement = services
+            .first { it.uuid == operation.serviceUuid }
+            .characteristics
+            .first { it.uuid == operation.characteristicUuid }
 
         Timber.tag(BtEngineState.TAG).i("Precor Chrono activating on %s", gatt.device?.address)
         engine.enableNotifications(context, measurement)
@@ -110,7 +112,7 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
             // machine on the same vendor base; either way the packet is not decodable and the
             // count is what a diagnostic capture needs. Nothing here consumes a rate window,
             // because FitBridge has none — see PrecorMeasurement's note on reject-before-throttle.
-            rejectedFrames++
+            recordRejectedFrame()
             Timber.tag(BtEngineState.TAG).v(
                 "Precor frame rejected (len=%d, total=%d)",
                 value.size,
@@ -167,4 +169,24 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     /** Frames rejected on this link, for the §11 evidence record and diagnostic capture. */
     internal fun rejectedFrameCount(): Int = rejectedFrames
+}
+
+/**
+ * Pure, production-used discovery contract for the measurement-only Chrono service.
+ *
+ * Unknown services and characteristics are deliberately ignored. The stable singleton result
+ * means callers cannot accidentally subscribe to a vendor characteristic merely because it was
+ * added by a later firmware revision.
+ */
+internal fun planPrecorDiscovery(
+    inventory: Map<UUID, Set<UUID>>,
+): List<CccdTarget> {
+    val characteristics = inventory[BluetoothIds.UUID_PRECOR_SERVICE] ?: return emptyList()
+    if (BluetoothIds.UUID_PRECOR_MEASUREMENT !in characteristics) return emptyList()
+    return listOf(
+        CccdTarget(
+            serviceUuid = BluetoothIds.UUID_PRECOR_SERVICE,
+            characteristicUuid = BluetoothIds.UUID_PRECOR_MEASUREMENT,
+        ),
+    )
 }

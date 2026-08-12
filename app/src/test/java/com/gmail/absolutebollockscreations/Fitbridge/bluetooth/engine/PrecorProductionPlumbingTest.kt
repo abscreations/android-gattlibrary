@@ -120,6 +120,50 @@ class PrecorProductionPlumbingTest {
         )
     }
 
+    // ── §11.2 discovery inventory ────────────────────────────────────────────────
+
+    @Test
+    fun `discovery declines when the Precor service is absent`() {
+        assertTrue(
+            planPrecorDiscovery(
+                mapOf(BluetoothIds.UUID_FTMS_SERVICE to setOf(BluetoothIds.UUID_BIKING_DATA)),
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun `discovery declines when the Precor measurement characteristic is absent`() {
+        assertTrue(
+            planPrecorDiscovery(
+                mapOf(BluetoothIds.UUID_PRECOR_SERVICE to setOf(UUID.randomUUID())),
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun `discovery subscribes only to the measurement despite unknown inventory`() {
+        val extraService = UUID.randomUUID()
+        val extraCharacteristic = UUID.randomUUID()
+
+        assertEquals(
+            listOf(
+                CccdTarget(
+                    BluetoothIds.UUID_PRECOR_SERVICE,
+                    BluetoothIds.UUID_PRECOR_MEASUREMENT,
+                ),
+            ),
+            planPrecorDiscovery(
+                linkedMapOf(
+                    extraService to setOf(extraCharacteristic),
+                    BluetoothIds.UUID_PRECOR_SERVICE to linkedSetOf(
+                        extraCharacteristic,
+                        BluetoothIds.UUID_PRECOR_MEASUREMENT,
+                    ),
+                ),
+            ),
+        )
+    }
+
     // ── §11.4 / §11.5 handler registration and ownership ─────────────────────────
 
     @Test
@@ -186,6 +230,36 @@ class PrecorProductionPlumbingTest {
         )
         assertEquals(1, onTreadmill.size)
         assertTrue(onTreadmill.single() is FtmsProtocolHandler)
+    }
+
+    @Test
+    fun `FTMS and Precor handlers can activate on the same physical link`() {
+        val ftms = FtmsProtocolHandler()
+        val precor = PrecorProtocolHandler()
+
+        val active = activateMatchingProtocolHandlers(
+            listOf(ftms, precor),
+            setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
+            offer = { true },
+        )
+
+        assertEquals(listOf(ftms, precor), active)
+        assertEquals(
+            listOf(precor),
+            resolveProtocolHandlerRoute(
+                active,
+                BluetoothIds.UUID_PRECOR_MEASUREMENT,
+                BluetoothIds.UUID_PRECOR_SERVICE,
+            ).owners,
+        )
+        assertEquals(
+            listOf(ftms),
+            resolveProtocolHandlerRoute(
+                active,
+                BluetoothIds.UUID_BIKING_DATA,
+                BluetoothIds.UUID_FTMS_SERVICE,
+            ).owners,
+        )
     }
 
     @Test
@@ -270,6 +344,18 @@ class PrecorProductionPlumbingTest {
     @Test
     fun `a fresh handler has counted no rejected frames`() {
         assertEquals(0, PrecorProtocolHandler().rejectedFrameCount())
+    }
+
+    @Test
+    fun `a reconnect resets all rejected-frame state`() {
+        val handler = PrecorProtocolHandler()
+        handler.recordRejectedFrame()
+        handler.recordRejectedFrame()
+        assertEquals(2, handler.rejectedFrameCount())
+
+        handler.resetLinkState()
+
+        assertEquals(0, handler.rejectedFrameCount())
     }
 
     // ── Adapter candidacy ────────────────────────────────────────────────────────
