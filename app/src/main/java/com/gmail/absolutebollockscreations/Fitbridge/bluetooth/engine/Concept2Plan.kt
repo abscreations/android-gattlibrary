@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import java.util.UUID
 
 /**
@@ -10,7 +11,7 @@ import java.util.UUID
  * handler stayed untested long enough for a defect to ship through it.
  */
 
-internal enum class Concept2GattOperationKind { ENABLE_NOTIFICATIONS }
+internal enum class Concept2GattOperationKind { READ, ENABLE_NOTIFICATIONS }
 
 internal data class Concept2GattOperation(
     val kind: Concept2GattOperationKind,
@@ -31,6 +32,28 @@ internal data class Concept2DiscoveryPlan(
     val path: Concept2DeliveryPath?,
     val operations: List<Concept2GattOperation>,
 )
+
+/**
+ * Plan the Device Information read that identifies the ergometer.
+ *
+ * Separate from [planConcept2Discovery] because `0x0016` lives in the Device Information
+ * service (`0x0010`), not the Erg service (`0x0030`), so it is discovered and queued from a
+ * different `BluetoothGattService`. Returns nothing when the firmware predates the
+ * characteristic — persona then falls back to the name, and failing that to the user's choice.
+ */
+internal fun planConcept2Identification(
+    deviceInfoCharacteristicUuids: Set<UUID>,
+): List<Concept2GattOperation> =
+    if (BluetoothIds.UUID_C2_MACHINE_TYPE in deviceInfoCharacteristicUuids) {
+        listOf(
+            Concept2GattOperation(
+                Concept2GattOperationKind.READ,
+                BluetoothIds.UUID_C2_MACHINE_TYPE,
+            ),
+        )
+    } else {
+        emptyList()
+    }
 
 /** The four characteristics FitBridge consumes, in identifier order. */
 internal val CONCEPT2_CONSUMED_CHARACTERISTICS: List<UUID> = listOf(
@@ -130,21 +153,131 @@ internal fun concept2FallbackDecision(
 internal const val CONCEPT2_LIVENESS_TIMEOUT_MS: Long = 10_000L
 
 /**
- * Session persona for a PM, from its advertised name.
+ * Ergometer family, decoded from the PM's Erg Machine Type octet (`0x0016`).
  *
- * §5a: "Name postfix selects RowErg / BikeErg / SkiErg; a bare `PM5` stays multi-sport and
- * takes the user's session-mode selection." A `null` return is therefore not a failure — it
- * means the machine has not told us, and the user's choice stands.
+ * The enum in the specification is sparse and **grouped by range**, not a dense list, which is
+ * what makes range classification the correct reading rather than an exhaustive `when`:
  *
- * Matching is on the postfix rather than the whole name because the PM advertises as
- * `PM5 123456` style with the ergometer type appended, and the serial portion varies.
+ * ```
+ *   0..8    static rowers (models D, C, A, B, E, simulator = 7, dynamic = 8)
+ *   16..20  slides A..E
+ *   32      slides dynamic
+ *   64      static dyno
+ *   128     static ski        143  static ski simulator
+ *   192     bike              193 bike arms, 194 bike no-arms, 207 bike simulator
+ *   224     multi-erg row     225  multi-erg ski     226  multi-erg bike
+ * ```
+ *
+ * Everything below 128 is a rowing machine of some description, 128–191 is ski, 192–223 is
+ * bike, and the multi-erg values at 224+ name their own discipline. Treating unknown values in
+ * the rowing range as rowing is deliberate: Concept2 has added members to that block over time
+ * (the simulator and dynamic entries arrived later than the lettered models), and a future
+ * rower is far more likely than a future machine of an entirely new kind.
  */
-internal fun concept2PersonaFor(deviceName: String?): FusionPersona? {
+internal enum class Concept2ErgFamily { ROWER, SKI, BIKE }
+
+internal fun concept2ErgFamilyFor(machineTypeOctet: Int?): Concept2ErgFamily? = when (machineTypeOctet) {
+    null -> null
+    in 0..127 -> Concept2ErgFamily.ROWER
+    in 128..191 -> Concept2ErgFamily.SKI
+    in 192..223 -> Concept2ErgFamily.BIKE
+    224 -> Concept2ErgFamily.ROWER
+    225 -> Concept2ErgFamily.SKI
+    226 -> Concept2ErgFamily.BIKE
+    else -> null
+}
+
+/** Decode the one-octet `0x0016` Erg Machine Type read. */
+internal fun decodeConcept2MachineType(value: ByteArray?): Concept2ErgFamily? {
+    if (value == null || value.isEmpty()) return null
+    return concept2ErgFamilyFor(value[0].toInt() and 0xFF)
+}
+
+/**
+ * The device classification a decoded erg family implies, for `DiscoveredDevice.machineFeature`.
+ *
+ * This is the seam FTMS already uses: `btEngine.GattFtms` infers an [ActivityType] from which
+ * data characteristic the machine exposes and publishes its ordinal through
+ * `updateDeviceMachineFeatureByAddress`. Concept2 arrives at the same answer from a vendor read
+ * instead of a characteristic census, and publishes it the same way, so the device row, the
+ * friendly label and `currentMachineActivity` all work for a PM without knowing it is one.
+ *
+ * **It classifies the device; it does not start or alter a session.** Session persona comes
+ * from `markSessionStarted(activity)`, which carries the user's explicit selection. Writing
+ * here cannot override that choice, and that separation is the reason this is the correct
+ * consumer rather than `MetricFusion.setPersona`.
+ *
+ * ## SkiErg maps to ROWING, and that is lossy
+ *
+ * [ActivityType] has no ski member. A SkiErg's metric set *is* the rowing set — stroke rate,
+ * pace per 500 m, power — and `concept2PersonaFor` already folds it into `ROW_PADDLE` for
+ * exactly that reason, so ROWING is the entry whose expectations fit. The visible cost is that
+ * a SkiErg's device row reads "Indoor Rower".
+ *
+ * The alternative was to publish no classification for a ski machine, leaving the row blank.
+ * That is not more honest, only less useful: it would withhold a correct statement about the
+ * metrics because the label attached to it is imprecise. Recorded as a known limitation rather
+ * than hidden — adding a ski member to [ActivityType] reaches the FIT export, the session model
+ * and the UI, which is a change well outside Phase 5a.
+ */
+internal fun concept2ActivityTypeFor(family: Concept2ErgFamily?): ActivityType? = when (family) {
+    Concept2ErgFamily.ROWER, Concept2ErgFamily.SKI -> ActivityType.ROWING
+    Concept2ErgFamily.BIKE -> ActivityType.BIKING
+    null -> null
+}
+
+/**
+ * Session persona for a PM.
+ *
+ * ## The machine tells us; the name usually does not
+ *
+ * Plan §5a says "name postfix selects RowErg / BikeErg / SkiErg". That is how TMIW does it —
+ * `scan_result_ex.dart` requires the advertised name to *start with* `PM5` and *end with*
+ * `Row`, `Ski` or `Bike` — but it is not what a PM actually advertises. The specification gives
+ * the GAP device name as `"PM5 430000000"`, serial number only, and its own pairing-record
+ * example is `PM5 430343693`. So on a stock PM the name carries no discipline at all, which is
+ * why TMIW prompts the user to choose on every real unit.
+ *
+ * The vendor's actual identification path is the **Erg Machine Type characteristic `0x0016`**
+ * in the Device Information service, added for PM5 firmware V150–V199.99 and V204–V299.99, and
+ * repeated as the last octet of the multiplexed `0x0032` and `0x0038` payloads. That is read
+ * first here, and the name is consulted only when it is unavailable.
+ *
+ * ## A null return is an answer, not a failure
+ *
+ * When neither source identifies the machine — an older PM whose firmware predates `0x0016`,
+ * advertising a bare `PM5 <serial>` — the correct behaviour is to defer to the user's
+ * session-mode selection. Guessing here would silently override a choice the person made.
+ *
+ * @param machineType the decoded `0x0016` value, when it has been read.
+ * @param deviceName fallback only, for a renamed unit or firmware without `0x0016`.
+ */
+internal fun concept2PersonaFor(
+    machineType: Concept2ErgFamily? = null,
+    deviceName: String? = null,
+): FusionPersona? = when (machineType ?: concept2FamilyFromName(deviceName)) {
+    // A SkiErg is not a rower, but its metrics are the rowing set — stroke rate, pace per
+    // 500 m, power — and ROW_PADDLE is the persona whose plausibility bounds fit them.
+    Concept2ErgFamily.ROWER, Concept2ErgFamily.SKI -> FusionPersona.ROW_PADDLE
+    Concept2ErgFamily.BIKE -> FusionPersona.RIDE
+    null -> null
+}
+
+/**
+ * Fallback identification from the advertised name.
+ *
+ * Accepts both the postfix form TMIW matches (`PM5 430343693 Row`) and the fuller `RowErg` /
+ * `SkiErg` / `BikeErg` spellings, because a renamed unit or a simulator may use either and
+ * neither is wrong. Order matters: `bikeerg` must be tested before `erg` would match anything
+ * else, and `row` before `rower` is irrelevant since both contain `row`.
+ */
+private fun concept2FamilyFromName(deviceName: String?): Concept2ErgFamily? {
     val name = deviceName?.lowercase() ?: return null
+    if (!name.startsWith("pm")) return null
     return when {
-        "rowerg" in name -> FusionPersona.ROW_PADDLE
-        "skierg" in name -> FusionPersona.ROW_PADDLE
-        "bikeerg" in name -> FusionPersona.RIDE
+        "bike" in name -> Concept2ErgFamily.BIKE
+        "ski" in name -> Concept2ErgFamily.SKI
+        "row" in name -> Concept2ErgFamily.ROWER
         else -> null
     }
 }

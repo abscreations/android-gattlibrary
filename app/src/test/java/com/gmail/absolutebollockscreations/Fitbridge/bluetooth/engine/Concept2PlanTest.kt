@@ -175,26 +175,115 @@ class Concept2PlanTest {
 
     // ── Persona ──────────────────────────────────────────────────────────────────
 
+    // ── Erg Machine Type 0x0016: the vendor's own identification ─────────────────
+
     @Test
-    fun `the name postfix selects the persona`() {
-        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor("PM5 430123 RowErg"))
-        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor("PM5 430123 SkiErg"))
-        assertEquals(FusionPersona.RIDE, concept2PersonaFor("PM5 430123 BikeErg"))
+    fun `the machine type enum classifies by range, not by exact value`() {
+        // The specification's enum is sparse and grouped. Every documented member is checked,
+        // plus the gaps between them, because Concept2 has added members to these blocks over
+        // time and a range rule survives that where a lookup table would not.
+        val rowers = listOf(0, 1, 2, 3, 5, 7, 8, 16, 17, 18, 19, 20, 32, 64)
+        val skis = listOf(128, 143)
+        val bikes = listOf(192, 193, 194, 207)
+
+        for (v in rowers) assertEquals("0x%02X".format(v), Concept2ErgFamily.ROWER, concept2ErgFamilyFor(v))
+        for (v in skis) assertEquals("0x%02X".format(v), Concept2ErgFamily.SKI, concept2ErgFamilyFor(v))
+        for (v in bikes) assertEquals("0x%02X".format(v), Concept2ErgFamily.BIKE, concept2ErgFamilyFor(v))
+
+        // Multi-erg values name their own discipline.
+        assertEquals(Concept2ErgFamily.ROWER, concept2ErgFamilyFor(224))
+        assertEquals(Concept2ErgFamily.SKI, concept2ErgFamilyFor(225))
+        assertEquals(Concept2ErgFamily.BIKE, concept2ErgFamilyFor(226))
+
+        // Undocumented values above the multi-erg block are not guessed at.
+        assertNull(concept2ErgFamilyFor(240))
+        assertNull(concept2ErgFamilyFor(255))
+        assertNull(concept2ErgFamilyFor(null))
     }
 
     @Test
-    fun `a bare PM stays multi-sport and defers to the user`() {
-        // Not a failure to classify: the machine has not said which ergometer it is, so the
-        // user's session-mode selection stands. Returning a guess here would override them.
-        assertNull(concept2PersonaFor("PM5 430123"))
-        assertNull(concept2PersonaFor("PM5"))
-        assertNull(concept2PersonaFor(null))
+    fun `an unknown value inside the rowing block reads as a rower`() {
+        // Deliberate: Concept2 added the simulator (7) and dynamic (8) entries after the
+        // lettered models, so the block grows. A future rower is far likelier than a machine
+        // of an entirely new kind appearing below 128.
+        assertEquals(Concept2ErgFamily.ROWER, concept2ErgFamilyFor(4))
+        assertEquals(Concept2ErgFamily.ROWER, concept2ErgFamilyFor(100))
     }
 
     @Test
-    fun `persona matching is case-insensitive`() {
-        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor("pm5 rowerg"))
-        assertEquals(FusionPersona.RIDE, concept2PersonaFor("PM5 BIKEERG"))
+    fun `the machine type octet decodes from a one-byte read`() {
+        assertEquals(
+            Concept2ErgFamily.BIKE,
+            decodeConcept2MachineType(byteArrayOf(192.toByte())),
+        )
+        assertEquals(
+            Concept2ErgFamily.SKI,
+            decodeConcept2MachineType(byteArrayOf(128.toByte())),
+        )
+        assertNull("an empty read says nothing", decodeConcept2MachineType(byteArrayOf()))
+        assertNull(decodeConcept2MachineType(null))
+    }
+
+    // ── Persona: machine first, name as fallback ─────────────────────────────────
+
+    @Test
+    fun `the machine type decides the persona when it is available`() {
+        assertEquals(
+            FusionPersona.ROW_PADDLE,
+            concept2PersonaFor(machineType = Concept2ErgFamily.ROWER),
+        )
+        assertEquals(
+            FusionPersona.ROW_PADDLE,
+            concept2PersonaFor(machineType = Concept2ErgFamily.SKI),
+        )
+        assertEquals(
+            FusionPersona.RIDE,
+            concept2PersonaFor(machineType = Concept2ErgFamily.BIKE),
+        )
+    }
+
+    @Test
+    fun `the machine type overrides a contradicting name`() {
+        // The characteristic is the vendor's own statement; a name can be anything an owner
+        // typed. If they disagree, the machine wins.
+        assertEquals(
+            FusionPersona.RIDE,
+            concept2PersonaFor(machineType = Concept2ErgFamily.BIKE, deviceName = "PM5 123 Row"),
+        )
+    }
+
+    @Test
+    fun `the name is used only when the machine has not identified itself`() {
+        // TMIW's form: prefix PM5, postfix Row/Ski/Bike.
+        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor(deviceName = "PM5 430123 Row"))
+        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor(deviceName = "PM5 430123 Ski"))
+        assertEquals(FusionPersona.RIDE, concept2PersonaFor(deviceName = "PM5 430123 Bike"))
+
+        // And the fuller spellings a renamed unit or a simulator may use.
+        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor(deviceName = "PM5 430123 RowErg"))
+        assertEquals(FusionPersona.RIDE, concept2PersonaFor(deviceName = "PM5 430123 BikeErg"))
+    }
+
+    @Test
+    fun `a stock PM name identifies nothing and defers to the user`() {
+        // This is what a real PM advertises: the specification gives the GAP device name as
+        // "PM5 430000000", serial only, and its pairing-record example is "PM5 430343693".
+        // No discipline appears in it — which is exactly why TMIW, whose only path is the
+        // name, prompts on every real unit.
+        assertNull(concept2PersonaFor(deviceName = "PM5 430000000"))
+        assertNull(concept2PersonaFor(deviceName = "PM5 430343693"))
+        assertNull(concept2PersonaFor(deviceName = "PM5"))
+        assertNull(concept2PersonaFor())
+    }
+
+    @Test
+    fun `name fallback is case-insensitive and requires the PM prefix`() {
+        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor(deviceName = "pm5 430123 row"))
+        assertEquals(FusionPersona.RIDE, concept2PersonaFor(deviceName = "PM5 430123 BIKE"))
+
+        // A non-Concept2 device whose name happens to contain "bike" must not be classified
+        // as a PM by this function.
+        assertNull(concept2PersonaFor(deviceName = "Zwift Hub Bike"))
     }
 
     @Test
@@ -202,9 +291,38 @@ class Concept2PlanTest {
         // A SkiErg is not a rower, but its metrics — stroke rate, pace per 500 m, power — are
         // the rowing set, and ROW_PADDLE is the persona whose plausibility bounds fit them.
         assertEquals(
-            concept2PersonaFor("PM5 RowErg"),
-            concept2PersonaFor("PM5 SkiErg"),
+            concept2PersonaFor(machineType = Concept2ErgFamily.ROWER),
+            concept2PersonaFor(machineType = Concept2ErgFamily.SKI),
         )
+    }
+
+    // ── The identification read ──────────────────────────────────────────────────
+
+    @Test
+    fun `identification reads 0x0016 when the firmware exposes it`() {
+        val plan = planConcept2Identification(
+            setOf(
+                BluetoothIds.UUID_C2_MODEL_NUMBER,
+                BluetoothIds.UUID_C2_SERIAL_NUMBER,
+                BluetoothIds.UUID_C2_MACHINE_TYPE,
+            ),
+        )
+
+        assertEquals(1, plan.size)
+        assertEquals(BluetoothIds.UUID_C2_MACHINE_TYPE, plan.single().characteristicUuid)
+        assertEquals(Concept2GattOperationKind.READ, plan.single().kind)
+    }
+
+    @Test
+    fun `firmware without 0x0016 plans no identification read`() {
+        // Valid only for PM5 V150-V199.99 and V204-V299.99 per the specification, so an older
+        // or newer unit may not expose it. Persona then falls back to the name, and failing
+        // that to the user's choice.
+        val plan = planConcept2Identification(
+            setOf(BluetoothIds.UUID_C2_MODEL_NUMBER, BluetoothIds.UUID_C2_SERIAL_NUMBER),
+        )
+
+        assertTrue(plan.isEmpty())
     }
 
     @Test

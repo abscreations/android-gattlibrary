@@ -38,6 +38,10 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
         BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
         BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+        // Read-only identification, not a notification source. Owned so the read callback
+        // routes here rather than to whichever handler happens to claim the Device Info
+        // service; it is never subscribed. See `the handler owns no writable characteristic`.
+        BluetoothIds.UUID_C2_MACHINE_TYPE,
     )
 
     private var path: Concept2DeliveryPath? = null
@@ -46,12 +50,16 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
     private var fallbackApplied = false
     private var availableCharacteristics: Set<UUID> = emptySet()
 
+    /** Decoded `0x0016`, when the firmware exposes it. Null means "the machine did not say". */
+    private var ergFamily: Concept2ErgFamily? = null
+
     private fun reset() {
         path = null
         framesReceived = 0
         cccdReadyAtMs = null
         fallbackApplied = false
         availableCharacteristics = emptySet()
+        ergFamily = null
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -96,6 +104,28 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
             }
         }
         cccdReadyAtMs = MonotonicMetricClock.SYSTEM.nowMs()
+
+        // Identification, queued only now that activation has succeeded. `0x0016` lives in the
+        // Device Information service, so it is a separate discovery and a read rather than a
+        // subscription.
+        //
+        // **Ordering is deliberate and was corrected.** The read was originally queued before
+        // the `plan.activate` check, which meant a device exposing the Erg service but none of
+        // the consumed characteristics — a handler that returns false and does not drive the
+        // link — still had a read placed on the connection's queue. That is an operation issued
+        // on behalf of a handler that is not running: harmless in its result, but it occupies
+        // the queue, produces a callback that must be routed somewhere, and makes the handler's
+        // "I did not activate" return value untrue in its side effects. A subscription and a
+        // read now share one precondition.
+        //
+        // Nothing depends on the answer arriving before the first frame. A late classification
+        // simply refines a device row; a session already under way keeps the user's selection.
+        services.firstOrNull { it.uuid == BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE }?.let { info ->
+            val infoCharacteristics = info.characteristics.associateBy { it.uuid }
+            planConcept2Identification(infoCharacteristics.keys).forEach { operation ->
+                engine.pushRead(context, operation.characteristicUuid)
+            }
+        }
         return true
     }
 
@@ -152,6 +182,70 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
             )
         }
     }
+
+    /**
+     * The `0x0016` Erg Machine Type read landing, and the point at which it changes something.
+     *
+     * This is the vendor's own identification of the ergometer, and the only reliable one: a
+     * stock PM advertises `PM5 <serial>` with no discipline in the name, which is why TMIW —
+     * whose sole path is the name — prompts the user on every real unit.
+     *
+     * The decoded family is published to `DiscoveredDevice.machineFeature`, the same field
+     * `btEngine.GattFtms` writes after inferring a machine type from its data characteristics.
+     * That drives the device row's friendly label and `currentMachineActivity`. It classifies
+     * the **device**; it does not start, alter or override a **session**, whose persona comes
+     * from the user's selection via `markSessionStarted`.
+     *
+     * A read that fails or decodes to nothing writes nothing. Leaving the field untouched is
+     * the correct behaviour rather than a gap: an absent classification falls back to the name
+     * and then to the user's choice, and overwriting a previously-known good value with a guess
+     * would be worse than saying nothing.
+     */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onCharacteristicRead(
+        engine: BtEngine,
+        gatt: BluetoothGatt,
+        ch: BluetoothGattCharacteristic,
+        value: ByteArray,
+        status: Int,
+    ) {
+        if (ch.uuid != BluetoothIds.UUID_C2_MACHINE_TYPE) return
+        if (status != BluetoothGatt.GATT_SUCCESS) {
+            Timber.tag(BtEngineState.TAG).w(
+                "Concept2 machine-type read failed (status=%d); classification falls back to the name",
+                status,
+            )
+            return
+        }
+
+        ergFamily = decodeConcept2MachineType(value)
+        Timber.tag(BtEngineState.TAG).i(
+            "Concept2 erg machine type 0x%02X -> %s",
+            value.firstOrNull()?.toInt()?.and(0xFF) ?: -1,
+            ergFamily ?: "unrecognised",
+        )
+
+        val activity = concept2ActivityTypeFor(ergFamily) ?: return
+        val address = gatt.device?.address ?: return
+        engine.state.updateDeviceMachineFeatureByAddress(address, activity.ordinal)
+    }
+
+    /**
+     * The session persona this machine implies, or null when it has not said.
+     *
+     * Prefers the `0x0016` read and falls back to the advertised name. Null is an answer — the
+     * user's session-mode selection stands — not a failure to classify.
+     *
+     * Distinct from the classification written in [onCharacteristicRead]: that names what the
+     * device *is*, this names how fusion should *rank sources* for it. They agree today and are
+     * derived from the same read, but they answer different questions and have different
+     * owners, so they are not folded together.
+     */
+    internal fun personaFor(deviceName: String?): FusionPersona? =
+        concept2PersonaFor(machineType = ergFamily, deviceName = deviceName)
+
+    /** The decoded erg family, or null when the machine has not said. Test seam. */
+    internal fun ergFamilyOrNull(): Concept2ErgFamily? = ergFamily
 
     /**
      * Called on the engine's periodic tick. Falls back to the individual characteristics when

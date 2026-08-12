@@ -101,7 +101,7 @@ class Concept2MatcherTest {
         // Identity and persona are different questions. The name answers the second only, and
         // only once structure has answered the first.
         assertTrue(idsOf(MatchObservation(localName = "PM5 RowErg")).isEmpty())
-        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor("PM5 RowErg"))
+        assertEquals(FusionPersona.ROW_PADDLE, concept2PersonaFor(deviceName = "PM5 RowErg"))
     }
 
     @Test

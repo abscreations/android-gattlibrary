@@ -39,12 +39,14 @@ class Concept2ControlHonestyTest {
 
     @Test
     fun `the handler owns no writable characteristic`() {
-        // Every characteristic the handler claims is a notification source or, in the case of
-        // the sample rate, deliberately not claimed at all. None is a control endpoint.
+        // Everything the handler claims is either a notification source or a read. The
+        // sample-rate characteristic is writable and is deliberately not claimed at all; the
+        // machine-type characteristic is read-only identification. Neither is a control
+        // endpoint, and no claimed characteristic accepts a write.
         val handler = Concept2ProtocolHandler()
 
         assertTrue(
-            "the sample-rate characteristic is configuration and is not owned",
+            "the sample-rate characteristic is writable configuration and is not owned",
             BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE !in handler.extraCharacteristics,
         )
         assertEquals(
@@ -54,6 +56,8 @@ class Concept2ControlHonestyTest {
                 BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
                 BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
                 BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+                // Read-only: the Erg Machine Type identification added for persona selection.
+                BluetoothIds.UUID_C2_MACHINE_TYPE,
             ),
             handler.extraCharacteristics,
         )
