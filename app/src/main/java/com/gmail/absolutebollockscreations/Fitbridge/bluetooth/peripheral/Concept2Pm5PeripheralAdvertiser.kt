@@ -37,7 +37,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/** PM5-only Android GATT server. C1 exposes PM Control but has no CSAFE command engine. */
+/** PM5-only Android GATT server with capture-bounded C2a short-frame CSAFE transport. */
 class Concept2Pm5PeripheralAdvertiser(
     private val context: Context,
     private val listener: Listener,
@@ -216,6 +216,7 @@ class Concept2Pm5PeripheralAdvertiser(
             val client = clients[device.address.lowercase()] ?: Client(device).also { clients[device.address.lowercase()] = it }
             val value = when (characteristic.uuid) {
                 BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE -> byteArrayOf(client.session.sampleRate.toByte())
+                BluetoothIds.UUID_C2_CSAFE_RESPONSE -> client.session.csafeResponse
                 else -> profile?.readDeviceInformation(characteristic.uuid, 0, client.mtu)
             }
             respondRead(device, requestId, offset, value)
@@ -249,9 +250,24 @@ class Concept2Pm5PeripheralAdvertiser(
                         BluetoothGatt.GATT_FAILURE
                     }
                 }
-                // C1 publishes the documented discovery surface but cannot truthfully accept a
-                // CSAFE frame until C2 supplies framing, checksum and response semantics.
-                BluetoothIds.UUID_C2_CSAFE_REQUEST -> BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
+                BluetoothIds.UUID_C2_CSAFE_REQUEST -> {
+                    if (!structurallyWritable) {
+                        BluetoothGatt.GATT_FAILURE
+                    } else {
+                        when (val result = client.session.acceptCsafeRequest(
+                            value,
+                            android.os.SystemClock.elapsedRealtime(),
+                        )) {
+                            is Concept2CsafeLink.RequestResult.Accepted -> BluetoothGatt.GATT_SUCCESS
+                            is Concept2CsafeLink.RequestResult.Rejected -> when (result.reason) {
+                                Concept2CsafeLink.RejectionReason.UNSUPPORTED ->
+                                    BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
+                                Concept2CsafeLink.RejectionReason.MALFORMED,
+                                Concept2CsafeLink.RejectionReason.TOO_SOON -> BluetoothGatt.GATT_FAILURE
+                            }
+                        }
+                    }
+                }
                 else -> BluetoothGatt.GATT_FAILURE
             }
             if (responseNeeded) server?.sendResponse(

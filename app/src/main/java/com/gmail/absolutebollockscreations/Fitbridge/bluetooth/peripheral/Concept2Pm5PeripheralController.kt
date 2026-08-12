@@ -85,7 +85,7 @@ class Concept2Pm5PeripheralController(
                                 FtmsForegroundService.start(
                                     context,
                                     "Sharing as ${persona.advertisedName}",
-                                    "Simulated Concept2 PM5; CSAFE transport is not implemented yet",
+                                    "Simulated Concept2 PM5; C2a MyWhoosh CSAFE handshake enabled",
                                 ) { foreground ->
                                     foreground.fold(
                                         onSuccess = {

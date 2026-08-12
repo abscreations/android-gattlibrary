@@ -6,6 +6,7 @@ import java.util.UUID
 /** Pure per-link PM5 state: subscriptions, rate and deterministic mux position. */
 class Concept2Pm5Session {
     private val subscriptions = mutableSetOf<UUID>()
+    private val csafe = Concept2CsafeLink()
     private var heartRateInputBytes: ByteArray? = null
     private var lastAdditionalStatus3Bytes: ByteArray? = null
     var sampleRate: Int = DEFAULT_SAMPLE_RATE
@@ -14,6 +15,12 @@ class Concept2Pm5Session {
         private set
 
     val periodMs: Long get() = PERIODS_MS.getValue(sampleRate)
+
+    val csafeResponse: ByteArray? get() = csafe.response
+    val csafeHandshakeState: Concept2CsafeLink.HandshakeState get() = csafe.handshakeState
+
+    fun acceptCsafeRequest(value: ByteArray, nowMs: Long): Concept2CsafeLink.RequestResult =
+        csafe.accept(value, nowMs)
 
     fun setSampleRate(value: Int): Boolean {
         if (value !in PERIODS_MS) return false
@@ -66,6 +73,7 @@ class Concept2Pm5Session {
         subscriptions.clear(); sampleRate = DEFAULT_SAMPLE_RATE; muxPosition = 0
         heartRateInputBytes = null
         lastAdditionalStatus3Bytes = null
+        csafe.reset()
     }
 
     companion object {
