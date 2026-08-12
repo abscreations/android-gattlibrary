@@ -235,6 +235,7 @@ internal class DeviceMatcherRegistry private constructor(
                 sigDefinition("sig.rsc", 0x1814, 0x2a53..0x2a53, KnownBleService.RSC, 300),
                 sigDefinition("sig.csc", 0x1816, 0x2a5b..0x2a5b, KnownBleService.CSC, 200),
                 concept2Definition(),
+                precorDefinition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
             ),
         )
@@ -277,6 +278,48 @@ internal class DeviceMatcherRegistry private constructor(
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
+            ),
+        )
+
+        /**
+         * Precor Spinner Chrono Power (plan §5b).
+         *
+         * **No local-name pattern, for the same reason [concept2Definition] has none — but
+         * reached by a different route, and it is worth writing down which.**
+         *
+         * The obvious argument for a `^CHRONO` pattern here is that this service UUID is not
+         * exclusively Precor's: QZ's `truetreadmill` reaches for the identical
+         * `a026ee07`/`a026e01d` pair for a True brand treadmill. That is a real collision — two
+         * unrelated machines behind one service — and a name looks like the natural
+         * tie-breaker.
+         *
+         * It is not, for two reasons. First, `evidenceFor` produces a candidate from *any*
+         * non-empty evidence, so adding the pattern would make a device named `Chrono Watch`
+         * advertising nothing at all a Precor Chrono candidate at weight 10. §8.9 names
+         * exactly that — a name-restricted generic profile — as a behaviour not to port, and
+         * TMIW's name-prefix matching for this family is what §5b calls "far too weak".
+         * Second, the name cannot discriminate the case that actually matters: a True treadmill
+         * advertises neither `CHRONO` nor anything else FitBridge could enumerate, so the
+         * pattern would decide nothing about the collision it was added for.
+         *
+         * **What does discriminate is the frame prefix `53 59 16`**, checked per notification
+         * in [PrecorMeasurement.isChronoFrame]. A True treadmill on this service sends 4-, 16-,
+         * 18- or 19-octet frames with no such prefix, so every one is rejected and the adapter
+         * produces nothing rather than something wrong. That is the correct outcome: §0.7a's
+         * liveness path then demotes a machine adapter that never delivers, which is a
+         * mechanism that already exists and needs no help from a name.
+         *
+         * The prefix cannot live in this registry because a matcher runs on advertisement and
+         * discovery data, before any notification exists. So identity is claimed on the service
+         * and validated per frame, with nothing in between pretending to add certainty.
+         */
+        private fun precorDefinition() = MatchDefinition(
+            candidateId = "vendor.precor.chrono",
+            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_PRECOR_SERVICE),
+            knownService = null,
+            preference = 140,
+            personaCharacteristicUuids = linkedSetOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_PRECOR_MEASUREMENT),
             ),
         )
 

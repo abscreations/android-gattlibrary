@@ -55,6 +55,16 @@ internal data class ProtocolKey(val value: String) {
          * rule, answered by `MachineAdapterPolicy` rather than by the handler registry.
          */
         val CONCEPT2 = ProtocolKey("concept2")
+
+        /**
+         * Precor Spinner Chrono Power, proprietary (plan §5b). A machine protocol, so it is
+         * absent from [sensorProtocolFor] for the same reason as FTMS and Concept2.
+         *
+         * Unlike Concept2 there is no standard-versus-proprietary contest to resolve: a Chrono
+         * advertises its vendor service and no FTMS, so `MachineAdapterPolicy` sees one
+         * candidate and D6 never arises.
+         */
+        val PRECOR = ProtocolKey("precor")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -113,6 +123,7 @@ internal fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): Protoc
 internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FTMS,
     ProtocolKey.CONCEPT2,
+    ProtocolKey.PRECOR,
 )
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
@@ -142,6 +153,7 @@ internal class HandlerFactory(
                 ProtocolKey.CSC to { CscProtocolHandler() },
                 ProtocolKey.CPS to { CpsProtocolHandler() },
                 ProtocolKey.CONCEPT2 to { Concept2ProtocolHandler() },
+                ProtocolKey.PRECOR to { PrecorProtocolHandler() },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)

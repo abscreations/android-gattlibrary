@@ -210,6 +210,34 @@ internal class AdapterLivenessCoordinator(
                     ),
                 )
             }
+            if (BluetoothIds.UUID_PRECOR_SERVICE in services) {
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = PRECOR_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_SERVICE,
+                                    // Full 128-bit vendor UUID, read from QZ and recorded in
+                                    // plan §10 — not derived from TMIW's `ee07` alias.
+                                    structuralValue = BluetoothIds.UUID_PRECOR_SERVICE.toString(),
+                                    // Same weight as the other two structural facts, for the
+                                    // reason spelled out on the Concept2 fact above: weight
+                                    // expresses how certain the identification is, and all
+                                    // three are certain. Preference between certain matches is
+                                    // `rank`'s job.
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.LOW,
+                                    note = "Precor Chrono service present in the discovered GATT database",
+                                ),
+                            ),
+                        ),
+                        rank = RANK_PRECOR,
+                        requiresSetup = false,
+                        livenessTimeoutMs = livenessTimeoutMs,
+                    ),
+                )
+            }
         }
     }
 
@@ -218,6 +246,7 @@ internal class AdapterLivenessCoordinator(
 
         const val FTMS_ADAPTER_ID = "ftms.generic"
         const val CONCEPT2_ADAPTER_ID = "concept2.pm"
+        const val PRECOR_ADAPTER_ID = "precor.chrono"
 
         /**
          * Standard FTMS outranks the Concept2 proprietary path on a PM5 that advertises both.
@@ -230,6 +259,18 @@ internal class AdapterLivenessCoordinator(
          */
         const val RANK_FTMS = 100
         const val RANK_CONCEPT2 = 80
+
+        /**
+         * Equal to [RANK_CONCEPT2], because the two can never compete.
+         *
+         * A device advertising both the Concept2 Erg service and the Precor Chrono service does
+         * not exist and would not be a coherent machine. Inventing an ordering between them
+         * would state a preference nothing can ever act on, and a reader would then have to
+         * work out what it meant. Equality says the true thing: these are peers, each the only
+         * proprietary candidate on its own hardware, both ranked below standard FTMS for the
+         * reason given above.
+         */
+        const val RANK_PRECOR = 80
 
         /**
          * 30 s from subscription completion.
