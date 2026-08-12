@@ -2,169 +2,55 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Precor Spinner Chrono Power parser, plan §5b and §11.2.
+ * FitBridge-authored adversarial coverage for the Precor Chrono parser — plan §5.4, §11a, §11b.
  *
- * ## Fixture provenance
+ * ## The division of labour with [PrecorFixtureParityTest]
  *
- * The ten vectors below are transcribed verbatim from
- * `test/precor_spinner_chrono_power_test.dart` in TMIW at the pinned commit
- * `85f2ee7520705c99ce81db7355df1be7f4b72ecf` (Apache-2.0), together with the values TMIW
- * asserts for each. They are real captured frames from a Precor Spinner Chrono Power, not
- * constructed examples, which is what makes the byte-9 argument in [PrecorMeasurement] an
- * observation rather than a thought experiment.
+ * Parity against TMIW's captured vectors lives there, driven by
+ * `fixtures/tmiw/precor_spinner_chrono.json` with its provenance header. **This file holds only
+ * what no reference project could supply**: truncation, corrupted prefixes, saturated `uint16`
+ * values and the plausibility bounds that catch them.
  *
- * The expected values are TMIW's own, unedited. Where FitBridge deliberately differs — heart
- * rate zero suppressed at emission, elapsed time not published, bytes 15–16 not published —
- * the difference is asserted in [PrecorEmissionTest] rather than by quietly changing a number
- * here. AGENTS.md: do not edit expected values to make Kotlin tests pass.
+ * §5.1 is explicit that these are different kinds of evidence and must not be mixed. A
+ * reference project tests the packets its hardware sent; it never sends a 4-octet frame or
+ * `0xFFFF` in every field. Putting FitBridge-authored cases in a corpus whose header reads
+ * `"acquisition": "transcribed"` would make that header untrue, so they stay here.
+ *
+ * Under D25 this is not trailing coverage. Nobody involved has a Chrono, so these cases and the
+ * §11b bounds are the only place a decoding error can surface at all.
+ *
+ * **The ten captured vectors were removed from this file when the corpus was created.** They had
+ * been typed into Kotlin and were then duplicated by the corpus, which is the drift hazard §5
+ * exists to prevent: two copies of the same numbers, one provenanced and one not, with nothing
+ * keeping them equal. The valid frame used as a base for corruption below is loaded from the
+ * corpus for the same reason.
  */
 class PrecorMeasurementTest {
 
     private fun frame(vararg v: Int) = ByteArray(v.size) { (v[it] and 0xFF).toByte() }
 
-    /** One TMIW vector and the values TMIW asserts for it. */
-    private data class Vector(
-        val data: ByteArray,
-        val elapsed: Int,
-        val heartRate: Int,
-        val speed: Double,
-        val cadence: Double,
-        val distance: Int,
-        val calories: Int,
-        val power: Int,
-    )
-
-    private val corpus = listOf(
-        Vector(
-            frame(83, 89, 22, 110, 2, 0, 200, 8, 84, 1, 80, 14, 0, 57, 0, 47, 0, 90, 0),
-            elapsed = 622, heartRate = 0, speed = 22.48, cadence = 34.0,
-            distance = 3664, calories = 57, power = 90,
-        ),
-        Vector(
-            frame(83, 89, 22, 248, 4, 77, 235, 8, 94, 1, 220, 29, 0, 124, 0, 103, 0, 94, 0),
-            elapsed = 1272, heartRate = 77, speed = 22.83, cadence = 35.0,
-            distance = 7644, calories = 124, power = 94,
-        ),
-        Vector(
-            frame(83, 89, 22, 4, 5, 67, 0, 0, 0, 0, 24, 30, 0, 125, 0, 104, 0, 0, 0),
-            elapsed = 1284, heartRate = 67, speed = 0.0, cadence = 0.0,
-            distance = 7704, calories = 125, power = 0,
-        ),
-        Vector(
-            frame(83, 89, 22, 57, 5, 0, 0, 0, 0, 0, 59, 31, 0, 129, 0, 108, 0, 0, 0),
-            elapsed = 1337, heartRate = 0, speed = 0.0, cadence = 0.0,
-            distance = 7995, calories = 129, power = 0,
-        ),
-        Vector(
-            frame(83, 89, 22, 247, 0, 79, 0, 14, 128, 2, 71, 6, 0, 31, 0, 26, 0, 24, 1),
-            elapsed = 247, heartRate = 79, speed = 35.84, cadence = 64.0,
-            distance = 1607, calories = 31, power = 280,
-        ),
-        Vector(
-            frame(83, 89, 22, 8, 1, 103, 222, 13, 118, 2, 235, 6, 0, 36, 0, 30, 0, 18, 1),
-            elapsed = 264, heartRate = 103, speed = 35.5, cadence = 63.0,
-            distance = 1771, calories = 36, power = 274,
-        ),
-        Vector(
-            frame(83, 89, 22, 225, 6, 88, 156, 9, 164, 1, 207, 47, 0, 1, 1, 214, 0, 115, 0),
-            elapsed = 1761, heartRate = 88, speed = 24.6, cadence = 42.0,
-            distance = 12239, calories = 257, power = 115,
-        ),
-        Vector(
-            frame(83, 89, 22, 15, 7, 81, 98, 9, 144, 1, 0, 49, 0, 6, 1, 219, 0, 108, 0),
-            elapsed = 1807, heartRate = 81, speed = 24.02, cadence = 40.0,
-            distance = 12544, calories = 262, power = 108,
-        ),
-        Vector(
-            frame(83, 89, 22, 132, 8, 68, 134, 11, 152, 3, 93, 58, 0, 51, 1, 0, 1, 179, 0),
-            elapsed = 2180, heartRate = 68, speed = 29.5, cadence = 92.0,
-            distance = 14941, calories = 307, power = 179,
-        ),
-        Vector(
-            frame(83, 89, 22, 193, 8, 83, 245, 11, 252, 3, 35, 60, 0, 60, 1, 7, 1, 195, 0),
-            elapsed = 2241, heartRate = 83, speed = 30.61, cadence = 102.0,
-            distance = 15395, calories = 316, power = 195,
-        ),
-    )
-
-    // ── §11.2 fixture parity ─────────────────────────────────────────────────────
-
-    @Test
-    fun `every TMIW vector decodes to TMIW's values`() {
-        for ((index, vector) in corpus.withIndex()) {
-            val reading = PrecorMeasurement.parse(vector.data)
-            assertNotNull("vector $index must be processable", reading)
-            requireNotNull(reading)
-            assertEquals("vector $index elapsed", vector.elapsed, reading.elapsedSeconds)
-            assertEquals("vector $index heart rate", vector.heartRate, reading.heartRateBpm)
-            assertEquals("vector $index speed", vector.speed, reading.speedKph, 1e-9)
-            assertEquals("vector $index cadence", vector.cadence, reading.cadenceRpm, 1e-9)
-            assertEquals("vector $index distance", vector.distance, reading.distanceMetres)
-            assertEquals("vector $index calories", vector.calories, reading.calories)
-            assertEquals("vector $index power", vector.power, reading.powerWatts)
-        }
-    }
-
-    // ── Divergence V10: the evidence, asserted rather than described ─────────────
-
-    @Test
-    fun `byte 9 is the high octet of cadence in every captured vector`() {
-        // This is the whole V10 argument in executable form. QZ reads cadence as byte 8 alone,
-        // which requires byte 9 to be something else. In every real frame it is exactly
-        // (cadence * 10) >> 8 — it cannot be an unrelated field and hold that relationship ten
-        // times, including three distinct non-zero values.
-        for ((index, vector) in corpus.withIndex()) {
-            val reading = requireNotNull(PrecorMeasurement.parse(vector.data))
-            val expectedHighOctet = ((vector.cadence * 10).toInt() shr 8) and 0xFF
-            assertEquals(
-                "vector $index byte 9 must be the cadence high octet",
-                expectedHighOctet,
-                reading.cadenceHighOctet,
-            )
-        }
-    }
-
-    @Test
-    fun `the corpus contains non-zero high octets, so QZ's uint8 reading is falsified`() {
-        val nonZero = corpus.count {
-            requireNotNull(PrecorMeasurement.parse(it.data)).confirmsCadenceIsUint16()
-        }
-        // Eight of ten. The two that do not are the two stationary frames, where cadence is
-        // genuinely zero and a zero high octet is the correct value rather than a missing one.
-        assertEquals("eight of the ten captured frames carry a non-zero byte 9", 8, nonZero)
-    }
-
-    @Test
-    fun `the two readings disagree materially above 25 point 5 rpm`() {
-        // Not a parser assertion — a statement of what was at stake, kept executable so that
-        // anyone revisiting V10 sees the size of the error rather than re-deriving it.
-        val vector = corpus.last() // cadence 102 rpm
-        val reading = requireNotNull(PrecorMeasurement.parse(vector.data))
-        val qzReading = (vector.data[8].toInt() and 0xFF) / 2.0
-
-        assertEquals(102.0, reading.cadenceRpm, 1e-9)
-        assertEquals(126.0, qzReading, 1e-9)
-        assertTrue("the disagreement is 24 rpm, not a rounding difference", qzReading > 120.0)
-    }
-
-    @Test
-    fun `a zero high octet is not treated as confirmation`() {
-        val stationary = requireNotNull(PrecorMeasurement.parse(corpus[2].data))
-        assertEquals(0.0, stationary.cadenceRpm, 1e-9)
-        assertFalse(stationary.confirmsCadenceIsUint16())
+    /** A real captured frame, taken from the corpus rather than restated here. */
+    private fun validFrame(): ByteArray {
+        val stream = javaClass.classLoader
+            ?.getResourceAsStream("fixtures/tmiw/precor_spinner_chrono.json")
+            ?: error("corpus missing")
+        val fixture = FixtureJson.obj(FixtureJson.parse(stream.bufferedReader().use { it.readText() }))
+        val first = FixtureJson.obj(FixtureJson.array(fixture["cases"]).first())
+        return FixtureJson.array(first["packet"])
+            .map { FixtureJson.int(it).toByte() }
+            .toByteArray()
     }
 
     // ── §11.3 / §11a adversarial input ───────────────────────────────────────────
 
     @Test
     fun `a frame of any length other than 19 is rejected`() {
-        val valid = corpus.first().data
+        val valid = validFrame()
         for (length in 0..25) {
             if (length == PrecorMeasurement.FRAME_LENGTH) continue
             val truncated = ByteArray(length) { index ->
@@ -182,7 +68,7 @@ class PrecorMeasurementTest {
         // The negative test §5b's exit criteria name explicitly. Each prefix octet is corrupted
         // independently: a check that only ever tests the first byte passes a broken parser.
         for (position in 0..2) {
-            val corrupted = corpus.first().data.copyOf()
+            val corrupted = validFrame()
             corrupted[position] = (corrupted[position].toInt() + 1).toByte()
             assertNull(
                 "corrupting prefix octet $position must reject the frame",
@@ -205,6 +91,7 @@ class PrecorMeasurementTest {
         assertEquals(0.0, reading.cadenceRpm, 1e-9)
         assertEquals(0, reading.distanceMetres)
         assertEquals(0, reading.powerWatts)
+        assertFalse("a stationary machine's byte 9 is legitimately zero", reading.confirmsCadenceIsUint16())
     }
 
     @Test
@@ -237,60 +124,67 @@ class PrecorMeasurementTest {
         // Decoded literally, exactly as V4 established for RSC: the wire says what it says, and
         // §11b bounds are what stop it reaching a session. There is no vendor document defining
         // a not-available sentinel for this family, so inventing one would be the V4 mistake.
-        assertTrue(
+        assertFalse(
             "655 km/h must be outside the RIDE speed bound",
-            PlausibilityBounds.rangeFor(MetricKind.SPEED, FusionPersona.RIDE)!!
-                .contains(reading.speedKph).not(),
+            reading.speedKph in PlausibilityBounds.rangeFor(MetricKind.SPEED, FusionPersona.RIDE)!!,
         )
-        assertTrue(
+        assertFalse(
             "6553 rpm must be outside the RIDE cadence bound",
-            PlausibilityBounds.rangeFor(MetricKind.CADENCE, FusionPersona.RIDE)!!
-                .contains(reading.cadenceRpm).not(),
+            reading.cadenceRpm in PlausibilityBounds.rangeFor(MetricKind.CADENCE, FusionPersona.RIDE)!!,
         )
-        assertTrue(
+        assertFalse(
             "65535 W must be outside the power bound",
-            PlausibilityBounds.rangeFor(MetricKind.POWER, FusionPersona.RIDE)!!
-                .contains(reading.powerWatts.toDouble()).not(),
+            reading.powerWatts.toDouble() in
+                PlausibilityBounds.rangeFor(MetricKind.POWER, FusionPersona.RIDE)!!,
         )
     }
 
     @Test
-    fun `every captured vector lies inside its plausibility bounds`() {
-        // The complement of the test above, and the more important direction: bounds that
-        // reject real captured data would silently delete a working machine's session.
-        for ((index, vector) in corpus.withIndex()) {
-            val reading = requireNotNull(PrecorMeasurement.parse(vector.data))
+    fun `the two V10 readings disagree materially above 25 point 5 rpm`() {
+        // Not a parser assertion — a statement of what was at stake in V10, kept executable so
+        // that anyone revisiting it sees the size of the error rather than re-deriving it.
+        // Byte 8 = 252 with byte 9 = 3 is the highest-cadence captured frame.
+        val highCadence = frame(83, 89, 22, 193, 8, 83, 245, 11, 252, 3, 35, 60, 0, 60, 1, 7, 1, 195, 0)
+        val reading = requireNotNull(PrecorMeasurement.parse(highCadence))
+        val qzReading = (highCadence[8].toInt() and 0xFF) / 2.0
+
+        assertEquals("FitBridge and TMIW", 102.0, reading.cadenceRpm, 1e-9)
+        assertEquals("QZ's chronobike", 126.0, qzReading, 1e-9)
+        assertTrue("a 24 rpm disagreement is not a rounding difference", qzReading - reading.cadenceRpm > 20.0)
+    }
+
+    // ── §11b: bounds must not reject real data ───────────────────────────────────
+
+    @Test
+    fun `every captured corpus frame lies inside its plausibility bounds`() {
+        // The complement of the saturated case, and the more important direction: bounds that
+        // reject real captured data would silently delete a working machine's session. Driven
+        // from the corpus so it covers whatever the corpus contains.
+        val stream = javaClass.classLoader
+            ?.getResourceAsStream("fixtures/tmiw/precor_spinner_chrono.json")
+            ?: error("corpus missing")
+        val fixture = FixtureJson.obj(FixtureJson.parse(stream.bufferedReader().use { it.readText() }))
+
+        for (raw in FixtureJson.array(fixture["cases"])) {
+            val case = FixtureJson.obj(raw)
+            val label = FixtureJson.string(case["name"])
+            val packet = FixtureJson.array(case["packet"])
+                .map { FixtureJson.int(it).toByte() }
+                .toByteArray()
+            val reading = requireNotNull(PrecorMeasurement.parse(packet))
+
             assertTrue(
-                "vector $index speed ${reading.speedKph} must be plausible",
+                "$label speed ${reading.speedKph} must be plausible",
                 reading.speedKph in PlausibilityBounds.rangeFor(MetricKind.SPEED, FusionPersona.RIDE)!!,
             )
             assertTrue(
-                "vector $index cadence ${reading.cadenceRpm} must be plausible",
+                "$label cadence ${reading.cadenceRpm} must be plausible",
                 reading.cadenceRpm in PlausibilityBounds.rangeFor(MetricKind.CADENCE, FusionPersona.RIDE)!!,
             )
             assertTrue(
-                "vector $index power ${reading.powerWatts} must be plausible",
+                "$label power ${reading.powerWatts} must be plausible",
                 reading.powerWatts.toDouble() in
                     PlausibilityBounds.rangeFor(MetricKind.POWER, FusionPersona.RIDE)!!,
-            )
-        }
-    }
-
-    // ── Bytes 15–16: observed, never shipped ─────────────────────────────────────
-
-    @Test
-    fun `bytes 15 and 16 hold a quantity that tracks calories at a fixed ratio`() {
-        // Pinning the observation that made this field interesting, so that a future capture
-        // contradicting it is a visible test failure rather than a forgotten paragraph. This
-        // asserts the evidence for the cumulative-work hypothesis; it does not assert the
-        // hypothesis, and nothing publishes the field.
-        for ((index, vector) in corpus.withIndex()) {
-            val reading = requireNotNull(PrecorMeasurement.parse(vector.data))
-            if (reading.unidentified15to16 == 0) continue
-            val ratio = reading.calories.toDouble() / reading.unidentified15to16
-            assertTrue(
-                "vector $index ratio $ratio must sit near 1.2",
-                ratio in 1.15..1.25,
             )
         }
     }
