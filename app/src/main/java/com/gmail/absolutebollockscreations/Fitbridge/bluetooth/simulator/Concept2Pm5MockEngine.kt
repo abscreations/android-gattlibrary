@@ -9,6 +9,7 @@ enum class Concept2Scenario { STEADY, INCREASING, RECOVERY, INTERVALS, FINISH }
 internal object Concept2Pm5OperationalState {
     const val READY = 1
     const val WORKOUT = 2
+    const val IDLE = 10
 }
 
 /** One coherent, protocol-rich PM5 workout snapshot. Values are in documented wire units. */
@@ -43,9 +44,9 @@ data class Concept2Pm5Snapshot(
     val restTimeCentiseconds: Int = 0,
     val projectedWorkTimeSeconds: Int = 1800,
     val projectedWorkDistanceMetres: Int = 7000,
-    val operationalState: Int = Concept2Pm5OperationalState.WORKOUT,
+    val operationalState: Int = Concept2Pm5OperationalState.IDLE,
     val workoutVerificationState: Int = 0,
-    val screenNumber: Int = 0,
+    val screenNumber: Int = 1,
     val lastError: Int = 0,
     val calibrationMode: Int = 0,
     val calibrationState: Int = 0,
@@ -138,12 +139,12 @@ class Concept2Pm5MockEngine(
             restTimeCentiseconds = if (intervalRest) ((elapsedSeconds.toInt() % 30) * 100) else 0,
             projectedWorkTimeSeconds = 1800,
             projectedWorkDistanceMetres = (averageSpeed * 1800.0).roundToInt(),
-            // The autonomous simulator is already exercising when a client connects. CSAFE is
-            // not required to enter WORKOUT; FINISH returns the virtual monitor to READY.
+            // Compatibility default for Additional Status 3 only. Measurements remain autonomous
+            // and active without CSAFE; FINISH still returns the virtual monitor to READY.
             operationalState = if (finished) {
                 Concept2Pm5OperationalState.READY
             } else {
-                Concept2Pm5OperationalState.WORKOUT
+                Concept2Pm5OperationalState.IDLE
             },
             machineType = machine.wireMachineType,
             splitSequence = if (scenario == Concept2Scenario.INTERVALS) elapsedSeconds.toInt() / 30 else 0,

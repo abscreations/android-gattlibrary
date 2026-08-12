@@ -203,9 +203,20 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
-    fun `autonomous PM5 begins in workout state and finishes ready without CSAFE`() {
+    fun `autonomous status 3 defaults to idle screen 1 and finishes ready without CSAFE`() {
         val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, Concept2Scenario.FINISH)
-        assertEquals(Concept2Pm5OperationalState.WORKOUT, engine.snapshot().operationalState)
+        val initial = engine.snapshot()
+        assertEquals(Concept2Pm5OperationalState.IDLE, initial.operationalState)
+        assertEquals(1, initial.screenNumber)
+        assertEquals(
+            listOf(10, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, initial)!!
+                .map { it.toInt() and 0xFF },
+        )
+        assertEquals(
+            listOf(0x3E, 10, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            Concept2Pm5Encoder.multiplexed(0x3E, initial)!!.map { it.toInt() and 0xFF },
+        )
         assertEquals(Concept2Pm5OperationalState.READY, engine.tick(60.0).operationalState)
     }
 
