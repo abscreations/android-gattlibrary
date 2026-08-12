@@ -26,6 +26,11 @@ sealed interface SimulatorPersona {
 
         override val advertisedName: String = "PM5 $serialNumber"
     }
+
+    /** Tier-S Precor Spinner Chrono Power fixture; the real advertising name is not evidence. */
+    data object PrecorChrono : SimulatorPersona {
+        override val advertisedName: String = "CHRONO"
+    }
 }
 
 /** Physical PM5 identities; Concept2's internal simulator machine codes are deliberately absent. */

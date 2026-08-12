@@ -69,6 +69,9 @@ class FtmsSimulator(
         /** Publish the latest rich PM5 snapshot to the PM5 measurement scheduler. */
         fun publishConcept2(snapshot: Concept2Pm5Snapshot) {}
 
+        /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
+        fun publishPrecor(sample: FtmsMockSample) {}
+
         val isAdvertising: Boolean
     }
 
@@ -185,18 +188,24 @@ class FtmsSimulator(
         start(SimulatorPersona.Ftms(machine), enableControls)
     }
 
-    /** Protocol-level entry point. PM5 remains deliberately gated until its server is available. */
+    /** Protocol-level entry point for the standard and proprietary simulator personas. */
     fun start(
         persona: SimulatorPersona,
         enableControls: Boolean = false,
         concept2Scenario: Concept2Scenario = Concept2Scenario.STEADY,
     ) {
-        if (persona is SimulatorPersona.Concept2Pm5) {
-            startConcept2(persona, concept2Scenario)
-            return
+        when (persona) {
+            is SimulatorPersona.Concept2Pm5 -> {
+                startConcept2(persona, concept2Scenario)
+                return
+            }
+            SimulatorPersona.PrecorChrono -> {
+                startPrecor()
+                return
+            }
+            is SimulatorPersona.Ftms -> Unit
         }
-        val machine = (persona as? SimulatorPersona.Ftms)?.profile
-            ?: return
+        val machine = persona.profile
         if (realMachineAttached()) {
             _state.value = _state.value.copy(
                 lastError = "Disconnect the physical machine before simulating data",
@@ -323,6 +332,53 @@ class FtmsSimulator(
         Timber.tag(TAG).i("PM5 simulator started machine=%s firmware=%s", persona.machine, persona.firmware)
     }
 
+    private fun startPrecor() {
+        val persona = SimulatorPersona.PrecorChrono
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        val mockEngine = FtmsMockEngine(FtmsMachineProfile.INDOOR_BIKE, controlsEnabled = false)
+        engine = mockEngine
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            engine = null
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            machine = FtmsMachineProfile.INDOOR_BIKE,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        publish(mockEngine.snapshot())
+        job = scope.launch {
+            while (isActive) {
+                delay(PERIOD_MS)
+                val active = engine ?: break
+                publish(active.tick(PERIOD_MS / 1000.0))
+            }
+        }
+        Timber.tag(TAG).i("Precor Chrono simulator started")
+    }
+
     private fun publishConcept2(snapshot: Concept2Pm5Snapshot) {
         peripheral.publishConcept2(snapshot)
         val speedKph = snapshot.speedMillimetresPerSecond / 1000.0 * 3.6
@@ -375,6 +431,9 @@ class FtmsSimulator(
      * would.
      */
     private fun publish(sample: FtmsMockSample) {
+        if (_state.value.persona == SimulatorPersona.PrecorChrono) {
+            peripheral.publishPrecor(sample)
+        }
         engineState.setElapsedSeconds(sample.elapsedSeconds)
         engineState.setHeartRate(sample.heartRate)
         engineState.setExpEnergyTotal(sample.caloriesTotal)

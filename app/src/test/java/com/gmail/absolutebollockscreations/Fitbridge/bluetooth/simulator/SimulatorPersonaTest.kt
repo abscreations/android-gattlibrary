@@ -34,4 +34,9 @@ class SimulatorPersonaTest {
         assertTrue(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION in uuids)
         assertFalse(uuids.any { it.toString().startsWith("ce06002") })
     }
+
+    @Test
+    fun `Precor Chrono persona has the explicit simulator identity`() {
+        assertEquals("CHRONO", SimulatorPersona.PrecorChrono.advertisedName)
+    }
 }
