@@ -117,6 +117,47 @@ class DeviceReachabilityTest {
         assertEquals(listOf("vendor.concept2.pm"), candidates.map { it.candidateId })
     }
 
+    // ── Life Fitness admission (plan §6 exit criterion) ──────────────────────────
+
+    @Test
+    fun `a Life Fitness machine is admitted by FTMS alone, with no proprietary UUID advertised`() {
+        // The §6 exit criterion, and the one place the whole family could have been made
+        // undiscoverable. The captured advertisement contains `0x1826` and `0xFE13` and **no**
+        // `4b90` or `4b91` — the proprietary services exist only in the GATT database, which
+        // nothing can read before connecting. A registry entry keyed on them would have produced
+        // a family that fingerprints perfectly and is never once scanned for.
+        val candidates = registry.rankedCandidates(
+            MatchObservation(
+                localName = "LF Cross Trainer",
+                advertisedServiceUuids = setOf(uuid(BluetoothIds.UUID_FTMS_SERVICE)),
+            ),
+        )
+
+        assertEquals(listOf("sig.ftms"), candidates.map { it.candidateId })
+        assertTrue("a Life Fitness machine is a machine", candidates.single().machineRole)
+        assertTrue(
+            "FTMS must be scannable for this family to be found at all",
+            BluetoothIds.UUID_FTMS_SERVICE in hardwareScanServiceUuids(),
+        )
+    }
+
+    @Test
+    fun `no Life Fitness proprietary UUID is in the scan filter or the registry`() {
+        // The inverse, and the more useful direction: registering these would not merely be
+        // useless, it would be a claim that a machine advertises them. Nothing observed does.
+        val filter = hardwareScanServiceUuids().toSet()
+        val registered = registry.scanFilterServiceUuids().toSet()
+
+        for (proprietary in listOf(
+            BluetoothIds.UUID_LF_CONTROL_SERVICE,
+            BluetoothIds.UUID_LF_USER_SERVICE,
+            BluetoothIds.UUID_LF_STATUS,
+        )) {
+            assertFalse("$proprietary is not advertised and must not be scanned for", proprietary in filter)
+            assertFalse("$proprietary must not be a registry match key", uuid(proprietary) in registered)
+        }
+    }
+
     // ── Machine role ─────────────────────────────────────────────────────────────
 
     @Test
