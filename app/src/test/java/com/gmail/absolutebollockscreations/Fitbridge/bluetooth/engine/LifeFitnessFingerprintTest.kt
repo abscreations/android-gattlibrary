@@ -112,6 +112,21 @@ class LifeFitnessFingerprintTest {
             BluetoothIds.UUID_LF_STATUS, resolved.statusCharacteristic)
     }
 
+    @Test
+    fun `isSetupSurface answers the adapter layer's question and nothing more`() {
+        // `candidatesFor` needs a boolean for `requiresSetup`, not a resolved pair. Handing it
+        // the pair would invite callers to keep it and let it drift from the link it came from,
+        // so the convenience returns only what that decision needs.
+        assertTrue(
+            LifeFitnessFingerprint.isSetupSurface(noise() + controlService() + userService()),
+        )
+        assertFalse("an ordinary FTMS machine requires no setup", LifeFitnessFingerprint.isSetupSurface(noise()))
+        assertFalse(
+            "a half-present surface must not arm a handshake that cannot complete",
+            LifeFitnessFingerprint.isSetupSurface(noise() + controlService()),
+        )
+    }
+
     // ── Decline paths, each by name ──────────────────────────────────────────────
 
     @Test

@@ -153,6 +153,18 @@ internal class AdapterLivenessCoordinator(
      */
     private fun candidatesFor(context: ConnectionContext): List<AdapterCandidate> {
         val services = context.discoveredServiceUuids
+        // **The one candidate property that is discovered rather than declared.** Life Fitness
+        // machines advertise and serve ordinary FTMS and then send nothing until a proprietary
+        // handshake completes, so `requiresSetup` cannot be a constant on the FTMS candidate the
+        // way rank and evidence are — it depends on what this particular device turned out to
+        // have. §0.7a and D6 were written for exactly this case; the machinery has been waiting
+        // for it since Phase 0.
+        //
+        // Decided from characteristics, not service UUIDs: D52 keeps the runtime pair rule so a
+        // firmware variant with different parents still completes setup, and a service-level test
+        // would miss precisely that device.
+        val requiresLifeFitnessSetup =
+            LifeFitnessFingerprint.isSetupSurface(context.discoveredServices.toLifeFitnessInventory())
         return buildList {
             if (BluetoothIds.UUID_FTMS_SERVICE in services) {
                 add(
@@ -170,7 +182,7 @@ internal class AdapterLivenessCoordinator(
                             ),
                         ),
                         rank = RANK_FTMS,
-                        requiresSetup = false,
+                        requiresSetup = requiresLifeFitnessSetup,
                         livenessTimeoutMs = livenessTimeoutMs,
                     ),
                 )

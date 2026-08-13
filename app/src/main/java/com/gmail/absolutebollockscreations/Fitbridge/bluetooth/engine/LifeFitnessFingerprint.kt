@@ -42,6 +42,16 @@ import java.util.UUID
  */
 internal object LifeFitnessFingerprint {
 
+    /**
+     * Whether a discovered GATT database is a Life Fitness setup surface.
+     *
+     * The convenience the adapter layer wants: `candidatesFor` needs a boolean to set
+     * `requiresSetup`, not a resolved pair, and asking for the pair there would invite callers
+     * to keep it and let it drift from the link it came from.
+     */
+    fun isSetupSurface(services: List<ServiceInventory>): Boolean =
+        identify(services) is Result.Match
+
     /** One discovered service and the characteristics under it, as the handler will see them. */
     data class ServiceInventory(
         val serviceUuid: UUID,
