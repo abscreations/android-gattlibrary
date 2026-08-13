@@ -236,6 +236,39 @@ object BluetoothIds {
         UUID.fromString("a026e01d-0a7d-4ab3-97fa-f1500f9feb8b")
 
     // ─────────────────────────────────────────────────────────────
+    // User Data Service characteristics (SIG 0x181C), written during Life Fitness setup
+    // ─────────────────────────────────────────────────────────────
+    /**
+     * **These are ordinary SIG characteristics and they carry the personal data**, which is the
+     * part of Phase 6 easiest to get wrong. The seven proprietary Life Fitness UUIDs are control
+     * plumbing and vendor tokens; a user's name, email, age, gender, weight and height go to
+     * these standard ones on the Life Fitness user service.
+     *
+     * A redaction registry that covers only the proprietary UUIDs would therefore protect the
+     * tokens and publish the person. All of them are registered in `SensitiveCharacteristics`.
+     */
+    val UUID_USER_FIRST_NAME: UUID = shortUuid(0x2A8A)
+    val UUID_USER_LAST_NAME: UUID  = shortUuid(0x2A90)
+    val UUID_USER_EMAIL: UUID      = shortUuid(0x2A87)
+    val UUID_USER_AGE: UUID        = shortUuid(0x2A80)
+    val UUID_USER_GENDER: UUID     = shortUuid(0x2A8C)
+    val UUID_USER_LANGUAGE: UUID   = shortUuid(0x2AA2)
+    val UUID_USER_WEIGHT: UUID     = shortUuid(0x2A98)
+    val UUID_USER_HEIGHT: UUID     = shortUuid(0x2A8E)
+
+    /** Every user-data characteristic the Life Fitness transcript writes, in transcript order. */
+    val USER_PROFILE_CHARACTERISTICS: List<UUID> = listOf(
+        UUID_USER_FIRST_NAME,
+        UUID_USER_LAST_NAME,
+        UUID_USER_EMAIL,
+        UUID_USER_AGE,
+        UUID_USER_GENDER,
+        UUID_USER_LANGUAGE,
+        UUID_USER_WEIGHT,
+        UUID_USER_HEIGHT,
+    )
+
+    // ─────────────────────────────────────────────────────────────
     // Life Fitness proprietary setup (plan §6, D54)
     // ─────────────────────────────────────────────────────────────
     /**

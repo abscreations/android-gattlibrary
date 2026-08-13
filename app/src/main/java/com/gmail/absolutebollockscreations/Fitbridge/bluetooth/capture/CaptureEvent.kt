@@ -112,6 +112,26 @@ internal object SensitiveCharacteristics {
         UUID.fromString("5da54cf2-9cb2-11e5-8994-feff819cdc9f") to RedactionReason.VENDOR_TOKEN,
         // Life Fitness vendor token 2.
         UUID.fromString("ce78e85e-9cb6-11e5-8994-feff819cdc9f") to RedactionReason.VENDOR_TOKEN,
+
+        // ── SIG User Data Service (Phase 6) ──────────────────────────────────────
+        //
+        // **The personal data is here, not on the proprietary UUIDs.** Until 2026-08-12 this
+        // registry held only the two vendor tokens, which protected Life Fitness's secrets and
+        // would have published the user's name and email address the moment the setup transcript
+        // ran. Plan §6 is explicit that registration is the failure mode: the mechanism cannot
+        // leak, but a characteristic nobody registered is not protected by it.
+        //
+        // Registered by UUID rather than by family, so they are redacted wherever they appear.
+        // A name written to any device is personal data; nothing about that depends on which
+        // machine is receiving it.
+        UUID.fromString("00002a8a-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+        UUID.fromString("00002a90-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+        UUID.fromString("00002a87-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+        UUID.fromString("00002a80-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+        UUID.fromString("00002a8c-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+        UUID.fromString("00002aa2-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+        UUID.fromString("00002a98-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+        UUID.fromString("00002a8e-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
     )
 
     fun reasonFor(characteristic: UUID): RedactionReason? = byUuid[characteristic]
