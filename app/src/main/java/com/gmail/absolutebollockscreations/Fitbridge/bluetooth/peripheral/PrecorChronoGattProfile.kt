@@ -11,6 +11,10 @@ import java.util.UUID
 internal data class PrecorChronoAdvertisingPlan(
     val serviceUuid: UUID,
     val localName: String,
+    val includeNameInAdvertising: Boolean,
+    val includeTxPowerInScanResponse: Boolean,
+    val manufacturerId: Int,
+    val manufacturerPayload: ByteArray,
     val advertisingBytes: Int,
     val scanResponseBytes: Int,
 ) {
@@ -24,15 +28,23 @@ internal data class PrecorChronoAdvertisingPlan(
 
         fun create(): PrecorChronoAdvertisingPlan {
             val name = SimulatorPersona.PrecorChrono.advertisedName
+            val manufacturerPayload = byteArrayOf(0x02, 0x06)
             return PrecorChronoAdvertisingPlan(
-                // Q32 remains open. This is deliberately the served UUID so a second FitBridge
-                // instance exercises the current registry-derived scan filter.
+                // QZ issue #261's physical Chrono capture places the name in ADV_IND and the
+                // served UUID, TX power, and this manufacturer block in SCAN_RSP.
                 serviceUuid = BluetoothIds.UUID_PRECOR_SERVICE,
                 localName = name,
-                advertisingBytes = 3 + 18,
-                scanResponseBytes = 2 + name.toByteArray(Charsets.UTF_8).size,
+                includeNameInAdvertising = true,
+                includeTxPowerInScanResponse = true,
+                manufacturerId = CAPTURED_MANUFACTURER_ID,
+                manufacturerPayload = manufacturerPayload,
+                advertisingBytes = 3 + 2 + name.toByteArray(Charsets.UTF_8).size,
+                scanResponseBytes = 3 + 18 + 4 + manufacturerPayload.size,
             )
         }
+
+        /** Little-endian `fc 01` in the captured Manufacturer Specific Data field. */
+        const val CAPTURED_MANUFACTURER_ID = 0x01FC
     }
 }
 

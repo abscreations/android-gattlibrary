@@ -5,6 +5,9 @@ import kotlin.math.roundToInt
 
 /** Encoder for the fixed 19-byte Precor Spinner Chrono Power measurement fixture. */
 internal object PrecorChronoEncoder {
+    /** One physical Chrono measurement/auxiliary pair is observed approximately every second. */
+    const val PAIR_PERIOD_MS = 1_000L
+
     fun encode(sample: FtmsMockSample): ByteArray {
         val frame = ByteArray(PrecorMeasurement.FRAME_LENGTH)
         PrecorMeasurement.MAGIC_PREFIX.forEachIndexed { index, value -> frame[index] = value.toByte() }
@@ -24,6 +27,10 @@ internal object PrecorChronoEncoder {
         putU16(frame, 17, sample.powerWatts ?: 0)
         return frame
     }
+
+    /** Ordered notifications observed on `a026e01d-…` in QZ issue #261's physical capture. */
+    fun encodeNotifications(sample: FtmsMockSample): List<ByteArray> =
+        listOf(encode(sample), PrecorMeasurement.auxiliaryFrame())
 
     private fun scaled(value: Double?, scale: Double): Int =
         ((value ?: 0.0).coerceAtLeast(0.0) * scale).roundToInt()

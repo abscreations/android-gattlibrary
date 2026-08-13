@@ -37,6 +37,6 @@ class SimulatorPersonaTest {
 
     @Test
     fun `Precor Chrono persona has the explicit simulator identity`() {
-        assertEquals("CHRONO", SimulatorPersona.PrecorChrono.advertisedName)
+        assertEquals("CHRONO 0", SimulatorPersona.PrecorChrono.advertisedName)
     }
 }

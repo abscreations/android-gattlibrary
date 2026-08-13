@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -47,6 +48,18 @@ class PrecorMeasurementTest {
     }
 
     // ── §11.3 / §11a adversarial input ───────────────────────────────────────────
+
+    @Test
+    fun `captured auxiliary notification has an exact defensive predicate`() {
+        val auxiliary = PrecorMeasurement.auxiliaryFrame()
+        assertTrue(PrecorMeasurement.isAuxiliaryFrame(auxiliary))
+        assertNull(PrecorMeasurement.parse(auxiliary))
+
+        auxiliary[2] = 0x01
+        assertFalse(PrecorMeasurement.isAuxiliaryFrame(auxiliary))
+        assertFalse(PrecorMeasurement.isAuxiliaryFrame(byteArrayOf(0x24, 0x08)))
+        assertArrayEquals(byteArrayOf(0x24, 0x08, 0x00), PrecorMeasurement.auxiliaryFrame())
+    }
 
     @Test
     fun `a frame of any length other than 19 is rejected`() {

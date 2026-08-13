@@ -23,8 +23,28 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FtmsMockSample
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.PrecorChronoEncoder
+import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+
+/** Bounded per-client notification FIFO; a complete current pair replaces stale queued data. */
+internal class PrecorNotificationQueue(private val capacity: Int = 4) {
+    private val values = ArrayDeque<ByteArray>()
+
+    init {
+        require(capacity > 0)
+    }
+
+    fun offerAll(frames: List<ByteArray>) {
+        require(frames.size <= capacity)
+        while (values.size + frames.size > capacity) values.removeFirst()
+        frames.forEach { values.addLast(it.copyOf()) }
+    }
+
+    fun poll(): ByteArray? = values.pollFirst()
+    fun clear() = values.clear()
+    fun size(): Int = values.size
+}
 
 /** Minimal measurement-only Android GATT server for the Precor Chrono simulator persona. */
 internal class PrecorChronoPeripheralAdvertiser(
@@ -39,7 +59,7 @@ internal class PrecorChronoPeripheralAdvertiser(
     private class Client(val device: BluetoothDevice) {
         var subscribed = false
         var inFlight = false
-        var pending: ByteArray? = null
+        val pending = PrecorNotificationQueue(MAX_PENDING_NOTIFICATIONS)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -49,19 +69,20 @@ internal class PrecorChronoPeripheralAdvertiser(
     private var advertiseCallback: AdvertiseCallback? = null
     private var startResult: ((Result<Unit>) -> Unit)? = null
 
-    @Volatile private var latest: ByteArray? = null
+    @Volatile private var latest = emptyList<ByteArray>()
     @Volatile var isAdvertising: Boolean = false
         private set
 
     fun publish(sample: FtmsMockSample) {
-        val frame = PrecorChronoEncoder.encode(sample)
-        latest = frame
-        clients.values.filter { it.subscribed }.forEach { enqueue(it, frame) }
+        val notifications = PrecorChronoEncoder.encodeNotifications(sample)
+        latest = notifications.map(ByteArray::copyOf)
+        clients.values.filter { it.subscribed }.forEach { enqueue(it, notifications) }
     }
 
     @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE])
     fun start(onResult: (Result<Unit>) -> Unit) {
         stop()
+        latest = emptyList()
         val currentEpoch = epoch.incrementAndGet()
         startResult = onResult
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -176,7 +197,10 @@ internal class PrecorChronoPeripheralAdvertiser(
             val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
                 descriptor.characteristic.uuid == BluetoothIds.UUID_PRECOR_MEASUREMENT &&
                 !preparedWrite && offset == 0 && (enable || disable)
-            if (valid) client.subscribed = enable
+            if (valid) {
+                client.subscribed = enable
+                if (disable) synchronized(client) { client.pending.clear() }
+            }
             if (responseNeeded) {
                 server?.sendResponse(
                     device,
@@ -186,7 +210,7 @@ internal class PrecorChronoPeripheralAdvertiser(
                     null,
                 )
             }
-            if (valid && enable) latest?.let { enqueue(client, it) }
+            if (valid && enable && latest.isNotEmpty()) enqueue(client, latest)
             publishState()
         }
 
@@ -214,10 +238,13 @@ internal class PrecorChronoPeripheralAdvertiser(
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
             .build()
         val data = AdvertiseData.Builder()
-            .setIncludeDeviceName(false)
-            .addServiceUuid(ParcelUuid(plan.serviceUuid))
+            .setIncludeDeviceName(plan.includeNameInAdvertising)
             .build()
-        val scanResponse = AdvertiseData.Builder().setIncludeDeviceName(true).build()
+        val scanResponse = AdvertiseData.Builder()
+            .setIncludeTxPowerLevel(plan.includeTxPowerInScanResponse)
+            .addServiceUuid(ParcelUuid(plan.serviceUuid))
+            .addManufacturerData(plan.manufacturerId, plan.manufacturerPayload)
+            .build()
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
                 if (epoch.get() != currentEpoch) return
@@ -258,8 +285,8 @@ internal class PrecorChronoPeripheralAdvertiser(
         }
     }
 
-    private fun enqueue(client: Client, frame: ByteArray) {
-        synchronized(client) { client.pending = frame.copyOf() }
+    private fun enqueue(client: Client, frames: List<ByteArray>) {
+        synchronized(client) { client.pending.offerAll(frames) }
         drain(client)
     }
 
@@ -267,8 +294,7 @@ internal class PrecorChronoPeripheralAdvertiser(
     private fun drain(client: Client) {
         val frame = synchronized(client) {
             if (client.inFlight) return
-            client.pending?.also {
-                client.pending = null
+            client.pending.poll()?.also {
                 client.inFlight = true
             }
         } ?: return
@@ -301,4 +327,9 @@ internal class PrecorChronoPeripheralAdvertiser(
         listener.onState(isAdvertising, clients.isNotEmpty(), anySubscribed(), null)
 
     private fun anySubscribed(): Boolean = clients.values.any { it.subscribed }
+
+    companion object {
+        /** Two current pairs; older telemetry is less useful than preserving current order. */
+        private const val MAX_PENDING_NOTIFICATIONS = 4
+    }
 }

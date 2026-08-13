@@ -76,6 +76,13 @@ internal object PrecorMeasurement {
     /** The invariant first three octets, `0x53 0x59 0x16`. */
     val MAGIC_PREFIX = intArrayOf(83, 89, 22)
 
+    /** Known non-metric companion notification observed after each physical Chrono frame. */
+    private val AUXILIARY_FRAME = byteArrayOf(0x24, 0x08, 0x00)
+
+    fun auxiliaryFrame(): ByteArray = AUXILIARY_FRAME.copyOf()
+
+    fun isAuxiliaryFrame(data: ByteArray): Boolean = data.contentEquals(AUXILIARY_FRAME)
+
     /** Offsets, named so a reader can check them against the table above without counting. */
     private const val OFFSET_ELAPSED = 3
     private const val OFFSET_HEART_RATE = 5

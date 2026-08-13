@@ -385,6 +385,17 @@ class PrecorProductionPlumbingTest {
         assertEquals(0, handler.rejectedFrameCount())
     }
 
+    @Test
+    fun `captured auxiliary notification is ignored without becoming a rejection`() {
+        val handler = PrecorProtocolHandler()
+
+        assertNull(handler.decodeNotification(byteArrayOf(0x24, 0x08, 0x00)))
+        assertEquals(0, handler.rejectedFrameCount())
+
+        assertNull(handler.decodeNotification(byteArrayOf(0x24, 0x08, 0x01)))
+        assertEquals(1, handler.rejectedFrameCount())
+    }
+
     // ── Adapter candidacy ────────────────────────────────────────────────────────
 
     @Test

@@ -371,9 +371,9 @@ class FtmsSimulator(
         publish(mockEngine.snapshot())
         job = scope.launch {
             while (isActive) {
-                delay(PERIOD_MS)
+                delay(PrecorChronoEncoder.PAIR_PERIOD_MS)
                 val active = engine ?: break
-                publish(active.tick(PERIOD_MS / 1000.0))
+                publish(active.tick(PrecorChronoEncoder.PAIR_PERIOD_MS / 1000.0))
             }
         }
         Timber.tag(TAG).i("Precor Chrono simulator started")

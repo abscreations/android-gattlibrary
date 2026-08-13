@@ -105,21 +105,7 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
     ) {
         if (ch.uuid != BluetoothIds.UUID_PRECOR_MEASUREMENT) return
 
-        val reading = PrecorMeasurement.parse(value)
-        if (reading == null) {
-            // Counted, and logged only at verbose. A device serving this service that sends
-            // something else is either a Chrono variant nobody has captured or a different
-            // machine on the same vendor base; either way the packet is not decodable and the
-            // count is what a diagnostic capture needs. Nothing here consumes a rate window,
-            // because FitBridge has none — see PrecorMeasurement's note on reject-before-throttle.
-            recordRejectedFrame()
-            Timber.tag(BtEngineState.TAG).v(
-                "Precor frame rejected (len=%d, total=%d)",
-                value.size,
-                rejectedFrames,
-            )
-            return
-        }
+        val reading = decodeNotification(value) ?: return
 
         if (!cadenceHighOctetSeen && reading.confirmsCadenceIsUint16()) {
             cadenceHighOctetSeen = true
@@ -149,6 +135,32 @@ internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 nativeCumulative = sample.nativeCumulative,
             )
         }
+    }
+
+    /**
+     * Decode metric-bearing traffic while accepting the captured three-byte companion packet.
+     *
+     * The exact `24 08 00` value is observed after each measurement on a physical Chrono and
+     * carries no established metric. Adjacent short values remain malformed and observable.
+     */
+    internal fun decodeNotification(value: ByteArray): PrecorMeasurement.Reading? {
+        if (PrecorMeasurement.isAuxiliaryFrame(value)) return null
+        val reading = PrecorMeasurement.parse(value)
+        if (reading == null) {
+            // Counted, and logged only at verbose. A device serving this service that sends
+            // something else is either a Chrono variant nobody has captured or a different
+            // machine on the same vendor base; either way the packet is not decodable and the
+            // count is what a diagnostic capture needs. Nothing here consumes a rate window,
+            // because FitBridge has none — see PrecorMeasurement's note on reject-before-throttle.
+            recordRejectedFrame()
+            Timber.tag(BtEngineState.TAG).v(
+                "Precor frame rejected (len=%d, total=%d)",
+                value.size,
+                rejectedFrames,
+            )
+            return null
+        }
+        return reading
     }
 
     /**
