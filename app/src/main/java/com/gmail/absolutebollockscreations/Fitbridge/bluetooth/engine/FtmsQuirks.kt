@@ -253,6 +253,31 @@ internal object FtmsQuirkRegistry {
         LIFE_FITNESS_BIKE_CADENCE_27,
     )
 
+    /**
+     * The characteristics whose parser actually calls [find].
+     *
+     * **Registering a quirk is not enough to make it fire.** The walker for its characteristic
+     * has to consult this registry, and four of the six do not: `doTreadmill`, `doElliptical`,
+     * `doStepper` and `doClimber` decode straight from the flag word with no registry lookup.
+     * That is harmless while no quirk targets them and silently wrong the moment one does — a
+     * quirk registered against `0x2ACD` today would be complete, evidenced, tested at the
+     * registry level, and never reached by a packet.
+     *
+     * This set exists so that failure is impossible rather than merely unlikely.
+     * `FtmsQuirkRegistryTest` asserts every registered quirk targets a characteristic in it, so
+     * registering one for an unwired walker fails the build with a message naming the walker to
+     * change. Adding a characteristic here without wiring its parser fails too, because the same
+     * test proves each entry actually applies a quirk end to end.
+     *
+     * The asymmetry is deliberate for now — wiring a lookup into a walker that has nothing to
+     * look up adds a parameter to four public functions and their call sites for no behaviour.
+     * When a fifth quirk needs one of them, wire that walker and add it here.
+     */
+    val CHARACTERISTICS_CONSULTING_REGISTRY: Set<UUID> = setOf(
+        BluetoothIds.UUID_ROWING_MACHINE_DATA,
+        BluetoothIds.UUID_BIKING_DATA,
+    )
+
     fun find(deviceName: String?, characteristic: UUID, flags: Int, length: Int): FtmsQuirk? =
         all.firstOrNull { it.matches(deviceName, characteristic, flags, length) }
 }

@@ -209,6 +209,102 @@ class FtmsQuirkRegistryTest {
         assertEquals(350.0, h.fusion.latestSample(MetricKind.POWER)!!.value, 1e-9)
     }
 
+    // ── The wiring contract ──────────────────────────────────────────────────────
+
+    @Test
+    fun `every registered quirk targets a characteristic whose parser consults the registry`() {
+        // The gap this guards: a quirk can be fully specified, evidenced and unit-tested at the
+        // registry level, and still never fire, because only `doRower` and `doBike` call
+        // `FtmsQuirkRegistry.find`. `doTreadmill`, `doElliptical`, `doStepper` and `doClimber`
+        // decode straight from the flag word.
+        //
+        // Without this assertion the failure is silent: registry tests pass, the quirk looks
+        // shipped, and no packet ever reaches it. With it, the build fails and names the walker
+        // that needs wiring.
+        for (quirk in FtmsQuirkRegistry.all) {
+            assertTrue(
+                "${quirk.id} targets ${quirk.characteristic}, whose parser does not call " +
+                    "FtmsQuirkRegistry.find. Wire that walker to consult the registry and add " +
+                    "the characteristic to CHARACTERISTICS_CONSULTING_REGISTRY, or the quirk " +
+                    "will never fire on a real packet.",
+                quirk.characteristic in FtmsQuirkRegistry.CHARACTERISTICS_CONSULTING_REGISTRY,
+            )
+        }
+    }
+
+    @Test
+    fun `each characteristic claimed to consult the registry demonstrably does`() {
+        // The converse, and the reason the set is not merely documentation. An entry added here
+        // without wiring its parser would let the assertion above pass while the quirk still
+        // never fires — so each claimed characteristic must be shown applying a quirk end to
+        // end, through the real parser, on a packet its fingerprint matches.
+        val demonstrated = mutableSetOf<UUID>()
+
+        // Rower: Mr Captain's layout replacement. Average pace is flagged but absent, so a
+        // standard walk would misread the tail; the quirk firing is what makes power correct.
+        val rower = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
+        BtEngineFtmsParsers.doRower(rower.emitter, mrCaptainPacket(), deviceName = "XG-070")
+        assertNotNull(
+            "the rower walker must consult the registry",
+            rower.fusion.latestSample(MetricKind.STROKE_RATE),
+        )
+        demonstrated += BluetoothIds.UUID_ROWING_MACHINE_DATA
+
+        // Bike: the Life Fitness flag correction. Cadence is absent without it and present with
+        // it, from the identical packet — the cleanest possible demonstration that the lookup
+        // happened.
+        val packet = lifeFitnessBikePacket()
+        val without = harness(BluetoothIds.UUID_BIKING_DATA, FusionPersona.RIDE)
+        BtEngineFtmsParsers.doBike(without.emitter, packet, deviceName = null)
+        assertNull(
+            "no quirk without an identity to match",
+            without.fusion.latestSample(MetricKind.CADENCE),
+        )
+
+        val with = harness(BluetoothIds.UUID_BIKING_DATA, FusionPersona.RIDE)
+        BtEngineFtmsParsers.doBike(with.emitter, packet, deviceName = "LF Bike")
+        assertNotNull(
+            "the bike walker must consult the registry",
+            with.fusion.latestSample(MetricKind.CADENCE),
+        )
+        demonstrated += BluetoothIds.UUID_BIKING_DATA
+
+        assertEquals(
+            "every characteristic in CHARACTERISTICS_CONSULTING_REGISTRY must be demonstrated " +
+                "here, and nothing may claim to consult the registry without proof",
+            FtmsQuirkRegistry.CHARACTERISTICS_CONSULTING_REGISTRY,
+            demonstrated,
+        )
+    }
+
+    /** A captured Life Fitness bike frame: flags 0x09FA, 26 octets, cadence bit clear. */
+    private fun lifeFitnessBikePacket(): ByteArray {
+        val stream = javaClass.classLoader
+            ?.getResourceAsStream("fixtures/tmiw/life_fitness_issue_462_indoor_bike_capture.json")
+            ?: error("capture corpus missing")
+        val fixture = FixtureJson.obj(
+            FixtureJson.parse(stream.bufferedReader().use { it.readText() }),
+        )
+        val case = FixtureJson.array(fixture["cases"])
+            .map(FixtureJson::obj)
+            .first { FixtureJson.int(it["length"]) == 26 }
+        return FixtureJson.array(case["packet"]).map { FixtureJson.int(it).toByte() }.toByteArray()
+    }
+
+    /** A Mr Captain rower frame from the pinned TMIW corpus: flags 0x0B3C, 20 octets. */
+    private fun mrCaptainPacket(): ByteArray {
+        val stream = javaClass.classLoader
+            ?.getResourceAsStream("fixtures/tmiw/ftms_mr_captain.json")
+            ?: error("mr captain corpus missing")
+        val fixture = FixtureJson.obj(
+            FixtureJson.parse(stream.bufferedReader().use { it.readText() }),
+        )
+        val case = FixtureJson.array(fixture["cases"])
+            .map(FixtureJson::obj)
+            .first { FixtureJson.array(it["packet"]).size == 20 }
+        return FixtureJson.array(case["packet"]).map { FixtureJson.int(it).toByte() }.toByteArray()
+    }
+
     // ── Registry invariants ──────────────────────────────────────────────────────
 
     @Test
