@@ -112,13 +112,35 @@ internal object BtEngineFtmsParsers {
     // ─────────────────────────────────────────────────────────────
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun doBike(emitter: MetricEmitter, value: ByteArray) {
+    fun doBike(emitter: MetricEmitter, value: ByteArray, deviceName: String? = null) {
         if (canLogFrames()) {
             Timber.tag(TAG).d("FTMS Bike (2AD2) len=%d %s", value.size, value.toHex())
         }
         var off = 0
         if (!has(value, off, 2)) return
-        val flags = u16(value, off); off += 2
+        val asSent = u16(value, off); off += 2
+
+        // A machine that under-reports its own flag word has its input repaired before the walk,
+        // never its layout replaced — see [FtmsQuirk.forceFlagBits]. The correction is admissible
+        // only where packet-length arithmetic shows the corrected word accounts for exactly the
+        // observed length, so the field is at its specification offset and the walk below needs
+        // no special case. A non-matching packet from the same machine falls through unchanged.
+        val quirk = FtmsQuirkRegistry.find(
+            deviceName,
+            BluetoothIds.UUID_BIKING_DATA,
+            asSent,
+            value.size,
+        )?.takeIf { it.isFlagCorrection }
+        val flags = quirk?.correctedFlags(asSent) ?: asSent
+
+        if (quirk != null && canLogMetrics()) {
+            Timber.tag(TAG).d(
+                "Bike quirk %s: flags 0x%04X -> 0x%04X",
+                quirk.id,
+                asSent,
+                flags,
+            )
+        }
         if (canLogMetrics()) {
             Timber.tag(TAG).d("Bike flags=0x%04X", flags)
         }

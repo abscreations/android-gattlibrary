@@ -15,7 +15,7 @@
     33,
     34
   ],
-  "flagByteSize": 2,
+  "flagByteSize": 3,
   "cases": [
     {
       "name": "cross_trainer-0",
@@ -227,5 +227,6 @@
       },
       "physicallyConfirmedLength": false
     }
-  ]
+  ],
+  "flagNote": "FTMS Cross Trainer Data carries a 24-bit flags field, unlike the 16-bit fields on 0x2ACD, 0x2AD0 and 0x2AD2. FitBridge's doElliptical reads it correctly (u16 then u8). The per-case 'flags' value below is the LOW 16 BITS only, kept for grouping consistency with the other personas; it is a complete description of these packets solely because the high octet is 0x00 in every one of the 77 captured cross-trainer packets, which LifeFitnessFixtureParityTest asserts. A future capture with a non-zero high octet would make this label ambiguous and the grouping key must then widen to 24 bits."
 }

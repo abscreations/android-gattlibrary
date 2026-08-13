@@ -214,16 +214,29 @@ class FtmsQuirkRegistryTest {
     @Test
     fun `every registered layout accounts for exactly its declared packet length`() {
         assertTrue("registry should not be empty", FtmsQuirkRegistry.all.isNotEmpty())
-        for (quirk in FtmsQuirkRegistry.all) {
+        // Scoped to layout quirks since 2026-08-12. A flag correction has no layout — it repairs
+        // the flag word and lets the standard walk consume the packet — so "layout octets total
+        // the packet length" is not merely false for one, it is meaningless. Its equivalent
+        // invariant is that the *corrected flag word* accounts for exactly the packet length,
+        // which needs a per-characteristic FTMS field table and is asserted in
+        // `LifeFitnessCadenceQuirkTest.flag correction widths reconcile the observed packet
+        // lengths`. Both kinds are covered; neither is covered by the other's rule.
+        for (quirk in FtmsQuirkRegistry.all.filterNot { it.isFlagCorrection }) {
             assertEquals(
                 "${quirk.id}: layout octets must total the fingerprinted packet length, " +
                     "otherwise the override is guessing at the tail",
                 quirk.packetLength,
                 quirk.declaredWidth,
             )
+        }
+
+        // Evidence and fingerprint discipline apply to every quirk regardless of kind — a
+        // correction is a smaller claim than a layout, not a lesser-evidenced one.
+        for (quirk in FtmsQuirkRegistry.all) {
             assertTrue("${quirk.id}: needs recorded evidence", quirk.evidence.isNotBlank())
             assertTrue("${quirk.id}: name prefix must be lowercase", quirk.namePrefix.none { it.isUpperCase() })
             assertTrue("${quirk.id}: must fingerprint at least one flag word", quirk.flagWords.isNotEmpty())
+            assertTrue("${quirk.id}: must fingerprint an exact packet length", quirk.packetLength > 0)
         }
     }
 }

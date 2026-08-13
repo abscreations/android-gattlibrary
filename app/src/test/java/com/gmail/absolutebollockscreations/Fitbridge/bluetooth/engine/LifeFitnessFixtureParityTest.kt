@@ -104,6 +104,38 @@ class LifeFitnessFixtureParityTest {
     }
 
     @Test
+    fun `only the cross trainer declares a 24-bit flags field, and its label is provably complete`() {
+        // Found while diagnosing a replay failure, not by reading the specification: an
+        // implausible 619 km/h came out of reading speed at offset 2, because FTMS Cross Trainer
+        // Data carries a **24-bit** flags field where 0x2ACD, 0x2AD0 and 0x2AD2 carry 16.
+        // `doElliptical` already reads it correctly; the fixtures I generated declared
+        // `flagByteSize: 2` for all four, which was wrong for this one.
+        //
+        // The per-case `flags` label remains a 16-bit value for grouping consistency. That is
+        // only honest while the high octet is zero, so it is asserted rather than assumed — in
+        // both the reference corpus and all 77 captured packets. A future capture with a
+        // non-zero high octet makes the label ambiguous and the grouping key must widen.
+        assertEquals(3, FixtureJson.int(load("ftms_life_fitness_cross_trainer")["flagByteSize"]))
+        for (name in corpora - "ftms_life_fitness_cross_trainer") {
+            assertEquals("$name flags are 16-bit", 2, FixtureJson.int(load(name)["flagByteSize"]))
+        }
+
+        // The two corpora label their cases differently — the reference fixtures carry a string
+        // `name`, the capture fixtures a numeric `sequence` — so the label is built without
+        // assuming either type.
+        for (name in listOf("ftms_life_fitness_cross_trainer", CROSS_TRAINER_CAPTURE)) {
+            for (case in cases(load(name))) {
+                val label = case["name"] ?: case["sequence"]
+                assertEquals(
+                    "$name/$label: the 16-bit flag label is only valid while the high octet is zero",
+                    0,
+                    packetOf(case)[2].toInt() and 0xFF,
+                )
+            }
+        }
+    }
+
+    @Test
     fun `physical confirmation is computed from the declared observed lengths, not asserted`() {
         // The corroboration claim has to be checkable or it is decoration. This recomputes each
         // case's confirmation flag from the corpus's own observed-length set.
@@ -294,5 +326,8 @@ class LifeFitnessFixtureParityTest {
 
         /** The 115-packet sanitized capture corpus extracted from TMIW issue #462. */
         const val BIKE_CAPTURE = "life_fitness_issue_462_indoor_bike_capture"
+
+        /** The 77-packet cross-trainer capture, the only 24-bit-flags persona. */
+        const val CROSS_TRAINER_CAPTURE = "life_fitness_issue_462_cross_trainer_capture"
     }
 }

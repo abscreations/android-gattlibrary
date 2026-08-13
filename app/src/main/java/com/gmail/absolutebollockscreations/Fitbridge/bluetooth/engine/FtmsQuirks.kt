@@ -76,7 +76,44 @@ internal data class FtmsQuirk(
     val evidence: String,
     val firmwareNotes: String,
     val unknownPacketPolicy: UnknownPacketPolicy = UnknownPacketPolicy.FALL_BACK_TO_STANDARD,
+    /**
+     * Flag bits the machine fails to set for fields it nonetheless sends.
+     *
+     * **A second, weaker kind of quirk, and the distinction is worth keeping sharp.** A [layout]
+     * says "ignore the specification for this packet and read these octets instead" — maximum
+     * power, maximum risk, and it is why every layout is verified octet-by-octet against a
+     * pinned vector. A flag correction says only "this machine under-reports its own flag word;
+     * the fields are where the specification puts them". The standard walk then does all the
+     * decoding, so a flag correction cannot misalign a field the way a hand-written layout can.
+     *
+     * It is only admissible when packet-length arithmetic proves it. If the corrected flag word
+     * accounts for exactly the observed length while the as-sent word does not, the missing
+     * field is present at its standard offset and nothing has been guessed. That check is not
+     * optional decoration — it is the entire evidential basis, and
+     * `FtmsQuirkRegistryTest` performs it for every registered correction.
+     *
+     * Mutually exclusive with [layout]: a quirk either replaces the walk or repairs its input.
+     */
+    val forceFlagBits: Int = 0,
 ) {
+    init {
+        require(layout.isNotEmpty() || forceFlagBits != 0) {
+            "$id declares neither a layout nor a flag correction"
+        }
+        require(layout.isEmpty() || forceFlagBits == 0) {
+            "$id must either replace the walk or repair its input, not both"
+        }
+        require(flagWords.none { it and forceFlagBits != 0 }) {
+            "$id corrects a bit that its own fingerprint already has set"
+        }
+    }
+
+    /** True when this quirk repairs the flag word rather than replacing the field walk. */
+    val isFlagCorrection: Boolean get() = forceFlagBits != 0
+
+    /** The flag word the standard walk should see for a matching packet. */
+    fun correctedFlags(flags: Int): Int = flags or forceFlagBits
+
     /** Total octets the layout accounts for, including the flag word. */
     val declaredWidth: Int
         get() = 2 + layout.sumOf {
@@ -143,20 +180,78 @@ internal object FtmsQuirkRegistry {
     )
 
     /**
-     * Registered quirks. Two families named in plan Phase 4c are deliberately absent:
+     * Life Fitness indoor bike (`LF` name prefix), Indoor Bike Data `0x2AD2`, 26 and 27 octets.
+     *
+     * The machine sends Instantaneous Cadence but leaves its presence bit clear. Registered as a
+     * flag correction rather than a layout because **packet-length arithmetic proves the field
+     * is at its standard offset**, so the standard walk needs its input repaired and nothing
+     * else:
+     *
+     * ```
+     *   0x09FA as sent          →  24 octets   observed 26   short by exactly the 2-octet field
+     *   0x09FA | cadence bit    →  26 octets   observed 26   exact
+     *   0x0BFA as sent          →  25 octets   observed 27
+     *   0x0BFA | cadence bit    →  27 octets   observed 27   exact
+     * ```
+     *
+     * **Evidence, and its limit.** Q28 blocked this quirk for two phases because §4c forbids a
+     * quirk without a fingerprint and no capture existed. TMIW issue #462's official-app HCI
+     * supplies one: 115 physical indoor-bike packets, every one with bit 2 clear, in exactly two
+     * flag/length families. Both are registered.
+     *
+     * TMIW's parser tests carry a third family, `0x19FA`/28, whose arithmetic reconciles the
+     * same way (26 → 28). It is **deliberately not registered**: it appears in no physical
+     * packet, and a fingerprint's whole purpose is to assert that a real machine behaves this
+     * way. Reference coverage is not that assertion. If a capture ever shows it, adding it is a
+     * one-line change with the evidence to justify it.
+     */
+    private val LIFE_FITNESS_BIKE_CADENCE_26 = FtmsQuirk(
+        id = "life-fitness-bike-cadence-26",
+        namePrefix = "lf",
+        characteristic = BluetoothIds.UUID_BIKING_DATA,
+        flagWords = setOf(0x09FA),
+        packetLength = 26,
+        layout = emptyList(),
+        forceFlagBits = Flags.BIKE_CADENCE,
+        evidence = "TMIW issue #462 official-app HCI, 22 physical packets at 0x09FA/26, all " +
+            "with the cadence presence bit clear; corpus " +
+            "life_fitness_issue_462_indoor_bike_capture.json. Length arithmetic: 24 as sent, " +
+            "26 corrected, 26 observed.",
+        firmwareNotes = "Name prefix LF. Exact commercial model and firmware are not recorded " +
+            "in the capture; this is upstream hardware-observed evidence under D55, not tier H.",
+    )
+
+    private val LIFE_FITNESS_BIKE_CADENCE_27 = FtmsQuirk(
+        id = "life-fitness-bike-cadence-27",
+        namePrefix = "lf",
+        characteristic = BluetoothIds.UUID_BIKING_DATA,
+        flagWords = setOf(0x0BFA),
+        packetLength = 27,
+        layout = emptyList(),
+        forceFlagBits = Flags.BIKE_CADENCE,
+        evidence = "TMIW issue #462 official-app HCI, 93 physical packets at 0x0BFA/27, all " +
+            "with the cadence presence bit clear. Length arithmetic: 25 as sent, 27 corrected, " +
+            "27 observed. Differs from the 26-octet family only by the heart-rate bit.",
+        firmwareNotes = "Name prefix LF. Same limits as the 26-octet family.",
+    )
+
+    /**
+     * Registered quirks. One family named in plan Phase 4c remains deliberately absent:
      *
      *  - **CardioStrong IB50** reports total distance in decametres. The rule is simple, but
      *    plan §4c requires a fingerprint and there is no capture — no flag word, no packet
      *    length, no firmware revision. It also needs the user-visible correction toggle the
      *    plan specifies. Shipping it on a bare name prefix would reproduce exactly the ungated
      *    behaviour this registry's documentation criticises.
-     *  - **Life Fitness bike cadence**, present despite its flag bit being clear, has no
-     *    captured flag word at all — plan §4c records it as "unverified, capture needed". A
-     *    fingerprint cannot be invented, so the family cannot ship a quirk.
      *
-     * Both are open items, not omissions. See the implementation log.
+     * The Life Fitness bike cadence quirk was in that list until 2026-08-12 for the same reason,
+     * and left it the way §4c intends: a capture arrived, so a fingerprint exists.
      */
-    val all: List<FtmsQuirk> = listOf(MR_CAPTAIN_ROWER)
+    val all: List<FtmsQuirk> = listOf(
+        MR_CAPTAIN_ROWER,
+        LIFE_FITNESS_BIKE_CADENCE_26,
+        LIFE_FITNESS_BIKE_CADENCE_27,
+    )
 
     fun find(deviceName: String?, characteristic: UUID, flags: Int, length: Int): FtmsQuirk? =
         all.firstOrNull { it.matches(deviceName, characteristic, flags, length) }

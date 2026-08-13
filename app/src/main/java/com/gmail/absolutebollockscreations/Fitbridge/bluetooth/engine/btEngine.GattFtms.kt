@@ -356,7 +356,14 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 // override fires.
                 deviceName = discoveredDeviceName(engine, gatt),
             )
-            UUID_BIKING_DATA                   -> BtEngineFtmsParsers.doBike(emitter, value)
+            UUID_BIKING_DATA                   -> BtEngineFtmsParsers.doBike(
+                emitter,
+                value,
+                // Same quirk-selection contract as the rower above. The Life Fitness bike
+                // under-reports its cadence presence bit; name prefix plus exact flag word
+                // plus exact packet length must all match before the correction applies.
+                deviceName = discoveredDeviceName(engine, gatt),
+            )
             else -> Timber.tag(BtEngineState.TAG)
                 .w("Notify from unknown FTMS char %s: %s", short(ch.uuid), value.toHex())
         }
