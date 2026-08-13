@@ -188,6 +188,27 @@ internal class ConnectionContext(
     var cscAssignedRoles: Set<BtEngineState.CscRole> = emptySet(),
     var cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
 ) {
+    /**
+     * The Life Fitness setup run for this link, created lazily when one is needed.
+     *
+     * Per-context by construction, which is how a transcript is bound to a link generation: the
+     * context dies with the connection, so a run can never outlive the machine that began it or
+     * resume across a reconnect. That matters more here than for most per-link state — resuming
+     * a half-completed handshake would replay control writes D61 refuses to repeat.
+     */
+    @Volatile
+    var lifeFitnessSetup: LifeFitnessSetupDriver? = null
+
+    /**
+     * Monotonic deadline for the in-flight setup operation, or null when none is outstanding.
+     *
+     * A settle bound rather than a delay: the official Life Fitness app completes each step in
+     * 0.2–0.4 s, so anything approaching `LifeFitnessSetup.SETTLE_TIMEOUT_MS` already means the
+     * step is not going to complete.
+     */
+    @Volatile
+    var lifeFitnessSetupDeadlineMs: Long? = null
+
     /** Callback-owned, idempotent termination entry point used by explicit disconnects. */
     @Volatile
     var terminationHook: ((reason: String) -> Unit)? = null
@@ -244,6 +265,17 @@ internal class ConnectionRegistry {
 
     fun contextForKey(connectionKey: String): ConnectionContext? = synchronized(lock) {
         contexts.values.firstOrNull { it.connectionKey == connectionKey }
+    }
+
+    /**
+     * Live machine links, for the periodic work that has to poll rather than react.
+     *
+     * A snapshot taken under the lock and iterated outside it: the callers are timeout sweeps
+     * that may act on a context, and holding the registry lock while doing so would invite the
+     * deadlock every other accessor here avoids by copying.
+     */
+    fun machineContexts(): List<ConnectionContext> = synchronized(lock) {
+        contexts.values.filter { it.isActive && it.machineConnection }
     }
 
     fun activateHandlerOn(

@@ -1005,6 +1005,82 @@ class BtEngineState : HrmStateSink {
         Timber.tag(TAG).d("targetHeartRateBpm %s → %s", old?.toString() ?: "null", bpm?.toString() ?: "null")
     }
 
+    /**
+     * The Life Fitness handshake profile, pushed from the settings screen (plan §6, D56).
+     *
+     * Held rather than read, following the same one-way push as heart-rate preferences and CSC
+     * calibration: the engine has no access to `SharedPreferences` and should not acquire one
+     * for a single family.
+     *
+     * **Never logged, and deliberately not a `StateFlow`.** It carries a name and an email; a
+     * flow invites collectors, and a collector is a place a value can be rendered. The only
+     * consumer is the setup transcript, which reads it once per link.
+     */
+    @Volatile
+    internal var lifeFitnessProfile: com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile =
+        com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile.EMPTY
+        private set
+
+    /** Derived age in years, from the birth month and year the settings screen holds. */
+    @Volatile
+    var lifeFitnessAgeYears: Int = 0
+        private set
+
+    /**
+     * Which profile fields a Life Fitness connection was missing, for the 6.5c prompt.
+     *
+     * **Field identities, not values** — this is the one Life Fitness datum that is safe to put in
+     * a flow, because `LifeFitnessProfileField` is an enum of labels and carries nothing the user
+     * typed. [lifeFitnessProfile] itself stays off the flow for exactly the opposite reason.
+     *
+     * Empty means no prompt is owed.
+     */
+    private val _lifeFitnessProfilePrompt =
+        MutableStateFlow<List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>>(
+            emptyList()
+        )
+    internal val lifeFitnessProfilePrompt:
+        StateFlow<List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>> =
+        _lifeFitnessProfilePrompt
+
+    /** Raise the prompt. Called when a connected machine's handshake could not start. */
+    internal fun setLifeFitnessProfilePrompt(
+        missing: List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>,
+    ) {
+        _lifeFitnessProfilePrompt.value = missing
+        Timber.tag(TAG).i("lifeFitnessProfilePrompt: %d field(s) requested", missing.size)
+    }
+
+    /** Dismiss the prompt without filling anything in. */
+    internal fun clearLifeFitnessProfilePrompt() {
+        _lifeFitnessProfilePrompt.value = emptyList()
+    }
+
+    /**
+     * Push the profile from the app.
+     *
+     * Logs that a profile was set and how many required fields are still blank — never a value.
+     * "Setup will not start because two fields are empty" is the diagnostic worth having; which
+     * two, and what the others contain, is not FitBridge's to publish.
+     */
+    internal fun setLifeFitnessProfileFromApp(
+        profile: com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile,
+        ageYears: Int,
+    ) {
+        lifeFitnessProfile = profile
+        lifeFitnessAgeYears = ageYears
+        // A prompt that outlived the fields being filled in would be a dialog the user cannot
+        // dismiss by doing what it asked. Clearing on any push is deliberate even though the push
+        // fires on every keystroke: the prompt is re-raised by the next connection attempt if the
+        // profile is still short, and that attempt is the only thing that can know.
+        if (profile.isPopulated) _lifeFitnessProfilePrompt.value = emptyList()
+        Timber.tag(TAG).d(
+            "setLifeFitnessProfileFromApp: %d required field(s) still blank, age %d",
+            profile.missingFields.size,
+            ageYears,
+        )
+    }
+
     // Session & units (starting a new session clears time-series + averages)
     fun setUnits(units: Int?) {
         val old = _units.value

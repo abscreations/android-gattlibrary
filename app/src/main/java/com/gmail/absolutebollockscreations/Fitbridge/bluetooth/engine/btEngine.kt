@@ -491,6 +491,16 @@ class BtEngine internal constructor(
     val haveControlFlow: StateFlow<Boolean> get() = state.haveControlFlow
     val activeSession: StateFlow<Boolean> get() = state.activeSession
 
+    /** Profile fields a Life Fitness connection asked for and did not get (plan §6, unit 6.5c). */
+    internal val lifeFitnessProfilePrompt:
+        StateFlow<List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>>
+        get() = state.lifeFitnessProfilePrompt
+
+    /** Dismiss the prompt. The connection is unaffected; the machine simply stays silent. */
+    internal fun dismissLifeFitnessProfilePrompt() {
+        state.clearLifeFitnessProfilePrompt()
+    }
+
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
@@ -508,8 +518,15 @@ class BtEngine internal constructor(
     private val livenessTickJob: Job = scope.launch {
         while (isActive) {
             delay(LIVENESS_TICK_MS)
-            runCatching { state.adapterLiveness.tick(elapsedRealtimeMs()) }
+            val nowMs = elapsedRealtimeMs()
+            runCatching { state.adapterLiveness.tick(nowMs) }
                 .onFailure { Timber.tag(BtEngineState.TAG).w(it, "liveness tick failed") }
+            // The Life Fitness settle bound rides the same poll. A timeout is the absence of an
+            // event either way, and reusing this tick means the deadline lives on the connection
+            // context and dies with it, rather than being a scheduled callback that has to be
+            // remembered and cancelled on every disconnect path.
+            runCatching { tickLifeFitnessSetup(nowMs) }
+                .onFailure { Timber.tag(BtEngineState.TAG).w(it, "life fitness setup tick failed") }
         }
     }
 
@@ -1780,6 +1797,14 @@ class BtEngine internal constructor(
 
         state.setActiveSession(false)
         state.setIsRunning(false)
+    }
+
+    /** Life Fitness handshake profile, pushed from the settings screen (plan §6, D56). */
+    internal fun setLifeFitnessProfileFromApp(
+        profile: com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile,
+        ageYears: Int,
+    ) {
+        state.setLifeFitnessProfileFromApp(profile, ageYears)
     }
 
     fun setHrMaxFromApp(value: Int?) {

@@ -255,6 +255,15 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // NOTE: We DO NOT enable CCCDs here anymore.
         // CCCD enables are queued later, after FEATURES is parsed in onCharacteristicRead(...).
 
+        // Life Fitness setup, if this machine turns out to need it (plan §6). Started here
+        // rather than after subscriptions because that is the order the captures show: QZ issue
+        // #1018 arms the standard FTMS CCCDs *after* the proprietary exchange completes, which
+        // is consistent with a machine that sends nothing until it has been unlocked.
+        //
+        // A machine that is not Life Fitness returns from this immediately having issued
+        // nothing.
+        engine.startLifeFitnessSetupIfNeeded(context)
+
         return true
     }
 
@@ -295,6 +304,35 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             status
         )
 
+        // The Life Fitness status subscription is the one transcript step that completes here
+        // rather than on a characteristic write, because arming a CCCD is a descriptor write.
+        if (charUuid == BluetoothIds.UUID_LF_STATUS) {
+            engine.advanceLifeFitnessSetup(gatt, status == BluetoothGatt.GATT_SUCCESS)
+        }
+    }
+
+    /**
+     * Every characteristic write on this link, including the Life Fitness setup transcript.
+     *
+     * The handler decides nothing: it identifies which run the completion belongs to and hands
+     * the result to the driver, which owns the retry policy, the ordering and the terminal
+     * outcome. Keeping the decisions out of here is what made them testable — see
+     * `LifeFitnessSetupDriverTest`, which exercises branches this method can only forward.
+     */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onCharacteristicWrite(
+        engine: BtEngine,
+        gatt: BluetoothGatt,
+        ch: BluetoothGattCharacteristic,
+        status: Int
+    ) {
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+        val inFlight = context.lifeFitnessSetup?.inFlight ?: return
+        // A write for something other than the operation we are waiting on is not this run's
+        // business — the FTMS control point shares this callback.
+        if (ch.uuid != inFlight.characteristicUuid) return
+
+        engine.advanceLifeFitnessSetup(gatt, status == BluetoothGatt.GATT_SUCCESS)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)

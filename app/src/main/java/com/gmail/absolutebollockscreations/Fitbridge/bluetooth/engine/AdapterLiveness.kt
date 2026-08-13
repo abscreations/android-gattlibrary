@@ -104,6 +104,41 @@ internal class AdapterLivenessCoordinator(
     }
 
     /** Drops per-link state when a connection generation ends. */
+    /**
+     * A setup handshake completed. The link leaves `SETUP_REQUIRED` for the ordinary
+     * subscription-pending path, which is what lets measurements count as live.
+     *
+     * Returns whether the policy accepted the transition — false when the link has no policy,
+     * or is not in `SETUP_REQUIRED`, which happens naturally if a late callback arrives after
+     * the connection has moved on. Silence rather than a throw: a stale callback is a fact of
+     * BLE, not an error.
+     */
+    fun setupSucceeded(connectionId: ConnectionId): Boolean = synchronized(lock) {
+        val accepted = policies[connectionId]?.setupSucceeded(connectionId) ?: false
+        if (accepted) {
+            Timber.tag(TAG).i("setup succeeded for link generation %d", connectionId.linkGeneration)
+        }
+        accepted
+    }
+
+    /**
+     * A setup handshake failed. The link becomes `SETUP_FAILED` with [reason] as its detail.
+     *
+     * [reason] reaches logs and the connection UI, so it must name the step and never the value
+     * — see `LifeFitnessSetup.Op`, whose labels exist for this.
+     */
+    fun setupFailed(connectionId: ConnectionId, reason: String): Boolean = synchronized(lock) {
+        val accepted = policies[connectionId]?.setupFailed(connectionId, reason) ?: false
+        if (accepted) {
+            Timber.tag(TAG).w(
+                "setup failed for link generation %d: %s",
+                connectionId.linkGeneration,
+                reason,
+            )
+        }
+        accepted
+    }
+
     fun forget(connectionId: ConnectionId) {
         synchronized(lock) {
             policies.remove(connectionId)
