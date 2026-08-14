@@ -295,4 +295,54 @@ class AdapterLivenessCoordinatorTest {
             coordinator.stateOf(ctx.connectionId),
         )
     }
+
+    @Test
+    fun `Life Fitness setup and subscriptions converge in either callback order`() {
+        fun lifeFitnessContext(generation: Long): ConnectionContext =
+            context(generation = generation).also {
+                it.lifeFitnessSetupState = LifeFitnessLinkSetupState.PENDING
+            }
+
+        val subscriptionsFirst = lifeFitnessContext(31L)
+        val firstCoordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        subscriptionsFirst.cccd.setReady(true)
+        firstCoordinator.onSubscriptionsComplete(subscriptionsFirst, nowMs = 100L)
+        assertEquals(
+            AdapterPolicyState.SETUP_REQUIRED,
+            firstCoordinator.stateOf(subscriptionsFirst.connectionId),
+        )
+        assertTrue(firstCoordinator.setupSucceeded(subscriptionsFirst, nowMs = 200L))
+        assertEquals(
+            AdapterPolicyState.AWAITING_DATA,
+            firstCoordinator.stateOf(subscriptionsFirst.connectionId),
+        )
+
+        val setupFirst = lifeFitnessContext(32L)
+        val secondCoordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        assertTrue(secondCoordinator.setupSucceeded(setupFirst, nowMs = 100L))
+        assertEquals(
+            AdapterPolicyState.SUBSCRIPTION_PENDING,
+            secondCoordinator.stateOf(setupFirst.connectionId),
+        )
+        setupFirst.cccd.setReady(true)
+        secondCoordinator.onSubscriptionsComplete(setupFirst, nowMs = 200L)
+        assertEquals(
+            AdapterPolicyState.AWAITING_DATA,
+            secondCoordinator.stateOf(setupFirst.connectionId),
+        )
+    }
+
+    @Test
+    fun `Life Fitness setup failure is retained before descriptor completion`() {
+        val ctx = context(generation = 33L).also {
+            it.lifeFitnessSetupState = LifeFitnessLinkSetupState.PENDING
+        }
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+
+        assertTrue(coordinator.setupFailed(ctx, "control 1 open rejected"))
+        ctx.cccd.setReady(true)
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 100L)
+
+        assertEquals(AdapterPolicyState.SETUP_FAILED, coordinator.stateOf(ctx.connectionId))
+    }
 }

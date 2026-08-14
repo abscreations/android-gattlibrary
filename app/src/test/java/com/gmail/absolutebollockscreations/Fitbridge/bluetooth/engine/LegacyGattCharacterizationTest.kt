@@ -96,4 +96,45 @@ class LegacyGattCharacterizationTest {
         assertEquals(BluetoothProfile.STATE_DISCONNECTED, state.connectionState.value)
         assertEquals(BluetoothProfile.STATE_DISCONNECTED, state.hrmConnectionState.value)
     }
+
+    @Test
+    fun `Life Fitness readiness requires both setup and descriptor completion in either order`() {
+        fun opened(): Pair<BtEngineState, ConnectionContext> {
+            val state = BtEngineState()
+            val context = state.connectionRegistry.open(
+                LegacyConnectionRole.FTMS,
+                "AA:BB:CC:DD:EE:10",
+                gatt = null,
+                initialState = BluetoothProfile.STATE_CONNECTED,
+            )
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.PENDING
+            context.cccd.incrementPending()
+            return state to context
+        }
+
+        opened().let { (state, context) ->
+            assertTrue(state.connectionRegistry.completeCccdWrite(context))
+            assertTrue("raw subscription plan completed", context.cccd.ready.value)
+            assertFalse("setup still gates public readiness", state.cccdReady.value)
+
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.SUCCEEDED
+            assertTrue(state.connectionRegistry.refreshCccdReady(context))
+            assertTrue(state.cccdReady.value)
+        }
+
+        opened().let { (state, context) ->
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.SUCCEEDED
+            assertFalse("descriptors are still pending", state.connectionRegistry.refreshCccdReady(context))
+            assertFalse(state.cccdReady.value)
+
+            assertTrue(state.connectionRegistry.completeCccdWrite(context))
+            assertTrue(state.cccdReady.value)
+        }
+
+        opened().let { (state, context) ->
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.FAILED
+            state.connectionRegistry.completeCccdWrite(context)
+            assertFalse("failed setup cannot publish a ready link", state.cccdReady.value)
+        }
+    }
 }

@@ -916,7 +916,7 @@ internal object BtEngineGattCore {
                     android.os.SystemClock.elapsedRealtime(),
                 )
                 Timber.tag(BtEngineState.TAG).d(
-                    "All CCCDs armed → cccdReady=true context=%s",
+                    "All CCCDs armed; effective readiness remains setup-gated context=%s",
                     context.connectionId,
                 )
                 activeHandlers.snapshot().forEach { handler ->

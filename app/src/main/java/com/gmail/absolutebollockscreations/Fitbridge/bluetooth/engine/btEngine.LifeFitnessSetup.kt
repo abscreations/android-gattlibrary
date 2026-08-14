@@ -40,9 +40,12 @@ internal fun BtEngine.startLifeFitnessSetupIfNeeded(context: ConnectionContext) 
     )
 
     when (progress) {
-        is LifeFitnessSetupDriver.Progress.NotApplicable -> Unit // Not this family; say nothing.
+        is LifeFitnessSetupDriver.Progress.NotApplicable -> {
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.NOT_REQUIRED
+        }
 
         is LifeFitnessSetupDriver.Progress.NeedsProfile -> {
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.PENDING
             // The connection stands. The machine will stay silent because its handshake has not
             // run, which `SETUP_REQUIRED` already represents. The prompt that asks for the fields
             // is the UI's job (6.5c), so what the engine publishes is which fields are missing —
@@ -55,6 +58,7 @@ internal fun BtEngine.startLifeFitnessSetupIfNeeded(context: ConnectionContext) 
         }
 
         else -> {
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.PENDING
             context.lifeFitnessSetup = driver
             applyLifeFitnessProgress(context, progress)
         }
@@ -99,6 +103,7 @@ internal fun BtEngine.clearLifeFitnessSetup(context: ConnectionContext) {
     context.lifeFitnessSetup?.reset()
     context.lifeFitnessSetup = null
     context.lifeFitnessSetupDeadlineMs = null
+    context.lifeFitnessSetupState = LifeFitnessLinkSetupState.NOT_REQUIRED
 }
 
 /**
@@ -118,14 +123,21 @@ private fun BtEngine.applyLifeFitnessProgress(
         is LifeFitnessSetupDriver.Progress.Succeeded -> {
             context.lifeFitnessSetupDeadlineMs = null
             Timber.tag(BtEngineState.TAG).i("Life Fitness setup complete")
-            state.adapterLiveness.setupSucceeded(context.connectionId)
+            state.adapterLiveness.setupSucceeded(
+                context,
+                MonotonicMetricClock.SYSTEM.nowMs(),
+            )
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.SUCCEEDED
+            state.connectionRegistry.refreshCccdReady(context)
         }
 
         is LifeFitnessSetupDriver.Progress.Failed -> {
             context.lifeFitnessSetupDeadlineMs = null
             // `detail` names the step and never the payload — see `LifeFitnessSetup.Op`.
             Timber.tag(BtEngineState.TAG).w(progress.detail)
-            state.adapterLiveness.setupFailed(context.connectionId, progress.detail)
+            state.adapterLiveness.setupFailed(context, progress.detail)
+            context.lifeFitnessSetupState = LifeFitnessLinkSetupState.FAILED
+            state.connectionRegistry.refreshCccdReady(context)
         }
 
         // Classification outcomes are handled by the caller that started the run; reaching them

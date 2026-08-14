@@ -161,7 +161,10 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         UUID_STAIR_CLIMBER_DATA,
         UUID_ROWING_MACHINE_DATA,
         UUID_BIKING_DATA,
-        UUID_FITNESS_MACHINE_STATUS
+        UUID_FITNESS_MACHINE_STATUS,
+        // The setup transcript crosses vendor control and user-data parent services. Strict
+        // callback routing therefore needs explicit FTMS-handler ownership for every step.
+        *LifeFitnessSetup.CALLBACK_CHARACTERISTICS.toTypedArray(),
     )
 
     // One-shot post-CCCD FEATURE re-read.

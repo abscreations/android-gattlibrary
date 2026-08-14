@@ -12,6 +12,14 @@ internal object Concept2Pm5OperationalState {
     const val IDLE = 10
 }
 
+internal enum class Concept2Pm5StartupPhase {
+    IDLE,
+    SUBSCRIBED_IDLE,
+    WAITING_FOR_ACCELERATION,
+    ACCELERATING,
+    ACTIVE,
+}
+
 /** One coherent, protocol-rich PM5 workout snapshot. Values are in documented wire units. */
 data class Concept2Pm5Snapshot(
     val elapsedCentiseconds: Int,
@@ -45,6 +53,7 @@ data class Concept2Pm5Snapshot(
     val restTimeCentiseconds: Int = 0,
     val projectedWorkTimeSeconds: Int = 1800,
     val projectedWorkDistanceMetres: Int = 7000,
+    val workoutDurationType: Int = 0,
     val operationalState: Int = Concept2Pm5OperationalState.IDLE,
     val workoutVerificationState: Int = 0,
     val screenNumber: Int = 1,
@@ -71,24 +80,74 @@ class Concept2Pm5MockEngine(
     private var powerIntegral = 0.0
     private var cadenceIntegral = 0.0
     private var strokeCount = 0.0
+    private var subscribedIdleSeconds = 0.0
 
-    fun snapshot(): Concept2Pm5Snapshot = buildSnapshot(0.0)
+    internal var startupPhase: Concept2Pm5StartupPhase = Concept2Pm5StartupPhase.IDLE
+        private set
+
+    /** A PM5 remains on its wireless/idle screen until a workout data consumer is present. */
+    fun beginFirstPull(): Boolean {
+        if (startupPhase != Concept2Pm5StartupPhase.IDLE) return false
+        startupPhase = Concept2Pm5StartupPhase.SUBSCRIBED_IDLE
+        return true
+    }
+
+    fun snapshot(): Concept2Pm5Snapshot = when (startupPhase) {
+        Concept2Pm5StartupPhase.IDLE -> idleSnapshot()
+        Concept2Pm5StartupPhase.SUBSCRIBED_IDLE -> idleSnapshot()
+        Concept2Pm5StartupPhase.WAITING_FOR_ACCELERATION -> preparationSnapshot(strokeState = 1)
+        Concept2Pm5StartupPhase.ACCELERATING -> preparationSnapshot(strokeState = 2)
+        Concept2Pm5StartupPhase.ACTIVE -> buildActiveSnapshot(0.0)
+    }
 
     fun tick(dtSeconds: Double): Concept2Pm5Snapshot {
         require(dtSeconds >= 0.0)
-        return buildSnapshot(dtSeconds)
+        if (startupPhase == Concept2Pm5StartupPhase.IDLE) return idleSnapshot()
+
+        var transitionDtSeconds = dtSeconds
+        if (startupPhase == Concept2Pm5StartupPhase.SUBSCRIBED_IDLE) {
+            val previousSubscribedIdle = subscribedIdleSeconds
+            subscribedIdleSeconds += dtSeconds
+            if (subscribedIdleSeconds <= SUBSCRIBED_IDLE_SECONDS) return idleSnapshot()
+            transitionDtSeconds =
+                (subscribedIdleSeconds - SUBSCRIBED_IDLE_SECONDS) -
+                (previousSubscribedIdle - SUBSCRIBED_IDLE_SECONDS).coerceAtLeast(0.0)
+        }
+
+        val previousElapsed = elapsedSeconds
+        elapsedSeconds += transitionDtSeconds
+        val activeBefore = (previousElapsed - FIRST_PULL_PREPARATION_SECONDS).coerceAtLeast(0.0)
+        val activeAfter = (elapsedSeconds - FIRST_PULL_PREPARATION_SECONDS).coerceAtLeast(0.0)
+        return when {
+            elapsedSeconds <= WAITING_FOR_ACCELERATION_SECONDS -> {
+                startupPhase = Concept2Pm5StartupPhase.WAITING_FOR_ACCELERATION
+                preparationSnapshot(strokeState = 1)
+            }
+            elapsedSeconds <= FIRST_PULL_PREPARATION_SECONDS -> {
+                startupPhase = Concept2Pm5StartupPhase.ACCELERATING
+                preparationSnapshot(strokeState = 2)
+            }
+            else -> {
+                startupPhase = Concept2Pm5StartupPhase.ACTIVE
+                buildActiveSnapshot(activeAfter - activeBefore)
+            }
+        }
     }
 
-    private fun buildSnapshot(dt: Double): Concept2Pm5Snapshot {
-        val previousElapsed = elapsedSeconds
-        elapsedSeconds += dt
-        val wave = (sin(elapsedSeconds * 2.0 * PI / 45.0) + 1.0) / 2.0
+    fun tick(dtSeconds: Double, workoutRequested: Boolean): Concept2Pm5Snapshot {
+        if (workoutRequested) beginFirstPull()
+        return tick(dtSeconds)
+    }
+
+    private fun buildActiveSnapshot(dt: Double): Concept2Pm5Snapshot {
+        val activeElapsedSeconds = (elapsedSeconds - FIRST_PULL_PREPARATION_SECONDS).coerceAtLeast(0.0)
+        val wave = (sin(activeElapsedSeconds * 2.0 * PI / 45.0) + 1.0) / 2.0
         val scenarioEffort = when (scenario) {
             Concept2Scenario.STEADY -> 0.45 + wave * 0.15
-            Concept2Scenario.INCREASING -> (0.3 + elapsedSeconds / 300.0).coerceAtMost(0.95)
-            Concept2Scenario.RECOVERY -> (0.85 - elapsedSeconds / 300.0).coerceAtLeast(0.25)
-            Concept2Scenario.INTERVALS -> if ((elapsedSeconds.toInt() / 30) % 2 == 0) 0.82 else 0.28
-            Concept2Scenario.FINISH -> if (elapsedSeconds < 60.0) 0.6 else 0.0
+            Concept2Scenario.INCREASING -> (0.3 + activeElapsedSeconds / 300.0).coerceAtMost(0.95)
+            Concept2Scenario.RECOVERY -> (0.85 - activeElapsedSeconds / 300.0).coerceAtLeast(0.25)
+            Concept2Scenario.INTERVALS -> if ((activeElapsedSeconds.toInt() / 30) % 2 == 0) 0.82 else 0.28
+            Concept2Scenario.FINISH -> if (activeElapsedSeconds < 60.0) 0.6 else 0.0
         }
         val speed = when (machine) {
             Concept2Machine.BIKE_ERG -> 7.0 + 5.0 * scenarioEffort
@@ -106,20 +165,20 @@ class Concept2Pm5MockEngine(
         cadenceIntegral += rate * dt
         energyKcal += power * dt / (0.23 * 4184.0)
         strokeCount += rate * dt / 60.0
-        val averagePower = if (elapsedSeconds > 0.0) powerIntegral / elapsedSeconds else power
+        val averagePower = if (activeElapsedSeconds > 0.0) powerIntegral / activeElapsedSeconds else power
         val paceCs = (500.0 / speed * 100.0).roundToInt()
-        val averageSpeed = if (elapsedSeconds > 0.0) distanceMetres / elapsedSeconds else speed
+        val averageSpeed = if (activeElapsedSeconds > 0.0) distanceMetres / activeElapsedSeconds else speed
         val avgPaceCs = (500.0 / averageSpeed * 100.0).roundToInt()
-        val cycle = if (rate > 0.0) (elapsedSeconds * rate / 60.0) % 1.0 else 0.0
+        val cycle = if (rate > 0.0) (activeElapsedSeconds * rate / 60.0) % 1.0 else 0.0
         val strokeState = when {
             scenario == Concept2Scenario.FINISH && elapsedSeconds >= 60.0 -> 0
             cycle < 0.35 -> 2 // driving
             cycle < 0.45 -> 3 // dwelling
             else -> 4 // recovery
         }
-        val finished = scenario == Concept2Scenario.FINISH && elapsedSeconds >= 60.0
+        val finished = scenario == Concept2Scenario.FINISH && activeElapsedSeconds >= 60.0
         val intervalRest = scenario == Concept2Scenario.INTERVALS &&
-            (elapsedSeconds.toInt() / 30) % 2 == 1
+            (activeElapsedSeconds.toInt() / 30) % 2 == 1
         return Concept2Pm5Snapshot(
             elapsedCentiseconds = (elapsedSeconds * 100.0).roundToInt(),
             distanceDecimetres = (distanceMetres * 10.0).roundToInt(),
@@ -134,26 +193,75 @@ class Concept2Pm5MockEngine(
             caloriesPerHour = (power / (0.23 * 4184.0) * 3600.0).roundToInt(),
             dragFactor = if (machine == Concept2Machine.BIKE_ERG) 100 else 120,
             strokeCount = strokeCount.toInt(),
-            averageCadence = if (elapsedSeconds > 0.0) cadenceIntegral / elapsedSeconds else rate,
+            averageCadence = if (activeElapsedSeconds > 0.0) cadenceIntegral / activeElapsedSeconds else rate,
             workoutState = if (finished) 10 else if (intervalRest) 8 else 1,
-            rowingState = if (finished) 0 else if (intervalRest) 2 else 1,
+            rowingState = if (finished || intervalRest) 0 else 1,
             strokeState = strokeState,
             intervalType = if (intervalRest) 3 else 1,
-            intervalCount = if (scenario == Concept2Scenario.INTERVALS) elapsedSeconds.toInt() / 60 + 1 else 1,
-            restTimeCentiseconds = if (intervalRest) ((elapsedSeconds.toInt() % 30) * 100) else 0,
+            intervalCount = if (scenario == Concept2Scenario.INTERVALS) activeElapsedSeconds.toInt() / 60 + 1 else 1,
+            restTimeCentiseconds = if (intervalRest) ((activeElapsedSeconds.toInt() % 30) * 100) else 0,
             projectedWorkTimeSeconds = 1800,
             projectedWorkDistanceMetres = (averageSpeed * 1800.0).roundToInt(),
-            // Compatibility default for Additional Status 3 only. Measurements remain autonomous
-            // and active without CSAFE; FINISH still returns the virtual monitor to READY.
-            operationalState = if (finished) {
-                Concept2Pm5OperationalState.READY
-            } else {
-                Concept2Pm5OperationalState.IDLE
-            },
+            operationalState = if (finished) Concept2Pm5OperationalState.READY else Concept2Pm5OperationalState.WORKOUT,
             machineType = machine.wireMachineType,
-            splitSequence = if (scenario == Concept2Scenario.INTERVALS) elapsedSeconds.toInt() / 30 else 0,
+            splitSequence = if (scenario == Concept2Scenario.INTERVALS) activeElapsedSeconds.toInt() / 30 else 0,
             summarySequence = if (finished) 1 else 0,
             forceCurveSequence = strokeCount.toInt(),
         )
+    }
+
+    private fun idleSnapshot() = stoppedSnapshot(
+        elapsedCentiseconds = 0,
+        workoutType = 0,
+        strokeState = 0,
+        operationalState = Concept2Pm5OperationalState.IDLE,
+        workoutDurationType = 0x80,
+    )
+
+    private fun preparationSnapshot(strokeState: Int) = stoppedSnapshot(
+        elapsedCentiseconds = (elapsedSeconds * 100.0).roundToInt(),
+        workoutType = 1,
+        strokeState = strokeState,
+        operationalState = Concept2Pm5OperationalState.READY,
+        workoutDurationType = 0x80,
+    )
+
+    private fun stoppedSnapshot(
+        elapsedCentiseconds: Int,
+        workoutType: Int,
+        strokeState: Int,
+        operationalState: Int,
+        workoutDurationType: Int,
+    ) = Concept2Pm5Snapshot(
+        elapsedCentiseconds = elapsedCentiseconds,
+        distanceDecimetres = 0,
+        speedMillimetresPerSecond = 0,
+        strokeRate = 0,
+        heartRate = 255,
+        currentPaceCentiseconds = 0,
+        averagePaceCentiseconds = 0,
+        currentPowerWatts = 0,
+        averagePowerWatts = 0,
+        totalCalories = 0,
+        caloriesPerHour = 0,
+        dragFactor = 0,
+        strokeCount = 0,
+        averageCadence = 0.0,
+        workoutType = workoutType,
+        intervalType = 1,
+        workoutState = 0,
+        rowingState = 0,
+        strokeState = strokeState,
+        projectedWorkTimeSeconds = 0,
+        projectedWorkDistanceMetres = 0,
+        workoutDurationType = workoutDurationType,
+        operationalState = operationalState,
+        machineType = machine.wireMachineType,
+    )
+
+    companion object {
+        private const val SUBSCRIBED_IDLE_SECONDS = 2.0
+        private const val WAITING_FOR_ACCELERATION_SECONDS = 0.5
+        private const val FIRST_PULL_PREPARATION_SECONDS = 1.0
     }
 }

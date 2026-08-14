@@ -226,6 +226,16 @@ internal fun concept2ActivityTypeFor(family: Concept2ErgFamily?): ActivityType? 
     null -> null
 }
 
+/** Preserve the product-family distinction that the session activity intentionally loses. */
+internal fun concept2MachineDeviceTypeFor(
+    family: Concept2ErgFamily?,
+): BtEngineState.MachineDeviceType? = when (family) {
+    Concept2ErgFamily.ROWER -> BtEngineState.MachineDeviceType.ROWER
+    Concept2ErgFamily.SKI -> BtEngineState.MachineDeviceType.SKI_ERG
+    Concept2ErgFamily.BIKE -> BtEngineState.MachineDeviceType.BIKE_ERG
+    null -> null
+}
+
 /**
  * Session persona for a PM.
  *

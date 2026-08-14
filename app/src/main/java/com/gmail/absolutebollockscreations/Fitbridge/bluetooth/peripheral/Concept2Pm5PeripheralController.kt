@@ -61,6 +61,8 @@ class Concept2Pm5PeripheralController(
     )
 
     val isAdvertising: Boolean get() = advertiser.isAdvertising
+    val hasWorkoutMeasurementSubscription: Boolean
+        get() = advertiser.hasWorkoutMeasurementSubscription()
     fun currentStatus(): Status = status
     fun publish(snapshot: Concept2Pm5Snapshot) = advertiser.publish(snapshot)
 

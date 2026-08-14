@@ -117,6 +117,22 @@ internal object BtEngineControlPoint {
     /** Try to acquire machine control (no precondition). */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun requestControl(engine: BtEngine): Boolean {
+        val context = engine.state.connectionRegistry.current(LegacyConnectionRole.FTMS)
+        val setupPending = context?.lifeFitnessSetupState == LifeFitnessLinkSetupState.PENDING
+        if (!canRequestFtmsControl(
+                cccdReady = engine.state.cccdReady.value,
+                setupPending = setupPending,
+                controlPointPresent = engine.state.controlPointChar != null,
+            )
+        ) {
+            Timber.tag(BtEngineState.TAG).w(
+                "CP: requestControl ignored (setupPending=%s controlPointPresent=%s cccdReady=%s)",
+                setupPending,
+                engine.state.controlPointChar != null,
+                engine.state.cccdReady.value,
+            )
+            return false
+        }
         // For requestControl we do NOT require haveControl, but we still ensure CCCDs are ready.
         if (!ensureCccdReady(engine, opName = "requestControl", requireControl = false)) return false
         Timber.tag(BtEngineState.TAG).i("CP: requestControl() → enqueue")
@@ -371,3 +387,9 @@ internal object BtEngineControlPoint {
 
     private fun s16le(v: Int): ByteArray = u16le(v and 0xFFFF)
 }
+
+internal fun canRequestFtmsControl(
+    cccdReady: Boolean,
+    setupPending: Boolean,
+    controlPointPresent: Boolean,
+): Boolean = cccdReady && !setupPending && controlPointPresent

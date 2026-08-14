@@ -209,6 +209,29 @@ class ProtocolHandlersTest {
     }
 
     @Test
+    fun `FTMS handler explicitly owns every Life Fitness setup callback`() {
+        val ftms = FtmsProtocolHandler()
+
+        LifeFitnessSetup.CALLBACK_CHARACTERISTICS.forEach { characteristic ->
+            val route = resolveProtocolHandlerRoute(
+                listOf(ftms),
+                characteristicUuid = characteristic,
+                serviceUuid = UUID.randomUUID(),
+            )
+            assertEquals(characteristic.toString(), listOf(ftms), route.owners)
+            assertEquals(HandlerOwnership.EXPLICIT_CHARACTERISTIC, route.ownership)
+        }
+
+        assertTrue(
+            resolveProtocolHandlerRoute(
+                listOf(ftms),
+                characteristicUuid = BluetoothIds.UUID_LF_B90_WRITE_F4E8,
+                serviceUuid = BluetoothIds.UUID_LF_CONTROL_SERVICE,
+            ).owners.isEmpty(),
+        )
+    }
+
+    @Test
     fun `CCCD plans merge in order and deduplicate across handlers`() {
         val state = CccdState()
         val first = CccdTarget(UUID.randomUUID(), UUID.randomUUID())

@@ -228,6 +228,11 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         val activity = concept2ActivityTypeFor(ergFamily) ?: return
         val address = gatt.device?.address ?: return
         engine.state.updateDeviceMachineFeatureByAddress(address, activity.ordinal)
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+        engine.state.connectionRegistry.setMachineDeviceType(
+            context,
+            concept2MachineDeviceTypeFor(ergFamily),
+        )
     }
 
     /**

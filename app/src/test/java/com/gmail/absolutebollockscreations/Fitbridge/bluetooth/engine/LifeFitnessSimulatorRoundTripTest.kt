@@ -48,6 +48,11 @@ class LifeFitnessSimulatorRoundTripTest {
             assertMetric(LifeFitnessMachine.TREADMILL, fusion, MetricKind.SPEED, 18.25)
             assertMetric(LifeFitnessMachine.TREADMILL, fusion, MetricKind.INCLINATION, 3.5)
             assertMetric(LifeFitnessMachine.TREADMILL, fusion, MetricKind.DISTANCE, 250.0)
+            assertMetric(LifeFitnessMachine.TREADMILL, fusion, MetricKind.ELEVATION_GAIN_POSITIVE, 7.0)
+            assertNull(
+                "treadmill 0x7FFF negative elevation is unavailable, not 3276.7 m",
+                fusion.latestSample(MetricKind.ELEVATION_GAIN_NEGATIVE),
+            )
             assertEquals(
                 "pace remains a fusion-derived convenience, not a native treadmill field",
                 MetricSourceClass.DERIVED,
@@ -63,6 +68,11 @@ class LifeFitnessSimulatorRoundTripTest {
             assertMetric(LifeFitnessMachine.CROSS_TRAINER, fusion, MetricKind.CADENCE, 81.0)
             assertMetric(LifeFitnessMachine.CROSS_TRAINER, fusion, MetricKind.POWER, 215.0)
             assertMetric(LifeFitnessMachine.CROSS_TRAINER, fusion, MetricKind.TOTAL_STRIDES, 48.0)
+            assertMetric(LifeFitnessMachine.CROSS_TRAINER, fusion, MetricKind.ELEVATION_GAIN_POSITIVE, 7.0)
+            assertNull(
+                "cross-trainer 0xFFFF negative elevation is unavailable, not 65535 m",
+                fusion.latestSample(MetricKind.ELEVATION_GAIN_NEGATIVE),
+            )
         }
         replay(LifeFitnessMachine.STAIR_CLIMBER).also { fusion ->
             assertMetric(LifeFitnessMachine.STAIR_CLIMBER, fusion, MetricKind.TOTAL_FLOORS, 6.0)

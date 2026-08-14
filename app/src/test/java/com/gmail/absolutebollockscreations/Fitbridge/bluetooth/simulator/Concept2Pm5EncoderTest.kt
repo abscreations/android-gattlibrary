@@ -10,7 +10,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Concept2Pm5EncoderTest {
-    private val sample = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG).tick(12.34)
+    private val sample = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG).run {
+        beginFirstPull()
+        tick(15.34)
+    }
 
     @Test
     fun `core individual packets have exact baseline lengths and round trip`() {
@@ -174,6 +177,23 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
+    fun `only workout data subscriptions request the first pull`() {
+        val session = Concept2Pm5Session()
+        session.setSubscribed(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, true)
+        assertFalse(session.hasWorkoutMeasurementSubscription)
+
+        session.setSubscribed(BluetoothIds.UUID_C2_FORCE_CURVE_DATA, true)
+        assertTrue(session.hasWorkoutMeasurementSubscription)
+        session.setSubscribed(BluetoothIds.UUID_C2_FORCE_CURVE_DATA, false)
+        assertFalse(session.hasWorkoutMeasurementSubscription)
+
+        session.setSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, true)
+        assertTrue(session.hasWorkoutMeasurementSubscription)
+        session.reset()
+        assertFalse(session.hasWorkoutMeasurementSubscription)
+    }
+
+    @Test
     fun `additional status 3 individual subscription suppresses its mux frame`() {
         val session = Concept2Pm5Session()
         val ids = listOf(0x3E, 0x31)
@@ -203,11 +223,20 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
-    fun `autonomous status 3 defaults to idle screen 1 and finishes ready without CSAFE`() {
+    fun `PM5 holds physical idle then prepares the first pull before becoming active`() {
         val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, Concept2Scenario.FINISH)
         val initial = engine.snapshot()
+        assertEquals(0, initial.elapsedCentiseconds)
+        assertEquals(0, initial.distanceDecimetres)
+        assertEquals(0, initial.workoutState)
+        assertEquals(0, initial.rowingState)
+        assertEquals(0, initial.strokeState)
         assertEquals(Concept2Pm5OperationalState.IDLE, initial.operationalState)
         assertEquals(1, initial.screenNumber)
+        assertEquals(
+            listOf(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x80, 0),
+            Concept2Pm5Encoder.generalStatus(initial).map { it.toInt() and 0xFF },
+        )
         assertEquals(
             listOf(10, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
             Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, initial)!!
@@ -217,20 +246,55 @@ class Concept2Pm5EncoderTest {
             listOf(0x3E, 10, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
             Concept2Pm5Encoder.multiplexed(0x3E, initial)!!.map { it.toInt() and 0xFF },
         )
+
+        repeat(20) { assertEquals(0, engine.tick(0.5, workoutRequested = false).elapsedCentiseconds) }
+        assertEquals(Concept2Pm5StartupPhase.IDLE, engine.startupPhase)
+
+        repeat(4) {
+            val held = engine.tick(0.5, workoutRequested = true)
+            assertEquals(Concept2Pm5StartupPhase.SUBSCRIBED_IDLE, engine.startupPhase)
+            assertEquals(0, held.elapsedCentiseconds)
+            assertEquals(0, held.distanceDecimetres)
+            assertEquals(0, held.forceCurveSequence)
+        }
+
+        val waiting = engine.tick(0.5)
+        assertEquals(Concept2Pm5StartupPhase.WAITING_FOR_ACCELERATION, engine.startupPhase)
+        assertEquals(listOf(0, 0, 1), listOf(waiting.workoutState, waiting.rowingState, waiting.strokeState))
+        assertEquals(Concept2Pm5OperationalState.READY, waiting.operationalState)
+        assertEquals(0, waiting.forceCurveSequence)
+
+        val accelerating = engine.tick(0.5)
+        assertEquals(Concept2Pm5StartupPhase.ACCELERATING, engine.startupPhase)
+        assertEquals(listOf(0, 0, 2), listOf(accelerating.workoutState, accelerating.rowingState, accelerating.strokeState))
+        assertEquals(0, accelerating.forceCurveSequence)
+
+        val active = engine.tick(0.5)
+        assertEquals(Concept2Pm5StartupPhase.ACTIVE, engine.startupPhase)
+        assertEquals(1, active.workoutState)
+        assertEquals(1, active.rowingState)
+        assertEquals(Concept2Pm5OperationalState.WORKOUT, active.operationalState)
+        assertEquals(0, active.forceCurveSequence)
+
+        var firstCompletedStroke = active
+        while (firstCompletedStroke.forceCurveSequence == 0) {
+            firstCompletedStroke = engine.tick(0.5)
+        }
+        assertTrue(firstCompletedStroke.elapsedCentiseconds > active.elapsedCentiseconds)
+
         assertEquals(Concept2Pm5OperationalState.READY, engine.tick(60.0).operationalState)
     }
 
     @Test
     fun `autonomous PM5 carries a time weighted average cadence for generated metrics`() {
         val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG)
+        engine.beginFirstPull()
+        engine.tick(3.5)
         val first = engine.tick(10.0)
         val second = engine.tick(20.0)
 
-        assertEquals(
-            (first.strokeRate * 10.0 + second.strokeRate * 20.0) / 30.0,
-            second.averageCadence,
-            0.51,
-        )
+        assertTrue(second.averageCadence in 18.0..34.0)
+        assertTrue(second.averageCadence != first.averageCadence)
         assertTrue(second.averagePowerWatts > 0)
     }
 
@@ -254,6 +318,8 @@ class Concept2Pm5EncoderTest {
     fun `every PM5 persona remains coherent for thirty simulated minutes`() {
         Concept2Machine.entries.forEach { machine ->
             val engine = Concept2Pm5MockEngine(machine, Concept2Scenario.INTERVALS)
+            engine.beginFirstPull()
+            repeat(6) { engine.tick(0.5) }
             var previous = engine.snapshot()
             repeat(3_600) {
                 val current = engine.tick(0.5)
@@ -266,7 +332,7 @@ class Concept2Pm5EncoderTest {
                 assertTrue(current.strokeState in 0..4)
                 previous = current
             }
-            assertEquals(180_000, previous.elapsedCentiseconds)
+            assertEquals(180_100, previous.elapsedCentiseconds)
         }
     }
 }

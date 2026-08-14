@@ -171,6 +171,14 @@ internal class CccdState {
 /** In-session link recovery state; intentionally empty until recovery moves in Phase 0.3. */
 internal class LinkRecoveryState
 
+/** Effective-readiness gate for the proprietary transcript on an FTMS machine link. */
+internal enum class LifeFitnessLinkSetupState {
+    NOT_REQUIRED,
+    PENDING,
+    SUCCEEDED,
+    FAILED,
+}
+
 /** All state whose lifetime is one physical BLE connection. */
 internal class ConnectionContext(
     val connectionId: ConnectionId,
@@ -187,6 +195,7 @@ internal class ConnectionContext(
     var cscRoleCapability: BtEngineState.CscRoleCapability? = null,
     var cscAssignedRoles: Set<BtEngineState.CscRole> = emptySet(),
     var cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
+    var machineDeviceType: BtEngineState.MachineDeviceType? = null,
 ) {
     /**
      * The Life Fitness setup run for this link, created lazily when one is needed.
@@ -208,6 +217,14 @@ internal class ConnectionContext(
      */
     @Volatile
     var lifeFitnessSetupDeadlineMs: Long? = null
+
+    /**
+     * Descriptor completion and Life Fitness setup completion are separate facts. The raw CCCD
+     * state may become ready while this remains [LifeFitnessLinkSetupState.PENDING], but the
+     * legacy/public readiness projection must not open until both have succeeded.
+     */
+    @Volatile
+    var lifeFitnessSetupState: LifeFitnessLinkSetupState = LifeFitnessLinkSetupState.NOT_REQUIRED
 
     /** Callback-owned, idempotent termination entry point used by explicit disconnects. */
     @Volatile
@@ -404,8 +421,17 @@ internal class ConnectionRegistry {
     fun setCccdReady(context: ConnectionContext, ready: Boolean) = synchronized(lock) {
         context.cccd.setReady(ready)
         if (current(LegacyConnectionRole.FTMS) === context) {
-            _machineCccdReady.value = ready
+            _machineCccdReady.value = effectiveCccdReady(context)
         }
+    }
+
+    /** Re-project readiness after a setup-state transition without changing raw CCCD state. */
+    fun refreshCccdReady(context: ConnectionContext): Boolean = synchronized(lock) {
+        val effective = effectiveCccdReady(context)
+        if (current(LegacyConnectionRole.FTMS) === context) {
+            _machineCccdReady.value = effective
+        }
+        effective
     }
 
     fun resetCccd(context: ConnectionContext, clearPlan: Boolean = true) = synchronized(lock) {
@@ -418,10 +444,15 @@ internal class ConnectionRegistry {
     fun completeCccdWrite(context: ConnectionContext): Boolean = synchronized(lock) {
         val becameReady = context.cccd.completePending()
         if (current(LegacyConnectionRole.FTMS) === context) {
-            _machineCccdReady.value = context.cccd.ready.value
+            _machineCccdReady.value = effectiveCccdReady(context)
         }
         becameReady
     }
+
+    private fun effectiveCccdReady(context: ConnectionContext): Boolean =
+        context.cccd.ready.value &&
+            context.lifeFitnessSetupState != LifeFitnessLinkSetupState.PENDING &&
+            context.lifeFitnessSetupState != LifeFitnessLinkSetupState.FAILED
 
     fun replaceServices(context: ConnectionContext, services: List<BluetoothGattService>) =
         synchronized(lock) {
@@ -475,6 +506,16 @@ internal class ConnectionRegistry {
         context.cscRequestedRoles = requestedRoles
     }
 
+    fun setMachineDeviceType(
+        context: ConnectionContext,
+        deviceType: BtEngineState.MachineDeviceType?,
+    ) = synchronized(lock) {
+        if (!context.isActive || contexts[context.connectionId] !== context) return@synchronized
+        if (context.machineDeviceType == deviceType) return@synchronized
+        context.machineDeviceType = deviceType
+        publishConnectedDevices()
+    }
+
     private fun publishConnectedDevices() {
         _connectedDevices.value = contexts.values.map { context ->
             val handlerServices = context.handlers
@@ -492,10 +533,36 @@ internal class ConnectionRegistry {
                 connectionState = context.connectionState.value.bluetoothProfileState,
                 activeServices = handlerServices.ifEmpty { setOf(fallbackService) },
                 machineConnection = context.machineConnection,
+                machineIdentityFamily = machineIdentityFamily(context),
+                machineDeviceType = context.machineDeviceType
+                    ?: if (BluetoothIds.UUID_PRECOR_SERVICE in context.discoveredServiceUuids) {
+                        BtEngineState.MachineDeviceType.BIKE
+                    } else {
+                        null
+                    },
                 cscRoleCapability = context.cscRoleCapability,
                 cscAssignedRoles = context.cscAssignedRoles,
             )
         }.sortedBy { it.connectionKey }
+    }
+
+    /** Proprietary evidence outranks generic FTMS when a machine exposes both services. */
+    private fun machineIdentityFamily(
+        context: ConnectionContext,
+    ): BtEngineState.MachineIdentityFamily? = when {
+        BluetoothIds.UUID_C2_ERG_SERVICE in context.discoveredServiceUuids ->
+            BtEngineState.MachineIdentityFamily.CONCEPT2_PM5
+
+        BluetoothIds.UUID_PRECOR_SERVICE in context.discoveredServiceUuids ->
+            BtEngineState.MachineIdentityFamily.PRECOR_SPINNER_CHRONO_POWER
+
+        context.lifeFitnessSetupState != LifeFitnessLinkSetupState.NOT_REQUIRED ->
+            BtEngineState.MachineIdentityFamily.LIFE_FITNESS
+
+        BluetoothIds.UUID_FTMS_SERVICE in context.discoveredServiceUuids ->
+            BtEngineState.MachineIdentityFamily.FTMS
+
+        else -> null
     }
 
     private fun createContext(

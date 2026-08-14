@@ -282,6 +282,39 @@ class FtmsAdversarialParserTest {
         assertEquals(3.0, h.fusion.valueOf(MetricKind.RAMP_ANGLE)!!, 1e-9)
     }
 
+    @Test
+    fun `elevation unavailable markers are dropped per component without losing valid gain`() {
+        // Treadmill flags 0x0011: speed absent, elevation pair present. Elevation uses 0.1 m.
+        for (unavailable in listOf(0x7FFF, 0xFFFF)) {
+            val h = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+            BtEngineFtmsParsers.doTreadmill(
+                h.emitter,
+                bytes(
+                    0x11, 0x00,
+                    0x46, 0x00, // positive 70 -> 7.0 m
+                    unavailable and 0xFF, unavailable ushr 8,
+                ),
+            )
+            assertEquals(7.0, h.fusion.valueOf(MetricKind.ELEVATION_GAIN_POSITIVE)!!, 1e-9)
+            assertNull("0x${unavailable.toString(16)} is unavailable", h.fusion.valueOf(MetricKind.ELEVATION_GAIN_NEGATIVE))
+        }
+
+        // Cross Trainer flags 0x000021: speed absent, elevation pair present. Units are 1 m.
+        for (unavailable in listOf(0xFFFF, 0x7FFF)) {
+            val h = harness(BluetoothIds.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
+            BtEngineFtmsParsers.doElliptical(
+                h.emitter,
+                bytes(
+                    0x21, 0x00, 0x00,
+                    0x07, 0x00, // positive 7 m
+                    unavailable and 0xFF, unavailable ushr 8,
+                ),
+            )
+            assertEquals(7.0, h.fusion.valueOf(MetricKind.ELEVATION_GAIN_POSITIVE)!!, 1e-9)
+            assertNull("0x${unavailable.toString(16)} is unavailable", h.fusion.valueOf(MetricKind.ELEVATION_GAIN_NEGATIVE))
+        }
+    }
+
     // ── Counter extremes ─────────────────────────────────────────────────────────
 
     @Test

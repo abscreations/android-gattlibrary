@@ -28,13 +28,19 @@ class Concept2Pm5Session {
         return true
     }
 
+    @Synchronized
     fun setSubscribed(uuid: UUID, enabled: Boolean) {
         if (enabled) subscriptions += uuid else subscriptions -= uuid
     }
 
+    @Synchronized
     fun isSubscribed(uuid: UUID): Boolean = uuid in subscriptions
 
-    val hasSubscriptions: Boolean get() = subscriptions.isNotEmpty()
+    val hasSubscriptions: Boolean
+        @Synchronized get() = subscriptions.isNotEmpty()
+
+    val hasWorkoutMeasurementSubscription: Boolean
+        @Synchronized get() = subscriptions.any(WORKOUT_MEASUREMENT_UUIDS::contains)
 
     val heartRateInput: ByteArray?
         get() = heartRateInputBytes?.copyOf()
@@ -48,6 +54,7 @@ class Concept2Pm5Session {
         return true
     }
 
+    @Synchronized
     fun nextMuxId(enabledIds: List<Int>): Int? {
         if (!isSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION)) return null
         val eligible = enabledIds.filter { id ->
@@ -69,6 +76,7 @@ class Concept2Pm5Session {
         return true
     }
 
+    @Synchronized
     fun reset() {
         subscriptions.clear(); sampleRate = DEFAULT_SAMPLE_RATE; muxPosition = 0
         heartRateInputBytes = null
@@ -79,6 +87,18 @@ class Concept2Pm5Session {
     companion object {
         const val DEFAULT_SAMPLE_RATE = 1
         val PERIODS_MS = mapOf(0 to 1000L, 1 to 500L, 2 to 250L, 3 to 100L)
+
+        private val WORKOUT_MEASUREMENT_UUIDS = setOf(
+            BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
+            BluetoothIds.UUID_C2_GENERAL_STATUS,
+            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
+            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
+            BluetoothIds.UUID_C2_STROKE_DATA,
+            BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+            BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA,
+            BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL,
+            BluetoothIds.UUID_C2_FORCE_CURVE_DATA,
+        )
 
         fun uuidForId(id: Int): UUID? = when (id) {
             0x31 -> BluetoothIds.UUID_C2_GENERAL_STATUS

@@ -16,6 +16,64 @@ import java.util.UUID
 class ConnectionContextTest {
 
     @Test
+    fun `registry projects definitive machine family ahead of generic FTMS`() {
+        val registry = ConnectionRegistry()
+        val context = registry.open(
+            role = LegacyConnectionRole.FTMS,
+            address = "AA:BB:CC:DD:EE:10",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        context.discoveredServiceUuids += setOf(
+            BluetoothIds.UUID_FTMS_SERVICE,
+            BluetoothIds.UUID_C2_ERG_SERVICE,
+        )
+
+        registry.setMachineDeviceType(context, BtEngineState.MachineDeviceType.SKI_ERG)
+
+        val link = registry.connectedDevices.value.single()
+        assertEquals(
+            BtEngineState.MachineIdentityFamily.CONCEPT2_PM5,
+            link.machineIdentityFamily,
+        )
+        assertEquals(BtEngineState.MachineDeviceType.SKI_ERG, link.machineDeviceType)
+    }
+
+    @Test
+    fun `registry projects Life Fitness and Precor identities from link evidence`() {
+        val lifeFitnessRegistry = ConnectionRegistry()
+        val lifeFitness = lifeFitnessRegistry.open(
+            role = LegacyConnectionRole.FTMS,
+            address = "AA:BB:CC:DD:EE:11",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        lifeFitness.discoveredServiceUuids += BluetoothIds.UUID_FTMS_SERVICE
+        lifeFitness.lifeFitnessSetupState = LifeFitnessLinkSetupState.PENDING
+        lifeFitnessRegistry.replaceHandlers(lifeFitness, emptyList())
+        assertEquals(
+            BtEngineState.MachineIdentityFamily.LIFE_FITNESS,
+            lifeFitnessRegistry.connectedDevices.value.single().machineIdentityFamily,
+        )
+
+        val precorRegistry = ConnectionRegistry()
+        val precor = precorRegistry.open(
+            role = LegacyConnectionRole.FTMS,
+            address = "AA:BB:CC:DD:EE:12",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        precor.discoveredServiceUuids += BluetoothIds.UUID_PRECOR_SERVICE
+        precorRegistry.replaceHandlers(precor, emptyList())
+        val precorLink = precorRegistry.connectedDevices.value.single()
+        assertEquals(
+            BtEngineState.MachineIdentityFamily.PRECOR_SPINNER_CHRONO_POWER,
+            precorLink.machineIdentityFamily,
+        )
+        assertEquals(BtEngineState.MachineDeviceType.BIKE, precorLink.machineDeviceType)
+    }
+
+    @Test
     fun `registry publishes live link snapshots independently of discovery maps`() {
         val registry = ConnectionRegistry()
         val machine = registry.open(

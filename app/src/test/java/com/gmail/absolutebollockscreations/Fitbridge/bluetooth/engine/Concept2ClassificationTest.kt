@@ -34,6 +34,23 @@ import org.junit.Test
  */
 class Concept2ClassificationTest {
 
+    @Test
+    fun `presentation device type retains all three Concept2 erg families`() {
+        assertEquals(
+            BtEngineState.MachineDeviceType.ROWER,
+            concept2MachineDeviceTypeFor(Concept2ErgFamily.ROWER),
+        )
+        assertEquals(
+            BtEngineState.MachineDeviceType.SKI_ERG,
+            concept2MachineDeviceTypeFor(Concept2ErgFamily.SKI),
+        )
+        assertEquals(
+            BtEngineState.MachineDeviceType.BIKE_ERG,
+            concept2MachineDeviceTypeFor(Concept2ErgFamily.BIKE),
+        )
+        assertNull(concept2MachineDeviceTypeFor(null))
+    }
+
     private val address = "C2:00:00:00:00:01"
 
     private fun stateWithPm(machineFeature: Int? = null): BtEngineState {

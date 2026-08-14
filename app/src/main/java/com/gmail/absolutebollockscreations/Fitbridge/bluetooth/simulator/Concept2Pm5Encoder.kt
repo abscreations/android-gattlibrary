@@ -47,7 +47,7 @@ object Concept2Pm5Encoder {
         u8(s.workoutType); u8(s.intervalType); u8(s.workoutState); u8(s.rowingState); u8(s.strokeState)
         u24(s.distanceDecimetres / 10)
         u24(s.projectedWorkTimeSeconds * 100)
-        u8(0); u8(s.dragFactor)
+        u8(s.workoutDurationType); u8(s.dragFactor)
     }
 
     private fun additionalStatus1(s: Concept2Pm5Snapshot, multiplexed: Boolean) = packet {

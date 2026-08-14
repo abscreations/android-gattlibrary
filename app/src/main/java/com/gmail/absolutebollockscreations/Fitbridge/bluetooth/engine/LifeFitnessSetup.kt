@@ -38,6 +38,29 @@ import java.util.UUID
 internal object LifeFitnessSetup {
 
     /**
+     * Characteristics whose descriptor/write callbacks advance the setup transcript.
+     *
+     * They live under vendor control and user-data services, while the transcript is owned by
+     * the active FTMS handler. Keeping the complete set beside [transcript] prevents a newly
+     * added setup field from silently becoming unroutable.
+     */
+    val CALLBACK_CHARACTERISTICS: Set<UUID> = setOf(
+        BluetoothIds.UUID_LF_STATUS,
+        BluetoothIds.UUID_LF_CONTROL_1,
+        BluetoothIds.UUID_LF_CONTROL_2,
+        BluetoothIds.UUID_USER_FIRST_NAME,
+        BluetoothIds.UUID_USER_LAST_NAME,
+        BluetoothIds.UUID_USER_EMAIL,
+        BluetoothIds.UUID_USER_AGE,
+        BluetoothIds.UUID_USER_GENDER,
+        BluetoothIds.UUID_USER_LANGUAGE,
+        BluetoothIds.UUID_LF_VENDOR_TOKEN_1,
+        BluetoothIds.UUID_LF_VENDOR_TOKEN_2,
+        BluetoothIds.UUID_USER_WEIGHT,
+        BluetoothIds.UUID_USER_HEIGHT,
+    )
+
+    /**
      * The vendor application token TMIW and QZ both write to `5da54cf2-…`.
      *
      * **This is Life Fitness's own application identifier, and FitBridge presenting it is

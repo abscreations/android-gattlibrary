@@ -122,6 +122,32 @@ internal class AdapterLivenessCoordinator(
     }
 
     /**
+     * Link-aware setup completion. It creates the policy when setup finishes before the final
+     * CCCD and replays subscription completion when descriptors finished first.
+     */
+    fun setupSucceeded(context: ConnectionContext, nowMs: Long): Boolean {
+        if (!context.machineConnection) return false
+        val candidates = candidatesFor(context)
+        if (candidates.isEmpty()) return false
+        return synchronized(lock) {
+            val policy = policies.getOrPut(context.connectionId) {
+                MachineAdapterPolicy(context.connectionId, candidates).also { it.start() }
+            }
+            val accepted = policy.setupSucceeded(context.connectionId)
+            if (accepted && context.cccd.ready.value) {
+                policy.subscriptionsCompleted(context.connectionId, nowMs)
+            }
+            if (accepted) {
+                Timber.tag(TAG).i(
+                    "setup succeeded for link generation %d",
+                    context.connectionId.linkGeneration,
+                )
+            }
+            accepted
+        }
+    }
+
+    /**
      * A setup handshake failed. The link becomes `SETUP_FAILED` with [reason] as its detail.
      *
      * [reason] reaches logs and the connection UI, so it must name the step and never the value
@@ -137,6 +163,27 @@ internal class AdapterLivenessCoordinator(
             )
         }
         accepted
+    }
+
+    /** Ensure a setup failure is retained even when it precedes subscription completion. */
+    fun setupFailed(context: ConnectionContext, reason: String): Boolean {
+        if (!context.machineConnection) return false
+        val candidates = candidatesFor(context)
+        if (candidates.isEmpty()) return false
+        return synchronized(lock) {
+            val policy = policies.getOrPut(context.connectionId) {
+                MachineAdapterPolicy(context.connectionId, candidates).also { it.start() }
+            }
+            val accepted = policy.setupFailed(context.connectionId, reason)
+            if (accepted) {
+                Timber.tag(TAG).w(
+                    "setup failed for link generation %d: %s",
+                    context.connectionId.linkGeneration,
+                    reason,
+                )
+            }
+            accepted
+        }
     }
 
     fun forget(connectionId: ConnectionId) {
@@ -199,7 +246,10 @@ internal class AdapterLivenessCoordinator(
         // firmware variant with different parents still completes setup, and a service-level test
         // would miss precisely that device.
         val requiresLifeFitnessSetup =
-            LifeFitnessFingerprint.isSetupSurface(context.discoveredServices.toLifeFitnessInventory())
+            context.lifeFitnessSetupState != LifeFitnessLinkSetupState.NOT_REQUIRED ||
+                LifeFitnessFingerprint.isSetupSurface(
+                    context.discoveredServices.toLifeFitnessInventory(),
+                )
         return buildList {
             if (BluetoothIds.UUID_FTMS_SERVICE in services) {
                 add(

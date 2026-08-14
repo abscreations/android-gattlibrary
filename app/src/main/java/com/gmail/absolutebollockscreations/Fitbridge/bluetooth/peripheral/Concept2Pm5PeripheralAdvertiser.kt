@@ -80,6 +80,9 @@ class Concept2Pm5PeripheralAdvertiser(
 
     fun publish(snapshot: Concept2Pm5Snapshot) { latest = snapshot }
 
+    fun hasWorkoutMeasurementSubscription(): Boolean =
+        clients.values.any { it.session.hasWorkoutMeasurementSubscription }
+
     @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE])
     fun start(persona: SimulatorPersona.Concept2Pm5, onResult: (Result<Unit>) -> Unit) {
         stop()

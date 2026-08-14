@@ -69,6 +69,9 @@ class FtmsSimulator(
         /** Publish the latest rich PM5 snapshot to the PM5 measurement scheduler. */
         fun publishConcept2(snapshot: Concept2Pm5Snapshot) {}
 
+        /** True only after a client enables a PM5 workout-data CCCD, not status alone. */
+        val concept2WorkoutRequested: Boolean get() = false
+
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
 
@@ -333,7 +336,7 @@ class FtmsSimulator(
             while (isActive) {
                 delay(PERIOD_MS)
                 val active = concept2Engine ?: break
-                publishConcept2(active.tick(PERIOD_MS / 1000.0))
+                publishConcept2(active.tick(PERIOD_MS / 1000.0, peripheral.concept2WorkoutRequested))
             }
         }
         Timber.tag(TAG).i("PM5 simulator started machine=%s firmware=%s", persona.machine, persona.firmware)

@@ -832,27 +832,43 @@ internal object BtEngineFtmsParsers {
         when (mode) {
             1 -> { // +gain only
                 if (!has(b, off, 2)) return ABORTED
-                val pos = u16(b, off).toDouble(); off += 2
+                val posRaw = u16(b, off); off += 2
+                val pos = elevationMetersOrNull(posRaw, scale = 1.0)
                 if (canLogMetrics()) {
-                    Timber.tag(TAG).d("FTMS elevation gain + (m): %.1f", pos)
+                    Timber.tag(TAG).d(
+                        "FTMS elevation gain + (m): %s",
+                        pos?.let { "%.1f".format(it) } ?: "unavailable",
+                    )
                 }
                 emitter.emitElevationGains(pos, null)
             }
             2 -> { // +gain/10 and -gain/10
                 if (!has(b, off, 4)) return ABORTED
-                val pos = u16(b, off).toDouble() / 10.0; off += 2
-                val neg = u16(b, off).toDouble() / 10.0; off += 2
+                val posRaw = u16(b, off); off += 2
+                val negRaw = u16(b, off); off += 2
+                val pos = elevationMetersOrNull(posRaw, scale = 0.1)
+                val neg = elevationMetersOrNull(negRaw, scale = 0.1)
                 if (canLogMetrics()) {
-                    Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
+                    Timber.tag(TAG).d(
+                        "FTMS elevation gain +/− (m): +%s / −%s",
+                        pos?.let { "%.1f".format(it) } ?: "unavailable",
+                        neg?.let { "%.1f".format(it) } ?: "unavailable",
+                    )
                 }
                 emitter.emitElevationGains(pos, neg)
             }
             3 -> { // +gain and -gain
                 if (!has(b, off, 4)) return ABORTED
-                val pos = u16(b, off).toDouble(); off += 2
-                val neg = u16(b, off).toDouble(); off += 2
+                val posRaw = u16(b, off); off += 2
+                val negRaw = u16(b, off); off += 2
+                val pos = elevationMetersOrNull(posRaw, scale = 1.0)
+                val neg = elevationMetersOrNull(negRaw, scale = 1.0)
                 if (canLogMetrics()) {
-                    Timber.tag(TAG).d("FTMS elevation gain +/− (m): +%.1f / −%.1f", pos, neg)
+                    Timber.tag(TAG).d(
+                        "FTMS elevation gain +/− (m): +%s / −%s",
+                        pos?.let { "%.1f".format(it) } ?: "unavailable",
+                        neg?.let { "%.1f".format(it) } ?: "unavailable",
+                    )
                 }
                 emitter.emitElevationGains(pos, neg)
             }
@@ -860,6 +876,20 @@ internal object BtEngineFtmsParsers {
             // and consumes nothing, so it cannot desynchronise the cursor.
         }
         return off
+    }
+
+    /**
+     * Elevation Gain members are unsigned, so the FTMS unavailable value is `0xFFFF`.
+     * Retained physical Life Fitness treadmill packets use `0x7FFF` for their unavailable
+     * negative member instead. Both are absence markers, not cumulative elevation; consuming
+     * but not emitting them keeps the remainder of the packet aligned and makes the UI show `--`.
+     */
+    private fun elevationMetersOrNull(raw: Int, scale: Double): Double? = when (raw) {
+        UNSIGNED_NOT_AVAILABLE,
+        LIFE_FITNESS_UNSIGNED_NOT_AVAILABLE,
+        -> null
+
+        else -> raw.toDouble() * scale
     }
 
     private fun readBeltForce(emitter: MetricEmitter, b: ByteArray, off0: Int): Int {
@@ -1023,6 +1053,12 @@ internal object BtEngineFtmsParsers {
      * hardware, not an edge case.
      */
     private const val SIGNED_NOT_AVAILABLE = 0x7FFF
+
+    /** FTMS unsigned Data Not Available marker, including Elevation Gain members. */
+    private const val UNSIGNED_NOT_AVAILABLE = 0xFFFF
+
+    /** Alternate unsigned-field marker observed in physical Life Fitness treadmill packets. */
+    private const val LIFE_FITNESS_UNSIGNED_NOT_AVAILABLE = 0x7FFF
 
     /** True when [need] bytes are readable at [off] and the walk has not already aborted. */
     private fun has(b: ByteArray, off: Int, need: Int) = off >= 0 && b.size >= off + need

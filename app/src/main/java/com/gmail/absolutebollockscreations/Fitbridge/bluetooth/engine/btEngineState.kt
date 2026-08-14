@@ -78,6 +78,26 @@ class BtEngineState : HrmStateSink {
 
     enum class CscRoleSource { APPEARANCE, FEATURE }
 
+    /** Vendor/protocol identity established from the connected link's GATT inventory. */
+    enum class MachineIdentityFamily {
+        FTMS,
+        LIFE_FITNESS,
+        PRECOR_SPINNER_CHRONO_POWER,
+        CONCEPT2_PM5,
+    }
+
+    /** Presentation-level machine kind; intentionally independent of session activity. */
+    enum class MachineDeviceType {
+        BIKE,
+        BIKE_ERG,
+        ELLIPTICAL,
+        ROWER,
+        SKI_ERG,
+        STAIR_CLIMBER,
+        STAIR_STEPPER,
+        TREADMILL,
+    }
+
     data class CscRoleCapability(
         val roles: Set<CscRole>,
         val source: CscRoleSource,
@@ -108,6 +128,8 @@ class BtEngineState : HrmStateSink {
         val connectionState: Int,
         val activeServices: Set<BtServiceType>,
         val machineConnection: Boolean,
+        val machineIdentityFamily: MachineIdentityFamily? = null,
+        val machineDeviceType: MachineDeviceType? = null,
         val cscRoleCapability: CscRoleCapability? = null,
         val cscAssignedRoles: Set<CscRole> = emptySet(),
     )
@@ -804,12 +826,14 @@ class BtEngineState : HrmStateSink {
 
     // Scanning + lists
     internal fun setCccdReady(context: ConnectionContext, value: Boolean) {
-        val old = context.cccd.ready.value
+        val oldEffective = cccdReady.value
         connectionRegistry.setCccdReady(context, value)
+        val newEffective = cccdReady.value
         Timber.tag(TAG).d(
-            "cccdReady[%s] %s → %s",
+            "cccdReady[%s] %s → %s (raw=%s)",
             context.connectionId,
-            old,
+            oldEffective,
+            newEffective,
             value,
         )
     }
