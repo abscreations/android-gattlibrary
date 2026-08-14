@@ -65,6 +65,20 @@ internal data class ProtocolKey(val value: String) {
          * candidate and D6 never arises.
          */
         val PRECOR = ProtocolKey("precor")
+
+        /**
+         * Schwinn x70 — 170 / 270 / 570, proprietary (plan §7). A machine protocol, so it is
+         * absent from [sensorProtocolFor] for the same reason as FTMS, Concept2 and Precor.
+         *
+         * One key for two consoles. A 170 and a 270 share a service and an initialization
+         * command and share no measurement stream at all, but nothing at discovery time
+         * distinguishes them — both report the identity `SCHWINN 170/270` — so the split lives
+         * inside the handler where the notifications reveal it, not in the registry.
+         *
+         * Like Precor and unlike Concept2 there is no standard-versus-proprietary contest: an
+         * x70 advertises its vendor service and no FTMS, so D6 never arises.
+         */
+        val SCHWINN_X70 = ProtocolKey("schwinn.x70")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -124,6 +138,7 @@ internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FTMS,
     ProtocolKey.CONCEPT2,
     ProtocolKey.PRECOR,
+    ProtocolKey.SCHWINN_X70,
 )
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
@@ -154,6 +169,7 @@ internal class HandlerFactory(
                 ProtocolKey.CPS to { CpsProtocolHandler() },
                 ProtocolKey.CONCEPT2 to { Concept2ProtocolHandler() },
                 ProtocolKey.PRECOR to { PrecorProtocolHandler() },
+                ProtocolKey.SCHWINN_X70 to { SchwinnX70ProtocolHandler() },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)

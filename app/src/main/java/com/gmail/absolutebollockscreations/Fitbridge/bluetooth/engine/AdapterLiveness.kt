@@ -335,6 +335,40 @@ internal class AdapterLivenessCoordinator(
                     ),
                 )
             }
+            if (BluetoothIds.UUID_X70_SERVICE in services) {
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = SCHWINN_X70_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_SERVICE,
+                                    // Full 128-bit vendor UUID, transcribed from the user-supplied
+                                    // advertisement capture rather than built from TMIW's `8980`
+                                    // alias — §8.4, and see the Phase 7 evidence record.
+                                    structuralValue = BluetoothIds.UUID_X70_SERVICE.toString(),
+                                    // Same weight as the other structural facts: all four are
+                                    // certain identifications, and preference between certain
+                                    // matches is `rank`'s job.
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.LOW,
+                                    note = "Schwinn x70 service present in the discovered GATT database",
+                                ),
+                            ),
+                        ),
+                        rank = RANK_SCHWINN_X70,
+                        // The `1717b3c0-…` write starts the notification streams, but it is not a
+                        // setup gate in the `SETUP_REQUIRED` sense: nothing has to succeed before
+                        // the adapter is usable, and there is no failure state to report distinct
+                        // from "subscribed and received nothing". A console that ignores the write
+                        // is demoted by the liveness timeout, which is the honest outcome and needs
+                        // no extra machinery — unlike Life Fitness, where a failed handshake is a
+                        // distinguishable event with its own transcript.
+                        requiresSetup = false,
+                        livenessTimeoutMs = livenessTimeoutMs,
+                    ),
+                )
+            }
         }
     }
 
@@ -368,6 +402,19 @@ internal class AdapterLivenessCoordinator(
          * reason given above.
          */
         const val RANK_PRECOR = 80
+
+        const val SCHWINN_X70_ADAPTER_ID = "schwinn.x70"
+
+        /**
+         * Equal to [RANK_PRECOR] and [RANK_CONCEPT2], for the reason given above.
+         *
+         * An x70 advertises its vendor service and no FTMS, so it never competes with anything.
+         * The one nuance worth stating: a 170 and a 270 are the same adapter here even though they
+         * share no measurement stream, because nothing observable before the first notification
+         * tells them apart — both consoles report the identity `SCHWINN 170/270`. The split is the
+         * handler's, made when the frames arrive.
+         */
+        const val RANK_SCHWINN_X70 = 80
 
         /**
          * 30 s from subscription completion.
