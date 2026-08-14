@@ -1,7 +1,9 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
@@ -184,6 +186,215 @@ class SchwinnX70PlumbingTest {
         assertFalse(
             BluetoothIds.UUID_FTMS_SERVICE in handler.primaryServices,
         )
+    }
+
+    // ── §11 obligation 4: connection behaviour ──────────────────────────────────
+
+    private fun mainFrames(): List<ByteArray> {
+        val stream = javaClass.classLoader
+            ?.getResourceAsStream("fixtures/hardware/schwinn_x70_270_main.json")
+            ?: error("270 corpus missing")
+        val fixture = FixtureJson.obj(FixtureJson.parse(stream.bufferedReader().use { it.readText() }))
+        return FixtureJson.array(fixture["cases"]).map { case ->
+            FixtureJson.array(FixtureJson.obj(case)["packet"])
+                .map { FixtureJson.int(it).toByte() }
+                .toByteArray()
+        }
+    }
+
+    @Test
+    fun `a reconnect resets every piece of link state`() {
+        // The specific hazard for this family: link state includes a crank counter, a damping
+        // baseline and an energy baseline, and all three are *differences*. A counter surviving a
+        // reconnect would compute a cadence across two sessions and an unknown gap — a
+        // plausible-looking number from two unrelated readings, which is worse than no number.
+        val handler = SchwinnX70ProtocolHandler()
+        val frames = mainFrames()
+
+        // Two consecutive real frames: the second produces cadence, power and speed because the
+        // first established a baseline.
+        handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[0], arrivalMs = 1_000L)
+        val second = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[1], arrivalMs = 1_200L)
+        assertTrue("a baseline existed, so metrics flow", second.any { it.metric == MetricKind.CADENCE })
+
+        handler.resetLinkState()
+
+        // After a reconnect the same frame must behave like the first frame of a link again.
+        val afterReset = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[1], arrivalMs = 9_000L)
+        assertTrue(
+            "no metric may be derived from a counter belonging to a previous link",
+            afterReset.none { it.metric == MetricKind.CADENCE || it.metric == MetricKind.POWER },
+        )
+    }
+
+    @Test
+    fun `a malformed frame is counted and cleared by a reconnect`() {
+        val handler = SchwinnX70ProtocolHandler()
+
+        handler.samplesForNotification(
+            BluetoothIds.UUID_X70_MEASUREMENT,
+            byteArrayOf(0x11, 0x20, 0x00),
+            arrivalMs = 0L,
+        )
+        assertEquals("a truncated frame is a rejection", 1, handler.rejectedFrameCount())
+
+        handler.resetLinkState()
+        assertEquals("a reconnect clears the count", 0, handler.rejectedFrameCount())
+    }
+
+    @Test
+    fun `a notification on an unowned characteristic produces nothing and is not a rejection`() {
+        // Stale-callback isolation at the handler: a frame for a characteristic this handler does
+        // not own must not be decoded *and* must not inflate the rejection count, which exists to
+        // measure this family's own malformed traffic.
+        val handler = SchwinnX70ProtocolHandler()
+
+        assertTrue(
+            handler.samplesForNotification(UUID.randomUUID(), mainFrames()[0], arrivalMs = 0L).isEmpty(),
+        )
+        assertEquals(0, handler.rejectedFrameCount())
+    }
+
+    @Test
+    fun `a 170's held supplemental frame does not leak across a reconnect`() {
+        // The supplemental frame is held so that one tick emits one coherent set. Holding it across
+        // a link would publish a heart rate from the previous session against the new one's speed.
+        val handler = SchwinnX70ProtocolHandler()
+        val supplemental = ByteArray(20).also { frame ->
+            SchwinnX70Measurement.SUPPLEMENTAL_TAGS.forEach { (offset, tag) -> frame[offset] = tag.toByte() }
+            frame[16] = 141.toByte()
+        }
+        val sibling = ByteArray(14).also { frame ->
+            SchwinnX70Measurement.SIBLING_TAGS.forEach { (offset, tag) -> frame[offset] = tag.toByte() }
+        }
+
+        handler.samplesForNotification(BluetoothIds.UUID_X70_SUPPLEMENTAL, supplemental, arrivalMs = 0L)
+        val withHeld = handler.samplesForNotification(BluetoothIds.UUID_X70_SIBLING, sibling, arrivalMs = 100L)
+        assertEquals(141.0, withHeld.single { it.metric == MetricKind.HEART_RATE }.value, 1e-9)
+
+        handler.resetLinkState()
+
+        val afterReset = handler.samplesForNotification(BluetoothIds.UUID_X70_SIBLING, sibling, arrivalMs = 200L)
+        assertTrue(
+            "a heart rate from a dead link must not attach to a live one",
+            afterReset.none { it.metric == MetricKind.HEART_RATE },
+        )
+    }
+
+    @Test
+    fun `a fresh handler carries no state from a previous link`() {
+        // The factory builds one per connection, so this is really a guard that nobody makes the
+        // handler a singleton later. Damping and cadence state are per-link by construction and
+        // the construction is what is asserted.
+        val first = factory.create(ProtocolKey.SCHWINN_X70) as SchwinnX70ProtocolHandler
+        val second = factory.create(ProtocolKey.SCHWINN_X70) as SchwinnX70ProtocolHandler
+
+        assertFalse("each connection gets its own handler", first === second)
+        assertEquals(0, second.rejectedFrameCount())
+    }
+
+    @Test
+    fun `x70 and FTMS handlers coexist on one link and route independently`() {
+        // Not hypothetical for this family in the way it is for Precor: nothing stops a user
+        // pairing an x70 while an FTMS machine is also connected, and both handlers are offered on
+        // every machine connection. Each characteristic must reach exactly one owner.
+        val ftms = FtmsProtocolHandler()
+        val x70 = SchwinnX70ProtocolHandler()
+
+        val active = activateMatchingProtocolHandlers(
+            listOf(ftms, x70),
+            setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_X70_SERVICE),
+            offer = { true },
+        )
+        assertEquals(listOf(ftms, x70), active)
+
+        for (characteristic in listOf(
+            BluetoothIds.UUID_X70_MEASUREMENT,
+            BluetoothIds.UUID_X70_SUPPLEMENTAL,
+            BluetoothIds.UUID_X70_SIBLING,
+        )) {
+            val route = resolveProtocolHandlerRoute(active, characteristic, BluetoothIds.UUID_X70_SERVICE)
+            assertEquals("$characteristic must route to the x70 alone", listOf(x70), route.owners)
+            assertEquals(HandlerOwnership.EXPLICIT_CHARACTERISTIC, route.ownership)
+        }
+
+        assertEquals(
+            listOf(ftms),
+            resolveProtocolHandlerRoute(
+                active,
+                BluetoothIds.UUID_BIKING_DATA,
+                BluetoothIds.UUID_FTMS_SERVICE,
+            ).owners,
+        )
+    }
+
+    @Test
+    fun `a characteristic this handler does not own is not routed to it`() {
+        // Stale-callback isolation at the routing layer: an unknown UUID must produce no owner at
+        // all rather than defaulting to whichever handler is active.
+        val active = listOf(SchwinnX70ProtocolHandler())
+        assertNull(resolveProtocolHandlerRoute(active, UUID.randomUUID(), null).ownership)
+    }
+
+    @Test
+    fun `only the x70 handler activates when only its service is present`() {
+        val active = activateMatchingProtocolHandlers(
+            MACHINE_PROTOCOLS.map(factory::create),
+            setOf(BluetoothIds.UUID_X70_SERVICE),
+            offer = { true },
+        )
+        assertEquals(1, active.size)
+        assertTrue(active.single() is SchwinnX70ProtocolHandler)
+    }
+
+    // ── §11 obligation 8: the downstream capability row ─────────────────────────
+
+    @Test
+    fun `an x70-driven session advertises no target-setting capability`() {
+        // §9.2 and D26. Neither console exposes a control point: the only writable characteristic
+        // in the captured GATT is `1717b3c0-…`, and writing it starts a notification stream rather
+        // than setting a target. The downstream row is empty by construction; this asserts the
+        // construction, because "empty by construction" is exactly the claim that stops being true
+        // when someone later adds a capability without re-reading §9.2.
+        val capabilities = TargetCapabilities.fromEngineCapabilities(
+            BtEngineState.FtmsCapabilities(featuresRead = true),
+        )
+
+        assertEquals(
+            "not one target bit may be set for a machine FitBridge cannot control",
+            0,
+            capabilities.toTargetFeatureBits(),
+        )
+        assertFalse("no control surface may be offered", capabilities.any)
+        assertFalse(capabilities.supportsResistance)
+        assertFalse(capabilities.supportsPower)
+        assertFalse(capabilities.indoorBikeSimulation)
+    }
+
+    @Test
+    fun `resistance is read as an input to the model and never offered as a target`() {
+        // The specific trap for this family. A 270 reports a resistance *level*, so the machine
+        // plainly has a resistance mechanism — which makes "we can therefore set it" a short and
+        // wrong step. Nothing in either capture shows a write that changes resistance, and QZ's
+        // own `requestResistance` branch is commented out. Reading a setting is not controlling it.
+        val handler = factory.create(ProtocolKey.SCHWINN_X70)
+        assertEquals(
+            "the setup write is the only characteristic this handler may write",
+            setOf(BluetoothIds.UUID_X70_CONTROL),
+            handler.extraCharacteristics - setOf(
+                BluetoothIds.UUID_X70_MEASUREMENT,
+                BluetoothIds.UUID_X70_SUPPLEMENTAL,
+                BluetoothIds.UUID_X70_SIBLING,
+            ),
+        )
+    }
+
+    @Test
+    fun `the persona is a bike for both consoles and does not depend on the name`() {
+        // All three consoles report the identity `SCHWINN 170/270`, so a name-derived persona would
+        // be the same for every one of them by accident rather than by evidence. This is a product
+        // fact: every x70 is an upright bike.
+        assertEquals(FusionPersona.RIDE, SchwinnX70ProtocolHandler().persona())
     }
 
     // ── Adapter policy ───────────────────────────────────────────────────────────

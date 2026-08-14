@@ -149,12 +149,12 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         value: ByteArray,
     ) {
         val arrivalMs = MonotonicMetricClock.SYSTEM.nowMs()
-        val samples = when (ch.uuid) {
-            BluetoothIds.UUID_X70_MEASUREMENT -> mainSamples(value, arrivalMs, engine)
-            BluetoothIds.UUID_X70_SUPPLEMENTAL -> supplementalSamples(value)
-            BluetoothIds.UUID_X70_SIBLING -> siblingSamples(value, arrivalMs)
-            else -> return
-        }
+        val samples = samplesForNotification(
+            characteristic = ch.uuid,
+            value = value,
+            arrivalMs = arrivalMs,
+            athleteMassKg = engine.state.lifeFitnessProfile.weightKg.toDouble(),
+        )
         if (samples.isEmpty()) return
 
         if (!deviceClassificationPublished) {
@@ -180,8 +180,32 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         }
     }
 
+    /**
+     * Route one notification to its decoder and produce the metrics it implies.
+     *
+     * **Internal and free of every Android type**, which is deliberate rather than incidental. The
+     * three decoders below carry all of this handler's link state — a crank counter, a damping
+     * baseline, an energy baseline, a held supplemental frame — and state that only a device can
+     * exercise is state nothing verifies. Splitting the routing from the callback leaves
+     * [onCharacteristicChanged] as the part that genuinely needs hardware: a `BluetoothGatt`, an
+     * emitter, and nothing to get wrong.
+     *
+     * Dispatch is on the characteristic and never on payload length — QZ's structural defect here.
+     */
+    internal fun samplesForNotification(
+        characteristic: UUID,
+        value: ByteArray,
+        arrivalMs: Long,
+        athleteMassKg: Double = SchwinnX70PowerModel.DEFAULT_ATHLETE_MASS_KG,
+    ): List<SchwinnX70Sample> = when (characteristic) {
+        BluetoothIds.UUID_X70_MEASUREMENT -> mainSamples(value, arrivalMs, athleteMassKg)
+        BluetoothIds.UUID_X70_SUPPLEMENTAL -> supplementalSamples(value)
+        BluetoothIds.UUID_X70_SIBLING -> siblingSamples(value, arrivalMs)
+        else -> emptyList()
+    }
+
     /** 270 / 570 main frame: cadence across frames, then the modelled power and speed. */
-    private fun mainSamples(value: ByteArray, arrivalMs: Long, engine: BtEngine): List<SchwinnX70Sample> {
+    private fun mainSamples(value: ByteArray, arrivalMs: Long, athleteMassKg: Double): List<SchwinnX70Sample> {
         val main = SchwinnX70Measurement.parseMain(value) ?: return rejected(value)
 
         val cadence = previousCounter?.let { previous ->
@@ -227,7 +251,7 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
             // already collects it for the Life Fitness handshake, so a real value is available;
             // the settings default is used when the user has not changed it, which is the same
             // assumption TMIW makes unconditionally.
-            athleteMassKg = engine.state.lifeFitnessProfile.weightKg.toDouble(),
+            athleteMassKg = athleteMassKg,
         )
     }
 
