@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
+import com.gmail.absolutebollockscreations.Fitbridge.simulatorPersonaOptions
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.advertisedName
@@ -38,5 +39,18 @@ class SimulatorPersonaTest {
     @Test
     fun `Precor Chrono persona has the explicit simulator identity`() {
         assertEquals("CHRONO 0", SimulatorPersona.PrecorChrono.advertisedName)
+    }
+
+    @Test
+    fun `simulator selector places the four Life Fitness personas before Precor`() {
+        val options = simulatorPersonaOptions()
+        val precorIndex = options.indexOf(SimulatorPersona.PrecorChrono)
+        assertTrue(precorIndex >= 0)
+        assertEquals(options.lastIndex, precorIndex)
+        assertEquals(
+            LifeFitnessMachine.entries,
+            options.take(precorIndex).filterIsInstance<SimulatorPersona.LifeFitness>().map { it.machine },
+        )
+        assertEquals(4, LifeFitnessMachine.entries.size)
     }
 }

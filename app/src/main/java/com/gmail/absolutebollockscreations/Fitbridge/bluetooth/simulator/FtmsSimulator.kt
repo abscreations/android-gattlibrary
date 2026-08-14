@@ -72,6 +72,9 @@ class FtmsSimulator(
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
 
+        /** Publish one capture-shaped Life Fitness FTMS record after local setup unlocks the link. */
+        fun publishLifeFitness(sample: FtmsMockSample) {}
+
         val isAdvertising: Boolean
     }
 
@@ -201,6 +204,10 @@ class FtmsSimulator(
             }
             SimulatorPersona.PrecorChrono -> {
                 startPrecor()
+                return
+            }
+            is SimulatorPersona.LifeFitness -> {
+                startLifeFitness(persona)
                 return
             }
             is SimulatorPersona.Ftms -> Unit
@@ -379,6 +386,68 @@ class FtmsSimulator(
         Timber.tag(TAG).i("Precor Chrono simulator started")
     }
 
+    private fun startLifeFitness(persona: SimulatorPersona.LifeFitness) {
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        val mockEngine = FtmsMockEngine(persona.machine.profile, controlsEnabled = false)
+        engine = mockEngine
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            engine = null
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            machine = persona.machine.profile,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        publish(lifeFitnessVisibleSample(persona.machine, mockEngine.snapshot()))
+        job = scope.launch {
+            while (isActive) {
+                delay(LIFE_FITNESS_PERIOD_MS)
+                val active = engine ?: break
+                publish(lifeFitnessVisibleSample(persona.machine, active.tick(LIFE_FITNESS_PERIOD_MS / 1000.0)))
+            }
+        }
+        Timber.tag(TAG).i("Life Fitness simulator started machine=%s generated=true", persona.machine)
+    }
+
+    /** Keep simulator diagnostics aligned with fields actually carried by the selected encoder. */
+    private fun lifeFitnessVisibleSample(machine: LifeFitnessMachine, sample: FtmsMockSample): FtmsMockSample =
+        when (machine) {
+            LifeFitnessMachine.TREADMILL -> sample.copy(
+                powerWatts = null,
+                averagePowerWatts = null,
+                forceOnBeltNewtons = null,
+            )
+            LifeFitnessMachine.CROSS_TRAINER -> sample.copy(inclinationPercent = null)
+            LifeFitnessMachine.STAIR_CLIMBER -> sample.copy(
+                powerWatts = null,
+                averagePowerWatts = null,
+            )
+            LifeFitnessMachine.INDOOR_BIKE -> sample
+        }
+
     private fun publishConcept2(snapshot: Concept2Pm5Snapshot) {
         peripheral.publishConcept2(snapshot)
         val speedKph = snapshot.speedMillimetresPerSecond / 1000.0 * 3.6
@@ -433,6 +502,9 @@ class FtmsSimulator(
     private fun publish(sample: FtmsMockSample) {
         if (_state.value.persona == SimulatorPersona.PrecorChrono) {
             peripheral.publishPrecor(sample)
+        }
+        if (_state.value.persona is SimulatorPersona.LifeFitness) {
+            peripheral.publishLifeFitness(sample)
         }
         engineState.setElapsedSeconds(sample.elapsedSeconds)
         engineState.setHeartRate(sample.heartRate)
@@ -492,6 +564,9 @@ class FtmsSimulator(
          * machine delivers records irregularly.
          */
         const val PERIOD_MS = 500L
+
+        /** Capture corpus median is 1.02 seconds; one second preserves the physical cadence. */
+        const val LIFE_FITNESS_PERIOD_MS = 1_000L
 
         private const val MILES_TO_KM = 1.609344
     }

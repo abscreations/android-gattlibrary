@@ -66,6 +66,20 @@ object BluetoothIds {
      */
     val UUID_TRAINING_STATUS: UUID               = shortUuid(0x2AD3)
 
+    // Additional standard services present in every captured legacy Life Fitness console.
+    val UUID_DEVICE_INFORMATION_SERVICE: UUID = shortUuid(0x180A)
+    val UUID_BOND_MANAGEMENT_SERVICE: UUID = shortUuid(0x181E)
+    val UUID_BOND_MANAGEMENT_CONTROL_POINT: UUID = shortUuid(0x2AA4)
+    val UUID_BOND_MANAGEMENT_FEATURE: UUID = shortUuid(0x2AA5)
+    val UUID_MANUFACTURER_NAME: UUID = shortUuid(0x2A29)
+    val UUID_MODEL_NUMBER: UUID = shortUuid(0x2A24)
+    val UUID_SERIAL_NUMBER: UUID = shortUuid(0x2A25)
+    val UUID_HARDWARE_REVISION: UUID = shortUuid(0x2A27)
+    val UUID_FIRMWARE_REVISION: UUID = shortUuid(0x2A26)
+    val UUID_SOFTWARE_REVISION: UUID = shortUuid(0x2A28)
+    val UUID_PNP_ID: UUID = shortUuid(0x2A50)
+    val UUID_LF_SECONDARY_SERVICE: UUID = shortUuid(0xFE13)
+
     // FTMS Data Characteristics
     val UUID_TREADMILL_DATA: UUID       = shortUuid(0x2ACD)
     val UUID_ELLIPTICAL_DATA: UUID      = shortUuid(0x2ACE)
@@ -255,6 +269,9 @@ object BluetoothIds {
     val UUID_USER_LANGUAGE: UUID   = shortUuid(0x2AA2)
     val UUID_USER_WEIGHT: UUID     = shortUuid(0x2A98)
     val UUID_USER_HEIGHT: UUID     = shortUuid(0x2A8E)
+    val UUID_USER_DATE_OF_BIRTH: UUID = shortUuid(0x2A85)
+    val UUID_USER_VO2_MAX: UUID = shortUuid(0x2A96)
+    val UUID_USER_MAX_RECOMMENDED_HEART_RATE: UUID = shortUuid(0x2A91)
 
     /** Every user-data characteristic the Life Fitness transcript writes, in transcript order. */
     val USER_PROFILE_CHARACTERISTICS: List<UUID> = listOf(
@@ -312,6 +329,25 @@ object BluetoothIds {
     /** Write: vendor token 2, `[0x00]`. Sensitive; redaction-registered. */
     val UUID_LF_VENDOR_TOKEN_2: UUID =
         UUID.fromString("ce78e85e-9cb6-11e5-8994-feff819cdc9f")
+
+    /** Capture-only discovery surface shared by all four issue #462 personas. */
+    val UUID_LF_FD00_SERVICE: UUID =
+        UUID.fromString("0000fd00-ebae-4526-9511-8357c35d7be2")
+    val UUID_LF_FD01: UUID = UUID.fromString("0000fd01-ebae-4526-9511-8357c35d7be2")
+    val UUID_LF_FD02: UUID = UUID.fromString("0000fd02-ebae-4526-9511-8357c35d7be2")
+    val UUID_LF_FD05: UUID = UUID.fromString("0000fd05-ebae-4526-9511-8357c35d7be2")
+
+    val UUID_LF_B90_READ_5AA9: UUID = UUID.fromString("5da55aa9-9cb2-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_RW_NOTIFY_52A6: UUID = UUID.fromString("5da552a6-9cb2-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_NOTIFY_5AA8: UUID = UUID.fromString("5da55aa8-9cb2-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_READ_ECA0: UUID = UUID.fromString("ce78eca0-9cb6-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_READ_EF5C: UUID = UUID.fromString("ce78ef5c-9cb6-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_WRITE_F4E8: UUID = UUID.fromString("ce78f4e8-9cb6-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_WRITE_F164: UUID = UUID.fromString("ce78f164-9cb6-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_WRITE_F330: UUID = UUID.fromString("ce78f330-9cb6-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_WRITE_FB00: UUID = UUID.fromString("ce78fb00-9cb6-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_WRITE_FD94: UUID = UUID.fromString("ce78fd94-9cb6-11e5-8994-feff819cdc9f")
+    val UUID_LF_B90_WRITE_6AB6: UUID = UUID.fromString("5da56ab6-9cb2-11e5-8994-feff819cdc9f")
 
     // ─────────────────────────────────────────────────────────────
     // Glucose (Service 0x1808)

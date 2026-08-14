@@ -65,6 +65,7 @@ class Concept2Pm5PeripheralAdvertiser(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val epoch = AtomicLong(0)
     private val clients = ConcurrentHashMap<String, Client>()
+    private val connectionRetention = PeripheralConnectionRetentionGuard()
     private var server: BluetoothGattServer? = null
     private var advertiseCallback: AdvertiseCallback? = null
     private var notifier: Job? = null
@@ -116,6 +117,7 @@ class Concept2Pm5PeripheralAdvertiser(
         isAdvertising = false
         clients.values.forEach { runCatching { server?.cancelConnection(it.device) } }
         clients.clear()
+        connectionRetention.clear()
         runCatching { server?.clearServices() }
         runCatching { server?.close() }
         server = null
@@ -192,12 +194,24 @@ class Concept2Pm5PeripheralAdvertiser(
             }
         }
 
+        @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             if (epoch.get() != callbackEpoch) return
             val key = device.address.lowercase()
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                clients[key] = Client(device)
+                clients.putIfAbsent(key, Client(device))
+                connectionRetention.retainOnce(key) {
+                    val retained = runCatching { server?.connect(device, false) == true }
+                        .getOrElse { error ->
+                            Timber.w(error, "Concept2 GATT server could not retain inbound connection")
+                            false
+                        }
+                    if (!retained) {
+                        Timber.w("Concept2 GATT server did not retain inbound connection")
+                    }
+                }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                connectionRetention.release(key)
                 clients.remove(key)?.session?.reset()
             }
             listener.onState(isAdvertising, clients.isNotEmpty(), anySubscribed(), null)

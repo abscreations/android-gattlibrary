@@ -26,6 +26,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.PrecorC
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import timber.log.Timber
 
 /** Bounded per-client notification FIFO; a complete current pair replaces stale queued data. */
 internal class PrecorNotificationQueue(private val capacity: Int = 4) {
@@ -65,6 +66,7 @@ internal class PrecorChronoPeripheralAdvertiser(
     private val main = Handler(Looper.getMainLooper())
     private val epoch = AtomicLong(0)
     private val clients = ConcurrentHashMap<String, Client>()
+    private val connectionRetention = PeripheralConnectionRetentionGuard()
     private var server: BluetoothGattServer? = null
     private var advertiseCallback: AdvertiseCallback? = null
     private var startResult: ((Result<Unit>) -> Unit)? = null
@@ -112,6 +114,7 @@ internal class PrecorChronoPeripheralAdvertiser(
         isAdvertising = false
         clients.values.forEach { runCatching { server?.cancelConnection(it.device) } }
         clients.clear()
+        connectionRetention.clear()
         runCatching { server?.clearServices() }
         runCatching { server?.close() }
         server = null
@@ -130,12 +133,28 @@ internal class PrecorChronoPeripheralAdvertiser(
             }
         }
 
+        @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             if (epoch.get() != callbackEpoch) return
             val key = device.address.lowercase()
             when (newState) {
-                BluetoothProfile.STATE_CONNECTED -> clients[key] = Client(device)
-                BluetoothProfile.STATE_DISCONNECTED -> clients.remove(key)
+                BluetoothProfile.STATE_CONNECTED -> {
+                    clients.putIfAbsent(key, Client(device))
+                    connectionRetention.retainOnce(key) {
+                        val retained = runCatching { server?.connect(device, false) == true }
+                            .getOrElse { error ->
+                                Timber.w(error, "Precor GATT server could not retain inbound connection")
+                                false
+                            }
+                        if (!retained) {
+                            Timber.w("Precor GATT server did not retain inbound connection")
+                        }
+                    }
+                }
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    connectionRetention.release(key)
+                    clients.remove(key)
+                }
             }
             publishState()
         }

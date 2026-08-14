@@ -31,6 +31,50 @@ sealed interface SimulatorPersona {
     data object PrecorChrono : SimulatorPersona {
         override val advertisedName: String = "CHRONO 0"
     }
+
+    /** Capture-backed setup-gated Life Fitness FTMS console. */
+    data class LifeFitness(
+        val machine: LifeFitnessMachine,
+    ) : SimulatorPersona {
+        override val advertisedName: String = machine.syntheticName
+    }
+}
+
+enum class LifeFitnessMachine(
+    val displayName: String,
+    val profile: FtmsMachineProfile,
+    val measurementUuid: UUID,
+    val equipmentServiceData: ByteArray,
+    val syntheticName: String,
+) {
+    TREADMILL(
+        "Treadmill",
+        FtmsMachineProfile.TREADMILL,
+        BluetoothIds.UUID_TREADMILL_DATA,
+        byteArrayOf(0x01, 0x01, 0x00),
+        "LF1F17B1D000001094",
+    ),
+    CROSS_TRAINER(
+        "Cross trainer",
+        FtmsMachineProfile.ELLIPTICAL,
+        BluetoothIds.UUID_ELLIPTICAL_DATA,
+        byteArrayOf(0x01, 0x02, 0x00),
+        "LF1F17B1D000002089",
+    ),
+    STAIR_CLIMBER(
+        "Stair climber",
+        FtmsMachineProfile.STAIR_CLIMBER,
+        BluetoothIds.UUID_STAIR_CLIMBER_DATA,
+        byteArrayOf(0x01, 0x08, 0x00),
+        "LF0F17B1D000003095",
+    ),
+    INDOOR_BIKE(
+        "Indoor bike",
+        FtmsMachineProfile.INDOOR_BIKE,
+        BluetoothIds.UUID_BIKING_DATA,
+        byteArrayOf(0x01, 0x20, 0x00),
+        "LF0F17B1D000004090",
+    ),
 }
 
 /** Physical PM5 identities; Concept2's internal simulator machine codes are deliberately absent. */
