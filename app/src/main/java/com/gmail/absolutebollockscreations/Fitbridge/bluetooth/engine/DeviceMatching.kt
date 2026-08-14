@@ -294,6 +294,7 @@ internal class DeviceMatcherRegistry private constructor(
                 sigDefinition("sig.csc", 0x1816, 0x2a5b..0x2a5b, KnownBleService.CSC, 200),
                 concept2Definition(),
                 precorDefinition(),
+                schwinnX70Definition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
             ),
         )
@@ -408,6 +409,47 @@ internal class DeviceMatcherRegistry private constructor(
             preference = 140,
             personaCharacteristicUuids = linkedSetOf(
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_PRECOR_MEASUREMENT),
+            ),
+        )
+
+        /**
+         * Schwinn x70 — 170 / 270 / 570 (plan §7).
+         *
+         * **The service is both advertised and served, so no `advertisedServiceUuids` split is
+         * needed.** QZ issue #1365's advertisement screenshot shows
+         * `3bf58980-3a2f-11e6-9011-0002a5d5c51b` in the incomplete 128-bit service list, and the
+         * connected GATT places every characteristic under that same service. This is the ordinary
+         * case; Concept2 needed the split because its specification advertises a base UUID it does
+         * not serve, and that is the exception rather than the pattern.
+         *
+         * **No local-name pattern, and here the temptation is stronger than usual.** All three
+         * consoles report the same generic identity, `SCHWINN 170/270`, so a name looks like free
+         * evidence. It is not: `evidenceFor` produces a candidate from any non-empty evidence, so
+         * the pattern would make anything merely *named* Schwinn a candidate for a proprietary
+         * vendor protocol — §8.9's name-restricted generic profile. The service UUID is
+         * exclusively this family's and settles identity on its own.
+         *
+         * **The name also cannot do the job it would be added for.** The interesting question is
+         * not "is this a Schwinn" but "is this a 170 or a 270", and the console answers
+         * `SCHWINN 170/270` to both. That distinction is only observable from which characteristics
+         * notify — 17 bytes on [BluetoothIds.UUID_X70_MEASUREMENT] for a 270, paired 20- and
+         * 14-byte streams for a 170 — which is a post-subscription fact, not a matcher input.
+         *
+         * All four notify/write characteristics are listed as persona characteristics so that a
+         * device exposing only the 270 set and one exposing only the 170 set both match. Requiring
+         * all four would reject both real consoles.
+         */
+        private fun schwinnX70Definition() = MatchDefinition(
+            candidateId = "vendor.schwinn.x70",
+            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SERVICE),
+            machineRole = true,
+            knownService = null,
+            preference = 130,
+            personaCharacteristicUuids = linkedSetOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_MEASUREMENT),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SUPPLEMENTAL),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SIBLING),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_CONTROL),
             ),
         )
 

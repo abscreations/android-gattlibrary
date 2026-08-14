@@ -68,6 +68,129 @@ class DeviceReachabilityTest {
         assertTrue("FTMS", BluetoothIds.UUID_FTMS_SERVICE in filter)
         assertTrue("Concept2 must be scannable", BluetoothIds.UUID_C2_DISCOVERY_SERVICE in filter)
         assertTrue("Precor must be scannable", BluetoothIds.UUID_PRECOR_SERVICE in filter)
+        assertTrue("Schwinn x70 must be scannable", BluetoothIds.UUID_X70_SERVICE in filter)
+    }
+
+    // ── Schwinn x70 admission (plan §7) ──────────────────────────────────────────
+
+    @Test
+    fun `a Schwinn x70 is admitted by its advertised service and is a machine`() {
+        // The advertisement is captured, not assumed. From the user-supplied HCI snoop of device
+        // 80:4b:50:5b:00:74, the AD payload is:
+        //
+        //   [ 2] Flags: 05
+        //   [17] Incomplete list of 128-bit service UUIDs:
+        //        1b c5 d5 a5 02 00 11 90 e6 11 2f 3a 80 89 f5 3b
+        //   [ 9] Manufacturer specific: 64 33 db d0 f4 d7 00 80
+        //
+        // The 16 UUID octets are little-endian, so reversing them is the whole decode. Doing it
+        // here rather than pasting the result means this fails if the constant ever drifts from the
+        // bytes a real console put on the air.
+        val advertised = byteArrayOf(
+            0x1b, 0xc5.toByte(), 0xd5.toByte(), 0xa5.toByte(), 0x02, 0x00, 0x11, 0x90.toByte(),
+            0xe6.toByte(), 0x11, 0x2f, 0x3a, 0x80.toByte(), 0x89.toByte(), 0xf5.toByte(), 0x3b,
+        ).reversedArray().joinToString("") { "%02x".format(it) }
+        val decoded = java.util.UUID.fromString(
+            "${advertised.substring(0, 8)}-${advertised.substring(8, 12)}-" +
+                "${advertised.substring(12, 16)}-${advertised.substring(16, 20)}-" +
+                advertised.substring(20),
+        )
+        assertEquals(
+            "the registered service must be the one the console actually advertises",
+            BluetoothIds.UUID_X70_SERVICE,
+            decoded,
+        )
+
+        val candidates = registry.rankedCandidates(
+            MatchObservation(
+                // The name arrives in the *scan response*, not the advertisement, so it is not
+                // available at the moment the OS filter decides. One more reason §7 registers no
+                // local-name pattern for this family.
+                localName = "SCHWINN 170/270",
+                advertisedServiceUuids = setOf(uuid(decoded)),
+            ),
+        )
+
+        assertEquals(listOf("vendor.schwinn.x70"), candidates.map { it.candidateId })
+        assertTrue("an x70 is a machine, not a sensor", candidates.single().machineRole)
+    }
+
+    @Test
+    fun `the x70 name alone is not evidence of anything`() {
+        // All three consoles report the generic identity `SCHWINN 170/270`, which makes a name
+        // pattern look like free evidence. It is the §8.9 trap: `evidenceFor` produces a candidate
+        // from any non-empty evidence, so a name pattern would admit anything merely called
+        // Schwinn — including the IC4, a wholly different FTMS machine — to a proprietary
+        // vendor protocol.
+        val candidates = registry.rankedCandidates(MatchObservation(localName = "SCHWINN 170/270"))
+
+        assertTrue(
+            "a name with no advertised service must not produce an x70 candidate",
+            candidates.none { it.candidateId == "vendor.schwinn.x70" },
+        )
+    }
+
+    @Test
+    fun `both x70 console shapes match, because neither exposes the other's stream`() {
+        // The defect this guards is a matcher that requires every persona characteristic. A 270
+        // notifies 17-byte frames on the measurement characteristic and never uses the sibling; a
+        // 170 does the reverse. Requiring all four would reject both real consoles — a family that
+        // fingerprints perfectly against a device that does not exist.
+        val console270 = setOf(
+            uuid(BluetoothIds.UUID_X70_SERVICE),
+            uuid(BluetoothIds.UUID_X70_MEASUREMENT),
+            uuid(BluetoothIds.UUID_X70_CONTROL),
+        )
+        val console170 = setOf(
+            uuid(BluetoothIds.UUID_X70_SERVICE),
+            uuid(BluetoothIds.UUID_X70_SUPPLEMENTAL),
+            uuid(BluetoothIds.UUID_X70_SIBLING),
+            uuid(BluetoothIds.UUID_X70_CONTROL),
+        )
+
+        for ((label, discovered) in listOf("270/570" to console270, "170" to console170)) {
+            val candidates = registry.rankedCandidates(
+                MatchObservation(discoveredServiceUuids = discovered),
+            )
+            assertTrue(
+                "a $label console must remain an x70 candidate after discovery",
+                candidates.any { it.candidateId == "vendor.schwinn.x70" },
+            )
+        }
+    }
+
+    @Test
+    fun `the five x70 identifiers are distinct and share no derivable base`() {
+        // §8.4's standing hazard, and this family is where it bites hardest: TMIW stores all four
+        // of these as four-character aliases and matches on characters 5-8. The advertised service
+        // sits on `-3a2f-11e6-9011-` while the four characteristics sit on `-9803-11e3-` with
+        // three different third groups, so no helper could generate them and an alias comparison
+        // would match unrelated UUIDs from any vendor that happened to reuse those four hex digits.
+        val all = listOf(
+            BluetoothIds.UUID_X70_SERVICE,
+            BluetoothIds.UUID_X70_MEASUREMENT,
+            BluetoothIds.UUID_X70_CONTROL,
+            BluetoothIds.UUID_X70_SUPPLEMENTAL,
+            BluetoothIds.UUID_X70_SIBLING,
+        )
+
+        assertEquals("all five identifiers are distinct", all.size, all.toSet().size)
+
+        // No two share everything after the first group, so none can be produced from another by
+        // substituting an alias — the precise operation §8.4 forbids.
+        val suffixes = all.map { it.toString().substringAfter('-') }
+        assertEquals("no identifier is an alias substitution of another", all.size, suffixes.toSet().size)
+
+        // And the advertised service is on a different base entirely from the four characteristics.
+        val serviceSecondGroup = BluetoothIds.UUID_X70_SERVICE.toString().split('-')[1]
+        assertEquals("3a2f", serviceSecondGroup)
+        for (characteristic in all.drop(1)) {
+            assertEquals(
+                "$characteristic sits on the 9803 base, not the service's",
+                "9803",
+                characteristic.toString().split('-')[1],
+            )
+        }
     }
 
     @Test

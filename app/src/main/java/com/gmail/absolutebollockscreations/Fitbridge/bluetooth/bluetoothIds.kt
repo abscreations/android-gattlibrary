@@ -250,6 +250,58 @@ object BluetoothIds {
         UUID.fromString("a026e01d-0a7d-4ab3-97fa-f1500f9feb8b")
 
     // ─────────────────────────────────────────────────────────────
+    // Schwinn x70 — 170 / 270 / 570 (proprietary, plan §7)
+    // ─────────────────────────────────────────────────────────────
+    /**
+     * Written out in full for the same reason as the Precor and Life Fitness sets, and here the
+     * reason has teeth: **TMIW stores these as four-character aliases** (`8980`, `82a0`, `b3c0`,
+     * `f580`) and matches on characters 5–8 of whatever UUID it is handed. §8.4 exists because of
+     * exactly this. Note that the five identifiers below do **not** share a base — `3bf58980` sits
+     * on `-3a2f-11e6-9011-`, while the other four sit on `-9803-11e3-` with three *different*
+     * third groups. No helper could generate them.
+     *
+     * Source: QZ issue #1365 nRF Connect GATT screenshots and HCI, and TMIW issue #240's 270 and
+     * 570u nRF Connect logs, archived at `docs/evidence/phase-7/`. Every string is transcribed
+     * from a GATT inventory; none is constructed from an alias.
+     *
+     * ## Two consoles, not one — and this is the whole shape of Phase 7
+     *
+     * The captures agree. A **170** emits paired 20-byte notifications on [UUID_X70_SUPPLEMENTAL]
+     * and 14-byte notifications on [UUID_X70_SIBLING], in equal counts, and **no 17-byte stream at
+     * all**. A **270** and a submitter-labelled **570u** emit 17-byte notifications on
+     * [UUID_X70_MEASUREMENT]. TMIW implements only the 17-byte path and QZ only the 170 pair;
+     * neither project is wrong, and neither alone covers the family.
+     *
+     * Dispatch by exact characteristic and accepted length. Never by length alone — that is QZ's
+     * one structural defect here (`Q_UNUSED(characteristic)`), and it is why a 20-byte frame from
+     * any source would be read as this family's supplemental frame.
+     */
+    val UUID_X70_SERVICE: UUID =
+        UUID.fromString("3bf58980-3a2f-11e6-9011-0002a5d5c51b")
+
+    /** Notify. The 17-byte main stream — 270 and 570 consoles only. */
+    val UUID_X70_MEASUREMENT: UUID =
+        UUID.fromString("5c7d82a0-9803-11e3-8a6c-0002a5d5c51b")
+
+    /** Write. Initialization; starts the notification streams. See V17. */
+    val UUID_X70_CONTROL: UUID =
+        UUID.fromString("1717b3c0-9803-11e3-90e1-0002a5d5c51b")
+
+    /** Notify. 20-byte frames carrying heart rate at 16 and resistance at 18 (V16). */
+    val UUID_X70_SUPPLEMENTAL: UUID =
+        UUID.fromString("6be8f580-9803-11e3-ab03-0002a5d5c51b")
+
+    /**
+     * Notify. 14-byte frames; speed and power on a 170 (V15a, published under D72).
+     *
+     * TMIW has no parser for this characteristic and does not name it. It is here because two
+     * independent physical captures observe it carrying 698 notifications paired one-for-one with
+     * the supplemental stream.
+     */
+    val UUID_X70_SIBLING: UUID =
+        UUID.fromString("a46a4a80-9803-11e3-8f3c-0002a5d5c51b")
+
+    // ─────────────────────────────────────────────────────────────
     // User Data Service characteristics (SIG 0x181C), written during Life Fitness setup
     // ─────────────────────────────────────────────────────────────
     /**
