@@ -259,9 +259,15 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
      * Safe to arm without unsubscribing `0x0080`: the specification states that an identifier is
      * multiplexed only while the corresponding individual notification is disabled, so these
      * CCCDs withdraw those identifiers from the multiplex rather than duplicating them.
+     *
+     * **This was `internal fun` rather than `override fun` until 2026-08-14, and nothing called
+     * it.** The interface had no tick, so D41's fallback was decoded, unit-tested and unreachable
+     * for two phases: a PM whose multiplexed subscription went silent stayed silent for the whole
+     * session. Making it an override is the fix; the seam that delivers the tick is the part that
+     * stops the next handler repeating it.
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    internal fun onLivenessTick(engine: BtEngine, gatt: BluetoothGatt) {
+    override fun onLivenessTick(engine: BtEngine, gatt: BluetoothGatt) {
         if (fallbackApplied) return
         val activePath = path ?: return
         val readyAt = cccdReadyAtMs ?: return

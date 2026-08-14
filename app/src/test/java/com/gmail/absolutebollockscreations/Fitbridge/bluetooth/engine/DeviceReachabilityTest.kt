@@ -281,6 +281,68 @@ class DeviceReachabilityTest {
         }
     }
 
+    // ── The liveness tick reaches handlers (D41's defect) ───────────────────────
+
+    @Test
+    fun `a handler that overrides the liveness tick is actually offered one`() {
+        // **The fifth decoded-but-unreachable defect, and the first this file catches by shape
+        // rather than by name.** `Concept2ProtocolHandler.onLivenessTick` existed, was unit-tested,
+        // and nothing called it — so D41's multiplexed-to-individual fallback never fired and a PM
+        // whose `0x0080` subscription went silent stayed silent for the whole session.
+        //
+        // The delivery path is `BtEngine.tickProtocolHandlers` -> `ConnectionContext.handlerTicker`
+        // -> the callback's active handlers. Two of those three links need a device, so what is
+        // asserted here is the part that can be: that the interface declares the seam, that the
+        // context carries the field the engine reads, and that the engine's tick calls it. A
+        // handler overriding a method the engine never invokes is precisely the shape that hid
+        // for two phases.
+        val engineSource = sourceText("btEngine.kt")
+        val setupSource = sourceText("btEngine.LifeFitnessSetup.kt")
+        val contextSource = sourceText("ConnectionContext.kt")
+
+        assertTrue(
+            "the engine's tick must offer itself to protocol handlers",
+            engineSource.contains("tickProtocolHandlers()"),
+        )
+        assertTrue(
+            "the tick must walk machine contexts and invoke their ticker",
+            setupSource.contains("context.handlerTicker?.invoke()"),
+        )
+        assertTrue(
+            "the context must carry the seam the engine reads",
+            contextSource.contains("var handlerTicker"),
+        )
+        assertTrue(
+            "a ticker must not survive its link",
+            contextSource.contains("handlerTicker = null"),
+        )
+    }
+
+    @Test
+    fun `every machine handler can accept a tick without an override being required`() {
+        // The default is a no-op, so adding the seam cannot have changed any handler's behaviour
+        // except the one that overrides it. This also proves the method is on the interface rather
+        // than only on Concept2, which is what makes it findable by the next handler that needs it.
+        val handlers = MACHINE_PROTOCOLS.map(HandlerFactory.standard(false)::create)
+        assertTrue(handlers.isNotEmpty())
+        for (handler in handlers) {
+            val declared = handler.javaClass.methods.any { it.name == "onLivenessTick" }
+            assertTrue("${handler.javaClass.simpleName} must expose the tick seam", declared)
+        }
+    }
+
+    private fun sourceText(name: String): String {
+        val roots = sequenceOf(
+            java.io.File("app/src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/engine"),
+            java.io.File("src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/engine"),
+        )
+        val root = roots.firstOrNull(java.io.File::isDirectory)
+        assertTrue("engine source root exists", root != null)
+        val file = java.io.File(root, name)
+        assertTrue("$name exists", file.isFile)
+        return file.readText()
+    }
+
     // ── Machine role ─────────────────────────────────────────────────────────────
 
     @Test

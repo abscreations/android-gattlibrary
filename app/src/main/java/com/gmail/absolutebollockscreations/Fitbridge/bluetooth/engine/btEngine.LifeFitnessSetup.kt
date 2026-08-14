@@ -98,6 +98,22 @@ internal fun BtEngine.tickLifeFitnessSetup(nowMs: Long) {
     }
 }
 
+/**
+ * Offer the periodic tick to every machine link's active protocol handlers.
+ *
+ * Lives beside the Life Fitness settle bound because it is the same idea applied one layer down:
+ * a timeout is the absence of an event, so something has to poll, and reusing the engine's existing
+ * tick means no handler needs a timer of its own.
+ *
+ * Machine contexts only. No sensor handler currently acts on silence, and offering the tick to
+ * every link would make the cost scale with sensors that cannot use it.
+ */
+internal fun BtEngine.tickProtocolHandlers() {
+    for (context in state.connectionRegistry.machineContexts()) {
+        context.handlerTicker?.invoke()
+    }
+}
+
 /** Drop the run when its link ends. A transcript must not survive the connection that began it. */
 internal fun BtEngine.clearLifeFitnessSetup(context: ConnectionContext) {
     context.lifeFitnessSetup?.reset()

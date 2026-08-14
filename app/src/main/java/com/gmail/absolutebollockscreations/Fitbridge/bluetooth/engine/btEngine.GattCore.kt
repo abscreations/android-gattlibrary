@@ -286,6 +286,23 @@ internal object BtEngineGattCore {
         /** The complete merged CCCD plan for this physical connection is armed. */
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         fun onCccdPlanReady(engine: BtEngine, gatt: BluetoothGatt) {}
+
+        /**
+         * The engine's periodic liveness tick, for handlers that need to notice an *absence*.
+         *
+         * **This exists because it was missing, and its absence hid a defect for two phases.**
+         * `Concept2ProtocolHandler` had an `onLivenessTick` that nothing called, so D41's
+         * multiplexed-to-individual fallback never fired: a PM whose `0x0080` subscription went
+         * silent stayed silent forever. The method was written, tested in isolation, and
+         * unreachable — the fifth instance of that pattern in this project.
+         *
+         * Every other callback here is driven by an event. A timeout is the absence of one, so a
+         * handler that needs to act on silence has nowhere to hang unless the interface offers a
+         * poll. Declaring it here rather than reaching into handler internals from the engine means
+         * the next handler with the same need finds a seam instead of inventing a private timer.
+         */
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        fun onLivenessTick(engine: BtEngine, gatt: BluetoothGatt) {}
     }
 
     /** Build one routed callback bound to [context] identity. */
@@ -302,6 +319,31 @@ internal object BtEngineGattCore {
 
         init {
             context.handlerActivator = { handler -> activateAdditionalHandler(handler) }
+            context.handlerTicker = { deliverLivenessTick() }
+        }
+
+        /**
+         * Offer the engine's tick to every active handler on this link.
+         *
+         * Snapshots first, so a handler activating or terminating mid-tick cannot mutate the
+         * collection being iterated. Each handler is isolated: one throwing must not stop the
+         * others, because a tick delivers timeouts and a swallowed one is a fallback that never
+         * fires — which is the exact defect this seam was added to fix.
+         */
+        @SuppressLint("MissingPermission")
+        private fun deliverLivenessTick() {
+            if (!context.isActive) return
+            val gatt = activeGatt ?: context.gatt ?: return
+            for (handler in activeHandlers.snapshot()) {
+                runCatching { handler.onLivenessTick(engine, gatt) }
+                    .onFailure {
+                        Timber.tag(BtEngineState.TAG).w(
+                            it,
+                            "liveness tick failed for %s",
+                            handler::class.java.simpleName,
+                        )
+                    }
+            }
         }
 
         private val discoveryHandler = Handler(Looper.getMainLooper())

@@ -234,6 +234,21 @@ internal class ConnectionContext(
     @Volatile
     var handlerActivator: ((BtEngineGattCore.ProtocolHandler) -> Boolean)? = null
 
+    /**
+     * Deliver the engine's periodic tick to this link's active handlers.
+     *
+     * The handlers live inside the GATT callback's closure, which is the right place for them —
+     * they are callback state and they die with the callback. But that left the engine with no way
+     * to reach them, and `Concept2ProtocolHandler.onLivenessTick` sat uncalled for two phases as a
+     * result. This is the symmetric partner of [handlerActivator]: that one lets a handler be added
+     * from outside, this one lets every handler be reached from outside.
+     *
+     * Null when no callback is bound, and **cleared by [ConnectionContext.reset]** along with
+     * `handlerActivator`, so a tick can never reach a handler whose link has ended.
+     */
+    @Volatile
+    var handlerTicker: (() -> Unit)? = null
+
     @Volatile
     var isActive: Boolean = true
         internal set
@@ -596,6 +611,7 @@ internal class ConnectionRegistry {
         discoveredServiceUuids.clear()
         terminationHook = null
         handlerActivator = null
+        handlerTicker = null
         cscRoleCapability = null
         cscAssignedRoles = emptySet()
         cscRequestedRoles = null

@@ -527,6 +527,12 @@ class BtEngine internal constructor(
             // remembered and cancelled on every disconnect path.
             runCatching { tickLifeFitnessSetup(nowMs) }
                 .onFailure { Timber.tag(BtEngineState.TAG).w(it, "life fitness setup tick failed") }
+            // Protocol handlers that act on silence rather than on an event. Concept2's
+            // multiplexed-to-individual fallback (D41) is the first, and it sat uncalled for two
+            // phases because nothing delivered a tick to a handler. See `ProtocolHandler.
+            // onLivenessTick`.
+            runCatching { tickProtocolHandlers() }
+                .onFailure { Timber.tag(BtEngineState.TAG).w(it, "protocol handler tick failed") }
         }
     }
 
