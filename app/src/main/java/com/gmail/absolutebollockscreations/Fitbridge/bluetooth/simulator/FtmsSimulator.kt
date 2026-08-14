@@ -300,6 +300,10 @@ class FtmsSimulator(
 
         sessionProjection.end()
 
+        // Link-scoped, like every other per-run field here: a new run must log its own first
+        // strap-takeover rather than inheriting the last run's outcome and staying silent.
+        lastHeartRateOverride = null
+
         _state.value = State(controlsAvailable = _state.value.controlsAvailable)
         Timber.tag(TAG).i("simulator stopped")
     }
@@ -494,6 +498,48 @@ class FtmsSimulator(
         _state.value = _state.value.copy(acceptedTargets = e.controlTargets())
     }
 
+    /** The last outcome, so the fallback is logged on its transitions and not once a second. */
+    private var lastHeartRateOverride: SimulatorHeartRateOverride.Outcome? = null
+
+    /**
+     * Replace the generated heart rate with a live strap's reading when one is fresh.
+     *
+     * Reads `externalHeartRate` rather than `heartRate`: the simulator writes its own value into
+     * the latter, so reading it back would return the generated number one tick later.
+     *
+     * **Logged on transition only.** The interesting events are a strap taking over and a strap
+     * going quiet mid-session — the second especially, because a validation capture that is half
+     * real and half synthetic must not look uniform afterwards. Logging every second would bury
+     * both in noise.
+     */
+    private fun withLiveHeartRate(sample: FtmsMockSample): FtmsMockSample {
+        val result = SimulatorHeartRateOverride.resolve(
+            generatedBpm = sample.heartRate,
+            externalBpm = engineState.externalHeartRate.value,
+            lastExternalAtMs = engineState.lastExternalAt,
+            nowMs = System.currentTimeMillis(),
+        )
+
+        if (result.outcome != lastHeartRateOverride) {
+            when (result.outcome) {
+                SimulatorHeartRateOverride.Outcome.OVERRIDDEN ->
+                    Timber.tag(TAG).i(
+                        "Simulator heart rate now sourced from the attached strap; generated value suppressed",
+                    )
+                SimulatorHeartRateOverride.Outcome.STALE_FELL_BACK ->
+                    Timber.tag(TAG).w(
+                        "Simulator heart rate fell back to generated: no strap reading for over %d ms. " +
+                            "Frames from here on are synthetic.",
+                        SimulatorHeartRateOverride.FRESHNESS_MS,
+                    )
+                SimulatorHeartRateOverride.Outcome.NO_EXTERNAL_SOURCE -> Unit
+            }
+            lastHeartRateOverride = result.outcome
+        }
+
+        return if (result.bpm == sample.heartRate) sample else sample.copy(heartRate = result.bpm)
+    }
+
     /**
      * Write one sample into [BtEngineState].
      *
@@ -502,7 +548,13 @@ class FtmsSimulator(
      * simulated rower must not publish an inclination any more than a real one
      * would.
      */
-    private fun publish(sample: FtmsMockSample) {
+    private fun publish(generated: FtmsMockSample) {
+        // A live strap attached to the central overrides the generated heart rate, applied here
+        // rather than in each encoder because this is the last point before the standard-FTMS path
+        // (engineState -> EngineMetricPump) and the proprietary path (straight to the encoders)
+        // diverge. One substitution covers every persona, including ones not written yet.
+        val sample = withLiveHeartRate(generated)
+
         if (_state.value.persona == SimulatorPersona.PrecorChrono) {
             peripheral.publishPrecor(sample)
         }

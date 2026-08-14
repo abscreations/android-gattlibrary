@@ -5,6 +5,19 @@ import java.util.UUID
 import kotlin.math.roundToInt
 import timber.log.Timber
 
+/**
+ * How long a heart-rate reading stays authoritative after it arrives.
+ *
+ * Top-level rather than inside [MetricFusion]'s private companion because a second consumer needs
+ * it: the simulator's live-strap override decides whether an attached strap is still reporting, and
+ * that window must be the *same* window fusion uses rather than a copy that can drift away from it.
+ * The rest of the companion's tuning constants stay private — widening the whole object to share one
+ * value would invite every file to reach for the others.
+ *
+ * A BLE strap notifies about once a second, so this tolerates three missed notifications.
+ */
+internal const val HEART_RATE_FRESHNESS_MS = 4_000L
+
 /** Protocol that produced a metric sample. */
 internal enum class MetricProtocol { FTMS, HRM, RSC, CSC, CPS, VENDOR, MOTION, GPS, SESSION }
 
@@ -1092,7 +1105,6 @@ internal class MetricFusion(
     )
 
     private companion object {
-        const val HEART_RATE_FRESHNESS_MS = 4_000L
         const val DEFAULT_FRESHNESS_MS = 3_000L
 
         /** RSC notifies per stride, not on a timer — see [freshnessMs]. */
