@@ -5,19 +5,29 @@ import kotlin.math.cbrt
 import kotlin.math.sqrt
 
 /**
- * Estimated power for the Schwinn **270 / 570** console (plan §7).
+ * Estimated power for the Schwinn x70's **17-byte main frame** (plan §7).
  *
- * ## This exists for one console and must never reach the other
+ * ## This exists for one stream, and it runs alongside a native reading rather than instead of one
  *
- * A 170 reports power natively on its 14-byte stream — resolved as V15a against 698 captured
- * frames, where `power ≈ speed^1.565` with a standard deviation of 0.042. A 270 or 570 emits only
- * the 17-byte main frame, which carries a crank counter and a resistance level and no power at all.
- * This model fills that gap and nothing else.
+ * **Corrected 2026-08-18.** This file said it existed "for one console and must never reach the
+ * other", on the reading that a 170 reports power natively while a 270/570 "emits only the 17-byte
+ * main frame … and no power at all". Both halves are false. Captured QZ logs show every console
+ * emitting all three streams, so a 170 produces main frames and **this model has been running on
+ * 170s since the handler shipped** — while the same console reports power natively on its 14-byte
+ * sibling frame, resolved as V15a and re-verified on 1,040 further frames across two machines.
  *
- * Publishing a modelled number where a native one exists is precisely what `MetricQuality.ESTIMATED`
- * was introduced to prevent, and the fusion comparator already enforces it: quality is the **first**
- * sort key, ahead of source class, so an estimate loses to a native reading unconditionally. This
- * file's job is to be honest about what it produces; the arbitration is already correct.
+ * So the boundary is not between machines. It is between **streams**, and the two are live at once:
+ * the sibling frame carries a measured power, the main frame carries a crank counter and a
+ * resistance level from which one is inferred, and both arrive within about 100 ms of each other in
+ * every session that has a main stream.
+ *
+ * **That makes `MetricQuality.ESTIMATED` load-bearing rather than precautionary.** Publishing a
+ * modelled number where a native one exists is what the tag was introduced to prevent, and until
+ * this correction the adversary was believed to be hypothetical — a 170 somewhere versus a 270
+ * somewhere. It is neither hypothetical nor cross-device: it is the same device, twice a second.
+ * Quality is the **first** sort key in the fusion comparator, ahead of source class, so the
+ * estimate loses unconditionally; `SchwinnX70FusionAndBoundsTest` drives that through the real
+ * comparator rather than asserting it about an enum's declaration order.
  *
  * ## The coefficients are third-party and their provenance is thin
  *
@@ -27,11 +37,16 @@ import kotlin.math.sqrt
  * as code, so that they can be replaced wholesale if a better source appears and so that no reader
  * mistakes them for a derived or fitted result.
  *
- * **What the captures can and cannot say about them.** The 170 gives real `(cadence, resistance,
- * power)` triples, so it is tempting to check the table against them. That check would be
- * meaningless: the 170's resistance ranged only over 2 and 4 across the whole session, and it is a
- * different machine from the 270 whose flywheel and resistance mechanism this table is supposed to
- * describe. Two rows of a twenty-five row table, from the wrong console, is not validation.
+ * **What the captures can and cannot say about them, restated after the correction.** The sibling
+ * stream gives real `(cadence, resistance, power)` triples on the *same console* that also emits the
+ * main frame, which removes the "wrong machine" objection this paragraph used to rest on. It does
+ * not make the check meaningful, and the reason is now sharper rather than weaker: across the two
+ * QZ sessions resistance took the values 1–22 on one console and 4–6 on the other, but cadence and
+ * resistance never varied independently enough to separate a row of the table from its neighbours,
+ * and the console's own power is itself derived from speed (a log-log slope near 2.2), so checking a
+ * model against it compares two derivations rather than a model against a measurement.
+ *
+ * A real validation needs a console readout or a calibrated meter. Neither exists here.
  *
  * ## The damping heuristics are TMIW's, ported as named parameters
  *

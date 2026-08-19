@@ -1,11 +1,13 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import android.content.Context
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.Fitbridge.power.FitBridgeWakeLock
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -78,8 +80,29 @@ class FtmsSimulator(
         /** Publish one capture-shaped Life Fitness FTMS record after local setup unlocks the link. */
         fun publishLifeFitness(sample: FtmsMockSample) {}
 
+        /**
+         * Offer one tick's x70 frames, each tagged with the characteristic it belongs on.
+         *
+         * Unlike the other personas this passes *frames* rather than a sample, because the three
+         * streams are rendered from one console state and the encoder owns that rendering. Handing
+         * the peripheral a sample would mean encoding twice and inviting the two copies to disagree
+         * about resistance, which is the one cross-stream property hardware never gets wrong.
+         */
+        fun publishSchwinnX70(frames: List<Pair<java.util.UUID, ByteArray>>) {}
+
         val isAdvertising: Boolean
     }
+
+    /** Live x70 generation state: one console model, one encoder, one tick period. */
+    private class SchwinnX70Session(
+        val model: SchwinnX70ConsoleModel,
+        val encoder: SchwinnX70FrameEncoder,
+    ) {
+        val periodMs: Long get() = SchwinnX70Ride.PAIR_PERIOD_MS
+        val periodSeconds: Double get() = SchwinnX70Ride.PAIR_PERIOD_MS / 1000.0
+    }
+
+    private var schwinnX70: SchwinnX70Session? = null
 
     data class State(
         val running: Boolean = false,
@@ -213,6 +236,10 @@ class FtmsSimulator(
                 startLifeFitness(persona)
                 return
             }
+            is SimulatorPersona.SchwinnX70 -> {
+                startSchwinnX70(persona)
+                return
+            }
             is SimulatorPersona.Ftms -> Unit
         }
         val machine = persona.profile
@@ -289,6 +316,7 @@ class FtmsSimulator(
     }
 
     fun stop() {
+        schwinnX70 = null
         job?.cancel()
         job = null
         engine = null
@@ -391,6 +419,58 @@ class FtmsSimulator(
             }
         }
         Timber.tag(TAG).i("Precor Chrono simulator started")
+    }
+
+    private fun startSchwinnX70(persona: SimulatorPersona.SchwinnX70) {
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        val mockEngine = FtmsMockEngine(FtmsMachineProfile.INDOOR_BIKE, controlsEnabled = false)
+        engine = mockEngine
+        schwinnX70 = SchwinnX70Session(
+            model = SchwinnX70ConsoleModel(),
+            encoder = SchwinnX70FrameEncoder(),
+        )
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            engine = null
+            schwinnX70 = null
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            machine = FtmsMachineProfile.INDOOR_BIKE,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        publish(mockEngine.snapshot())
+        val periodMs = SchwinnX70Ride.PAIR_PERIOD_MS
+        job = scope.launch {
+            while (isActive) {
+                delay(periodMs)
+                val active = engine ?: break
+                publish(active.tick(periodMs / 1000.0))
+            }
+        }
+        Timber.tag(TAG).i("Schwinn x70 simulator started")
     }
 
     private fun startLifeFitness(persona: SimulatorPersona.LifeFitness) {
@@ -541,6 +621,55 @@ class FtmsSimulator(
     }
 
     /**
+     * Render one tick of x70 traffic from a single console state.
+     *
+     * **Engine values, unscaled.** Each persona used to rescale the engine's speed into its own
+     * captured peak, so one ride reached a client as three different numbers and none matched what
+     * this app displayed. The only conversion left is km/h to mph, which
+     * [SchwinnX70ConsoleModel] owns and Q12 explains.
+     *
+     * **All three frames come from one [SchwinnX70ConsoleState].** That is what makes the streams
+     * agree by construction: resistance is one field read twice, not two fields that have to be
+     * kept in step, and the paired frames carry one sequence counter because they are one emission.
+     */
+    private fun publishSchwinnX70Frames(session: SchwinnX70Session, sample: FtmsMockSample) {
+        val state = session.model.advance(
+            seconds = session.periodSeconds,
+            speedKph = sample.speedKph ?: 0.0,
+            powerWatts = sample.powerWatts?.toDouble() ?: 0.0,
+            cadenceRpm = sample.cadence ?: 0.0,
+            resistanceLevel = schwinnResistanceLevel(sample.resistance),
+            heartRateBpm = sample.heartRate,
+            energyKcal = sample.caloriesTotal.toDouble(),
+            distanceMeters = sample.distanceMeters?.toDouble() ?: 0.0,
+        )
+        val frames = listOf(
+            BluetoothIds.UUID_X70_SUPPLEMENTAL to session.encoder.encodeSupplemental(state),
+            BluetoothIds.UUID_X70_SIBLING to session.encoder.encodeSibling(state),
+            BluetoothIds.UUID_X70_MEASUREMENT to session.encoder.encodeMain(state),
+        )
+        session.encoder.completeTick()
+        peripheral.publishSchwinnX70(frames)
+    }
+
+    /**
+     * Map the indoor-bike engine's resistance onto the x70 family's legal 1-22.
+     *
+     * The engine works in its own 3-12 band, which is a sensible steady workout and not this
+     * family's scale. The captured 170 walked 1 to 22, so the whole legal range is reachable and a
+     * client sees levels a real console can produce rather than a slice of them.
+     */
+    private fun schwinnResistanceLevel(engineResistance: Int?): Int {
+        val band = FtmsMockProfile.profiles[FtmsMachineProfile.INDOOR_BIKE]?.resistance
+            ?: return SchwinnX70Ride.RESISTANCE_FLOOR
+        val level = engineResistance?.toDouble() ?: return SchwinnX70Ride.RESISTANCE_FLOOR
+        val span = (band.max - band.min).takeIf { it > 0.0 } ?: return SchwinnX70Ride.RESISTANCE_FLOOR
+        val fraction = ((level - band.min) / span).coerceIn(0.0, 1.0)
+        val range = SchwinnX70Ride.RESISTANCE_CEILING - SchwinnX70Ride.RESISTANCE_FLOOR
+        return SchwinnX70Ride.RESISTANCE_FLOOR + (fraction * range).roundToInt()
+    }
+
+    /**
      * Write one sample into [BtEngineState].
      *
      * Deliberately mirrors what the FTMS parsers do for a real machine, including
@@ -561,6 +690,7 @@ class FtmsSimulator(
         if (_state.value.persona is SimulatorPersona.LifeFitness) {
             peripheral.publishLifeFitness(sample)
         }
+        schwinnX70?.let { session -> publishSchwinnX70Frames(session, sample) }
         engineState.setElapsedSeconds(sample.elapsedSeconds)
         engineState.setHeartRate(sample.heartRate)
         engineState.setExpEnergyTotal(sample.caloriesTotal)
@@ -622,6 +752,14 @@ class FtmsSimulator(
 
         /** Capture corpus median is 1.02 seconds; one second preserves the physical cadence. */
         const val LIFE_FITNESS_PERIOD_MS = 1_000L
+
+        /**
+         * The mock engine's indoor-bike speed that maps to a persona's captured peak.
+         *
+         * Scaling rather than clamping keeps the ride's shape on a console whose captured peak is
+         * 17.9 km/h as well as one that reaches 26.3. Clamping would flatten the faster half of
+         * every 270 session into a constant.
+         */
 
         private const val MILES_TO_KM = 1.609344
     }

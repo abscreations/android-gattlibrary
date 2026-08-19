@@ -12,13 +12,22 @@ import java.util.UUID
 /**
  * Schwinn x70 protocol handler — 170 / 270 / 570 (plan §7), measurement-only.
  *
- * ## One handler, two consoles
+ * ## One handler, one protocol, three streams
  *
- * The family shares a service, a namespace and an initialization command, and nothing else. A 270
- * or 570 notifies 17-byte frames on the measurement characteristic; a 170 notifies paired 20- and
- * 14-byte frames on two others and produces no 17-byte frame at all. Both are handled here because
- * a device cannot be told apart until its notifications arrive — the console reports the identity
- * `SCHWINN 170/270` either way, so there is nothing at discovery time to branch on.
+ * **Corrected 2026-08-18.** This KDoc previously said a 270/570 notifies 17-byte frames while a 170
+ * notifies the 20/14-byte pair and *produces no 17-byte frame at all*. QZ debug logs, which record
+ * each notification against its characteristic, show both consoles emitting all three streams
+ * interleaved on a single connection. The earlier reading was a collection artefact: the 170 HCI
+ * trace did not carry measurement-characteristic traffic.
+ *
+ * Nothing in the routing below needed to change — [planSchwinnX70Discovery] already subscribes to
+ * whichever streams a console offers, which turns out to be the normal case rather than a 170
+ * special case. The main stream is **intermittent**: it appears for part of a session or not at
+ * all, at the same tick rate as the pair, for reasons nothing establishes.
+ *
+ * A device still cannot be told apart before its notifications arrive, and now cannot be told apart
+ * after them either — the console reports `SCHWINN 170/270` either way and the wire carries no
+ * other distinction.
  *
  * [planSchwinnX70Discovery] therefore subscribes to whichever of the three streams the GATT
  * database actually offers, and the notification router keys on the characteristic. **Nothing
@@ -51,6 +60,24 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_X70_SERVICE)
 
+    /**
+     * The characteristics this handler decodes, plus the one it writes.
+     *
+     * **Widened to all eight on 2026-08-18 and reverted the same day, because a safety test caught
+     * it.** The four aux constants were read by nothing outside a test — the declared-but-
+     * unreachable shape §11 obligation 0 exists to catch — and ownership looked like a free
+     * consumer, since [resolveProtocolHandlerRoute] uses this set for routing and arms no CCCD.
+     *
+     * It was not free. `SchwinnX70PlumbingTest` derives the handler's **writable surface** from
+     * this set by subtracting the notify streams, which is how §6c/D26 is asserted for a family
+     * FitBridge cannot test: no write exists beyond the setup command. Widening the set made four
+     * characteristics nobody understands look writable to that assertion.
+     *
+     * The right trade is obvious once stated. Inert constants are untidy; a muddied control-safety
+     * assertion is a hazard. The four aux UUIDs stay in [BluetoothIds] as inventory documentation
+     * with no production consumer, recorded as a deliberate exception rather than an oversight, and
+     * this set stays exactly what the handler touches.
+     */
     override val extraCharacteristics: Set<UUID> = setOf(
         BluetoothIds.UUID_X70_MEASUREMENT,
         BluetoothIds.UUID_X70_SUPPLEMENTAL,
@@ -69,6 +96,8 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
     private var dampedAtMs: Long = 0L
     private var sessionFirstMain: SchwinnX70Measurement.Main? = null
     private var sessionFirstAtMs: Long = 0L
+    private var energyBaselineResets = 0
+    private var streamMarkers = 0
     private var lastSupplemental: SchwinnX70Measurement.Supplemental? = null
     private var previousSequence: Int? = null
     private var initialisationWritten = false
@@ -82,6 +111,8 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         dampedAtMs = 0L
         sessionFirstMain = null
         sessionFirstAtMs = 0L
+        energyBaselineResets = 0
+        streamMarkers = 0
         lastSupplemental = null
         previousSequence = null
         initialisationWritten = false
@@ -89,8 +120,27 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         rejectedFrames = 0
     }
 
-    /** Frames rejected on this link, for the §11 evidence record and diagnostic capture. */
+    /**
+     * Frames rejected on this link, for the §11 evidence record and diagnostic capture.
+     *
+     * **Counts corruption only.** Until 2026-08-18 it also counted the measurement
+     * characteristic's 5-octet stream marker, a legitimate frame present in four of five captured
+     * sessions and the first main-characteristic frame of the link in both single-connection ones —
+     * so this number was wrong on every x70 session that produced a main stream. Markers now have
+     * their own counter.
+     */
     internal fun rejectedFrameCount(): Int = rejectedFrames
+
+    /** Stream markers seen on this link. Recognised, not decoded, and never counted as corruption. */
+    internal fun streamMarkerCount(): Int = streamMarkers
+
+    /**
+     * Times the energy baseline was re-established because the console's accumulator went backwards.
+     *
+     * Non-zero is ordinary: the captured 170 session's first main frame carries a total higher than
+     * its second.
+     */
+    internal fun energyBaselineResetCount(): Int = energyBaselineResets
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun onConnected(engine: BtEngine, gatt: BluetoothGatt) = resetLinkState()
@@ -204,10 +254,23 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         else -> emptyList()
     }
 
-    /** 270 / 570 main frame: cadence across frames, then the modelled power and speed. */
+    /** Main frame: cadence across frames, then the modelled power and speed. */
     private fun mainSamples(value: ByteArray, arrivalMs: Long, athleteMassKg: Double): List<SchwinnX70Sample> {
+        // The stream marker is a real frame the console emits, not corruption. Recognised before
+        // parsing so it stops inflating the rejection counter, and deliberately not decoded: bytes
+        // 3 and 4 are unexplained and two samples of byte 3 are not a vocabulary.
+        if (SchwinnX70Measurement.isStreamMarker(value)) {
+            streamMarkers += 1
+            Timber.tag(BtEngineState.TAG).v("Schwinn x70 stream marker (total=%d)", streamMarkers)
+            return emptyList()
+        }
         val main = SchwinnX70Measurement.parseMain(value) ?: return rejected(value)
 
+        // **The counter's baseline moves when the counter moves, not when a frame arrives.**
+        // Corrected 2026-08-18: advancing it every frame meant cadence was differentiated across a
+        // ~100 ms window that a revolution counter ticking ~1.3 times a second cannot fill, so 88 %
+        // of derived values were a false zero and the rest were 600 rpm spikes the plausibility
+        // guard dropped. Power and speed are modelled from this number, so they inherited it.
         val cadence = previousCounter?.let { previous ->
             SchwinnX70Emission.cadenceRpm(
                 previous,
@@ -215,8 +278,10 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 (arrivalMs - previousCounterAtMs) / 1000.0,
             )
         }
-        previousCounter = main.cadenceEventCounter
-        previousCounterAtMs = arrivalMs
+        if (previousCounter != main.cadenceEventCounter) {
+            previousCounter = main.cadenceEventCounter
+            previousCounterAtMs = arrivalMs
+        }
 
         val power = cadence?.let {
             val estimate = SchwinnX70PowerModel.powerWatts(it.toInt(), main.resistance)
@@ -232,10 +297,27 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
         // The energy baseline is the first frame of this link, not the console's zero: the machine
         // may have been accumulating long before FitBridge connected.
-        val first = sessionFirstMain ?: main.also {
-            sessionFirstMain = it
+        //
+        // **It also has to move when the console's accumulator does.** In the captured 170 session
+        // the first main frame carries a total higher than the second — the console reporting a
+        // stale value, or resetting, as the workout begins. Keeping that frame as the baseline
+        // means every later delta is measured from a total the session never had, which
+        // under-reports for the rest of the link and cannot be noticed downstream because
+        // `MetricKind.ENERGY` is unbounded. `publishableKcal` refusing the negative delta protects
+        // the moment and not the session, so the baseline is re-established here instead.
+        val previousBaseline = sessionFirstMain
+        if (previousBaseline == null || main.caloriesRaw < previousBaseline.caloriesRaw) {
+            if (previousBaseline != null) {
+                energyBaselineResets += 1
+                Timber.tag(BtEngineState.TAG).i(
+                    "Schwinn x70 energy accumulator went backwards; baseline re-established (total=%d)",
+                    energyBaselineResets,
+                )
+            }
+            sessionFirstMain = main
             sessionFirstAtMs = arrivalMs
         }
+        val first = sessionFirstMain ?: main
         val energy = SchwinnX70Measurement.publishableKcal(
             first,
             main,
@@ -272,11 +354,17 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
     /**
      * 170 sibling frame: native speed and power, with the held supplemental fields.
      *
-     * **No cadence.** The 170's byte 0 is a frame sequence counter, not a crank counter, and
-     * neither captured stream carries a revolution count anywhere. Turning the sequence into rpm
-     * would produce a rate of *packets* wearing the units of a rate of *pedal strokes* — a number
-     * that looks entirely reasonable and means nothing. A 170 rider therefore sees speed, power and
-     * heart rate, and no cadence, until a capture shows where cadence lives.
+     * **No cadence from this frame.** Byte 0 is a frame sequence counter, not a crank counter, and
+     * neither paired stream carries a revolution count. Turning the sequence into rpm would produce
+     * a rate of *packets* wearing the units of a rate of *pedal strokes* — a number that looks
+     * entirely reasonable and means nothing.
+     *
+     * **What changed on 2026-08-18 is the conclusion drawn from that, not the reasoning.** The
+     * 7.4/7.5 entry recorded "a 170 publishes no cadence at all", which followed only while a 170
+     * was believed to emit no main stream. It does, and the main stream carries the crank counter —
+     * 67.9 rpm mean across the captured 170 session — so cadence reaches a 170's rider by
+     * [mainSamples] like any other console's. This function still declines to invent one, which was
+     * always the right call for *this* frame.
      */
     private fun siblingSamples(value: ByteArray, arrivalMs: Long): List<SchwinnX70Sample> {
         val sibling = SchwinnX70Measurement.parseSibling(value) ?: return rejected(value)

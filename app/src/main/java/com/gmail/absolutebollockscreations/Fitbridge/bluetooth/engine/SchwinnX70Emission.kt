@@ -19,13 +19,22 @@ internal data class SchwinnX70Sample(
 /**
  * Map decoded x70 frames to canonical metrics (plan §7).
  *
- * ## Two consoles produce the same metrics by opposite routes
+ * ## Two routes to the same metrics — per stream, not per console
  *
- * A **170** measures speed and power and reports them on its 14-byte stream; cadence and heart rate
- * arrive on the paired 20-byte stream. A **270 / 570** measures a crank counter and a resistance
- * level and reports neither speed nor power, so both are modelled. The metric set a rider sees is
- * therefore similar and its provenance is not, which is the entire reason [SchwinnX70Sample] carries
- * a quality and `precorSamples` does not need to.
+ * **Corrected 2026-08-18.** This said a *170* measures speed and power natively while a *270/570*
+ * models both from a crank counter, as though the split were between machines. It is not: captured
+ * QZ logs show every console emitting all three streams, so one machine can report speed natively
+ * on its 14-byte frame *and* have speed modelled from its 17-byte frame in the same session.
+ *
+ * The split is between **streams**. The 14-byte sibling frame carries measured speed and power; the
+ * 17-byte main frame carries a crank counter and a resistance level from which both are inferred.
+ * Which of those a rider ends up seeing depends on which streams are live, and the main stream is
+ * intermittent.
+ *
+ * That makes [SchwinnX70Sample]'s quality field more load-bearing than when it was written, not
+ * less: `NATIVE` and `ESTIMATED` values for the same metric can now arrive from one device within
+ * one second of each other, and fusion's quality ordering is the only thing keeping the model from
+ * outranking the measurement.
  *
  * ## Cadence is the caller's, not this file's
  *
@@ -51,11 +60,15 @@ internal data class SchwinnX70Sample(
 internal object SchwinnX70Emission {
 
     /**
-     * Metrics from a 170's paired frames.
+     * Metrics from the paired 20/14-byte frames.
+     *
+     * Named for the 170 because that is the console the layout was resolved on. A 270 emits these
+     * frames too (2026-08-18), so the name is history rather than a restriction.
      *
      * Speed and power are `NATIVE`: V15a resolved them against 698 captured frames, where they are
-     * zero together in exactly 100 and never one without the other, and `power ≈ speed^1.565` with
-     * a standard deviation of 0.042. The console derives power from speed internally, but that is
+     * zero together in exactly 100 and never one without the other, and power tracks speed as a
+     * tight power law with a log-log slope near 2.2 (unit-invariant, so the mph correction did not
+     * disturb it). The console derives power from speed internally, but that is
      * the machine's own arithmetic and what its display shows, so it is a reading and not a
      * FitBridge estimate.
      *
@@ -82,7 +95,10 @@ internal object SchwinnX70Emission {
     }
 
     /**
-     * Metrics from a 270 / 570 main frame.
+     * Metrics from the 17-byte main frame.
+     *
+     * Named for the 270/570 for the same historical reason as [samplesFor170]; a 170 emits this
+     * frame as well.
      *
      * Power is `ESTIMATED` — a third-party coefficient table, no vendor source, no capture that
      * could check it. Speed is `ESTIMATED` too and sits on top of that estimate: D74's road-cycling
@@ -136,15 +152,46 @@ internal object SchwinnX70Emission {
     }
 
     /**
+     * Below this, a counter that has not moved means "no reading yet", not "the rider stopped".
+     *
+     * One revolution at 20 rpm takes three seconds, and 20 rpm is about as slow as anyone turns a
+     * crank under load. Four seconds is past that, so a counter still unchanged after it has
+     * genuinely stopped rather than merely not ticked.
+     */
+    const val STOPPED_AFTER_SECONDS = 4.0
+
+    /**
      * Cadence in rpm from two crank-counter readings.
      *
-     * Returns null rather than zero when there is nothing to compute: a single frame, a
-     * non-advancing clock, or a counter that went backwards past a plausible wrap. **Zero would be a
-     * claim that the rider stopped**, and this function cannot tell that from having no information.
+     * ## `elapsedSeconds` is time since the counter last **changed**, not since the last frame
      *
-     * The counter and the elapsed seconds are both the caller's, and the seconds must come from
-     * FitBridge's clock — the 270's own tick field wraps every 64 seconds and cannot distinguish a
-     * long pause from a short one.
+     * **This is the whole correction of 2026-08-18 and it lives in the caller, so it is stated
+     * here where it can be seen.** The counter counts revolutions — about 1.3 a second at 80 rpm —
+     * while the main stream notifies about ten times a second. Differentiating it frame to frame
+     * therefore sees a delta of 0 or 1 across a ~100 ms window, and one revolution in 0.1 s is
+     * 600 rpm.
+     *
+     * Measured across three captured slices and two physical consoles, that produced **88 % exactly
+     * zero, about 12 % above 600 rpm, and one usable value in 744** — a rider watching cadence sit
+     * at zero while the plausibility guard silently dropped the spikes. Power and speed inherit it,
+     * because [samplesFor270] models both from this number.
+     *
+     * Measured between changes, the same captures give 74–115 rpm with a median of 81.4, matching
+     * their 80.3 rpm session average.
+     *
+     * **Nothing caught it because every cadence test measured the session average** — first counter
+     * to last counter across a whole run — which averages the defect away and says nothing about the
+     * value a user sees.
+     *
+     * ## What it returns, and why absence is not zero
+     *
+     * Null when there is nothing to say: a non-advancing clock, a counter that went backwards past a
+     * plausible wrap, or a counter that has not moved *yet*. Zero only once the counter has been
+     * still for [STOPPED_AFTER_SECONDS], which is a genuine stop rather than the ordinary gap
+     * between two revolutions.
+     *
+     * The seconds must come from FitBridge's clock — the console's own tick field wraps every 64
+     * seconds and cannot distinguish a long pause from a short one.
      */
     fun cadenceRpm(previousCounter: Int, currentCounter: Int, elapsedSeconds: Double): Double? {
         if (elapsedSeconds <= 0.0) return null
@@ -152,6 +199,9 @@ internal object SchwinnX70Emission {
         // A counter that appears to have advanced most of its range in one interval is a wrap in
         // the wrong direction or a dropped frame, not a sprint.
         if (revolutions > 32768) return null
+        if (revolutions == 0) {
+            return if (elapsedSeconds >= STOPPED_AFTER_SECONDS) 0.0 else null
+        }
         return revolutions / elapsedSeconds * 60.0
     }
 }

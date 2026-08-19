@@ -350,7 +350,10 @@ class SchwinnX70MeasurementTest {
     @Test
     fun `power tracks speed as a tight power law, which is why the offsets are believed`() {
         // The strongest single argument that these octets are speed and power rather than two
-        // arbitrary pairs: across the run, power = speed^k with k near 1.5 and very little spread.
+        // arbitrary pairs: across the run, ln(power)/ln(speed) is nearly constant. That ratio is
+        // not the exponent and it shifts with the unit (the field is decoded as mph since
+        // 2026-08-19), so the band below is deliberately wide; the unit-invariant statistic is the
+        // log-log slope, near 2.2.
         // A flywheel trainer at fixed resistance sits between the rolling exponent 1 and the
         // aerodynamic 3. Two unrelated fields do not produce this.
         val moving = pairedCorpus()

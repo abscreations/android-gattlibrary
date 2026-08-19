@@ -193,13 +193,19 @@ class SchwinnX70PowerModelTest {
     // ── D10 / §7 provenance: an estimate must never outrank a native reading ─────
 
     @Test
-    fun `a native power reading beats a modelled one regardless of source class`() {
-        // The rule §7's ESTIMATED tag exists for, and Phase 7 is the first place it has a real
-        // adversary rather than a hypothetical one: a 170 supplies native power on its sibling
-        // stream while a 270 supplies a modelled estimate, and both are the same family.
+    fun `the quality enum is declared in the order the fusion comparator relies on`() {
+        // **Renamed 2026-08-18, because the old name promised something this test does not do.**
+        // It was called "a native power reading beats a modelled one regardless of source class",
+        // which is §7's provenance obligation — and it asserts an enum's declaration order using a
+        // helper defined in this file. It never touches MetricFusion. Reorder the real comparator
+        // to put source class first and this test still passes.
         //
-        // Quality is the first key in the fusion comparator, ahead of source class, so this holds
-        // even when the estimate comes from a source class that would otherwise win.
+        // It is worth keeping for what it actually checks: MetricFusion.qualityRank maps these
+        // constants by ordinal, so reordering the enum would silently invert the priority. That is
+        // a real hazard and this is a cheap guard against it.
+        //
+        // The obligation itself is discharged by SchwinnX70FusionAndBoundsTest, which submits real
+        // x70 samples to a real MetricFusion.
         val ranks = MetricQuality.entries.associateWith { quality ->
             MetricQuality.entries.count { other -> qualityOutranks(other, quality) }
         }
@@ -238,6 +244,13 @@ class SchwinnX70PowerModelTest {
 
         assertTrue("the third-party origin is stated", text.contains("ANT_Libraries"))
         assertTrue("the ESTIMATED consequence is stated", text.contains("MetricQuality.ESTIMATED"))
-        assertTrue("the 170 exclusion is stated", text.contains("170 reports power natively"))
+        assertTrue(
+            "the native-reading adversary is stated",
+            text.contains("sibling frame carries a measured power"),
+        )
+        assertTrue(
+            "and the correction is not quietly dropped",
+            text.contains("has been running on") && text.contains("170s since the handler shipped"),
+        )
     }
 }

@@ -3,14 +3,28 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 /**
  * Bounds-checked decoders for the Schwinn x70 family — 170, 270 and 570 (plan §7).
  *
- * ## This family is two consoles that share a namespace and nothing else
+ * ## One protocol, three streams, and every console emits all of them
  *
- * Both physical captures agree. A **170** emits paired 20-byte and 14-byte notifications on two
- * separate characteristics — 698 of each in TMIW's trace, one-for-one — and **no 17-byte stream at
- * all**. A **270** and a submitter-labelled **570u** emit 17-byte notifications on the main
- * measurement characteristic. TMIW implements only the 17-byte path; QZ only the 170 pair. Neither
- * project is wrong and neither alone covers the family, which is why [Frame] is a sealed set rather
- * than one layout with optional fields.
+ * **Corrected 2026-08-18.** This file previously recorded, as the phase's central fact, that a 170
+ * emits the 20/14-byte pair and *no 17-byte stream at all* while a 270/570 emits only the 17-byte
+ * stream. Both halves are false. QZ debug logs — which, unlike an nRF Connect log or an HCI snoop
+ * without a handle map, record each notification against its characteristic — show a 170 emitting
+ * **1,938 seventeen-byte frames**, all passing [isMainFrame], interleaved with the pair for four
+ * minutes on a link that connected once. The same logs show a 270 emitting the pair.
+ *
+ * The original conclusion was a **collection artefact read as a device fact**: the 170 HCI trace did
+ * not carry `5c7d82a0` traffic, and absence in one capture became absence in the device.
+ *
+ * What is true is that the main stream is **intermittent**. Across five captured sessions it
+ * appears 0, 215, 1,244, 1,938 and 2,553 times, and when present it ticks at the same ~90–110 ms
+ * cadence as the pair. What starts and stops it is not established, and console model predicts
+ * neither its presence nor its rate.
+ *
+ * The decoders below needed no change for any of this — only the model around them did. The three
+ * layouts stay separate because they *are* separate layouts, not because they belong to separate
+ * machines.
+ *
+ * See `docs/evidence/phase-7/2026-08-18-schwinn-x70-qz-debug-log-corpus.md`.
  *
  * **Dispatch is by characteristic, never by length.** QZ dispatches on payload size alone
  * (`Q_UNUSED(characteristic)`), which means any 20-byte notification from any source would be read
@@ -63,6 +77,53 @@ internal object SchwinnX70Measurement {
 
     /** The invariant first three octets of a main frame, `0x11 0x20 0x00`. */
     val MAIN_PREFIX = intArrayOf(17, 32, 0)
+
+    /**
+     * The console's stream marker: a 5-octet frame on the measurement characteristic.
+     *
+     * **Registered 2026-08-18 to stop counting a legitimate frame as corruption.** `05 09 01 01 00`
+     * and `05 09 01 03 00` arrive on [BluetoothIds.UUID_X70_MEASUREMENT], self-describe their
+     * length in byte 0, and appear in four of five captured sessions — as the **first**
+     * main-characteristic frame of the link in both single-connection ones. [parseMain] requires
+     * exactly 17 octets, so before this existed every one of them incremented the handler's
+     * rejected-frame counter. That counter feeds the §11 evidence record and diagnostic capture,
+     * so it was wrong on every x70 session that produced a main stream.
+     *
+     * **This recognises the frame; it does not decode it.**
+     *
+     * **Widened 2026-08-19, because the first version repeated the defect it was written to fix.**
+     * It required the first three octets to be `05 09 01`, generalised from two samples. A 570u
+     * corpus then produced `05 09 02 01 00` — byte 2 is `0x02` — which the check rejected and the
+     * handler counted as corruption, which is precisely what `isStreamMarker` exists to stop.
+     *
+     * Five variants are now observed across three consoles: `05 09 01 00 00`, `05 09 01 01 00`,
+     * `05 09 01 03 00` and `05 09 02 01 00`. Bytes 2 and 3 both vary and neither is understood.
+     * What holds everywhere is the length, the `05 09` opening, and a zero last octet, so that is
+     * what is checked — enough to reject a foreign 5-octet frame, and no more than the evidence
+     * supports.
+     */
+    const val STREAM_MARKER_LENGTH = 5
+
+    /** The two leading octets that hold across every observed variant. */
+    val STREAM_MARKER_PREFIX = intArrayOf(0x05, 0x09)
+
+    /** Byte 4 is zero in every observed marker; bytes 2 and 3 vary and mean nothing known. */
+    const val STREAM_MARKER_TRAILER = 0x00
+
+    /**
+     * Whether [data] is the measurement characteristic's stream marker rather than a measurement.
+     *
+     * Callers must only ask this of a frame that arrived on [BluetoothIds.UUID_X70_MEASUREMENT].
+     * Length alone is not identity anywhere in this family, and QZ's length-only dispatch is the
+     * defect §7 exists to avoid repeating.
+     */
+    fun isStreamMarker(data: ByteArray): Boolean {
+        if (data.size != STREAM_MARKER_LENGTH) return false
+        for (index in STREAM_MARKER_PREFIX.indices) {
+            if (u8(data, index) != STREAM_MARKER_PREFIX[index]) return false
+        }
+        return u8(data, STREAM_MARKER_LENGTH - 1) == STREAM_MARKER_TRAILER
+    }
 
     /**
      * V17's prediction, held as a constant rather than as behaviour.
@@ -172,7 +233,12 @@ internal object SchwinnX70Measurement {
      */
     fun publishableKcal(first: Main, last: Main, elapsedSeconds: Double): Double? {
         val delta = last.caloriesKcal - first.caloriesKcal
-        // A cumulative counter that went backwards is a wrapped or misread field, not a workout.
+        // A counter that went backwards is not a workout. **This is observed behaviour, not a
+        // hypothetical**: in the captured 170 session the first main frame of the link carries a
+        // total higher than the second, so the console reports a stale value or resets as the
+        // workout begins. Returning null here is correct but not sufficient on its own — a caller
+        // that keeps the stale frame as its baseline under-reports for the rest of the link, which
+        // is why SchwinnX70ProtocolHandler re-baselines instead of only suppressing.
         if (delta < 0.0) return null
         if (elapsedSeconds < MIN_RATE_CHECK_SECONDS) return delta
         val ratePerHour = delta / elapsedSeconds * 3600.0
@@ -221,6 +287,14 @@ internal object SchwinnX70Measurement {
      *
      * Same reasoning as [SIBLING_TAGS]: verified, not walked. Checking all seven instead of TMIW's
      * one costs nothing and is the only structural evidence these frames offer.
+     *
+     * **These tags do not all precede a `uint16`, unlike the sibling frame's.** Derived from the
+     * tag offsets themselves and corrected 2026-08-18: `0x1F` at 5 owns a u16 at 6–7; `0x19` at 8
+     * and `0x39` at 10 own single octets at 9 and 11; `0x3C` at 12 owns a u16 at 13–14; `0x5A` at
+     * 15 and `0x5C` at 17 own single octets at 16 and 18 — heart rate and resistance; and `0x5F` at
+     * 19 is the frame's last octet and **owns no value at all**, most economically read as a
+     * terminator. The decoder reads fixed offsets and is right about all of them; this matters to
+     * anything that generates a frame rather than parsing one.
      */
     val SUPPLEMENTAL_TAGS =
         mapOf(5 to 0x1F, 8 to 0x19, 10 to 0x39, 12 to 0x3C, 15 to 0x5A, 17 to 0x5C, 19 to 0x5F)
@@ -231,9 +305,18 @@ internal object SchwinnX70Measurement {
      * **V16 was registered as a conflict and is not one — the capture confirms both readings.**
      * TMIW reads heart rate at 16, QZ reads resistance at 18, the offsets do not overlap, and each
      * is the value of its own tag. Across 698 frames resistance took the values 2 and 4, which is
-     * plausible, and heart rate stayed 0 throughout because no strap was paired. So TMIW's offset
-     * is *consistent with* the capture rather than positively confirmed by it — a session with a
-     * strap is still owed.
+     * plausible, and heart rate stayed 0 throughout because no strap was paired.
+     *
+     * **The strap session arrived, and byte 16 is confirmed (2026-08-18).** A QZ debug log from a
+     * physical 270 carries 402 consecutive supplemental frames reading 120–123 bpm, with zero on
+     * both sides of the block — a strap connecting, holding a steady effort, and dropping. No
+     * accumulator, counter or resistance level behaves like that. The offset is established by
+     * capture rather than merely consistent with one, and this file no longer owes that session.
+     *
+     * Resistance at 18 is confirmed independently and more strongly: it equals main-frame byte 16
+     * on the same console, exactly on 2,543 matched frames of the 270 and within ±1 on the 170,
+     * every exception an adjacent value caught while the setting was changing. Two characteristics
+     * carrying one field is also the evidence that the streams come from one machine.
      */
     data class Supplemental(val heartRateBpm: Int, val resistance: Int)
 
@@ -262,7 +345,7 @@ internal object SchwinnX70Measurement {
      * 2. **Their ranges are physical**: 0.84–15.30 km/h and 1.11–77.69 W across the session, at a
      *    resistance the paired stream reports as 2–4. The 655 W ceiling I flagged as the thing to
      *    watch is never approached, so the ÷100 scale is not in question after all.
-     * 3. **`power ≈ speed^1.565`, standard deviation 0.042** over 598 moving samples. A flywheel
+     * 3. **`power ≈ speed^2.2` — the log-log regression slope, which is **unit-invariant** and so survives the 2026-08-19 mph correction. 2.215 pooled over 911 moving samples on two consoles, 2.581 with a residual sd of 0.0004 on the 270's 423. The figure previously quoted here, `speed^1.565` with sd 0.042, was the mean of `ln(power)/ln(speed)` over a narrow speed band — a ratio, not an exponent, and it moves with the unit (it reads ~1.35 once the field is decoded as mph)**. A flywheel
      *    trainer at fixed resistance sits between the rolling exponent 1 and the aerodynamic 3, and
      *    a fit that tight across a whole session is not something two arbitrary octet pairs
      *    produce.
@@ -278,6 +361,28 @@ internal object SchwinnX70Measurement {
     private const val SIBLING_OFFSET_ACCUMULATOR_A = 9
     private const val SIBLING_OFFSET_ACCUMULATOR_B = 12
     const val SIBLING_SPEED_DIVISOR = 100.0
+
+    /**
+     * The sibling frame's speed field is **miles per hour**, and FitBridge converts on decode.
+     *
+     * Explore the World — Nautilus's own app — reads this field and displays it unconverted with an
+     * mph label, regardless of the phone's locale or unit settings. Confirmed three ways against
+     * the simulator: with one engine speed the three former personas emitted 13.43, 16.28 and
+     * 20.38 and ETW showed 13.4, 16.4 and 20.3. A fourth, weaker line agrees — ETW derives cadence
+     * from this field at a development of 5.51 m per crank revolution if it is mph, against 3.42
+     * if km/h, and road-typical is 5 to 8.
+     *
+     * **This is a decision on a closed-source app's behaviour, not a proof, and Q12 stays open.**
+     * The corpus cannot arbitrate: accumulator `0x3E` was calibrated by integrating this same
+     * field, so it is 100 units per km or per mile symmetrically. A third reading would be worse
+     * than either — Schwinn consoles have a units toggle and the field may simply follow it, in
+     * which case no client can know the unit from the protocol and ETW is right to pass it through.
+     * What would settle it: one hardware ride with a known console unit setting, ideally a pair
+     * with the toggle flipped between them.
+     *
+     * Reverting is one edit here. Everything downstream reads [Sibling.speedKph].
+     */
+    const val KM_PER_MILE = 1.609344
     const val SIBLING_POWER_DIVISOR = 100.0
 
     /**
@@ -310,11 +415,19 @@ internal object SchwinnX70Measurement {
      */
     data class Sibling(
         val sequence: Int,
-        val speedKph: Double,
+        val speedMph: Double,
         val powerWatts: Double,
         val accumulatorA: Int,
         val accumulatorB: Int,
-    )
+    ) {
+        /**
+         * The wire field converted to FitBridge's internal km/h convention.
+         *
+         * Every consumer reads this rather than [speedMph]; see [KM_PER_MILE] for the evidence and
+         * for what would falsify it.
+         */
+        val speedKph: Double get() = speedMph * KM_PER_MILE
+    }
 
     fun isSiblingFrame(data: ByteArray): Boolean =
         data.size == SIBLING_FRAME_LENGTH && SIBLING_TAGS.all { (offset, tag) -> u8(data, offset) == tag }
@@ -323,7 +436,7 @@ internal object SchwinnX70Measurement {
         if (!isSiblingFrame(data)) return null
         return Sibling(
             sequence = u8(data, 0),
-            speedKph = u16(data, SIBLING_OFFSET_SPEED) / SIBLING_SPEED_DIVISOR,
+            speedMph = u16(data, SIBLING_OFFSET_SPEED) / SIBLING_SPEED_DIVISOR,
             powerWatts = u16(data, SIBLING_OFFSET_POWER) / SIBLING_POWER_DIVISOR,
             accumulatorA = u16(data, SIBLING_OFFSET_ACCUMULATOR_A),
             accumulatorB = u16(data, SIBLING_OFFSET_ACCUMULATOR_B),

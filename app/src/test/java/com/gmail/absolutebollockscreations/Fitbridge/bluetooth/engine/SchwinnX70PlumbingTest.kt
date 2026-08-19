@@ -25,7 +25,11 @@ class SchwinnX70PlumbingTest {
     // ── Discovery: both console shapes, and neither invented ─────────────────────
 
     @Test
-    fun `a 270 subscribes to its main stream only`() {
+    fun `a console offering only the main stream subscribes to it alone`() {
+        // **Renamed 2026-08-18.** This was "a 270 subscribes to its main stream only", which named
+        // a console rather than an inventory. Captured logs show every x70 console emitting all
+        // three streams, so the shape being tested is a partial GATT table — real, and worth
+        // covering — and not a model of a 270.
         val targets = planSchwinnX70Discovery(
             inventory(BluetoothIds.UUID_X70_MEASUREMENT, BluetoothIds.UUID_X70_CONTROL),
         )
@@ -33,7 +37,9 @@ class SchwinnX70PlumbingTest {
     }
 
     @Test
-    fun `a 170 subscribes to both of its streams and not to a main stream it lacks`() {
+    fun `a console offering only the paired streams subscribes to those and no more`() {
+        // Renamed for the same reason: this was "a 170 subscribes to both of its streams and not to
+        // a main stream it lacks". A 170 does not lack one.
         val targets = planSchwinnX70Discovery(
             inventory(
                 BluetoothIds.UUID_X70_SUPPLEMENTAL,
@@ -137,7 +143,7 @@ class SchwinnX70PlumbingTest {
     }
 
     @Test
-    fun `the handler activates on its service and owns all four characteristics`() {
+    fun `the handler activates on its service and owns every characteristic it exposes`() {
         val active = activateMatchingProtocolHandlers(
             MACHINE_PROTOCOLS.map(factory::create),
             setOf(BluetoothIds.UUID_X70_SERVICE),
@@ -156,6 +162,18 @@ class SchwinnX70PlumbingTest {
                 BluetoothIds.UUID_X70_CONTROL,
             ),
             handler.extraCharacteristics,
+        )
+
+        // **This set is load-bearing for control safety, which is not obvious from here.** The
+        // §6c/D26 assertion below derives the handler's writable surface by subtracting the notify
+        // streams from it, so anything added here that is not a notify stream reads as writable. A
+        // 2026-08-18 change widened this to all eight characteristics the service exposes — four of
+        // which nobody decodes — and that test caught it. Keeping the size pinned makes the coupling
+        // explicit rather than something the next reader has to rediscover by breaking it.
+        assertEquals(
+            "adding to this set changes what `never offered as a target` asserts — read that test first",
+            4,
+            handler.extraCharacteristics.size,
         )
     }
 
@@ -211,16 +229,22 @@ class SchwinnX70PlumbingTest {
         val handler = SchwinnX70ProtocolHandler()
         val frames = mainFrames()
 
-        // Two consecutive real frames: the second produces cadence, power and speed because the
-        // first established a baseline.
-        handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[0], arrivalMs = 1_000L)
-        val second = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[1], arrivalMs = 1_200L)
-        assertTrue("a baseline existed, so metrics flow", second.any { it.metric == MetricKind.CADENCE })
+        // **Indices 4 and 5, not 0 and 1, and the reason is the 2026-08-18 cadence fix.** The crank
+        // counter advances once per revolution while the stream notifies about ten times a second,
+        // so most adjacent frames carry an unchanged counter and now correctly yield no cadence at
+        // all. In this corpus the counter first moves between index 4 and index 5. Using two frames
+        // that happen to be adjacent rather than two across which the machine turned was always
+        // testing the wrong thing; it only passed because the old code invented a number.
+        handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[4], arrivalMs = 1_000L)
+        val second = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[5], arrivalMs = 1_800L)
+        assertTrue("a baseline existed and the crank turned, so metrics flow", second.any { it.metric == MetricKind.CADENCE })
 
         handler.resetLinkState()
 
         // After a reconnect the same frame must behave like the first frame of a link again.
-        val afterReset = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[1], arrivalMs = 9_000L)
+        val afterReset = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[5], arrivalMs = 9_000L)
+        // One revolution across 0.8 s is 75 rpm — a real pedalling rate, which is the point of
+        // choosing a realistic interval rather than one that happens to satisfy the assertion.
         assertTrue(
             "no metric may be derived from a counter belonging to a previous link",
             afterReset.none { it.metric == MetricKind.CADENCE || it.metric == MetricKind.POWER },
@@ -377,6 +401,11 @@ class SchwinnX70PlumbingTest {
         // plainly has a resistance mechanism — which makes "we can therefore set it" a short and
         // wrong step. Nothing in either capture shows a write that changes resistance, and QZ's
         // own `requestResistance` branch is commented out. Reading a setting is not controlling it.
+        //
+        // **This test earned its place on 2026-08-18.** A change widened `extraCharacteristics` to
+        // every characteristic the service exposes, on the reasoning that ownership arms no CCCD
+        // and so costs nothing. It cost this: four characteristics nobody understands became
+        // indistinguishable, here, from a writable surface. The change was reverted.
         val handler = factory.create(ProtocolKey.SCHWINN_X70)
         assertEquals(
             "the setup write is the only characteristic this handler may write",

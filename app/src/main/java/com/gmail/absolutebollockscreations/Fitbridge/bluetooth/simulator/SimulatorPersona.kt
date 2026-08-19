@@ -38,6 +38,66 @@ sealed interface SimulatorPersona {
     ) : SimulatorPersona {
         override val advertisedName: String = machine.syntheticName
     }
+
+    /**
+     * Schwinn x70 console, gated on an initialization write.
+     *
+     * **One persona, not three.** The plan carried selectable 170 / 270 / 570 profiles until
+     * 2026-08-19. They advertised the same name, served the same characteristics and emitted the
+     * same streams — the 2026-08-18 corpus had already removed every wire-visible difference — so
+     * the only thing they varied was the ride, and varying the ride by console turned out to be
+     * the source of more confusion than fidelity: the same engine speed reached a client as three
+     * different numbers, and none of them matched what the simulator's own UI displayed.
+     *
+     * Metrics now come from the shared ride engine, as they do for every other persona. What stays
+     * capture-derived is the thing that actually needs to be: the frame octets (§8.2).
+     */
+    data object SchwinnX70 : SimulatorPersona {
+        override val advertisedName: String = SCHWINN_X70_ADVERTISED_NAME
+    }
+}
+
+/** Every console in the captures discovers under this name. */
+const val SCHWINN_X70_ADVERTISED_NAME = "SCHWINN 170/270"
+
+/**
+ * Timing and range constants for the one x70 persona.
+ *
+ * The periods are still measured — 90 to 96 ms between pairs across every captured console — and
+ * the resistance span is the widest any capture showed (the 170's 1 to 22), so a generated ride
+ * can visit the whole legal range rather than one machine's slice of it.
+ */
+object SchwinnX70Ride {
+    /** Median interval between supplemental/sibling pairs, across all captured consoles. */
+    const val PAIR_PERIOD_MS = 96L
+
+    /** Median interval between 17-byte main frames. */
+    const val MAIN_PERIOD_MS = 96L
+
+    /** The family's legal resistance range; the engine's level is mapped onto it. */
+    const val RESISTANCE_FLOOR = 1
+    const val RESISTANCE_CEILING = 22
+}
+
+/**
+ * Device Information as read from the captured 270.
+ *
+ * The 170's was never read and the 570 has none at all (Q3), so this is the only captured identity
+ * the family has and the persona uses it verbatim.
+ */
+object SchwinnX70Identity {
+    /**
+     * **NUL-padded to nineteen octets on the wire**, which the 570u logs show and no earlier record
+     * captured. TMIW does a `contains` check and never noticed; a byte-exact simulator has to.
+     */
+    const val MANUFACTURER = "Nautilus, Inc.\u0000\u0000\u0000\u0000\u0000"
+    const val MODEL_NUMBER = "SCHWINN 170/270"
+    const val HARDWARE_REVISION = "SCHWINN 170/270"
+    const val FIRMWARE_REVISION = "R04.12.004P"
+    const val SOFTWARE_REVISION = "H44_R15"
+
+    /** Company `0x00F4` (Nautilus), product 0, version 0, from a Bluetooth-SIG-assigned vendor. */
+    val PNP_ID: ByteArray = byteArrayOf(0x01, 0xF4.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00)
 }
 
 enum class LifeFitnessMachine(

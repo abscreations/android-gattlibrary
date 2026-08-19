@@ -28,7 +28,7 @@ class SchwinnX70EmissionTest {
     // ── 170: native speed and power ──────────────────────────────────────────────
 
     @Test
-    fun `every captured 170 frame emits native speed and power inside their bounds`() {
+    fun `every captured sibling frame emits native speed and power inside their bounds`() {
         val speedBound = PlausibilityBounds.rangeFor(MetricKind.SPEED, FusionPersona.RIDE)!!
         val powerBound = PlausibilityBounds.rangeFor(MetricKind.POWER, FusionPersona.RIDE)!!
 
@@ -88,7 +88,7 @@ class SchwinnX70EmissionTest {
     // ── 270: everything modelled, and labelled as such ───────────────────────────
 
     @Test
-    fun `a 270 emits power and speed as estimates, never as measurements`() {
+    fun `a main frame emits power and speed as estimates, never as measurements`() {
         // The rule D10 exists for. If these ever came out NATIVE, a 270's modelled number would tie
         // with a 170's measured one on quality and the comparator would fall through to source
         // class, where both are the same family.
@@ -131,7 +131,7 @@ class SchwinnX70EmissionTest {
     // ── Cadence from the crank counter ───────────────────────────────────────────
 
     @Test
-    fun `cadence across the whole captured 270 session is a real pedalling rate`() {
+    fun `cadence across a whole captured main-stream session is a real pedalling rate`() {
         val cases = corpus("schwinn_x70_270_main.json")
         val first = requireNotNull(SchwinnX70Measurement.parseMain(bytesOf(cases.first(), "packet")))
         val last = requireNotNull(SchwinnX70Measurement.parseMain(bytesOf(cases.last(), "packet")))
@@ -155,8 +155,26 @@ class SchwinnX70EmissionTest {
         assertNull("negative elapsed time", SchwinnX70Emission.cadenceRpm(100, 105, -1.0))
         assertNull("a backwards counter is not a sprint", SchwinnX70Emission.cadenceRpm(100, 99, 1.0))
 
-        // But a genuine stop, where the counter really did not move, is reportable as zero.
-        assertEquals(0.0, SchwinnX70Emission.cadenceRpm(100, 100, 2.0)!!, 1e-9)
+        // **A counter that has not moved is now absence until it has been still long enough to
+        // mean something (2026-08-18).** Two seconds is an ordinary gap between revolutions at a
+        // slow grind, not a stop, and treating it as one is the defect that made 88 % of derived
+        // cadence a false zero.
+        assertNull("an unchanged counter is not yet a stop", SchwinnX70Emission.cadenceRpm(100, 100, 2.0))
+
+        // Past the threshold it is a stop, and zero is the right thing to say.
+        assertEquals(
+            0.0,
+            SchwinnX70Emission.cadenceRpm(100, 100, SchwinnX70Emission.STOPPED_AFTER_SECONDS)!!,
+            1e-9,
+        )
+        assertEquals(0.0, SchwinnX70Emission.cadenceRpm(100, 100, 30.0)!!, 1e-9)
+
+        // One revolution at 20 rpm takes three seconds, so the threshold must sit past that or a
+        // slow rider is reported as stopped mid-pedal-stroke.
+        assertTrue(
+            "the stop threshold must be slower than the slowest real pedalling",
+            SchwinnX70Emission.STOPPED_AFTER_SECONDS > 3.0,
+        )
     }
 
     @Test
