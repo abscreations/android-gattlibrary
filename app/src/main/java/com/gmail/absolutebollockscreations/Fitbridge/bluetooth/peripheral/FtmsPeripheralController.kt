@@ -135,6 +135,23 @@ class FtmsPeripheralController(
         val lastDisconnectStatus: Int? = null,
         val lastDisconnectReason: String? = null,
         val lastError: String? = null,
+        /**
+         * FE-C-over-BLE simulator telemetry (plan `docs/fe-c-ble_simulator_implementation.md`).
+         * Null for every other persona/controller — this is the one place `FeCBlePeripheralController`
+         * surfaces its self-owned model onto the shared status shape the debug UI reads, since that
+         * controller is not driven by [FtmsMockEngine] and has no other route into this StateFlow.
+         */
+        val fecFeState: String? = null,
+        val fecControlMode: String? = null,
+        val fecSpeedKph: Double? = null,
+        val fecCadenceRpm: Int? = null,
+        val fecPowerWatts: Int? = null,
+        val fecDistanceMeters: Int? = null,
+        val fecElapsedSeconds: Int? = null,
+        val fecTargetPowerWatts: Int? = null,
+        val fecBasicResistancePercent: Int? = null,
+        val fecGradePercent: Double? = null,
+        val fecCrr: Double? = null,
     )
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

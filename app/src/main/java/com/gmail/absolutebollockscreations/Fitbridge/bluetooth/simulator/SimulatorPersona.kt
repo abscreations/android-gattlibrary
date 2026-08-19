@@ -55,6 +55,37 @@ sealed interface SimulatorPersona {
     data object SchwinnX70 : SimulatorPersona {
         override val advertisedName: String = SCHWINN_X70_ADVERTISED_NAME
     }
+
+    /**
+     * FE-C-over-BLE equipment persona (plan `docs/fe-c-ble_simulator_implementation.md`).
+     *
+     * Unlike every other persona here, FE-C over BLE is not driven by [FtmsMockEngine]: it owns a
+     * self-contained deterministic model (`FeCBleSyntheticModel`) so ERG/SIM control writes on
+     * FEC3 can converge the same `FeCBleTelemetryEncoder` output the scheduler is emitting. See
+     * `FeCBlePeripheralController` for why.
+     *
+     * @param controlEnabled whether FEC3 is served at all. Defaults to the equipment type's own
+     * default (Trainer only, plan §3.1); tests may override it to exercise transport behaviour on
+     * a measurement-only persona, which the plan is explicit is a test configuration and not a
+     * physical-equipment claim.
+     * @param overlay the GATT compatibility overlay layered on the protocol-minimal persona (plan
+     * §3.2). Defaults to [FeCEquipmentType.includesCpsOverlay] — Trainer and Stationary Bike always
+     * carry `CPS_INCYCLIST_COMPAT`, publishing FitBridge's existing standards-compliant Cycling
+     * Power Service alongside FEC1, sourced from the same `FeCBleMachineState.instantaneousPowerWatts`
+     * as page 25 (plan §18.2) — never an independent generator. This is not a separate debug
+     * persona; it is implicit to the equipment type and never described in the UI.
+     */
+    data class FeCBle(
+        val equipmentType: FeCEquipmentType,
+        val controlEnabled: Boolean = equipmentType.supportsControl,
+        val overlay: FeCBleSimulatorOverlay = if (equipmentType.includesCpsOverlay) {
+            FeCBleSimulatorOverlay.CPS_INCYCLIST_COMPAT
+        } else {
+            FeCBleSimulatorOverlay.NONE
+        },
+    ) : SimulatorPersona {
+        override val advertisedName: String = feCBleAdvertisedName(equipmentType)
+    }
 }
 
 /** Every console in the captures discovers under this name. */
@@ -192,3 +223,14 @@ enum class Concept2FirmwareProfile(
 }
 
 private fun c2Notify(uuid: UUID) = Concept2CharacteristicManifest(uuid, notifiable = true)
+
+/**
+ * Discovery correctness is by the `FEC1` service UUID (plan §5), never by this name — it exists
+ * only so a human picking from the debug persona list is not shown four identical rows.
+ */
+fun feCBleAdvertisedName(equipmentType: FeCEquipmentType): String = when (equipmentType) {
+    FeCEquipmentType.TRAINER -> "FitBridge FE-C Trainer"
+    FeCEquipmentType.STATIONARY_BIKE -> "FitBridge FE-C Bike"
+    FeCEquipmentType.TREADMILL -> "FitBridge FE-C Treadmill"
+    FeCEquipmentType.ROWER -> "FitBridge FE-C Rower"
+}

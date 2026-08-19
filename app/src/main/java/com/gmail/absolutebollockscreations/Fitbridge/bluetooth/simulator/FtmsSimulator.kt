@@ -239,6 +239,10 @@ class FtmsSimulator(
                 startSchwinnX70(persona)
                 return
             }
+            is SimulatorPersona.FeCBle -> {
+                startFeCBle(persona)
+                return
+            }
             is SimulatorPersona.Ftms -> Unit
         }
         val machine = persona.profile
@@ -418,6 +422,53 @@ class FtmsSimulator(
             }
         }
         Timber.tag(TAG).i("Precor Chrono simulator started")
+    }
+
+    /**
+     * Start the FE-C-over-BLE simulator (plan `docs/fe-c-ble_simulator_implementation.md`).
+     *
+     * Unlike every other branch here, this persona owns its own ride: [FeCBlePeripheralController]
+     * carries a self-contained `FeCBleMachineState` and 250 ms scheduler so ERG/SIM control writes
+     * on FEC3 converge the same state the scheduler is encoding from. There is no `FtmsMockEngine`
+     * and no tick loop here — [SimulatorPeripheralHost.startAdvertising] blocks until the controller
+     * itself is fully up, same as every other simulator-only persona's await pattern.
+     */
+    private fun startFeCBle(persona: SimulatorPersona.FeCBle) {
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        Timber.tag(TAG).i(
+            "FE-C over BLE simulator started equipment=%s control=%s",
+            persona.equipmentType,
+            persona.controlEnabled,
+        )
     }
 
     private fun startSchwinnX70(persona: SimulatorPersona.SchwinnX70) {

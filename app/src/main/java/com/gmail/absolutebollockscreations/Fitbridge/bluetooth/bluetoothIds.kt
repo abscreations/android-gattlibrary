@@ -558,6 +558,52 @@ object BluetoothIds {
 
     /** watts * 1 → UInt16 */
     const val FTMS_POWER_SCALE = 1f
+
+    // ─────────────────────────────────────────────────────────────
+    // FE-C over BLE (Tacx transport; ANT+ FE-C carried over a Nordic-UART-derived service)
+    // ─────────────────────────────────────────────────────────────
+    /**
+     * FE-C over BLE primary service, per `docs/How-to FE-C over BLE v1_0_0.pdf`.
+     *
+     * **Generic FE-C-over-BLE protocol identity, not a Tacx-model-specific one.** Page 16 of the
+     * ANT+ FE-C payload declares equipment type, so one GATT surface serves Trainer, Stationary
+     * Bike, Treadmill, and Rower personas without a model-specific driver. See
+     * `docs/fe-c-ble_simulator_implementation.md` and `docs/fe-c-ble_central_implementation.md`.
+     */
+    val UUID_FEC_SERVICE: UUID =
+        UUID.fromString("6E40FEC1-B5A3-F393-E0A9-E50E24DCCA9E")
+
+    /** Notify + CCCD. Machine -> central: one complete ANT serial message per notification. */
+    val UUID_FEC_MEASUREMENT: UUID =
+        UUID.fromString("6E40FEC2-B5A3-F393-E0A9-E50E24DCCA9E")
+
+    /** Write without response. Central -> machine: FE-C control pages 48/49/50/51/55. */
+    val UUID_FEC_CONTROL: UUID =
+        UUID.fromString("6E40FEC3-B5A3-F393-E0A9-E50E24DCCA9E")
+
+    // ANT serial envelope (sync + length + msg-id + channel + 8 page bytes + XOR checksum).
+    const val FEC_ANT_SYNC: Int = 0xA4
+    const val FEC_ANT_MSG_BROADCAST_DATA: Int = 0x4E
+    const val FEC_ANT_MSG_ACKNOWLEDGED_DATA: Int = 0x4F
+    const val FEC_DEFAULT_CHANNEL: Int = 0x05
+
+    // FE-C data pages (machine -> central).
+    const val FEC_PAGE_GENERAL_FE_DATA: Int = 0x10
+    const val FEC_PAGE_SPECIFIC_TRAINER_DATA: Int = 0x19
+    const val FEC_PAGE_PRODUCT_INFORMATION: Int = 0x51
+
+    // FE-C control pages (central -> machine).
+    const val FEC_PAGE_BASIC_RESISTANCE: Int = 0x30
+    const val FEC_PAGE_TARGET_POWER: Int = 0x31
+    const val FEC_PAGE_WIND_RESISTANCE: Int = 0x32
+    const val FEC_PAGE_TRACK_RESISTANCE: Int = 0x33
+    const val FEC_PAGE_USER_CONFIGURATION: Int = 0x37
+
+    /** Page 16 byte 1, low 5 bits. Plan §3.1; only these four personas are simulated. */
+    const val FEC_EQUIPMENT_TREADMILL: Int = 19
+    const val FEC_EQUIPMENT_STATIONARY_BIKE: Int = 21
+    const val FEC_EQUIPMENT_ROWER: Int = 22
+    const val FEC_EQUIPMENT_TRAINER: Int = 25
 }
 
 // ============================================================================
