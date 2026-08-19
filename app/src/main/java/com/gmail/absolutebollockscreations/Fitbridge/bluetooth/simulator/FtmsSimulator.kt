@@ -7,7 +7,6 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceP
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.Fitbridge.power.FitBridgeWakeLock
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -638,7 +637,6 @@ class FtmsSimulator(
             speedKph = sample.speedKph ?: 0.0,
             powerWatts = sample.powerWatts?.toDouble() ?: 0.0,
             cadenceRpm = sample.cadence ?: 0.0,
-            resistanceLevel = schwinnResistanceLevel(sample.resistance),
             heartRateBpm = sample.heartRate,
             energyKcal = sample.caloriesTotal.toDouble(),
             distanceMeters = sample.distanceMeters?.toDouble() ?: 0.0,
@@ -650,23 +648,6 @@ class FtmsSimulator(
         )
         session.encoder.completeTick()
         peripheral.publishSchwinnX70(frames)
-    }
-
-    /**
-     * Map the indoor-bike engine's resistance onto the x70 family's legal 1-22.
-     *
-     * The engine works in its own 3-12 band, which is a sensible steady workout and not this
-     * family's scale. The captured 170 walked 1 to 22, so the whole legal range is reachable and a
-     * client sees levels a real console can produce rather than a slice of them.
-     */
-    private fun schwinnResistanceLevel(engineResistance: Int?): Int {
-        val band = FtmsMockProfile.profiles[FtmsMachineProfile.INDOOR_BIKE]?.resistance
-            ?: return SchwinnX70Ride.RESISTANCE_FLOOR
-        val level = engineResistance?.toDouble() ?: return SchwinnX70Ride.RESISTANCE_FLOOR
-        val span = (band.max - band.min).takeIf { it > 0.0 } ?: return SchwinnX70Ride.RESISTANCE_FLOOR
-        val fraction = ((level - band.min) / span).coerceIn(0.0, 1.0)
-        val range = SchwinnX70Ride.RESISTANCE_CEILING - SchwinnX70Ride.RESISTANCE_FLOOR
-        return SchwinnX70Ride.RESISTANCE_FLOOR + (fraction * range).roundToInt()
     }
 
     /**

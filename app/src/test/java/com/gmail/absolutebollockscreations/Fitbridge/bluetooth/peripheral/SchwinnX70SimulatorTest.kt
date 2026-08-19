@@ -3,12 +3,15 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 import android.bluetooth.BluetoothGattCharacteristic
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.SchwinnX70Measurement
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.SchwinnX70PowerModel
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SchwinnX70Ride
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SchwinnX70ConsoleModel
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SchwinnX70FrameEncoder
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SchwinnX70Identity
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SchwinnX70Template
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -260,8 +263,6 @@ class SchwinnX70SimulatorTest {
                 speedKph = speed,
                 powerWatts = power,
                 cadenceRpm = ENGINE_PEAK_RPM * fraction,
-                resistanceLevel = SchwinnX70Ride.RESISTANCE_FLOOR +
-                    ((SchwinnX70Ride.RESISTANCE_CEILING - SchwinnX70Ride.RESISTANCE_FLOOR) * fraction).toInt(),
                 heartRateBpm = heartRate,
                 energyKcal = kcal,
                 distanceMeters = metres,
@@ -289,11 +290,11 @@ class SchwinnX70SimulatorTest {
         val (model, _) = newModel()
         var kcal = 0.0
         var metres = 0.0
-        var last = model.advance(1.0, 0.0, 0.0, 0.0, 1, 0, 0.0, 0.0)
+        var last = model.advance(1.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0)
         repeat(600) {
             kcal += 0.1
             metres += 8.0
-            last = model.advance(1.0, 28.8, 180.0, 88.0, 9, 130, kcal, metres)
+            last = model.advance(1.0, 28.8, 180.0, 88.0, 130, kcal, metres)
         }
 
         assertEquals("A is the engine's calorie total", kcal.toInt(), last.siblingAccumulatorA)
@@ -316,13 +317,59 @@ class SchwinnX70SimulatorTest {
     @Test
     fun `the moving-time accumulator does not advance while the rider is stopped`() {
         val (model, _) = newModel()
-        repeat(50) { model.advance(0.1, 12.0, 60.0, 70.0, 5, 120, 1.0, 100.0) }
-        val moving = model.advance(0.1, 12.0, 60.0, 70.0, 5, 120, 2.0, 200.0)
-        repeat(100) { model.advance(0.1, 0.0, 0.0, 0.0, 5, 120, 2.0, 200.0) }
-        val stopped = model.advance(0.1, 0.0, 0.0, 0.0, 5, 120, 2.0, 200.0)
+        repeat(50) { model.advance(0.1, 12.0, 60.0, 70.0, 120, 1.0, 100.0) }
+        val moving = model.advance(0.1, 12.0, 60.0, 70.0, 120, 2.0, 200.0)
+        repeat(100) { model.advance(0.1, 0.0, 0.0, 0.0, 120, 2.0, 200.0) }
+        val stopped = model.advance(0.1, 0.0, 0.0, 0.0, 120, 2.0, 200.0)
 
         assertEquals(moving.supplementalAccumulator, stopped.supplementalAccumulator)
         assertEquals("power is suppressed rather than published", 0.0, stopped.powerWatts, 0.0)
+    }
+
+    /**
+     * The main stream must not contradict the sibling stream about the same ride.
+     *
+     * The main frame carries a resistance level, and every consumer that reads it — FitBridge's own
+     * 270 path, TMIW, QZ — recovers power from `(cadence, resistance)`. So the level *is* the power,
+     * encoded, and it has to invert the same table rather than be scaled from the engine's own
+     * resistance band. Mapping 3-12 onto 1-22 instead put TMIW at 330-480 W against the engine's
+     * 223, at 43 km/h against 34, and 17% long on distance.
+     */
+    @Test
+    fun `the published resistance reproduces the engine's power through the model that reads it`() {
+        for ((cadence, power) in listOf(88.0 to 223.0, 75.0 to 120.0, 95.0 to 310.0, 80.0 to 60.0)) {
+            val (model, _) = newModel()
+            var state = model.advance(1.0, 30.0, power, cadence, 130, 1.0, 10.0)
+            repeat(60) { state = model.advance(1.0, 30.0, power, cadence, 130, 1.0, 10.0) }
+
+            val modelled = SchwinnX70PowerModel.powerWatts(cadence.roundToInt(), state.resistance)
+            assertTrue(
+                "at $cadence rpm the level ${state.resistance} reads back as $modelled W, not $power",
+                abs(modelled - power) <= maxOf(20.0, power * 0.12),
+            )
+            assertTrue("and it stays in the family's legal range", state.resistance in 1..22)
+        }
+    }
+
+    /** A knob, not a measurement: seeded at once, then rate-limited. */
+    @Test
+    fun `resistance is seeded immediately and then steps rather than jittering`() {
+        val (model, _) = newModel()
+        val seeded = model.advance(0.096, 30.0, 223.0, 88.0, 130, 1.0, 10.0)
+        assertTrue("the opening frame is already at a plausible level", seeded.resistance > 5)
+
+        // The engine's power carries noise, and +/-8 W straddles a row boundary at 88 rpm: the
+        // instantaneous best level alternates 9 / 11 every tick. The captured 270 held one level
+        // across 42 seconds, so what the rate limit has to prevent is following that at 10 Hz.
+        val levels = mutableListOf(seeded.resistance)
+        repeat(20) { tick ->
+            val jitter = if (tick % 2 == 0) -8.0 else 8.0
+            levels += model.advance(0.096, 30.0, 223.0 + jitter, 88.0, 130, 1.0, 10.0).resistance
+        }
+
+        val changes = levels.zipWithNext().count { (a, b) -> a != b }
+        assertTrue("two seconds of alternating noise moved the knob $changes times", changes <= 2)
+        assertTrue("and never by more than one step", levels.zipWithNext().all { (a, b) -> abs(a - b) <= 1 })
     }
 
     /**
@@ -339,7 +386,7 @@ class SchwinnX70SimulatorTest {
     fun `the engine's speed survives the round trip through the mph wire field`() {
         val (model, encoder) = newModel()
         val engineKph = 32.18688
-        val state = model.advance(1.0, engineKph, 150.0, 90.0, 9, 130, 10.0, 500.0)
+        val state = model.advance(1.0, engineKph, 150.0, 90.0, 130, 10.0, 500.0)
         assertEquals("32.18688 km/h is exactly 20 mph", 20.0, state.speedMph, 0.001)
 
         val decoded = requireNotNull(SchwinnX70Measurement.parseSibling(encoder.encodeSibling(state)))
@@ -477,7 +524,7 @@ class SchwinnX70SimulatorTest {
         // power contradicts the console's measured one inside the same tick.
         val (model, encoder) = newModel()
         val frames = (0 until 300).map { tick ->
-            val state = model.advance(1.0, 28.8, 180.0, 90.0, 9, 130, tick * 0.1, tick * 8.0)
+            val state = model.advance(1.0, 28.8, 180.0, 90.0, 130, tick * 0.1, tick * 8.0)
             encoder.encodeMain(state).also { encoder.completeTick() }
         }
         val counters = frames.map { requireNotNull(SchwinnX70Measurement.parseMain(it)).cadenceEventCounter }

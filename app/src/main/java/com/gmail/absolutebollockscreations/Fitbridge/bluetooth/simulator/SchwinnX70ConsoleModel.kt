@@ -1,6 +1,8 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.SchwinnX70Measurement
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.SchwinnX70PowerModel
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -74,6 +76,9 @@ internal class SchwinnX70ConsoleModel {
     private var crankRevolutions = 0.0
     private var clockSeconds = 0.0
     private var movingSeconds = 0.0
+    private var resistanceLevel = SchwinnX70Ride.RESISTANCE_FLOOR
+    private var resistanceSeeded = false
+    private var secondsSinceResistanceStep = 0.0
 
     /**
      * Advance by [seconds] and render the state a frame would carry.
@@ -92,7 +97,6 @@ internal class SchwinnX70ConsoleModel {
         speedKph: Double,
         powerWatts: Double,
         cadenceRpm: Double,
-        resistanceLevel: Int,
         heartRateBpm: Int,
         energyKcal: Double,
         distanceMeters: Double,
@@ -109,6 +113,7 @@ internal class SchwinnX70ConsoleModel {
         val cadence = if (moving) cadenceRpm.coerceAtLeast(0.0) else 0.0
 
         crankRevolutions += cadence * seconds / 60.0
+        advanceResistance(seconds, power, cadence)
         if (moving) movingSeconds += seconds
 
         val state = SchwinnX70ConsoleState(
@@ -119,10 +124,7 @@ internal class SchwinnX70ConsoleModel {
             crankCounter = crankRevolutions.toInt() and 0xFFFF,
             clockTicks = (clockSeconds * TICKS_PER_SECOND).toLong().toInt() and 0xFFFF,
             energyRaw = (energyKcal.coerceAtLeast(0.0) * ENERGY_DIVISOR).roundToLong(),
-            resistance = resistanceLevel.coerceIn(
-                SchwinnX70Ride.RESISTANCE_FLOOR,
-                SchwinnX70Ride.RESISTANCE_CEILING,
-            ),
+            resistance = resistanceLevel,
             heartRateBpm = heartRateBpm.coerceIn(0, 0xFF),
             siblingAccumulatorA = energyKcal.toInt().coerceAtLeast(0) and 0xFFFF,
             siblingAccumulatorB =
@@ -134,7 +136,60 @@ internal class SchwinnX70ConsoleModel {
         return state
     }
 
+    /**
+     * Choose the resistance level whose modelled power matches the ride the engine is generating.
+     *
+     * ## Why this is an inversion rather than a scale
+     *
+     * The main frame carries a resistance level, not a power. Every consumer that reads it —
+     * FitBridge's own 270 path, TMIW, QZ — recovers power from `(cadence, resistance)` through
+     * [SchwinnX70PowerModel.RESISTANCE_POWER_COEFFICIENTS]. So the level is not decoration: it *is*
+     * the power, encoded. Publishing a level derived from anything else makes the main stream
+     * contradict the sibling stream's measured power on the same tick.
+     *
+     * That is exactly what mapping the engine's own 3-12 band onto the family's 1-22 did, and it
+     * was measured: at 88 rpm and 223 W the engine's level 9-11 mapped to 15-20, which the table
+     * reads back as 348-464 W. TMIW showed 330-480 W, a speed of 43 km/h against 34, and a distance
+     * 17% long — three symptoms, one cause, all of them downstream of the level.
+     *
+     * Inverting the table instead makes the two streams agree by construction, which is the same
+     * argument that already makes the crank counter follow the sibling frame's speed.
+     *
+     * ## Why it moves one step at a time
+     *
+     * Resistance is a knob, not a measurement. The captured 270 held level 6 across 42 seconds and
+     * the 170 walked 17 to 22 during a deliberate sweep; neither jitters tick to tick, and the
+     * engine's power and cadence both carry noise that would make an unsmoothed inversion do so.
+     * One step per second tracks a ramp without inventing a rider who cannot leave the knob alone.
+     * The opening level is seeded directly so the first frames of a link are not 20 seconds of
+     * wrong power.
+     */
+    private fun advanceResistance(seconds: Double, powerWatts: Double, cadenceRpm: Double) {
+        secondsSinceResistanceStep += seconds
+        if (cadenceRpm < MIN_CADENCE_FOR_RESISTANCE || powerWatts <= 0.0) return
+
+        val rpm = cadenceRpm.roundToInt()
+        val target = (SchwinnX70Ride.RESISTANCE_FLOOR..SchwinnX70Ride.RESISTANCE_CEILING)
+            .minBy { level -> abs(SchwinnX70PowerModel.powerWatts(rpm, level) - powerWatts) }
+
+        if (!resistanceSeeded) {
+            resistanceLevel = target
+            resistanceSeeded = true
+            secondsSinceResistanceStep = 0.0
+            return
+        }
+        if (target == resistanceLevel || secondsSinceResistanceStep < RESISTANCE_STEP_SECONDS) return
+        resistanceLevel += if (target > resistanceLevel) 1 else -1
+        secondsSinceResistanceStep = 0.0
+    }
+
     companion object {
+        /** Below this the table's quadratics are not usable and the level is left where it is. */
+        const val MIN_CADENCE_FOR_RESISTANCE = 20.0
+
+        /** How often the simulated rider is willing to move the knob. */
+        const val RESISTANCE_STEP_SECONDS = 1.0
+
         /** `SchwinnX70Measurement.TMIW_CALORIE_DIVISOR`, restated so the encoder needs no decoder. */
         const val ENERGY_DIVISOR = 2_097_152.0
 
