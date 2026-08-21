@@ -2,6 +2,17 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 
+/** Persona-specific bounds for the deterministic simulator workout, not physical-product claims. */
+data class FeCSyntheticWorkoutRange(
+    val speedKph: ClosedFloatingPointRange<Double>,
+    val cadencePerMinute: IntRange,
+    val powerWatts: IntRange?,
+    val heartRateBpm: IntRange,
+    val inclinePercent: ClosedFloatingPointRange<Double>?,
+    val resistancePercent: ClosedFloatingPointRange<Double>?,
+    val metabolicEquivalent: ClosedFloatingPointRange<Double>,
+)
+
 /**
  * Equipment persona this FE-C-over-BLE simulator instance is playing.
  *
@@ -25,6 +36,7 @@ enum class FeCEquipmentType(
     val resistanceLevelPercent: Double,
     val metabolicEquivalent: Double,
     val maximumResistanceNewtons: Int,
+    val workoutRange: FeCSyntheticWorkoutRange,
 ) {
     TRAINER(
         BluetoothIds.FEC_EQUIPMENT_TRAINER,
@@ -36,6 +48,9 @@ enum class FeCEquipmentType(
         resistanceLevelPercent = 35.0,
         metabolicEquivalent = 8.0,
         maximumResistanceNewtons = 1_200,
+        workoutRange = FeCSyntheticWorkoutRange(
+            24.0..42.0, 72..105, 120..360, 105..172, null, 20.0..65.0, 5.0..13.0,
+        ),
     ),
     STATIONARY_BIKE(
         BluetoothIds.FEC_EQUIPMENT_STATIONARY_BIKE,
@@ -47,6 +62,9 @@ enum class FeCEquipmentType(
         resistanceLevelPercent = 30.0,
         metabolicEquivalent = 7.5,
         maximumResistanceNewtons = 650,
+        workoutRange = FeCSyntheticWorkoutRange(
+            18.0..36.0, 65..105, 80..300, 100..168, null, 15.0..60.0, 4.0..12.0,
+        ),
     ),
     TREADMILL(
         BluetoothIds.FEC_EQUIPMENT_TREADMILL,
@@ -58,6 +76,9 @@ enum class FeCEquipmentType(
         resistanceLevelPercent = 0.0,
         metabolicEquivalent = 9.8,
         maximumResistanceNewtons = 1_500,
+        workoutRange = FeCSyntheticWorkoutRange(
+            6.5..15.0, 130..185, null, 105..178, 1.0..8.0, null, 5.0..14.0,
+        ),
     ),
     ELLIPTICAL(
         BluetoothIds.FEC_EQUIPMENT_ELLIPTICAL,
@@ -69,6 +90,9 @@ enum class FeCEquipmentType(
         resistanceLevelPercent = 40.0,
         metabolicEquivalent = 6.5,
         maximumResistanceNewtons = 800,
+        workoutRange = FeCSyntheticWorkoutRange(
+            6.0..14.0, 45..85, 80..260, 100..170, 2.0..10.0, 20.0..70.0, 4.0..12.0,
+        ),
     ),
     ROWER(
         BluetoothIds.FEC_EQUIPMENT_ROWER,
@@ -80,6 +104,9 @@ enum class FeCEquipmentType(
         resistanceLevelPercent = 45.0,
         metabolicEquivalent = 7.5,
         maximumResistanceNewtons = 700,
+        workoutRange = FeCSyntheticWorkoutRange(
+            9.0..18.0, 18..34, 80..330, 100..175, null, 25.0..65.0, 4.5..13.0,
+        ),
     ),
     CLIMBER(
         BluetoothIds.FEC_EQUIPMENT_CLIMBER,
@@ -91,6 +118,9 @@ enum class FeCEquipmentType(
         resistanceLevelPercent = 50.0,
         metabolicEquivalent = 8.8,
         maximumResistanceNewtons = 1_000,
+        workoutRange = FeCSyntheticWorkoutRange(
+            1.1..2.9, 25..65, 90..320, 110..180, null, 25.0..75.0, 6.0..15.0,
+        ),
     ),
     NORDIC_SKIER(
         BluetoothIds.FEC_EQUIPMENT_NORDIC_SKIER,
@@ -102,6 +132,9 @@ enum class FeCEquipmentType(
         resistanceLevelPercent = 40.0,
         metabolicEquivalent = 9.0,
         maximumResistanceNewtons = 600,
+        workoutRange = FeCSyntheticWorkoutRange(
+            8.0..20.0, 30..72, 80..340, 105..178, null, 20.0..65.0, 5.0..14.0,
+        ),
     ),
 }
 
@@ -219,6 +252,11 @@ internal class FeCBleMachineState(
     var caloricBurnRateKcalPerHour: Double = metabolicEquivalent * METABOLIC_FIXTURE_BODY_MASS_KG
     var accumulatedCaloriesKcal: Double = 0.0
 
+    /** Current deterministic interval stage, surfaced only for simulator diagnostics. */
+    var intervalName: String = FeCBleSyntheticModel.initialIntervalName
+    var intervalSecondsRemaining: Int = FeCBleSyntheticModel.initialIntervalSeconds
+    var intervalIntensityPercent: Int = 0
+
     // Page 19 (Treadmill) fields. Internally wider than the wire's 0.1m/byte encoding, per the
     // same §8.1 rationale as the trainer counters above - the wire value is `& 0xFF` at the
     // encoder boundary only.
@@ -267,6 +305,9 @@ internal class FeCBleMachineState(
         metabolicEquivalent = equipmentType.metabolicEquivalent
         caloricBurnRateKcalPerHour = metabolicEquivalent * METABOLIC_FIXTURE_BODY_MASS_KG
         accumulatedCaloriesKcal = 0.0
+        intervalName = FeCBleSyntheticModel.initialIntervalName
+        intervalSecondsRemaining = FeCBleSyntheticModel.initialIntervalSeconds
+        intervalIntensityPercent = 0
         positiveVerticalDistanceMeters = 0.0
         negativeVerticalDistanceMeters = 0.0
         movementCount = 0.0

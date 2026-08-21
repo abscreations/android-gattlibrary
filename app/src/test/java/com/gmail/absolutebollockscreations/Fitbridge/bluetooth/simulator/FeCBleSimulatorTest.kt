@@ -296,12 +296,17 @@ class FeCBleSimulatorTest {
         val state = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
         repeat(2) { FeCBleSyntheticModel.advanceTick(state) }
         val first = FeCBleTelemetryEncoder.encodePage26(state)
-        repeat(2) { FeCBleSyntheticModel.advanceTick(state) }
+        val contributingPowers = buildList {
+            repeat(2) {
+                FeCBleSyntheticModel.advanceTick(state)
+                add(state.instantaneousPowerWatts!!)
+            }
+        }
         val second = FeCBleTelemetryEncoder.encodePage26(state)
         val periodDelta = (u16(second, 3) - u16(first, 3)) and 0xFFFF
         val torqueDelta = (u16(second, 5) - u16(first, 5)) and 0xFFFF
         val derivedPower = 128.0 * Math.PI * torqueDelta / periodDelta
-        assertEquals(200.0, derivedPower, 1.0)
+        assertEquals(contributingPowers.average(), derivedPower, 1.0)
 
         state.torqueEventCount = 256
         state.wheelTicks = 257
@@ -370,6 +375,95 @@ class FeCBleSimulatorTest {
         assertEquals(FeCBleControlMode.FREE, state.controlMode)
         assertNull(state.targetPowerWatts)
         assertEquals(FeCEquipmentState.READY, state.feState)
+    }
+
+    @Test
+    fun `persona interval metrics vary repeat and remain inside their synthetic bounds`() {
+        FeCEquipmentType.entries.forEach { type ->
+            val state = FeCBleMachineState(type).apply { enterInUseWithDefaults() }
+            val speeds = mutableSetOf<Double>()
+            val cadences = mutableSetOf<Int>()
+            val powers = mutableSetOf<Int>()
+            val mets = mutableSetOf<Double>()
+            val totalTicks = FeCBleSyntheticModel.intervalCycleSeconds * 4
+
+            repeat(totalTicks) {
+                FeCBleSyntheticModel.advanceTick(state)
+                val range = type.workoutRange
+                val speedKph = state.speedMps * 3.6
+                assertTrue("$type speed $speedKph", speedKph in range.speedKph)
+                assertTrue("$type cadence ${state.cadenceRpm}", state.cadenceRpm!! in range.cadencePerMinute)
+                assertTrue("$type HR ${state.heartRateBpm}", state.heartRateBpm!! in range.heartRateBpm)
+                assertTrue("$type MET ${state.metabolicEquivalent}", state.metabolicEquivalent in range.metabolicEquivalent)
+                range.powerWatts?.let { assertTrue("$type power", state.instantaneousPowerWatts!! in it) }
+                    ?: assertNull("$type must not synthesize power", state.instantaneousPowerWatts)
+                range.inclinePercent?.let { assertTrue("$type incline", state.inclinePercent in it) }
+                range.resistancePercent?.let { assertTrue("$type resistance", state.resistanceLevelPercent in it) }
+                speeds += speedKph
+                cadences += state.cadenceRpm!!
+                state.instantaneousPowerWatts?.let(powers::add)
+                mets += state.metabolicEquivalent
+            }
+
+            assertTrue("$type speed varies", speeds.size > 50)
+            assertTrue("$type cadence varies", cadences.size > 5)
+            assertTrue("$type METs vary", mets.size > 50)
+            if (type.workoutRange.powerWatts != null) assertTrue("$type power varies", powers.size > 5)
+            assertTrue("$type distance accumulates", state.distanceMeters > 0.0)
+            assertTrue("$type calories accumulate", state.accumulatedCaloriesKcal > 0.0)
+            if (type in setOf(
+                    FeCEquipmentType.ELLIPTICAL,
+                    FeCEquipmentType.ROWER,
+                    FeCEquipmentType.CLIMBER,
+                    FeCEquipmentType.NORDIC_SKIER,
+                )
+            ) {
+                assertTrue("$type movements accumulate", state.movementCount > 0.0)
+            }
+        }
+    }
+
+    @Test
+    fun `interval profile repeats exactly after two minutes`() {
+        val state = FeCBleMachineState(FeCEquipmentType.ROWER).apply { enterInUseWithDefaults() }
+        FeCBleSyntheticModel.advanceTick(state)
+        val first = listOf(
+            state.intervalName,
+            state.intervalIntensityPercent,
+            state.speedMps,
+            state.cadenceRpm,
+            state.instantaneousPowerWatts,
+            state.metabolicEquivalent,
+        )
+        repeat(FeCBleSyntheticModel.intervalCycleSeconds * 4) {
+            FeCBleSyntheticModel.advanceTick(state)
+        }
+        assertEquals(first, listOf(
+            state.intervalName,
+            state.intervalIntensityPercent,
+            state.speedMps,
+            state.cadenceRpm,
+            state.instantaneousPowerWatts,
+            state.metabolicEquivalent,
+        ))
+    }
+
+    @Test
+    fun `trainer controls retain precedence over repeating workout load fields`() {
+        val basic = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
+        FeCBleSyntheticModel.applyControlCommand(basic, FeCBleControlCommand.BasicResistance(57.5), null)
+        repeat(FeCBleSyntheticModel.intervalCycleSeconds * 4) { FeCBleSyntheticModel.advanceTick(basic) }
+        assertEquals(57.5, basic.resistanceLevelPercent, 0.0)
+
+        val simulation = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
+        FeCBleSyntheticModel.applyControlCommand(
+            simulation,
+            FeCBleControlCommand.TrackResistance(6.25, 0.004),
+            null,
+        )
+        repeat(100) { FeCBleSyntheticModel.advanceTick(simulation) }
+        assertEquals(6.25, simulation.inclinePercent, 0.0)
+        assertEquals(262, simulation.instantaneousPowerWatts)
     }
 
     @Test
