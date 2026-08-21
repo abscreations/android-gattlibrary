@@ -54,7 +54,7 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `simulator selector places the seven FE-C over BLE personas last, after Precor`() {
+    fun `simulator selector places generic FE-C personas then Tacx identities after Precor`() {
         // FE-C over BLE was added 2026-08-19, after every other persona here (plan
         // `docs/fe-c-ble_simulator_implementation.md` §3.3). Precor is no longer the list's last
         // entry; the seven FE-C equipment types are. There is no separate "+ CPS" persona: the
@@ -62,12 +62,22 @@ class SimulatorPersonaTest {
         val options = simulatorPersonaOptions()
         val precorIndex = options.indexOf(SimulatorPersona.PrecorChrono)
         assertTrue(precorIndex >= 0)
+        val fec = options.drop(precorIndex + 1).filterIsInstance<SimulatorPersona.FeCBle>()
         assertEquals(
             FeCEquipmentType.entries,
-            options.drop(precorIndex + 1).filterIsInstance<SimulatorPersona.FeCBle>().map { it.equipmentType },
+            fec.take(FeCEquipmentType.entries.size).map { it.equipmentType },
         )
         assertEquals(7, FeCEquipmentType.entries.size)
+        assertEquals(listOf(FeCBleSimulatorIdentity.TACX_NEO), fec.takeLast(1).map { it.identity })
         assertEquals(options.lastIndex, options.indexOfLast { it is SimulatorPersona.FeCBle })
+    }
+
+    @Test
+    fun `Tacx Neo identity uses a synthetic serial suffix and captured software revisions`() {
+        val neo = SimulatorPersona.FeCBle(FeCEquipmentType.TRAINER, identity = FeCBleSimulatorIdentity.TACX_NEO)
+        assertEquals("Tacx Neo 90002", neo.advertisedName)
+        assertEquals(0, neo.identity.supplementalRevision)
+        assertEquals(7, neo.identity.mainRevision)
     }
 
     @Test

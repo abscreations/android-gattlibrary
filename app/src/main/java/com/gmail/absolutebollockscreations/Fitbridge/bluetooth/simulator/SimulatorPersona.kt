@@ -76,14 +76,39 @@ sealed interface SimulatorPersona {
     data class FeCBle(
         val equipmentType: FeCEquipmentType,
         val controlEnabled: Boolean = equipmentType.supportsControl,
+        val identity: FeCBleSimulatorIdentity = FeCBleSimulatorIdentity.GENERIC,
         val overlay: FeCBleSimulatorOverlay = if (equipmentType.includesCpsOverlay) {
             FeCBleSimulatorOverlay.CPS_INCYCLIST_COMPAT
         } else {
             FeCBleSimulatorOverlay.NONE
         },
     ) : SimulatorPersona {
-        override val advertisedName: String = feCBleAdvertisedName(equipmentType)
+        override val advertisedName: String = identity.localName ?: feCBleAdvertisedName(equipmentType)
     }
+}
+
+/** Capture-grounded BLE identities layered over the same deterministic FE-C trainer model. */
+enum class FeCBleSimulatorIdentity(
+    val displayName: String,
+    val localName: String?,
+    val syntheticSerial: String,
+    val supplementalRevision: Int,
+    val mainRevision: Int,
+    val antHardwareRevision: Int? = null,
+    val antManufacturerId: Int? = null,
+    val antModelNumber: Int? = null,
+) {
+    GENERIC("FitBridge", null, "900000000", 1, 1),
+    TACX_NEO(
+        displayName = "Tacx Neo",
+        localName = "Tacx Neo 90002",
+        syntheticSerial = "90002",
+        supplementalRevision = 0,
+        mainRevision = 7,
+        antHardwareRevision = 1,
+        antManufacturerId = 89,
+        antModelNumber = 2800,
+    ),
 }
 
 /** Every console in the captures discovers under this name. */

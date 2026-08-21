@@ -8,7 +8,8 @@ import java.util.UUID
  * far. Immutable so a reader (the metric mapper, §9.4) never observes a partially-updated
  * view - [FeCProtocolSession] publishes a new instance each time a page changes state.
  *
- * `null` fields mean "not yet seen this connection generation" (for [productInfo]) or "the
+ * `null` fields mean "not yet seen this connection generation" (for [manufacturerInfo] and
+ * [productInfo]) or "the
  * device reported this value as unavailable" (the ANT+ sentinel fields) - the two cases are
  * indistinguishable from a snapshot alone, which is fine for Phase 9's scope: nothing here
  * needs to tell "never sent" apart from "explicitly invalid" yet.
@@ -42,6 +43,7 @@ internal data class FeCMeasurementSnapshot(
     val accumulatedPowerRaw: Long? = null,
     val eventCountRaw: Long? = null,
     val feCapabilities: FeCPage.FeCapabilities? = null,
+    val manufacturerInfo: FeCPage.ManufacturerInformation? = null,
     val productInfo: FeCPage.ProductInformation? = null,
 )
 
@@ -113,6 +115,7 @@ internal class FeCProtocolSession(
                 // notification. A rejected frame is not fresh telemetry and must not satisfy
                 // adapter liveness by replaying stale samples.
                 lastAppliedPageValue = null
+                CaptureHooks.parserRejection()
                 Timber.tag(TAG).w(
                     "FE-C frame rejected reason=%s connection=%s bytes=%s",
                     result.reason,
@@ -140,6 +143,7 @@ internal class FeCProtocolSession(
                 is FeCPage.SpecificNordicSkierData -> applySpecificNordicSkierData(page)
                 is FeCPage.TrainerTorqueData -> applyTrainerTorqueData(page)
                 is FeCPage.FeCapabilities -> snapshotValue.copy(feCapabilities = page)
+                is FeCPage.ManufacturerInformation -> snapshotValue.copy(manufacturerInfo = page)
                 is FeCPage.ProductInformation -> snapshotValue.copy(productInfo = page)
                 is FeCPage.Unknown -> {
                     Timber.tag(TAG).d(

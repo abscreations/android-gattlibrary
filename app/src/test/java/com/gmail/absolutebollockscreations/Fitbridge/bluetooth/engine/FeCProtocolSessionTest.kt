@@ -76,7 +76,7 @@ class FeCProtocolSessionTest {
     }
 
     @Test
-    fun `page 25 and product info merge into the same snapshot as page 16`() {
+    fun `page 25 and common identity pages merge into the same snapshot as page 16`() {
         val session = newSession()
         session.onPacket(
             BluetoothIds.UUID_FEC_MEASUREMENT,
@@ -90,8 +90,13 @@ class FeCProtocolSessionTest {
         )
         session.onPacket(
             BluetoothIds.UUID_FEC_MEASUREMENT,
-            FeCFrameCodec.encode(0x4E, 5, bytes(0x51, 0xFF, 0x01, 0x02, 0xEF, 0xCD, 0xAB, 0x89)),
+            FeCFrameCodec.encode(0x4E, 5, bytes(0x50, 0xFF, 0xFF, 0x01, 0x59, 0x00, 0xF0, 0x0A)),
             arrivalMs = 2L,
+        )
+        session.onPacket(
+            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FeCFrameCodec.encode(0x4E, 5, bytes(0x51, 0xFF, 0x01, 0x02, 0xEF, 0xCD, 0xAB, 0x89)),
+            arrivalMs = 3L,
         )
 
         val snap = session.snapshot
@@ -100,6 +105,9 @@ class FeCProtocolSessionTest {
         // From page 25.
         assertEquals(85, snap.cadenceRpm)
         assertEquals(250, snap.instantaneousPowerWatts)
+        // From page 80.
+        assertEquals(89, snap.manufacturerInfo?.manufacturerId)
+        assertEquals(2800, snap.manufacturerInfo?.modelNumber)
         // From page 81.
         assertEquals(0x89ABCDEFL, snap.productInfo?.serialNumber)
     }

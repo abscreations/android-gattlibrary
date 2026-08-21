@@ -10,6 +10,7 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCBleMachineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCBleSimulatorOverlay
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCBleSimulatorIdentity
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCBleTelemetryScheduler
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.RejectReason
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
@@ -88,6 +89,7 @@ internal class FeCBlePeripheralController(
      * accumulator still needs continuous state across ticks to keep event timestamps coherent.
      */
     @Volatile private var cpsAccumulator: CyclingEventAccumulator? = null
+    @Volatile private var activeIdentity: FeCBleSimulatorIdentity = FeCBleSimulatorIdentity.GENERIC
 
     private var packets = 0L
     private var conflated = 0L
@@ -138,11 +140,15 @@ internal class FeCBlePeripheralController(
         stopResources(restoreName = false)
         packets = 0; conflated = 0; controlWrites = 0; malformedWrites = 0; unsupportedPages = 0
         active = true
+        activeIdentity = persona.identity
 
         val includeCps = persona.overlay == FeCBleSimulatorOverlay.CPS_INCYCLIST_COMPAT
         val newState = FeCBleMachineState(
             equipmentType = persona.equipmentType,
             controlEnabled = persona.controlEnabled,
+            serialNumber = persona.identity.syntheticSerial.toLong(),
+            softwareRevisionSupplemental = persona.identity.supplementalRevision,
+            softwareRevisionMain = persona.identity.mainRevision,
         )
         state = newState
         scheduler = FeCBleTelemetryScheduler(persona.equipmentType)
@@ -151,7 +157,14 @@ internal class FeCBlePeripheralController(
         } else {
             null
         }
-        val newAdvertiser = FeCBlePeripheralAdvertiser(context, newState, persona.controlEnabled, includeCps, this)
+        val newAdvertiser = FeCBlePeripheralAdvertiser(
+            context,
+            newState,
+            persona.controlEnabled,
+            includeCps,
+            persona.identity,
+            this,
+        )
         advertiser = newAdvertiser
 
         adapterNames.apply(persona.advertisedName) nameCallback@{ nameResult ->
@@ -206,6 +219,7 @@ internal class FeCBlePeripheralController(
         scheduler = null
         advertiser = null
         cpsAccumulator = null
+        activeIdentity = FeCBleSimulatorIdentity.GENERIC
         publishStatus(Status())
     }
 
@@ -238,6 +252,7 @@ internal class FeCBlePeripheralController(
                                 currentState.instantaneousPowerWatts ?: 0,
                                 revolutions,
                             )
+                                .also { currentAdvertiser.publishCsc(CyclingSensorEncoders.cscMeasurement(revolutions)) }
                         }
                         currentAdvertiser.publishCps(cpsFrame)
                     }

@@ -65,6 +65,23 @@ class FeCFrameCodecTest {
     }
 
     @Test
+    fun `rejects a valid frame truncated at every boundary`() {
+        val wire = FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 25, 40, 120, 0x88, 0x13, 145, 0x34))
+        for (size in 0 until wire.size) {
+            assertTrue("truncation size=$size", FeCFrameCodec.decode(wire.copyOf(size)) is FeCFrameDecodeResult.Rejected)
+        }
+    }
+
+    @Test
+    fun `rejects an extra trailing byte`() {
+        val wire = FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 25, 40, 120, 0x88, 0x13, 145, 0x34))
+        assertEquals(
+            FeCFrameRejection.BAD_LENGTH,
+            (FeCFrameCodec.decode(wire + 0x00) as FeCFrameDecodeResult.Rejected).reason,
+        )
+    }
+
+    @Test
     fun `rejects checksum mismatch`() {
         val wire = FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 25, 40, 120, 0x88, 0x13, 145, 0x34))
         wire[wire.size - 1] = (wire[wire.size - 1].toInt() xor 0x01).toByte()

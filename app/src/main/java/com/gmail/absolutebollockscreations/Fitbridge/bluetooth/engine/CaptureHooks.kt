@@ -46,6 +46,11 @@ import java.util.UUID
  */
 internal object CaptureHooks {
 
+    /** Arms the retroactive ring when a protocol parser rejects a structurally invalid frame. */
+    fun parserRejection() {
+        BleCapture.arm(CaptureTrigger.PARSER_REJECTION)
+    }
+
     /** One advertisement, payloads unparsed per §0.9.4. */
     fun scan(
         name: String?,

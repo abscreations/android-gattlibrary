@@ -172,6 +172,13 @@ internal sealed interface FeCPage {
         val supportsSimulation: Boolean,
     ) : FeCPage
 
+    /** Common Page 80 (0x50) — static manufacturer/model identity, not workout telemetry. */
+    data class ManufacturerInformation(
+        val hardwareRevision: Int,
+        val manufacturerId: Int,
+        val modelNumber: Int,
+    ) : FeCPage
+
     /**
      * Page 81 (0x51) - Product Information.
      *
@@ -221,6 +228,7 @@ internal object FeCPageParsers {
             BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA -> decodeTrainerData(data)
             BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA -> decodeTrainerTorqueData(data)
             BluetoothIds.FEC_PAGE_FE_CAPABILITIES -> decodeFeCapabilities(data)
+            BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION -> decodeManufacturerInformation(data)
             BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION -> decodeProductInformation(data)
             else -> FeCPage.Unknown(page)
         }
@@ -408,6 +416,15 @@ internal object FeCPageParsers {
             supportsBasicResistance = (capabilities and 0x01) != 0,
             supportsTargetPower = (capabilities and 0x02) != 0,
             supportsSimulation = (capabilities and 0x04) != 0,
+        )
+    }
+
+    private fun decodeManufacturerInformation(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION)
+        return FeCPage.ManufacturerInformation(
+            hardwareRevision = data.u8(3),
+            manufacturerId = data.u16le(4),
+            modelNumber = data.u16le(6),
         )
     }
 

@@ -78,6 +78,7 @@ internal object FeCFrameCodec {
         BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA,
         BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA,
         BluetoothIds.FEC_PAGE_FE_CAPABILITIES,
+        BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION,
         BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION,
     )
 

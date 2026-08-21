@@ -8,6 +8,49 @@ import androidx.annotation.RequiresPermission
 import timber.log.Timber
 import java.util.UUID
 
+internal enum class FeCGattOperationKind { ENABLE_NOTIFICATIONS }
+
+internal data class FeCGattOperation(
+    val kind: FeCGattOperationKind,
+    val characteristicUuid: UUID,
+)
+
+internal data class FeCDiscoveryPlan(
+    val activate: Boolean,
+    val controlAvailable: Boolean,
+    val operations: List<FeCGattOperation>,
+)
+
+/** Pure FE-C inventory decision used by production discovery and §11.2 tests. */
+internal fun planFeCDiscovery(
+    servicePresent: Boolean,
+    characteristicUuids: Set<UUID>,
+): FeCDiscoveryPlan {
+    if (!servicePresent || BluetoothIds.UUID_FEC_MEASUREMENT !in characteristicUuids) {
+        return FeCDiscoveryPlan(
+            activate = false,
+            controlAvailable = false,
+            operations = emptyList(),
+        )
+    }
+    return FeCDiscoveryPlan(
+        activate = true,
+        controlAvailable = BluetoothIds.UUID_FEC_CONTROL in characteristicUuids,
+        operations = listOf(
+            FeCGattOperation(
+                FeCGattOperationKind.ENABLE_NOTIFICATIONS,
+                BluetoothIds.UUID_FEC_MEASUREMENT,
+            ),
+        ),
+    )
+}
+
+internal fun feCCapabilityResponseTimedOut(
+    deadlineMs: Long?,
+    nowMs: Long,
+    alreadyResolved: Boolean,
+): Boolean = !alreadyResolved && deadlineMs != null && nowMs >= deadlineMs
+
 /**
  * FE-C over BLE protocol handler, generic across every FE-C persona (Trainer, Bike, Treadmill,
  * Rower, Elliptical, Climber, Nordic Skier) — plan §7/§9 of
@@ -109,23 +152,24 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         services: List<BluetoothGattService>,
     ): Boolean {
         val fecService = services.firstOrNull { it.uuid == BluetoothIds.UUID_FEC_SERVICE }
-            ?: return false
-
-        val measurementChar = fecService.getCharacteristic(BluetoothIds.UUID_FEC_MEASUREMENT)
-        if (measurementChar == null) {
+        val characteristicUuids = fecService?.characteristics.orEmpty().mapTo(linkedSetOf()) { it.uuid }
+        val plan = planFeCDiscovery(fecService != null, characteristicUuids)
+        if (!plan.activate) {
             Timber.tag(BtEngineState.TAG).w(
                 "FE-C over BLE: FEC1 present but FEC2 (measurement) is missing; declining activation",
             )
             return false
         }
+        val measurementChar = requireNotNull(
+            fecService?.getCharacteristic(BluetoothIds.UUID_FEC_MEASUREMENT),
+        )
 
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
             Timber.tag(BtEngineState.TAG).w("FE-C over BLE discovery ignored for unregistered GATT")
             return false
         }
 
-        val controlChar = fecService.getCharacteristic(BluetoothIds.UUID_FEC_CONTROL)
-        controlAvailable = controlChar != null
+        controlAvailable = plan.controlAvailable
         if (!controlAvailable) {
             Timber.tag(BtEngineState.TAG).i(
                 "FE-C over BLE: FEC3 (control) absent on %s; measurement-only device",
@@ -146,7 +190,12 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // Only FEC2 is armed here. FEC3, when present, is a write-without-response target for
         // the control scheduler (§9.9) - it is never subscribed to, and nothing is written to
         // it during discovery.
-        engine.enableNotifications(context, measurementChar)
+        plan.operations.forEach { operation ->
+            when (operation.kind) {
+                FeCGattOperationKind.ENABLE_NOTIFICATIONS ->
+                    engine.enableNotifications(context, measurementChar)
+            }
+        }
 
         Timber.tag(BtEngineState.TAG).i(
             "FE-C over BLE activating connection=%s control=%s",
@@ -274,7 +323,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         session?.onTick(MonotonicMetricClock.SYSTEM.nowMs())
         val nowMs = MonotonicMetricClock.SYSTEM.nowMs()
         val deadline = capabilityRequestDeadlineMs
-        if (deadline != null && nowMs >= deadline) {
+        if (feCCapabilityResponseTimedOut(deadline, nowMs, capabilitiesResolved)) {
             capabilityRequestDeadlineMs = null
             capabilitiesResolved = true
             Timber.tag(BtEngineState.TAG).w("FE-C page 54 response timed out; withholding all control modes")

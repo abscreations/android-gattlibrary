@@ -12,7 +12,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 internal class FeCBleTelemetryScheduler(private val equipmentType: FeCEquipmentType) {
 
     private var tickIndex: Long = 0
-    private var trainerSpecificIndex: Long = 0
+    private var bikeTrainerSpecificIndex: Long = 0
 
     /** Advance the model by one tick and encode the frame that tick's rotation calls for. */
     fun tick(state: FeCBleMachineState): ByteArray {
@@ -39,20 +39,20 @@ internal class FeCBleTelemetryScheduler(private val equipmentType: FeCEquipmentT
      * (both) and power (rower) only ever live on their equipment-specific page, never on page 16.
      */
     private fun encodeSpecificPageFrame(state: FeCBleMachineState): ByteArray = when (equipmentType) {
-        FeCEquipmentType.TRAINER -> {
-            val frame = if (trainerSpecificIndex % 2L == 0L) {
-                // Page 25 is mandatory for trainers, but 0xFFF makes both direct-power fields
-                // unavailable. Page 26 is this persona's sole FE-C power source.
-                FeCBleTelemetryEncoder.encodePage25Frame(state, powerAvailable = false)
+        FeCEquipmentType.TRAINER,
+        FeCEquipmentType.STATIONARY_BIKE,
+        -> {
+            val frame = if (bikeTrainerSpecificIndex % 2L == 0L) {
+                // Garmin Tacx renders Page 25's 0xFFF unavailable sentinel literally as 4095 W.
+                // Both bike-shaped personas therefore publish their coherent direct-power value
+                // here and retain Page 26 as a second, torque-derived representation.
+                FeCBleSyntheticModel.recordTrainerEvent(state)
+                FeCBleTelemetryEncoder.encodePage25Frame(state)
             } else {
                 FeCBleTelemetryEncoder.encodePage26Frame(state)
             }
-            trainerSpecificIndex++
+            bikeTrainerSpecificIndex++
             frame
-        }
-        FeCEquipmentType.STATIONARY_BIKE -> {
-            FeCBleSyntheticModel.recordTrainerEvent(state)
-            FeCBleTelemetryEncoder.encodePage25Frame(state)
         }
         FeCEquipmentType.TREADMILL -> FeCBleTelemetryEncoder.encodePage19Frame(state)
         FeCEquipmentType.ELLIPTICAL -> FeCBleTelemetryEncoder.encodePage20Frame(state)

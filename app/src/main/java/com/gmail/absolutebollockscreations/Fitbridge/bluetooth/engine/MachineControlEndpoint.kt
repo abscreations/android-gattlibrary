@@ -68,6 +68,16 @@ internal interface MachineControlEndpoint {
     ): Boolean
 }
 
+internal enum class MachineControlRoute { FTMS, FEC }
+
+/** Pure selected-adapter routing decision; a half-activated FE-C link safely remains on FTMS. */
+internal fun machineControlRoute(selectedAdapterId: String?, hasFeCHandler: Boolean): MachineControlRoute =
+    if (selectedAdapterId == AdapterLivenessCoordinator.FEC_ADAPTER_ID && hasFeCHandler) {
+        MachineControlRoute.FEC
+    } else {
+        MachineControlRoute.FTMS
+    }
+
 /**
  * Wraps the existing [BtEngineControlPoint] FTMS Control Point helpers behind
  * [MachineControlEndpoint]. Every method here is a direct pass-through — no behavior changes

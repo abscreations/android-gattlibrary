@@ -599,6 +599,7 @@ object BluetoothIds {
     const val FEC_PAGE_SPECIFIC_TRAINER_DATA: Int = 0x19
     const val FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA: Int = 0x1A
     const val FEC_PAGE_FE_CAPABILITIES: Int = 0x36
+    const val FEC_PAGE_MANUFACTURER_INFORMATION: Int = 0x50
     const val FEC_PAGE_PRODUCT_INFORMATION: Int = 0x51
 
     // FE-C control pages (central -> machine).

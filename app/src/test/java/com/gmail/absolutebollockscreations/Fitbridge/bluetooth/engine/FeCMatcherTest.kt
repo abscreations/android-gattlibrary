@@ -113,6 +113,16 @@ class FeCMatcherTest {
     }
 
     @Test
+    fun `a different full UUID containing the FEC1 alias does not match`() {
+        val sigBaseAlias = uuid(java.util.UUID.fromString("0000fec1-0000-1000-8000-00805f9b34fb"))
+
+        assertTrue(
+            "matching must use the complete vendor UUID, not the embedded four-character alias",
+            idsOf(MatchObservation(advertisedServiceUuids = setOf(sigBaseAlias))).isEmpty(),
+        )
+    }
+
+    @Test
     fun `registering FEC1 automatically widens the derived hardware scan filter`() {
         // Plan §6.3: nothing besides registration should be required for the scanner to pick up
         // an FE-C-only advertisement - a Kinomap-style capture that carries only FEC1.

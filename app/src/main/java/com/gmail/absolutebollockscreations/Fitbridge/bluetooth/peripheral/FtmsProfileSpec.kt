@@ -171,6 +171,10 @@ internal val precorChronoMeasurementCapabilities = FtmsMeasurementCapabilities(
     power = true,
 )
 
+/** FE-C Page 19 has no FTMS Force on Belt/Power Output field despite using Treadmill persona. */
+internal val feCTreadmillMeasurementCapabilities =
+    FtmsMachineProfile.TREADMILL.measurementCapabilities.copy(forceOnBeltAndPowerOutput = false)
+
 /**
  * Select the stable downstream measurement contract from the active machine context.
  *
@@ -182,6 +186,11 @@ internal fun providerMeasurementCapabilities(
     profile: FtmsMachineProfile,
     upstreamServiceUuids: Set<UUID>,
 ): FtmsMeasurementCapabilities = when {
+    profile == FtmsMachineProfile.TREADMILL &&
+        BluetoothIds.UUID_FEC_SERVICE in upstreamServiceUuids &&
+        BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
+        feCTreadmillMeasurementCapabilities
+
     profile == FtmsMachineProfile.INDOOR_BIKE &&
         BluetoothIds.UUID_PRECOR_SERVICE in upstreamServiceUuids &&
         BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->

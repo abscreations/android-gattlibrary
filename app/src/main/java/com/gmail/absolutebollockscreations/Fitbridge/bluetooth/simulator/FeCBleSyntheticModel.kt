@@ -76,7 +76,9 @@ internal object FeCBleSyntheticModel {
             else -> Unit
         }
 
-        if (state.equipmentType == FeCEquipmentType.TRAINER) {
+        if (state.equipmentType == FeCEquipmentType.TRAINER ||
+            state.equipmentType == FeCEquipmentType.STATIONARY_BIKE
+        ) {
             state.wheelPeriodTicks += WHEEL_PERIOD_TICKS_PER_MODEL_TICK
             state.wheelRevolutions += state.speedMps * TICK_SECONDS / state.cycleLengthMeters
             val completeRevolutions = kotlin.math.floor(state.wheelRevolutions).toLong()

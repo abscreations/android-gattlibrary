@@ -207,6 +207,21 @@ internal object FeCBleTelemetryEncoder {
         return page
     }
 
+    /** Common Page 80 — Manufacturer's Information (Common Data Pages Rev 3.1, Table 8-2). */
+    fun encodePage80(hardwareRevision: Int, manufacturerId: Int, modelNumber: Int): ByteArray {
+        require(hardwareRevision in 0..0xFF)
+        require(manufacturerId in 0..0xFFFF)
+        require(modelNumber in 0..0xFFFF)
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION.toByte()
+        page[1] = 0xFF.toByte()
+        page[2] = 0xFF.toByte()
+        page[3] = hardwareRevision.toByte()
+        putU16(page, 4, manufacturerId)
+        putU16(page, 6, modelNumber)
+        return page
+    }
+
     /** Page 81 — Product Information (`0x51`). Plan §10.3. Synthetic serial only; never host identity. */
     fun encodePage81(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
@@ -239,6 +254,15 @@ internal object FeCBleTelemetryEncoder {
         state: FeCBleMachineState,
         messageType: Int = BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA,
     ): ByteArray = buildAntFrame(encodePage54(state), messageType)
+    fun encodePage80Frame(
+        hardwareRevision: Int,
+        manufacturerId: Int,
+        modelNumber: Int,
+        messageType: Int = BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA,
+    ): ByteArray = buildAntFrame(
+        encodePage80(hardwareRevision, manufacturerId, modelNumber),
+        messageType,
+    )
     fun encodePage81Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage81(state))
 
     private fun encodeStridePowerPage(state: FeCBleMachineState, pageNumber: Int): ByteArray {

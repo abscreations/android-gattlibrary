@@ -1460,8 +1460,8 @@ class BtEngine internal constructor(
     private fun controlEndpoint(): MachineControlEndpoint {
         val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
         val adapterId = context?.let { state.adapterLiveness.selectedAdapterId(it.connectionId) }
-        if (adapterId == AdapterLivenessCoordinator.FEC_ADAPTER_ID) {
-            val handler = context.handlers.filterIsInstance<FeCOverBleProtocolHandler>().firstOrNull()
+        val handler = context?.handlers?.filterIsInstance<FeCOverBleProtocolHandler>()?.firstOrNull()
+        if (machineControlRoute(adapterId, handler != null) == MachineControlRoute.FEC) {
             if (handler != null) {
                 return FeCBleMachineControlEndpoint(this, handler)
             }

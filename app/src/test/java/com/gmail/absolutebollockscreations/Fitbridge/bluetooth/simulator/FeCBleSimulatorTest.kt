@@ -69,6 +69,20 @@ class FeCBleSimulatorTest {
     }
 
     @Test
+    fun `physical Neo page 80 manufacturer information vector`() {
+        val page = FeCBleTelemetryEncoder.encodePage80(
+            hardwareRevision = 1,
+            manufacturerId = 89,
+            modelNumber = 2800,
+        )
+        assertEquals("50 FF FF 01 59 00 F0 0A", hex(page))
+        assertEquals(
+            "A4 09 4F 05 50 FF FF 01 59 00 F0 0A 15",
+            hex(FeCBleTelemetryEncoder.buildAntFrame(page, BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA)),
+        )
+    }
+
+    @Test
     fun `official page 17 layout encodes cycle incline resistance and state`() {
         val state = FeCBleMachineState(FeCEquipmentType.TREADMILL).apply {
             feState = FeCEquipmentState.IN_USE
@@ -143,6 +157,18 @@ class FeCBleSimulatorTest {
         assertEquals(0x36, request.requestedPage)
         assertEquals(2, request.transmissionCount)
         assertTrue(!request.acknowledgedResponse)
+        assertTrue(!request.transmitUntilAcknowledged)
+    }
+
+    @Test
+    fun `captured Garmin page 80 request decodes special until-acknowledged response mode`() {
+        val request = FeCBleControlDecoder.decode(
+            bytes("A4 09 4F 05 46 FF FF FF FF 80 50 01 70"),
+        ) as FeCBleControlCommand.RequestDataPage
+        assertEquals(BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION, request.requestedPage)
+        assertEquals(1, request.transmissionCount)
+        assertTrue(request.acknowledgedResponse)
+        assertTrue(request.transmitUntilAcknowledged)
     }
 
     @Test
@@ -259,7 +285,6 @@ class FeCBleSimulatorTest {
     @Test
     fun `all personas meet required rotation rates and use their own specific page`() {
         val specificPages = mapOf(
-            FeCEquipmentType.STATIONARY_BIKE to 0x19,
             FeCEquipmentType.TREADMILL to 0x13,
             FeCEquipmentType.ELLIPTICAL to 0x14,
             FeCEquipmentType.ROWER to 0x16,
@@ -279,44 +304,51 @@ class FeCBleSimulatorTest {
             assertEquals("$type page 81 count", 1, pages.count { it == 0x51 })
         }
 
-        val trainerState = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
-        val trainerScheduler = FeCBleTelemetryScheduler(FeCEquipmentType.TRAINER)
-        val trainerFrames = (0 until FeCBleTelemetryScheduler.ROTATION_TICKS)
-            .map { trainerScheduler.tick(trainerState) }
-        assertEquals(8, trainerFrames.count { (it[4].toInt() and 0xFF) == 0x19 })
-        assertEquals(7, trainerFrames.count { (it[4].toInt() and 0xFF) == 0x1A })
-        trainerFrames.filter { (it[4].toInt() and 0xFF) == 0x19 }.forEach { frame ->
-            val directPower = (frame[9].toInt() and 0xFF) or ((frame[10].toInt() and 0x0F) shl 8)
-            assertEquals("Trainer page 25 direct power must be unavailable", 0xFFF, directPower)
+        listOf(FeCEquipmentType.TRAINER, FeCEquipmentType.STATIONARY_BIKE).forEach { type ->
+            val state = FeCBleMachineState(type).apply { enterInUseWithDefaults() }
+            val scheduler = FeCBleTelemetryScheduler(type)
+            val frames = (0 until FeCBleTelemetryScheduler.ROTATION_TICKS)
+                .map { scheduler.tick(state) }
+            val page25 = frames.filter { (it[4].toInt() and 0xFF) == 0x19 }
+            assertEquals("$type page 25 count", 8, page25.size)
+            assertEquals("$type page 26 count", 7, frames.count { (it[4].toInt() and 0xFF) == 0x1A })
+            page25.forEach { frame ->
+                val directPower = (frame[9].toInt() and 0xFF) or ((frame[10].toInt() and 0x0F) shl 8)
+                assertTrue("$type direct power must not be the 4095 W unavailable sentinel", directPower != 0xFFF)
+                assertTrue("$type direct power follows its synthetic workout range", directPower in 90..420)
+            }
+            assertEquals("$type page-25 events", 8, state.eventCount)
         }
     }
 
     @Test
-    fun `trainer page 26 deltas reproduce torque-derived power and roll over at wire widths`() {
-        val state = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
-        repeat(2) { FeCBleSyntheticModel.advanceTick(state) }
-        val first = FeCBleTelemetryEncoder.encodePage26(state)
-        val contributingPowers = buildList {
-            repeat(2) {
-                FeCBleSyntheticModel.advanceTick(state)
-                add(state.instantaneousPowerWatts!!)
+    fun `trainer and bike page 26 deltas reproduce torque-derived power and roll over`() {
+        listOf(FeCEquipmentType.TRAINER, FeCEquipmentType.STATIONARY_BIKE).forEach { type ->
+            val state = FeCBleMachineState(type).apply { enterInUseWithDefaults() }
+            repeat(2) { FeCBleSyntheticModel.advanceTick(state) }
+            val first = FeCBleTelemetryEncoder.encodePage26(state)
+            val contributingPowers = buildList {
+                repeat(2) {
+                    FeCBleSyntheticModel.advanceTick(state)
+                    add(state.instantaneousPowerWatts!!)
+                }
             }
-        }
-        val second = FeCBleTelemetryEncoder.encodePage26(state)
-        val periodDelta = (u16(second, 3) - u16(first, 3)) and 0xFFFF
-        val torqueDelta = (u16(second, 5) - u16(first, 5)) and 0xFFFF
-        val derivedPower = 128.0 * Math.PI * torqueDelta / periodDelta
-        assertEquals(contributingPowers.average(), derivedPower, 1.0)
+            val second = FeCBleTelemetryEncoder.encodePage26(state)
+            val periodDelta = (u16(second, 3) - u16(first, 3)) and 0xFFFF
+            val torqueDelta = (u16(second, 5) - u16(first, 5)) and 0xFFFF
+            val derivedPower = 128.0 * Math.PI * torqueDelta / periodDelta
+            assertEquals("$type torque power", contributingPowers.average(), derivedPower, 1.0)
 
-        state.torqueEventCount = 256
-        state.wheelTicks = 257
-        state.wheelPeriodTicks = 65_536
-        state.accumulatedTorqueThirtySecondNm = 65_538.0
-        val rolled = FeCBleTelemetryEncoder.encodePage26(state)
-        assertEquals(0, rolled[1].toInt() and 0xFF)
-        assertEquals(1, rolled[2].toInt() and 0xFF)
-        assertEquals(0, u16(rolled, 3))
-        assertEquals(2, u16(rolled, 5))
+            state.torqueEventCount = 256
+            state.wheelTicks = 257
+            state.wheelPeriodTicks = 65_536
+            state.accumulatedTorqueThirtySecondNm = 65_538.0
+            val rolled = FeCBleTelemetryEncoder.encodePage26(state)
+            assertEquals(0, rolled[1].toInt() and 0xFF)
+            assertEquals(1, rolled[2].toInt() and 0xFF)
+            assertEquals(0, u16(rolled, 3))
+            assertEquals(2, u16(rolled, 5))
+        }
     }
 
     // ── §25 control behaviour ───────────────────────────────────────────────

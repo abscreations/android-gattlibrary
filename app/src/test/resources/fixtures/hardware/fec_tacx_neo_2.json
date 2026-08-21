@@ -1,0 +1,1812 @@
+{
+  "schemaVersion": 1,
+  "family": "ant.fec-over-ble.tacx-neo-2",
+  "model": "Tacx Neo 2",
+  "acquisition": "sanitized-qz-notification-extraction",
+  "extracted": "2026-08-21",
+  "transport": "ANT+ FE-C full serial frames received as FEC2 BLE notifications",
+  "extractionRule": "Retain only QZ Characteristic change notification lines containing one exact A4 09 4E 05 + 8-byte page + XOR frame; exclude application-generated transmit/control lines.",
+  "privacy": "Bluetooth addresses, absolute times, unrelated traffic, and physical device-name suffixes are excluded. Relative time begins at each session first retained frame. Common Page 81 serial bytes are zeroed and its XOR checksum recomputed.",
+  "retainedFrameCount": 351,
+  "redactedProductInfoCount": 4,
+  "pageCounts": {
+    "0x10": 90,
+    "0x19": 209,
+    "0x47": 35,
+    "0x50": 4,
+    "0x51": 4,
+    "0xF0": 3,
+    "0xF9": 2,
+    "0xFA": 2,
+    "0xFC": 2
+  },
+  "sessions": [
+    {
+      "sourceFile": "neo_debug-Thu_Jun_26_22_30_35_2025.log",
+      "sourceSha256": "8d9f6c9622d436f2517419e59076da5eb773523096de474ff254eb8eadc5aa57",
+      "receivedFrameCount": 200,
+      "pageCounts": {
+        "0x10": 58,
+        "0x19": 118,
+        "0x47": 20,
+        "0x50": 2,
+        "0x51": 2
+      },
+      "frames": [
+        {
+          "relativeMs": 0,
+          "page": "0x10",
+          "packet": "a4094e0510194712ff01ff348f"
+        },
+        {
+          "relativeMs": 256,
+          "page": "0x19",
+          "packet": "a4094e05195d00e93300003048"
+        },
+        {
+          "relativeMs": 496,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff330000305d"
+        },
+        {
+          "relativeMs": 749,
+          "page": "0x19",
+          "packet": "a4094e05195e00ef330600304b"
+        },
+        {
+          "relativeMs": 1006,
+          "page": "0x19",
+          "packet": "a4094e05195f00f63307003052"
+        },
+        {
+          "relativeMs": 1261,
+          "page": "0x10",
+          "packet": "a4094e0510194c13cb04ff34b4"
+        },
+        {
+          "relativeMs": 1501,
+          "page": "0x19",
+          "packet": "a4094e0519600002340c003095"
+        },
+        {
+          "relativeMs": 1756,
+          "page": "0x19",
+          "packet": "a4094e0519610010340e003084"
+        },
+        {
+          "relativeMs": 1999,
+          "page": "0x19",
+          "packet": "a4094e051962131f340f00309a"
+        },
+        {
+          "relativeMs": 2252,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff340f003055"
+        },
+        {
+          "relativeMs": 2506,
+          "page": "0x10",
+          "packet": "a4094e05101951154b06ff342d"
+        },
+        {
+          "relativeMs": 2745,
+          "page": "0x19",
+          "packet": "a4094e051963133134120030a8"
+        },
+        {
+          "relativeMs": 3002,
+          "page": "0x19",
+          "packet": "a4094e051964134334120030dd"
+        },
+        {
+          "relativeMs": 3245,
+          "page": "0x19",
+          "packet": "a4094e051965135534120030ca"
+        },
+        {
+          "relativeMs": 3545,
+          "page": "0x19",
+          "packet": "a4094e051966136734120030fb"
+        },
+        {
+          "relativeMs": 3786,
+          "page": "0x10",
+          "packet": "a4094e05101956174a07ff3428"
+        },
+        {
+          "relativeMs": 4271,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff4a07ff34d8"
+        },
+        {
+          "relativeMs": 4520,
+          "page": "0x19",
+          "packet": "a4094e051967137834110030e6"
+        },
+        {
+          "relativeMs": 4751,
+          "page": "0x19",
+          "packet": "a4094e0519681a893411003011"
+        },
+        {
+          "relativeMs": 4986,
+          "page": "0x19",
+          "packet": "a4094e0519691a9b3412003001"
+        },
+        {
+          "relativeMs": 5285,
+          "page": "0x10",
+          "packet": "a4094e0510195b194708ff3429"
+        },
+        {
+          "relativeMs": 5602,
+          "page": "0x10",
+          "packet": "a4094e0510195b194708ff3429"
+        },
+        {
+          "relativeMs": 5834,
+          "page": "0x19",
+          "packet": "a4094e05196a1aae3413003036"
+        },
+        {
+          "relativeMs": 6064,
+          "page": "0x19",
+          "packet": "a4094e05196b1ac03412003058"
+        },
+        {
+          "relativeMs": 6246,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3412003048"
+        },
+        {
+          "relativeMs": 6485,
+          "page": "0x19",
+          "packet": "a4094e05196c1acf340f00304d"
+        },
+        {
+          "relativeMs": 6784,
+          "page": "0x10",
+          "packet": "a4094e051019601c9808ff34c8"
+        },
+        {
+          "relativeMs": 7027,
+          "page": "0x10",
+          "packet": "a4094e051019601c9808ff34c8"
+        },
+        {
+          "relativeMs": 7266,
+          "page": "0x19",
+          "packet": "a4094e05196d1adc340d00305d"
+        },
+        {
+          "relativeMs": 7564,
+          "page": "0x19",
+          "packet": "a4094e05196e1ae9340d00306b"
+        },
+        {
+          "relativeMs": 7749,
+          "page": "0x19",
+          "packet": "a4094e05196f1af6340d003075"
+        },
+        {
+          "relativeMs": 7985,
+          "page": "0x19",
+          "packet": "a4094e0519700003350d003084"
+        },
+        {
+          "relativeMs": 8285,
+          "page": "0x10",
+          "packet": "a4094e051019651fe508ff34b3"
+        },
+        {
+          "relativeMs": 8530,
+          "page": "0x10",
+          "packet": "a4094e051019651fe508ff34b3"
+        },
+        {
+          "relativeMs": 8767,
+          "page": "0x19",
+          "packet": "a4094e0519710010350d003096"
+        },
+        {
+          "relativeMs": 9010,
+          "page": "0x19",
+          "packet": "a4094e0519721d1d350d003085"
+        },
+        {
+          "relativeMs": 9259,
+          "page": "0x19",
+          "packet": "a4094e0519731d2a350d0030b3"
+        },
+        {
+          "relativeMs": 9605,
+          "page": "0x19",
+          "packet": "a4094e0519741d38350e0030a5"
+        },
+        {
+          "relativeMs": 9788,
+          "page": "0x10",
+          "packet": "a4094e0510196a225209ff3437"
+        },
+        {
+          "relativeMs": 10031,
+          "page": "0x10",
+          "packet": "a4094e0510196a225209ff3437"
+        },
+        {
+          "relativeMs": 10265,
+          "page": "0x19",
+          "packet": "a4094e0519751d47350f0030da"
+        },
+        {
+          "relativeMs": 10508,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff350f003054"
+        },
+        {
+          "relativeMs": 10806,
+          "page": "0x19",
+          "packet": "a4094e0519761d56350f0030c8"
+        },
+        {
+          "relativeMs": 11061,
+          "page": "0x19",
+          "packet": "a4094e0519771f65350f0030f8"
+        },
+        {
+          "relativeMs": 11286,
+          "page": "0x10",
+          "packet": "a4094e0510196f25a209ff34c5"
+        },
+        {
+          "relativeMs": 11530,
+          "page": "0x10",
+          "packet": "a4094e0510196f25a209ff34c5"
+        },
+        {
+          "relativeMs": 11767,
+          "page": "0x19",
+          "packet": "a4094e0519781f74350f0030e6"
+        },
+        {
+          "relativeMs": 12009,
+          "page": "0x19",
+          "packet": "a4094e0519791f83350f003010"
+        },
+        {
+          "relativeMs": 12258,
+          "page": "0x19",
+          "packet": "a4094e05197a1f93351000301c"
+        },
+        {
+          "relativeMs": 12545,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff351000304b"
+        },
+        {
+          "relativeMs": 12786,
+          "page": "0x10",
+          "packet": "a4094e0510197428f009ff3481"
+        },
+        {
+          "relativeMs": 13033,
+          "page": "0x10",
+          "packet": "a4094e0510197428f009ff3481"
+        },
+        {
+          "relativeMs": 13266,
+          "page": "0x19",
+          "packet": "a4094e05197b20a33510003012"
+        },
+        {
+          "relativeMs": 13509,
+          "page": "0x19",
+          "packet": "a4094e05197c20b43511003003"
+        },
+        {
+          "relativeMs": 13761,
+          "page": "0x19",
+          "packet": "a4094e05197d20c53511003073"
+        },
+        {
+          "relativeMs": 14045,
+          "page": "0x19",
+          "packet": "a4094e05197e20d63511003063"
+        },
+        {
+          "relativeMs": 14287,
+          "page": "0x10",
+          "packet": "a4094e051019792b4e0aff3432"
+        },
+        {
+          "relativeMs": 14530,
+          "page": "0x10",
+          "packet": "a4094e051019792b4e0aff3432"
+        },
+        {
+          "relativeMs": 14766,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff4e0aff34d1"
+        },
+        {
+          "relativeMs": 15009,
+          "page": "0x19",
+          "packet": "a4094e05197f21e73511003052"
+        },
+        {
+          "relativeMs": 15261,
+          "page": "0x19",
+          "packet": "a4094e05198021f835110030b2"
+        },
+        {
+          "relativeMs": 15546,
+          "page": "0x19",
+          "packet": "a4094e05198121093611003041"
+        },
+        {
+          "relativeMs": 15787,
+          "page": "0x10",
+          "packet": "a4094e0510197e2f910aff34ee"
+        },
+        {
+          "relativeMs": 16029,
+          "page": "0x10",
+          "packet": "a4094e0510197e2f910aff34ee"
+        },
+        {
+          "relativeMs": 16266,
+          "page": "0x19",
+          "packet": "a4094e051982221a3611003052"
+        },
+        {
+          "relativeMs": 16508,
+          "page": "0x19",
+          "packet": "a4094e051983222b3611003062"
+        },
+        {
+          "relativeMs": 16805,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3611003049"
+        },
+        {
+          "relativeMs": 17046,
+          "page": "0x19",
+          "packet": "a4094e051984223c3611003072"
+        },
+        {
+          "relativeMs": 17286,
+          "page": "0x10",
+          "packet": "a4094e0510198332c30aff345c"
+        },
+        {
+          "relativeMs": 17529,
+          "page": "0x10",
+          "packet": "a4094e0510198332c30aff345c"
+        },
+        {
+          "relativeMs": 17768,
+          "page": "0x19",
+          "packet": "a4094e051985224c3610003002"
+        },
+        {
+          "relativeMs": 18010,
+          "page": "0x19",
+          "packet": "a4094e051986235c3610003010"
+        },
+        {
+          "relativeMs": 18258,
+          "page": "0x19",
+          "packet": "a4094e051987236c3610003021"
+        },
+        {
+          "relativeMs": 18557,
+          "page": "0x19",
+          "packet": "a4094e051988237c361000303e"
+        },
+        {
+          "relativeMs": 18787,
+          "page": "0x10",
+          "packet": "a4094e0510198835ea0aff3479"
+        },
+        {
+          "relativeMs": 19028,
+          "page": "0x10",
+          "packet": "a4094e0510198835ea0aff3479"
+        },
+        {
+          "relativeMs": 19266,
+          "page": "0x19",
+          "packet": "a4094e051989238c36100030cf"
+        },
+        {
+          "relativeMs": 19516,
+          "page": "0x19",
+          "packet": "a4094e05198a239c36100030dc"
+        },
+        {
+          "relativeMs": 19748,
+          "page": "0x19",
+          "packet": "a4094e05198b23ad36110030ed"
+        },
+        {
+          "relativeMs": 20056,
+          "page": "0x19",
+          "packet": "a4094e05198c23be36110030f9"
+        },
+        {
+          "relativeMs": 20286,
+          "page": "0x10",
+          "packet": "a4094e0510198d39110bff348a"
+        },
+        {
+          "relativeMs": 20529,
+          "page": "0x10",
+          "packet": "a4094e0510198d39110bff348a"
+        },
+        {
+          "relativeMs": 20764,
+          "page": "0x19",
+          "packet": "a4094e05198d23cf3611003089"
+        },
+        {
+          "relativeMs": 21007,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3611003049"
+        },
+        {
+          "relativeMs": 21252,
+          "page": "0x19",
+          "packet": "a4094e05198e24e036110030a2"
+        },
+        {
+          "relativeMs": 21604,
+          "page": "0x19",
+          "packet": "a4094e05198f24f136110030b2"
+        },
+        {
+          "relativeMs": 21785,
+          "page": "0x10",
+          "packet": "a4094e051019923d2d0bff34ad"
+        },
+        {
+          "relativeMs": 22031,
+          "page": "0x10",
+          "packet": "a4094e051019923d2d0bff34ad"
+        },
+        {
+          "relativeMs": 22266,
+          "page": "0x19",
+          "packet": "a4094e0519902402371100305f"
+        },
+        {
+          "relativeMs": 22507,
+          "page": "0x50",
+          "packet": "a4094e0550ffff015900220bc7"
+        },
+        {
+          "relativeMs": 22808,
+          "page": "0x50",
+          "packet": "a4094e0550ffff015900220bc7"
+        },
+        {
+          "relativeMs": 23286,
+          "page": "0x10",
+          "packet": "a4094e0510199740400bff34b8"
+        },
+        {
+          "relativeMs": 23531,
+          "page": "0x10",
+          "packet": "a4094e0510199740400bff34b8"
+        },
+        {
+          "relativeMs": 23766,
+          "page": "0x19",
+          "packet": "a4094e0519912413371100304f"
+        },
+        {
+          "relativeMs": 24009,
+          "page": "0x19",
+          "packet": "a4094e0519922423371000307d"
+        },
+        {
+          "relativeMs": 24255,
+          "page": "0x19",
+          "packet": "a4094e0519932433371000306c"
+        },
+        {
+          "relativeMs": 24546,
+          "page": "0x19",
+          "packet": "a4094e0519942443371000301b"
+        },
+        {
+          "relativeMs": 24785,
+          "page": "0x10",
+          "packet": "a4094e0510199c443b0bff34cc"
+        },
+        {
+          "relativeMs": 25027,
+          "page": "0x10",
+          "packet": "a4094e0510199c443b0bff34cc"
+        },
+        {
+          "relativeMs": 25270,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3b0bff34a5"
+        },
+        {
+          "relativeMs": 25566,
+          "page": "0x19",
+          "packet": "a4094e0519952451370e003016"
+        },
+        {
+          "relativeMs": 25753,
+          "page": "0x19",
+          "packet": "a4094e051996245f370e00301b"
+        },
+        {
+          "relativeMs": 26046,
+          "page": "0x19",
+          "packet": "a4094e051997246c370d00302a"
+        },
+        {
+          "relativeMs": 26345,
+          "page": "0x10",
+          "packet": "a4094e051019a147f80aff3430"
+        },
+        {
+          "relativeMs": 26528,
+          "page": "0x10",
+          "packet": "a4094e051019a147f80aff3430"
+        },
+        {
+          "relativeMs": 26765,
+          "page": "0x19",
+          "packet": "a4094e0519980078370c003014"
+        },
+        {
+          "relativeMs": 27008,
+          "page": "0x19",
+          "packet": "a4094e0519990084370c0030e9"
+        },
+        {
+          "relativeMs": 27259,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff370c003055"
+        },
+        {
+          "relativeMs": 27666,
+          "page": "0x19",
+          "packet": "a4094e05199a0091370d0030fe"
+        },
+        {
+          "relativeMs": 27786,
+          "page": "0x10",
+          "packet": "a4094e051019a64be40aff3427"
+        },
+        {
+          "relativeMs": 28028,
+          "page": "0x10",
+          "packet": "a4094e051019a64be40aff3427"
+        },
+        {
+          "relativeMs": 28266,
+          "page": "0x19",
+          "packet": "a4094e05199b009e370d0030f0"
+        },
+        {
+          "relativeMs": 28511,
+          "page": "0x51",
+          "packet": "a4094e0551ff0206000000004c"
+        },
+        {
+          "relativeMs": 28805,
+          "page": "0x51",
+          "packet": "a4094e0551ff0206000000004c"
+        },
+        {
+          "relativeMs": 29058,
+          "page": "0x19",
+          "packet": "a4094e05199c00ab370d0030c2"
+        },
+        {
+          "relativeMs": 29287,
+          "page": "0x10",
+          "packet": "a4094e051019ab4ed90aff3412"
+        },
+        {
+          "relativeMs": 29529,
+          "page": "0x10",
+          "packet": "a4094e051019ab4ed90aff3412"
+        },
+        {
+          "relativeMs": 29767,
+          "page": "0x19",
+          "packet": "a4094e05199d23b9370e0030f1"
+        },
+        {
+          "relativeMs": 30009,
+          "page": "0x19",
+          "packet": "a4094e05199e23c7370e00308c"
+        },
+        {
+          "relativeMs": 30321,
+          "page": "0x19",
+          "packet": "a4094e05199f23d6370f00309d"
+        },
+        {
+          "relativeMs": 30556,
+          "page": "0x19",
+          "packet": "a4094e0519a023e5370f003091"
+        },
+        {
+          "relativeMs": 30785,
+          "page": "0x10",
+          "packet": "a4094e051019b052ed0aff3421"
+        },
+        {
+          "relativeMs": 31028,
+          "page": "0x10",
+          "packet": "a4094e051019b052ed0aff3421"
+        },
+        {
+          "relativeMs": 31265,
+          "page": "0x19",
+          "packet": "a4094e0519a123f4370f003081"
+        },
+        {
+          "relativeMs": 31511,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff370f003056"
+        },
+        {
+          "relativeMs": 31761,
+          "page": "0x19",
+          "packet": "a4094e0519a22303380f00307a"
+        },
+        {
+          "relativeMs": 32055,
+          "page": "0x19",
+          "packet": "a4094e0519a32312380f00306a"
+        },
+        {
+          "relativeMs": 32286,
+          "page": "0x10",
+          "packet": "a4094e051019b555f00aff343e"
+        },
+        {
+          "relativeMs": 32530,
+          "page": "0x10",
+          "packet": "a4094e051019b555f00aff343e"
+        },
+        {
+          "relativeMs": 32765,
+          "page": "0x19",
+          "packet": "a4094e0519a42321380f00305e"
+        },
+        {
+          "relativeMs": 33008,
+          "page": "0x19",
+          "packet": "a4094e0519a52330380f00304e"
+        },
+        {
+          "relativeMs": 33257,
+          "page": "0x19",
+          "packet": "a4094e0519a6233f380f003042"
+        },
+        {
+          "relativeMs": 33545,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff380f003059"
+        },
+        {
+          "relativeMs": 33793,
+          "page": "0x10",
+          "packet": "a4094e051019ba59000bff34cc"
+        },
+        {
+          "relativeMs": 34029,
+          "page": "0x10",
+          "packet": "a4094e051019ba59000bff34cc"
+        },
+        {
+          "relativeMs": 34267,
+          "page": "0x19",
+          "packet": "a4094e0519a7234f381000302c"
+        },
+        {
+          "relativeMs": 34511,
+          "page": "0x19",
+          "packet": "a4094e0519a8235e380f00302d"
+        },
+        {
+          "relativeMs": 34806,
+          "page": "0x19",
+          "packet": "a4094e0519a9236d380f00301f"
+        },
+        {
+          "relativeMs": 35046,
+          "page": "0x19",
+          "packet": "a4094e0519aa237c380f00300d"
+        },
+        {
+          "relativeMs": 35285,
+          "page": "0x10",
+          "packet": "a4094e051019bf5cf00aff343d"
+        },
+        {
+          "relativeMs": 35531,
+          "page": "0x10",
+          "packet": "a4094e051019bf5cf00aff343d"
+        },
+        {
+          "relativeMs": 35771,
+          "page": "0x47",
+          "packet": "a4094e0547fffffff00aff346f"
+        },
+        {
+          "relativeMs": 36007,
+          "page": "0x19",
+          "packet": "a4094e0519ab238a380e0030fb"
+        },
+        {
+          "relativeMs": 36253,
+          "page": "0x19",
+          "packet": "a4094e0519ac2397380d0030e2"
+        },
+        {
+          "relativeMs": 36546,
+          "page": "0x19",
+          "packet": "a4094e0519ad23a4380d0030d0"
+        },
+        {
+          "relativeMs": 36787,
+          "page": "0x10",
+          "packet": "a4094e051019c460be0aff3434"
+        },
+        {
+          "relativeMs": 37026,
+          "page": "0x19",
+          "packet": "a4094e0519ae23b0380c0030c6"
+        },
+        {
+          "relativeMs": 37269,
+          "page": "0x19",
+          "packet": "a4094e0519ae23b0380c0030c6"
+        },
+        {
+          "relativeMs": 37521,
+          "page": "0x10",
+          "packet": "a4094e051019c661a50aff342c"
+        },
+        {
+          "relativeMs": 37751,
+          "page": "0x19",
+          "packet": "a4094e0519af23bb380b0030cb"
+        },
+        {
+          "relativeMs": 38048,
+          "page": "0x19",
+          "packet": "a4094e0519b023c5380a0030ab"
+        },
+        {
+          "relativeMs": 38349,
+          "page": "0x19",
+          "packet": "a4094e0519b100ce3809003081"
+        },
+        {
+          "relativeMs": 38531,
+          "page": "0x19",
+          "packet": "a4094e0519b200d6380800309b"
+        },
+        {
+          "relativeMs": 38772,
+          "page": "0x10",
+          "packet": "a4094e051019cb64060aff3487"
+        },
+        {
+          "relativeMs": 39006,
+          "page": "0x19",
+          "packet": "a4094e0519b300db380500309a"
+        },
+        {
+          "relativeMs": 39249,
+          "page": "0x19",
+          "packet": "a4094e0519b300db380500309a"
+        },
+        {
+          "relativeMs": 39551,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3805003053"
+        },
+        {
+          "relativeMs": 39803,
+          "page": "0x19",
+          "packet": "a4094e0519b400db3800003098"
+        },
+        {
+          "relativeMs": 40030,
+          "page": "0x19",
+          "packet": "a4094e0519b500db3800003099"
+        },
+        {
+          "relativeMs": 40267,
+          "page": "0x10",
+          "packet": "a4094e051019d0673b09ff34a1"
+        },
+        {
+          "relativeMs": 40507,
+          "page": "0x19",
+          "packet": "a4094e0519b600db380000309a"
+        },
+        {
+          "relativeMs": 40747,
+          "page": "0x19",
+          "packet": "a4094e0519b700db380000309b"
+        },
+        {
+          "relativeMs": 41105,
+          "page": "0x19",
+          "packet": "a4094e0519b800db3800003094"
+        },
+        {
+          "relativeMs": 41288,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3800003056"
+        },
+        {
+          "relativeMs": 41709,
+          "page": "0x10",
+          "packet": "a4094e051019d56a9208ff3401"
+        },
+        {
+          "relativeMs": 41770,
+          "page": "0x19",
+          "packet": "a4094e0519b900db3800003095"
+        },
+        {
+          "relativeMs": 42244,
+          "page": "0x19",
+          "packet": "a4094e0519bb00db3800003097"
+        },
+        {
+          "relativeMs": 42554,
+          "page": "0x19",
+          "packet": "a4094e0519bc00db3800003090"
+        },
+        {
+          "relativeMs": 42795,
+          "page": "0x10",
+          "packet": "a4094e051019da6d0708ff349c"
+        },
+        {
+          "relativeMs": 43027,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff0708ff349a"
+        },
+        {
+          "relativeMs": 43273,
+          "page": "0x19",
+          "packet": "a4094e0519bd00db3800003091"
+        },
+        {
+          "relativeMs": 43505,
+          "page": "0x19",
+          "packet": "a4094e0519be00db3800003092"
+        },
+        {
+          "relativeMs": 43745,
+          "page": "0x19",
+          "packet": "a4094e0519bf00db3800003093"
+        },
+        {
+          "relativeMs": 44044,
+          "page": "0x10",
+          "packet": "a4094e051019df6f7407ff34e7"
+        },
+        {
+          "relativeMs": 44286,
+          "page": "0x19",
+          "packet": "a4094e0519c000db38000030ec"
+        },
+        {
+          "relativeMs": 44526,
+          "page": "0x19",
+          "packet": "a4094e0519c100db38000030ed"
+        },
+        {
+          "relativeMs": 44765,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3800003056"
+        },
+        {
+          "relativeMs": 45006,
+          "page": "0x19",
+          "packet": "a4094e0519c200db38000030ee"
+        },
+        {
+          "relativeMs": 45253,
+          "page": "0x10",
+          "packet": "a4094e051019e4720507ff34b0"
+        },
+        {
+          "relativeMs": 45544,
+          "page": "0x19",
+          "packet": "a4094e0519c300db38000030ef"
+        },
+        {
+          "relativeMs": 45785,
+          "page": "0x19",
+          "packet": "a4094e0519c400db38000030e8"
+        },
+        {
+          "relativeMs": 46025,
+          "page": "0x19",
+          "packet": "a4094e0519c500db38000030e9"
+        },
+        {
+          "relativeMs": 46269,
+          "page": "0x19",
+          "packet": "a4094e0519c600db38000030ea"
+        },
+        {
+          "relativeMs": 46664,
+          "page": "0x10",
+          "packet": "a4094e051019e974a106ff341e"
+        },
+        {
+          "relativeMs": 46755,
+          "page": "0x19",
+          "packet": "a4094e0519c700db38000030eb"
+        },
+        {
+          "relativeMs": 47044,
+          "page": "0x19",
+          "packet": "a4094e0519c800db38000030e4"
+        },
+        {
+          "relativeMs": 47288,
+          "page": "0x19",
+          "packet": "a4094e0519c900db38000030e5"
+        },
+        {
+          "relativeMs": 47616,
+          "page": "0x19",
+          "packet": "a4094e0519ca00db38000030e6"
+        },
+        {
+          "relativeMs": 47882,
+          "page": "0x10",
+          "packet": "a4094e051019ee764506ff34ff"
+        },
+        {
+          "relativeMs": 48018,
+          "page": "0x19",
+          "packet": "a4094e0519cb00db38000030e7"
+        },
+        {
+          "relativeMs": 48247,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3800003056"
+        },
+        {
+          "relativeMs": 49012,
+          "page": "0x19",
+          "packet": "a4094e0519cc00db38000030e0"
+        },
+        {
+          "relativeMs": 49020,
+          "page": "0x19",
+          "packet": "a4094e0519cd00db38000030e1"
+        },
+        {
+          "relativeMs": 49029,
+          "page": "0x10",
+          "packet": "a4094e051019f378e405ff344e"
+        },
+        {
+          "relativeMs": 49266,
+          "page": "0x19",
+          "packet": "a4094e0519ce00db38000030e2"
+        },
+        {
+          "relativeMs": 49507,
+          "page": "0x19",
+          "packet": "a4094e0519cf00db38000030e3"
+        },
+        {
+          "relativeMs": 49754,
+          "page": "0x19",
+          "packet": "a4094e0519d000db38000030fc"
+        },
+        {
+          "relativeMs": 50045,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff3800003056"
+        },
+        {
+          "relativeMs": 50294,
+          "page": "0x10",
+          "packet": "a4094e051019f87a8805ff342b"
+        },
+        {
+          "relativeMs": 50525,
+          "page": "0x19",
+          "packet": "a4094e0519d100db38000030fd"
+        }
+      ]
+    },
+    {
+      "sourceFile": "neo_debug-Tue_Jun_24_22_31_36_2025.log",
+      "sourceSha256": "37b3e5005358b375614ee772445738cc352257364b9d03b9320708f93817b08f",
+      "receivedFrameCount": 151,
+      "pageCounts": {
+        "0x19": 91,
+        "0x10": 32,
+        "0xF0": 3,
+        "0x47": 15,
+        "0xF9": 2,
+        "0xFA": 2,
+        "0xFC": 2,
+        "0x50": 2,
+        "0x51": 2
+      },
+      "frames": [
+        {
+          "relativeMs": 0,
+          "page": "0x19",
+          "packet": "a4094e05195d00000000002082"
+        },
+        {
+          "relativeMs": 244,
+          "page": "0x19",
+          "packet": "a4094e05195e00000000002081"
+        },
+        {
+          "relativeMs": 487,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 738,
+          "page": "0x19",
+          "packet": "a4094e05195f00000000002080"
+        },
+        {
+          "relativeMs": 988,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 1244,
+          "page": "0x19",
+          "packet": "a4094e051960000000000020bf"
+        },
+        {
+          "relativeMs": 1488,
+          "page": "0xF0",
+          "packet": "a4094e05f00000000000000016"
+        },
+        {
+          "relativeMs": 1740,
+          "page": "0x19",
+          "packet": "a4094e051961000000000020be"
+        },
+        {
+          "relativeMs": 1991,
+          "page": "0x19",
+          "packet": "a4094e051962000000000020bd"
+        },
+        {
+          "relativeMs": 2254,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 2490,
+          "page": "0x19",
+          "packet": "a4094e051963000000000020bc"
+        },
+        {
+          "relativeMs": 2744,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 2989,
+          "page": "0x19",
+          "packet": "a4094e051964000000000020bb"
+        },
+        {
+          "relativeMs": 3256,
+          "page": "0x19",
+          "packet": "a4094e051965000000000020ba"
+        },
+        {
+          "relativeMs": 3484,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 3741,
+          "page": "0x19",
+          "packet": "a4094e051966000000000020b9"
+        },
+        {
+          "relativeMs": 3983,
+          "page": "0x19",
+          "packet": "a4094e051967000000000020b8"
+        },
+        {
+          "relativeMs": 4255,
+          "page": "0x19",
+          "packet": "a4094e051968000000000020b7"
+        },
+        {
+          "relativeMs": 4484,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 4740,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 4986,
+          "page": "0x19",
+          "packet": "a4094e051969000000000020b6"
+        },
+        {
+          "relativeMs": 5252,
+          "page": "0x19",
+          "packet": "a4094e05196a000000000020b5"
+        },
+        {
+          "relativeMs": 5484,
+          "page": "0x19",
+          "packet": "a4094e05196b000000000020b4"
+        },
+        {
+          "relativeMs": 5740,
+          "page": "0x19",
+          "packet": "a4094e05196c000000000020b3"
+        },
+        {
+          "relativeMs": 5982,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 6256,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff0000ff2485"
+        },
+        {
+          "relativeMs": 6483,
+          "page": "0xF9",
+          "packet": "a4094e05f9000000c6620400bf"
+        },
+        {
+          "relativeMs": 6742,
+          "page": "0xF9",
+          "packet": "a4094e05f9000000c6620400bf"
+        },
+        {
+          "relativeMs": 6983,
+          "page": "0x19",
+          "packet": "a4094e05196d000000000020b2"
+        },
+        {
+          "relativeMs": 7262,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 7487,
+          "page": "0x19",
+          "packet": "a4094e05196e000000000020b1"
+        },
+        {
+          "relativeMs": 7742,
+          "page": "0x19",
+          "packet": "a4094e05196f000000000020b0"
+        },
+        {
+          "relativeMs": 7984,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 8246,
+          "page": "0x19",
+          "packet": "a4094e051970000000000020af"
+        },
+        {
+          "relativeMs": 8484,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 8740,
+          "page": "0x19",
+          "packet": "a4094e051971000000000020ae"
+        },
+        {
+          "relativeMs": 8984,
+          "page": "0x19",
+          "packet": "a4094e051972000000000020ad"
+        },
+        {
+          "relativeMs": 9272,
+          "page": "0x19",
+          "packet": "a4094e051973000000000020ac"
+        },
+        {
+          "relativeMs": 9483,
+          "page": "0x19",
+          "packet": "a4094e051974000000000020ab"
+        },
+        {
+          "relativeMs": 9739,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 9983,
+          "page": "0x19",
+          "packet": "a4094e051975000000000020aa"
+        },
+        {
+          "relativeMs": 10257,
+          "page": "0x19",
+          "packet": "a4094e051976000000000020a9"
+        },
+        {
+          "relativeMs": 10484,
+          "page": "0x19",
+          "packet": "a4094e051977000000000020a8"
+        },
+        {
+          "relativeMs": 10753,
+          "page": "0x19",
+          "packet": "a4094e051978000000000020a7"
+        },
+        {
+          "relativeMs": 10984,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 11257,
+          "page": "0x19",
+          "packet": "a4094e051979000000000020a6"
+        },
+        {
+          "relativeMs": 11484,
+          "page": "0xFA",
+          "packet": "a4094e05fa0401080000000011"
+        },
+        {
+          "relativeMs": 11741,
+          "page": "0xFA",
+          "packet": "a4094e05fa0102060000000019"
+        },
+        {
+          "relativeMs": 11992,
+          "page": "0x19",
+          "packet": "a4094e05197a000000000020a5"
+        },
+        {
+          "relativeMs": 12253,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 12486,
+          "page": "0x19",
+          "packet": "a4094e05197b000000000020a4"
+        },
+        {
+          "relativeMs": 12746,
+          "page": "0x19",
+          "packet": "a4094e05197c000000000020a3"
+        },
+        {
+          "relativeMs": 12984,
+          "page": "0x19",
+          "packet": "a4094e05197d000000000020a2"
+        },
+        {
+          "relativeMs": 13258,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 13484,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 13740,
+          "page": "0x19",
+          "packet": "a4094e05197e000000000020a1"
+        },
+        {
+          "relativeMs": 13984,
+          "page": "0x19",
+          "packet": "a4094e05197f000000000020a0"
+        },
+        {
+          "relativeMs": 14269,
+          "page": "0x19",
+          "packet": "a4094e0519800000000000205f"
+        },
+        {
+          "relativeMs": 14488,
+          "page": "0x19",
+          "packet": "a4094e0519810000000000205e"
+        },
+        {
+          "relativeMs": 14742,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 14984,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff0000ff2485"
+        },
+        {
+          "relativeMs": 15287,
+          "page": "0x19",
+          "packet": "a4094e0519820000000000205d"
+        },
+        {
+          "relativeMs": 15487,
+          "page": "0x19",
+          "packet": "a4094e0519830000000000205c"
+        },
+        {
+          "relativeMs": 15985,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 16264,
+          "page": "0x19",
+          "packet": "a4094e0519850000000000205a"
+        },
+        {
+          "relativeMs": 16484,
+          "page": "0xFC",
+          "packet": "a4094e05fc000000000000001a"
+        },
+        {
+          "relativeMs": 16734,
+          "page": "0xFC",
+          "packet": "a4094e05fc000000000000001a"
+        },
+        {
+          "relativeMs": 16983,
+          "page": "0x19",
+          "packet": "a4094e05198600000000002059"
+        },
+        {
+          "relativeMs": 17246,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 17527,
+          "page": "0x19",
+          "packet": "a4094e05198700000000002058"
+        },
+        {
+          "relativeMs": 17733,
+          "page": "0x19",
+          "packet": "a4094e05198800000000002057"
+        },
+        {
+          "relativeMs": 17999,
+          "page": "0xF0",
+          "packet": "a4094e05f00000000000000016"
+        },
+        {
+          "relativeMs": 18242,
+          "page": "0x19",
+          "packet": "a4094e05198900000000002056"
+        },
+        {
+          "relativeMs": 18614,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 18732,
+          "page": "0x19",
+          "packet": "a4094e05198a00000000002055"
+        },
+        {
+          "relativeMs": 18996,
+          "page": "0x19",
+          "packet": "a4094e05198b00000000002054"
+        },
+        {
+          "relativeMs": 19232,
+          "page": "0x19",
+          "packet": "a4094e05198c00000000002053"
+        },
+        {
+          "relativeMs": 19483,
+          "page": "0x19",
+          "packet": "a4094e05198d00000000002052"
+        },
+        {
+          "relativeMs": 19733,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 19982,
+          "page": "0x19",
+          "packet": "a4094e05198e00000000002051"
+        },
+        {
+          "relativeMs": 20232,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 20482,
+          "page": "0x19",
+          "packet": "a4094e05198f00000000002050"
+        },
+        {
+          "relativeMs": 20736,
+          "page": "0x19",
+          "packet": "a4094e0519900000000000204f"
+        },
+        {
+          "relativeMs": 20986,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 21252,
+          "page": "0x19",
+          "packet": "a4094e0519910000000000204e"
+        },
+        {
+          "relativeMs": 21573,
+          "page": "0x50",
+          "packet": "a4094e0550ffff015900220bc7"
+        },
+        {
+          "relativeMs": 21846,
+          "page": "0x50",
+          "packet": "a4094e0550ffff015900220bc7"
+        },
+        {
+          "relativeMs": 21982,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff5900220b2e"
+        },
+        {
+          "relativeMs": 22239,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 22485,
+          "page": "0x19",
+          "packet": "a4094e0519920000000000204d"
+        },
+        {
+          "relativeMs": 22732,
+          "page": "0x19",
+          "packet": "a4094e0519930000000000204c"
+        },
+        {
+          "relativeMs": 22983,
+          "page": "0x19",
+          "packet": "a4094e0519940000000000204b"
+        },
+        {
+          "relativeMs": 23234,
+          "page": "0x19",
+          "packet": "a4094e0519950000000000204a"
+        },
+        {
+          "relativeMs": 23486,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 23734,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff0000ff2485"
+        },
+        {
+          "relativeMs": 23984,
+          "page": "0x19",
+          "packet": "a4094e05199600000000002049"
+        },
+        {
+          "relativeMs": 24240,
+          "page": "0x19",
+          "packet": "a4094e05199700000000002048"
+        },
+        {
+          "relativeMs": 24490,
+          "page": "0x19",
+          "packet": "a4094e05199800000000002047"
+        },
+        {
+          "relativeMs": 24734,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 24991,
+          "page": "0x19",
+          "packet": "a4094e05199900000000002046"
+        },
+        {
+          "relativeMs": 25261,
+          "page": "0x19",
+          "packet": "a4094e05199a00000000002045"
+        },
+        {
+          "relativeMs": 25489,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 25743,
+          "page": "0x19",
+          "packet": "a4094e05199b00000000002044"
+        },
+        {
+          "relativeMs": 25993,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 26242,
+          "page": "0x19",
+          "packet": "a4094e05199c00000000002043"
+        },
+        {
+          "relativeMs": 26483,
+          "page": "0x51",
+          "packet": "a4094e0551ff0206000000004c"
+        },
+        {
+          "relativeMs": 26733,
+          "page": "0x51",
+          "packet": "a4094e0551ff0206000000004c"
+        },
+        {
+          "relativeMs": 26983,
+          "page": "0x19",
+          "packet": "a4094e05199d00000000002042"
+        },
+        {
+          "relativeMs": 27237,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 27485,
+          "page": "0x19",
+          "packet": "a4094e05199e00000000002041"
+        },
+        {
+          "relativeMs": 27742,
+          "page": "0x19",
+          "packet": "a4094e05199f00000000002040"
+        },
+        {
+          "relativeMs": 27983,
+          "page": "0x19",
+          "packet": "a4094e0519a00000000000207f"
+        },
+        {
+          "relativeMs": 28251,
+          "page": "0x19",
+          "packet": "a4094e0519a10000000000207e"
+        },
+        {
+          "relativeMs": 28482,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 28734,
+          "page": "0x19",
+          "packet": "a4094e0519a20000000000207d"
+        },
+        {
+          "relativeMs": 28992,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 29243,
+          "page": "0x19",
+          "packet": "a4094e0519a30000000000207c"
+        },
+        {
+          "relativeMs": 29483,
+          "page": "0x19",
+          "packet": "a4094e0519a40000000000207b"
+        },
+        {
+          "relativeMs": 29750,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 29984,
+          "page": "0x19",
+          "packet": "a4094e0519a50000000000207a"
+        },
+        {
+          "relativeMs": 30264,
+          "page": "0x19",
+          "packet": "a4094e0519a600000000002079"
+        },
+        {
+          "relativeMs": 30485,
+          "page": "0x19",
+          "packet": "a4094e0519a700000000002078"
+        },
+        {
+          "relativeMs": 30743,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 30985,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 31262,
+          "page": "0x19",
+          "packet": "a4094e0519a800000000002077"
+        },
+        {
+          "relativeMs": 31490,
+          "page": "0x19",
+          "packet": "a4094e0519a900000000002076"
+        },
+        {
+          "relativeMs": 31747,
+          "page": "0x19",
+          "packet": "a4094e0519aa00000000002075"
+        },
+        {
+          "relativeMs": 31984,
+          "page": "0x19",
+          "packet": "a4094e0519ab00000000002074"
+        },
+        {
+          "relativeMs": 32264,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 32488,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff0000ff2485"
+        },
+        {
+          "relativeMs": 32746,
+          "page": "0x19",
+          "packet": "a4094e0519ac00000000002073"
+        },
+        {
+          "relativeMs": 32986,
+          "page": "0x19",
+          "packet": "a4094e0519ad00000000002072"
+        },
+        {
+          "relativeMs": 33264,
+          "page": "0x19",
+          "packet": "a4094e0519ae00000000002071"
+        },
+        {
+          "relativeMs": 33486,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 33748,
+          "page": "0x19",
+          "packet": "a4094e0519af00000000002070"
+        },
+        {
+          "relativeMs": 33985,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 34284,
+          "page": "0x19",
+          "packet": "a4094e0519b00000000000206f"
+        },
+        {
+          "relativeMs": 34487,
+          "page": "0xF0",
+          "packet": "a4094e05f00000000000000016"
+        },
+        {
+          "relativeMs": 34984,
+          "page": "0x19",
+          "packet": "a4094e0519b20000000000206d"
+        },
+        {
+          "relativeMs": 35264,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 35487,
+          "page": "0x19",
+          "packet": "a4094e0519b30000000000206c"
+        },
+        {
+          "relativeMs": 35744,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 35986,
+          "page": "0x19",
+          "packet": "a4094e0519b40000000000206b"
+        },
+        {
+          "relativeMs": 36265,
+          "page": "0x19",
+          "packet": "a4094e0519b50000000000206a"
+        },
+        {
+          "relativeMs": 36486,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 36744,
+          "page": "0x19",
+          "packet": "a4094e0519b600000000002069"
+        },
+        {
+          "relativeMs": 36986,
+          "page": "0x19",
+          "packet": "a4094e0519b700000000002068"
+        },
+        {
+          "relativeMs": 37232,
+          "page": "0x19",
+          "packet": "a4094e0519b800000000002067"
+        },
+        {
+          "relativeMs": 37483,
+          "page": "0x47",
+          "packet": "a4094e0547ffffff000000207e"
+        },
+        {
+          "relativeMs": 37732,
+          "page": "0x10",
+          "packet": "a4094e05101900000000ff2434"
+        },
+        {
+          "relativeMs": 37982,
+          "page": "0x19",
+          "packet": "a4094e0519b900000000002066"
+        }
+      ]
+    }
+  ]
+}

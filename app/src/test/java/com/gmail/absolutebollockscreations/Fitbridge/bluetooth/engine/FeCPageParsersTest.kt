@@ -187,6 +187,37 @@ class FeCPageParsersTest {
     }
 
     @Test
+    fun `page 25 preserves every target-status value without treating it as convergence`() {
+        for (status in 0..3) {
+            val page = FeCPageParsers.decodePage(
+                bytes(0x19, 1, 90, 0, 0, 200, 0, 0x30 or status),
+            ) as FeCPage.TrainerData
+            assertEquals(status, page.targetPowerStatus)
+        }
+    }
+
+    @Test
+    fun `reserved equipment-state flag combinations remain unknown`() {
+        for (state in listOf(0, 5, 6, 7)) {
+            val page = FeCPageParsers.decodePage(
+                bytes(0x10, 25, 1, 2, 0, 0, 120, state shl 4),
+            ) as FeCPage.GeneralFe
+            assertNull(page.equipmentState)
+        }
+    }
+
+    @Test
+    fun `decodes physical Neo page 80 manufacturer information`() {
+        val page = FeCPageParsers.decodePage(
+            bytes(0x50, 0xFF, 0xFF, 0x01, 0x59, 0x00, 0xF0, 0x0A),
+        ) as FeCPage.ManufacturerInformation
+
+        assertEquals(1, page.hardwareRevision)
+        assertEquals(89, page.manufacturerId)
+        assertEquals(2800, page.modelNumber)
+    }
+
+    @Test
     fun `decodes page 81 Product Information with unsigned serial`() {
         // serial = 0x89ABCDEF, which is >= 0x80000000: a signed 32-bit read (Incyclist's bug)
         // would turn this negative. It must not.

@@ -17,6 +17,7 @@ internal sealed interface FeCBleControlCommand {
         val requestedPage: Int,
         val transmissionCount: Int,
         val acknowledgedResponse: Boolean,
+        val transmitUntilAcknowledged: Boolean,
     ) : FeCBleControlCommand
     data class Unsupported(val page: Int) : FeCBleControlCommand
 
@@ -117,7 +118,11 @@ internal object FeCBleControlDecoder {
     /** Common page 70: request a supported page N times, with command type 1. */
     private fun decodeRequestDataPage(page: ByteArray): FeCBleControlCommand {
         val response = page[5].toInt() and 0xFF
-        val count = response and 0x7F
+        // Common Pages Rev 3.1 gives 0x80 a special meaning: send acknowledged responses until
+        // one succeeds. BLE does not surface the ANT transmit-completion event, so the peripheral
+        // queues one response per request and lets a retry request another bounded response.
+        val untilAcknowledged = response == 0x80
+        val count = if (untilAcknowledged) 1 else response and 0x7F
         val commandType = page[7].toInt() and 0xFF
         if (count == 0 || commandType != 0x01) {
             return FeCBleControlCommand.Unsupported(BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE)
@@ -126,6 +131,7 @@ internal object FeCBleControlDecoder {
             requestedPage = page[6].toInt() and 0xFF,
             transmissionCount = count,
             acknowledgedResponse = response and 0x80 != 0,
+            transmitUntilAcknowledged = untilAcknowledged,
         )
     }
 
