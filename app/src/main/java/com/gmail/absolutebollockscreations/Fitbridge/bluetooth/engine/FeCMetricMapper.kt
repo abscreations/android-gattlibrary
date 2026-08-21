@@ -171,7 +171,11 @@ internal object FeCMetricMapper {
         page: FeCPage.SpecificNordicSkierData,
         snapshot: FeCMeasurementSnapshot,
     ): List<FeCSample> = buildList {
-        page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+        // Page 24 calls this cadence but defines it as instantaneous strides/minute. Nordic
+        // Skier follows the PM5 SkiErg rowing presentation, whose canonical rate is STROKE_RATE;
+        // emitting CADENCE would populate only the rower's derived average and leave its
+        // instantaneous stroke-rate field empty.
+        page.cadenceRpm?.let { add(FeCSample(MetricKind.STROKE_RATE, it.toDouble())) }
         page.instantaneousPowerWatts?.let { add(FeCSample(MetricKind.POWER, it.toDouble())) }
         if (page.strideCountEnabled) {
             snapshot.strideCount?.let {

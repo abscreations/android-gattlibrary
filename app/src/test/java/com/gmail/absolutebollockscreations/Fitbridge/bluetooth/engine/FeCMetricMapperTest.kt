@@ -127,7 +127,8 @@ class FeCMetricMapperTest {
             FeCMeasurementSnapshot(strideCount = 99),
         )
         assertEquals(99.0, skier.single { it.metric == MetricKind.TOTAL_STRIDES }.value, 1e-9)
-        assertEquals(52.0, skier.single { it.metric == MetricKind.CADENCE }.value, 1e-9)
+        assertEquals(52.0, skier.single { it.metric == MetricKind.STROKE_RATE }.value, 1e-9)
+        assertTrue(skier.none { it.metric == MetricKind.CADENCE })
         assertEquals(400.0, skier.single { it.metric == MetricKind.POWER }.value, 1e-9)
     }
 
