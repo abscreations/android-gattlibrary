@@ -200,24 +200,35 @@ internal class FeCBleMachineControlEndpoint(
      * See this file's class-level doc for why that is spec-correct, not a shortcut.
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun setTargetInclinationPercent(percent: Float): Boolean = submit(
-        FeCControlTarget.Sim(
-            windSpeedMps = null,
-            gradePercent = percent.toDouble(),
-            rollingResistanceCoefficient = null,
-            windResistanceCoefficient = null,
-        ),
-    )
+    override fun setTargetInclinationPercent(percent: Float): Boolean {
+        if (!engine.state.featuresRead || !engine.state.supportsInclination) {
+            return unsupported("inclination")
+        }
+        return submit(
+            FeCControlTarget.Sim(
+                windSpeedMps = null,
+                gradePercent = percent.toDouble(),
+                rollingResistanceCoefficient = null,
+                windResistanceCoefficient = null,
+            ),
+        )
+    }
 
     /** `level` is treated as a 0-100 percent figure for FE-C's page 48. See file-level doc. */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setTargetResistance(level: Float): Boolean {
+        if (!engine.state.featuresRead || !engine.state.supportsResistance) {
+            return unsupported("basic resistance")
+        }
         val percent = level.toDouble().coerceIn(0.0, 100.0)
         return submit(FeCControlTarget.BasicResistance(percent))
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setTargetPowerWatts(watts: Int): Boolean {
+        if (!engine.state.featuresRead || !engine.state.supportsPower) {
+            return unsupported("target power")
+        }
         val safeWatts = watts.coerceAtLeast(0)
         return submit(FeCControlTarget.Erg(safeWatts.toDouble()))
     }
@@ -234,14 +245,24 @@ internal class FeCBleMachineControlEndpoint(
         gradePercent: Float,
         rollingResistanceCoefficient: Float,
         windResistanceCoefficient: Float,
-    ): Boolean = submit(
-        FeCControlTarget.Sim(
-            windSpeedMps = windSpeedMps.toDouble(),
-            gradePercent = gradePercent.toDouble(),
-            rollingResistanceCoefficient = rollingResistanceCoefficient.toDouble(),
-            windResistanceCoefficient = windResistanceCoefficient.toDouble(),
-        ),
-    )
+    ): Boolean {
+        if (!engine.state.featuresRead || !engine.state.supportsIndoorBikeSimulation) {
+            return unsupported("simulation")
+        }
+        return submit(
+            FeCControlTarget.Sim(
+                windSpeedMps = windSpeedMps.toDouble(),
+                gradePercent = gradePercent.toDouble(),
+                rollingResistanceCoefficient = rollingResistanceCoefficient.toDouble(),
+                windResistanceCoefficient = windResistanceCoefficient.toDouble(),
+            ),
+        )
+    }
+
+    private fun unsupported(mode: String): Boolean {
+        Timber.tag(BtEngineState.TAG).w("FE-C control: %s withheld by unresolved/page-54 capabilities", mode)
+        return false
+    }
 
     /**
      * Hands [target] to this link's [FeCControlScheduler]. Returns `false` only when there is no

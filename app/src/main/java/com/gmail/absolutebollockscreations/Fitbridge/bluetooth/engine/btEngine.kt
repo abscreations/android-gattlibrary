@@ -442,6 +442,7 @@ class BtEngine internal constructor(
         ActivityType.STAIRCLIMBER -> FtmsMachineProfile.STAIR_CLIMBER
         ActivityType.STAIRSTEPPER -> FtmsMachineProfile.STAIR_STEPPER
         ActivityType.HEARTRATE    -> null // HR-only, no FTMS persona
+        ActivityType.NORDIC_SKIER -> null // FTMS defines no ski data characteristic/persona
     }
 
     /** Apply a user-selected session mode to the downstream FTMS persona. */
@@ -1995,5 +1996,6 @@ internal fun ActivityType.fusionPersona(): FusionPersona = when (this) {
     ActivityType.TREADMILL, ActivityType.HEARTRATE -> FusionPersona.RUN
     ActivityType.ROWING -> FusionPersona.ROW_PADDLE
     ActivityType.BIKING, ActivityType.ELLIPTICAL,
-    ActivityType.STAIRCLIMBER, ActivityType.STAIRSTEPPER -> FusionPersona.RIDE
+    ActivityType.STAIRCLIMBER, ActivityType.STAIRSTEPPER,
+    ActivityType.NORDIC_SKIER -> FusionPersona.RIDE
 }

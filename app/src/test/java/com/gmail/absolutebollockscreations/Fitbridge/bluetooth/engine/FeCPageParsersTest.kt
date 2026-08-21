@@ -47,6 +47,120 @@ class FeCPageParsersTest {
     }
 
     @Test
+    fun `decodes general settings and metabolic pages with signed incline and scales`() {
+        val settings = FeCPageParsers.decodePage(
+            bytes(0x11, 0xFF, 0xFF, 215, 0xBB, 0xFE, 64, 0x30),
+        ) as FeCPage.GeneralSettings
+        assertEquals(2.15, settings.cycleLengthMeters!!, 1e-9)
+        assertEquals(-3.25, settings.inclinePercent!!, 1e-9)
+        assertEquals(32.0, settings.resistancePercent!!, 1e-9)
+        assertEquals(FeCEquipmentState.IN_USE, settings.equipmentState)
+
+        val metabolic = FeCPageParsers.decodePage(
+            bytes(0x12, 0xFF, 0x52, 0x03, 0x05, 0x19, 254, 0x31),
+        ) as FeCPage.GeneralMetabolicData
+        assertEquals(8.50, metabolic.metabolicEquivalent!!, 1e-9)
+        assertEquals(640.5, metabolic.caloricBurnRateKcalPerHour!!, 1e-9)
+        assertEquals(254, metabolic.accumulatedCaloriesRaw)
+        assertTrue(metabolic.accumulatedCaloriesEnabled)
+    }
+
+    @Test
+    fun `general pages preserve unavailable sentinels`() {
+        val settings = FeCPageParsers.decodePage(
+            bytes(0x11, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0),
+        ) as FeCPage.GeneralSettings
+        assertNull(settings.cycleLengthMeters)
+        assertNull(settings.inclinePercent)
+        assertNull(settings.resistancePercent)
+
+        val metabolic = FeCPageParsers.decodePage(
+            bytes(0x12, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
+        ) as FeCPage.GeneralMetabolicData
+        assertNull(metabolic.metabolicEquivalent)
+        assertNull(metabolic.caloricBurnRateKcalPerHour)
+        assertFalse(metabolic.accumulatedCaloriesEnabled)
+    }
+
+    @Test
+    fun `decodes elliptical climber and Nordic skier specific pages`() {
+        val elliptical = FeCPageParsers.decodePage(
+            bytes(0x14, 0xFF, 250, 254, 72, 220, 0, 0x33),
+        ) as FeCPage.SpecificEllipticalData
+        assertTrue(elliptical.positiveVerticalDistanceEnabled)
+        assertTrue(elliptical.strideCountEnabled)
+        assertEquals(72, elliptical.cadenceRpm)
+        assertEquals(220, elliptical.instantaneousPowerWatts)
+
+        val climber = FeCPageParsers.decodePage(
+            bytes(0x17, 0xFF, 0xFF, 201, 38, 0x2C, 0x01, 0x31),
+        ) as FeCPage.SpecificClimberData
+        assertEquals(201, climber.cycleCountRaw)
+        assertEquals(38, climber.cadenceRpm)
+        assertEquals(300, climber.instantaneousPowerWatts)
+
+        val skier = FeCPageParsers.decodePage(
+            bytes(0x18, 0xFF, 0xFF, 99, 52, 0x90, 0x01, 0x31),
+        ) as FeCPage.SpecificNordicSkierData
+        assertEquals(99, skier.strideCountRaw)
+        assertEquals(52, skier.cadenceRpm)
+        assertEquals(400, skier.instantaneousPowerWatts)
+    }
+
+    @Test
+    fun `new specific pages preserve cadence and power unavailable sentinels`() {
+        val elliptical = FeCPageParsers.decodePage(
+            bytes(0x14, 0xFF, 0, 0, 0xFF, 0xFF, 0xFF, 0),
+        ) as FeCPage.SpecificEllipticalData
+        assertNull(elliptical.cadenceRpm)
+        assertNull(elliptical.instantaneousPowerWatts)
+
+        val climber = FeCPageParsers.decodePage(
+            bytes(0x17, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, 0),
+        ) as FeCPage.SpecificClimberData
+        assertNull(climber.cadenceRpm)
+        assertNull(climber.instantaneousPowerWatts)
+
+        val skier = FeCPageParsers.decodePage(
+            bytes(0x18, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, 0),
+        ) as FeCPage.SpecificNordicSkierData
+        assertNull(skier.cadenceRpm)
+        assertNull(skier.instantaneousPowerWatts)
+
+        val caps = FeCPageParsers.decodePage(
+            bytes(0x36, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0),
+        ) as FeCPage.FeCapabilities
+        assertNull(caps.maximumResistanceNewtons)
+    }
+
+    @Test
+    fun `decodes trainer torque high-bit counters and FE capabilities`() {
+        val torque = FeCPageParsers.decodePage(
+            bytes(0x1A, 0xFE, 0xFD, 0x34, 0xF2, 0x78, 0xE1, 0x30),
+        ) as FeCPage.TrainerTorqueData
+        assertEquals(254, torque.eventCountRaw)
+        assertEquals(253, torque.wheelTicksRaw)
+        assertEquals(0xF234, torque.accumulatedWheelPeriodRaw)
+        assertEquals(0xE178, torque.accumulatedTorqueRaw)
+
+        val caps = FeCPageParsers.decodePage(
+            bytes(0x36, 0xFF, 0xFF, 0xFF, 0xFF, 0xB0, 0x04, 0x05),
+        ) as FeCPage.FeCapabilities
+        assertEquals(1200, caps.maximumResistanceNewtons)
+        assertTrue(caps.supportsBasicResistance)
+        assertFalse(caps.supportsTargetPower)
+        assertTrue(caps.supportsSimulation)
+    }
+
+    @Test
+    fun `every newly known page rejects truncation before field access`() {
+        val pages = listOf(0x11, 0x12, 0x14, 0x17, 0x18, 0x1A, 0x36)
+        pages.forEach { page ->
+            assertEquals(FeCPage.Unknown(page), FeCPageParsers.decodePage(bytes(page, 1, 2, 3, 4, 5, 6)))
+        }
+    }
+
+    @Test
     fun `decodes page 25 Specific Trainer Data`() {
         // eventCount=10, cadence=85, accumulatedPower=1200, instPower raw=250 (low=0xFA,
         // high nibble=0), trainerStatus=5 (byte6 high nibble), targetPowerStatus=1,

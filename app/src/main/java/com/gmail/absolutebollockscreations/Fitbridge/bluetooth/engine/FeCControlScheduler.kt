@@ -27,6 +27,13 @@ internal sealed interface FeCControlTarget {
         override val mode: FeCControlMode = FeCControlMode.NONE
     }
 
+    data class RequestDataPage(
+        val requestedPage: Int,
+        val transmissionCount: Int = 2,
+    ) : FeCControlTarget {
+        override val mode: FeCControlMode = FeCControlMode.CAPABILITY_REQUEST
+    }
+
     /** Page 48. [percent] is `0.0..100.0`; out-of-range values are caught at dispatch, not here. */
     data class BasicResistance(val percent: Double) : FeCControlTarget {
         override val mode: FeCControlMode = FeCControlMode.BASIC_RESISTANCE
@@ -60,7 +67,7 @@ internal sealed interface FeCControlTarget {
     }
 }
 
-internal enum class FeCControlMode { NONE, BASIC_RESISTANCE, ERG, SIM }
+internal enum class FeCControlMode { NONE, CAPABILITY_REQUEST, BASIC_RESISTANCE, ERG, SIM }
 
 /**
  * Enforces FEC3's write cadence and coalesces bursty target updates into the latest one, per
@@ -157,6 +164,9 @@ internal class FeCControlScheduler(
     }
 
     private fun framesFor(target: FeCControlTarget): List<ByteArray> = when (target) {
+        is FeCControlTarget.RequestDataPage -> listOf(
+            FeCControlEncoder.encodeRequestDataPage(target.requestedPage, target.transmissionCount),
+        )
         is FeCControlTarget.BasicResistance ->
             listOf(FeCControlEncoder.encodeBasicResistance(target.percent))
         is FeCControlTarget.Erg ->

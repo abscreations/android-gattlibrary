@@ -14,6 +14,14 @@ class FeCProtocolSessionTest {
     private fun newSession(): FeCProtocolSession =
         FeCProtocolSession(connectionId = ConnectionId("AA:BB:CC:DD:EE:FF", linkGeneration = 1L))
 
+    private fun send(session: FeCProtocolSession, vararg page: Int) {
+        session.onPacket(
+            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FeCFrameCodec.encode(0x4E, 5, bytes(*page)),
+            arrivalMs = 0L,
+        )
+    }
+
     @Test
     fun `ignores packets from a characteristic that is not FEC2`() {
         val session = newSession()
@@ -64,6 +72,7 @@ class FeCProtocolSessionTest {
         session.onPacket(BluetoothIds.UUID_FEC_MEASUREMENT, corrupted, arrivalMs = 1L)
 
         assertEquals(before, session.snapshot)
+        assertNull(session.lastAppliedPage)
     }
 
     @Test
@@ -93,6 +102,49 @@ class FeCProtocolSessionTest {
         assertEquals(250, snap.instantaneousPowerWatts)
         // From page 81.
         assertEquals(0x89ABCDEFL, snap.productInfo?.serialNumber)
+    }
+
+    @Test
+    fun `metabolic calories and elliptical counters remain continuous across rollover`() {
+        val session = newSession()
+        send(session, 0x12, 0xFF, 0x52, 0x03, 0x05, 0x19, 254, 0x31)
+        send(session, 0x12, 0xFF, 0x52, 0x03, 0x05, 0x19, 2, 0x31)
+        assertEquals(258L, session.snapshot.accumulatedCalories)
+
+        send(session, 0x14, 0xFF, 250, 254, 72, 220, 0, 0x33)
+        send(session, 0x14, 0xFF, 2, 1, 72, 220, 0, 0x33)
+        assertEquals(25.8, session.snapshot.positiveVerticalDistanceMeters!!, 1e-9)
+        assertEquals(257L, session.snapshot.strideCount)
+    }
+
+    @Test
+    fun `rower climber and Nordic counters use independent rollover domains`() {
+        val session = newSession()
+        send(session, 0x16, 0xFF, 0xFF, 250, 30, 200, 0, 0x31)
+        send(session, 0x16, 0xFF, 0xFF, 3, 30, 200, 0, 0x31)
+        send(session, 0x17, 0xFF, 0xFF, 200, 40, 44, 1, 0x31)
+        send(session, 0x18, 0xFF, 0xFF, 100, 50, 144, 1, 0x31)
+
+        assertEquals(259L, session.snapshot.strokeCount)
+        assertEquals(200L, session.snapshot.climberCycleCount)
+        assertEquals(100L, session.snapshot.strideCount)
+    }
+
+    @Test
+    fun `trainer torque power uses rollover-safe deltas and ignores duplicate events`() {
+        val session = newSession()
+        send(session, 0x1A, 255, 255, 0xDC, 0xFF, 0xDC, 0xFF, 0x30)
+        assertNull(session.snapshot.torquePowerWatts)
+
+        send(session, 0x1A, 0, 0, 64, 0, 32, 0, 0x30)
+        assertEquals(128.0 * Math.PI * 68.0 / 100.0, session.snapshot.torquePowerWatts!!, 1e-9)
+        assertEquals(256L, session.snapshot.torqueEventCount)
+        assertEquals(256L, session.snapshot.torqueWheelTicks)
+        assertEquals(65_600L, session.snapshot.accumulatedWheelPeriodRaw)
+        assertEquals(65_568L, session.snapshot.accumulatedTorqueRaw)
+
+        send(session, 0x1A, 0, 0, 64, 0, 32, 0, 0x30)
+        assertNull(session.snapshot.torquePowerWatts)
     }
 
     @Test

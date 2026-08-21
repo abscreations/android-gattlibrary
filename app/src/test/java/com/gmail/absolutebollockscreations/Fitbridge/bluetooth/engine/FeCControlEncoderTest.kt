@@ -18,6 +18,15 @@ class FeCControlEncoderTest {
     private fun bytes(vararg v: Int) = ByteArray(v.size) { (v[it] and 0xFF).toByte() }
 
     @Test
+    fun `encodeRequestDataPage requests page 54 twice as broadcast responses`() {
+        val wire = FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES)
+        assertArrayEquals(
+            bytes(0xA4, 0x09, 0x4F, 0x05, 0x46, 0xFF, 0xFF, 0xFF, 0xFF, 0x02, 0x36, 0x01, 0x94),
+            wire,
+        )
+    }
+
+    @Test
     fun `encodeTrackResistance emits the pinned setSlope-0 vector from the Tacx PDF`() {
         val wire = FeCControlEncoder.encodeTrackResistance(
             gradePercent = 0.0,
@@ -135,6 +144,7 @@ class FeCControlEncoderTest {
             FeCControlEncoder.encodeTargetPower(100.0),
             FeCControlEncoder.encodeWindResistance(),
             FeCControlEncoder.encodeTrackResistance(0.0, 0.004),
+            FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES),
         )
         for (wire in pages) {
             assertArrayEquals(byteArrayOf(0x4F), byteArrayOf(wire[2]))

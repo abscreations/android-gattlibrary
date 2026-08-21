@@ -43,6 +43,24 @@ internal object FeCMetricMapper {
             page.heartRateBpm?.let { add(FeCSample(MetricKind.HEART_RATE, it.toDouble())) }
         }
 
+    fun samplesForGeneralSettings(page: FeCPage.GeneralSettings): List<FeCSample> = buildList {
+        page.inclinePercent?.let { add(FeCSample(MetricKind.INCLINATION, it)) }
+        page.resistancePercent?.let { add(FeCSample(MetricKind.RESISTANCE, it)) }
+    }
+
+    fun samplesForMetabolicData(
+        page: FeCPage.GeneralMetabolicData,
+        snapshot: FeCMeasurementSnapshot,
+    ): List<FeCSample> = buildList {
+        page.metabolicEquivalent?.let { add(FeCSample(MetricKind.METABOLIC_EQUIVALENT, it)) }
+        page.caloricBurnRateKcalPerHour?.let { add(FeCSample(MetricKind.ENERGY_RATE, it)) }
+        if (page.accumulatedCaloriesEnabled) {
+            snapshot.accumulatedCalories?.let {
+                add(FeCSample(MetricKind.ENERGY, it.toDouble(), nativeCumulative = it.toDouble()))
+            }
+        }
+    }
+
     /**
      * Page 25 - Specific Trainer Data.
      *
@@ -80,8 +98,39 @@ internal object FeCMetricMapper {
      * data, so there is nothing to guess or invent here for a value the wire format never
      * carries.
      */
-    fun samplesForTreadmillData(page: FeCPage.SpecificTreadmillData): List<FeCSample> = buildList {
+    fun samplesForTreadmillData(
+        page: FeCPage.SpecificTreadmillData,
+        snapshot: FeCMeasurementSnapshot = FeCMeasurementSnapshot(),
+    ): List<FeCSample> = buildList {
         page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+        if (page.positiveVerticalDistanceEnabled) {
+            snapshot.positiveVerticalDistanceMeters?.let {
+                add(FeCSample(MetricKind.ELEVATION_GAIN_POSITIVE, it, nativeCumulative = it))
+            }
+        }
+        if (page.negativeVerticalDistanceEnabled) {
+            snapshot.negativeVerticalDistanceMeters?.let {
+                add(FeCSample(MetricKind.ELEVATION_GAIN_NEGATIVE, it, nativeCumulative = it))
+            }
+        }
+    }
+
+    fun samplesForEllipticalData(
+        page: FeCPage.SpecificEllipticalData,
+        snapshot: FeCMeasurementSnapshot,
+    ): List<FeCSample> = buildList {
+        page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+        page.instantaneousPowerWatts?.let { add(FeCSample(MetricKind.POWER, it.toDouble())) }
+        if (page.positiveVerticalDistanceEnabled) {
+            snapshot.positiveVerticalDistanceMeters?.let {
+                add(FeCSample(MetricKind.ELEVATION_GAIN_POSITIVE, it, nativeCumulative = it))
+            }
+        }
+        if (page.strideCountEnabled) {
+            snapshot.strideCount?.let {
+                add(FeCSample(MetricKind.TOTAL_STRIDES, it.toDouble(), nativeCumulative = it.toDouble()))
+            }
+        }
     }
 
     /**
@@ -91,26 +140,63 @@ internal object FeCMetricMapper {
      * [MetricKind.AVERAGE_POWER] to derive here - only the instantaneous reading the wire
      * actually carries.
      */
-    fun samplesForRowerData(page: FeCPage.SpecificRowerData): List<FeCSample> = buildList {
+    fun samplesForRowerData(
+        page: FeCPage.SpecificRowerData,
+        snapshot: FeCMeasurementSnapshot = FeCMeasurementSnapshot(),
+    ): List<FeCSample> = buildList {
         page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
         page.instantaneousPowerWatts?.let { add(FeCSample(MetricKind.POWER, it.toDouble())) }
+        if (page.strokeCountEnabled) {
+            snapshot.strokeCount?.let {
+                add(FeCSample(MetricKind.STROKE_COUNT, it.toDouble(), nativeCumulative = it.toDouble()))
+            }
+        }
     }
+
+    fun samplesForClimberData(
+        page: FeCPage.SpecificClimberData,
+        snapshot: FeCMeasurementSnapshot,
+    ): List<FeCSample> = buildList {
+        page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+        page.instantaneousPowerWatts?.let { add(FeCSample(MetricKind.POWER, it.toDouble())) }
+        if (page.cycleCountEnabled) {
+            snapshot.climberCycleCount?.let {
+                add(FeCSample(MetricKind.TOTAL_STRIDES, it.toDouble(), nativeCumulative = it.toDouble()))
+                add(FeCSample(MetricKind.TOTAL_STEPS, it.toDouble() * 2.0))
+            }
+        }
+    }
+
+    fun samplesForNordicSkierData(
+        page: FeCPage.SpecificNordicSkierData,
+        snapshot: FeCMeasurementSnapshot,
+    ): List<FeCSample> = buildList {
+        page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+        page.instantaneousPowerWatts?.let { add(FeCSample(MetricKind.POWER, it.toDouble())) }
+        if (page.strideCountEnabled) {
+            snapshot.strideCount?.let {
+                add(FeCSample(MetricKind.TOTAL_STRIDES, it.toDouble(), nativeCumulative = it.toDouble()))
+            }
+        }
+    }
+
+    fun samplesForTrainerTorqueData(snapshot: FeCMeasurementSnapshot): List<FeCSample> =
+        snapshot.torquePowerWatts?.let { listOf(FeCSample(MetricKind.POWER, it)) }.orEmpty()
 
     /**
      * Best-effort device classification from the page 16 equipment-type byte, for the existing
      * `updateDeviceMachineFeatureByAddress` UI path (the same mechanism Concept2/Precor/Schwinn
      * x70 use - none of them call `MetricFusion.setPersona` either, so this does not either).
      *
-     * Returns `null` for Nordic Skier (wire value 24): `ActivityType` has no ski-specific case
-     * and none of its six options is an honest fit, per plan §9/FEC-Q7. Guessing STAIRCLIMBER or
-     * BIKING for a skier would misclassify the device in the UI, which is worse than showing
-     * nothing - this is a recorded open gap, not a silent guess.
+     * Nordic Skier has its own app activity identity. It deliberately has no downstream FTMS
+     * provider profile because the standard service defines no ski data characteristic.
      */
     fun activityTypeFor(equipmentType: Int): ActivityType? = when (equipmentType) {
         BluetoothIds.FEC_EQUIPMENT_TREADMILL -> ActivityType.TREADMILL
         BluetoothIds.FEC_EQUIPMENT_ELLIPTICAL -> ActivityType.ELLIPTICAL
         BluetoothIds.FEC_EQUIPMENT_ROWER -> ActivityType.ROWING
         BluetoothIds.FEC_EQUIPMENT_CLIMBER -> ActivityType.STAIRCLIMBER
+        BluetoothIds.FEC_EQUIPMENT_NORDIC_SKIER -> ActivityType.NORDIC_SKIER
         // FEC_EQUIPMENT_STATIONARY_BIKE == FEC_EQUIPMENT_TRAINER == 25 on the wire (the ANT+
         // spec gives Trainer and Stationary Bike the same equipment-type value - see
         // BluetoothIds' doc on FEC_EQUIPMENT_STATIONARY_BIKE); one `when` branch covers both,

@@ -80,6 +80,65 @@ class FeCMetricMapperTest {
         assertTrue(samples.none { it.metric == MetricKind.HEART_RATE })
     }
 
+    @Test
+    fun `general settings and metabolic data emit every canonical metric`() {
+        val settings = FeCMetricMapper.samplesForGeneralSettings(
+            FeCPage.GeneralSettings(2.1, -3.25, 32.0, FeCEquipmentState.IN_USE),
+        )
+        assertEquals(-3.25, settings.single { it.metric == MetricKind.INCLINATION }.value, 1e-9)
+        assertEquals(32.0, settings.single { it.metric == MetricKind.RESISTANCE }.value, 1e-9)
+
+        val metabolicPage = FeCPage.GeneralMetabolicData(8.5, 640.5, 12, true, FeCEquipmentState.IN_USE)
+        val metabolic = FeCMetricMapper.samplesForMetabolicData(
+            metabolicPage,
+            FeCMeasurementSnapshot(accumulatedCalories = 268),
+        )
+        assertEquals(8.5, metabolic.single { it.metric == MetricKind.METABOLIC_EQUIVALENT }.value, 1e-9)
+        assertEquals(640.5, metabolic.single { it.metric == MetricKind.ENERGY_RATE }.value, 1e-9)
+        val energy = metabolic.single { it.metric == MetricKind.ENERGY }
+        assertEquals(268.0, energy.value, 1e-9)
+        assertEquals(268.0, energy.nativeCumulative)
+    }
+
+    @Test
+    fun `persona-specific pages emit their counts cadence power and vertical metrics`() {
+        val ellipticalPage = FeCPage.SpecificEllipticalData(1, true, 2, true, 72, 220, FeCEquipmentState.IN_USE)
+        val elliptical = FeCMetricMapper.samplesForEllipticalData(
+            ellipticalPage,
+            FeCMeasurementSnapshot(positiveVerticalDistanceMeters = 25.8, strideCount = 257),
+        )
+        assertEquals(25.8, elliptical.single { it.metric == MetricKind.ELEVATION_GAIN_POSITIVE }.value, 1e-9)
+        assertEquals(257.0, elliptical.single { it.metric == MetricKind.TOTAL_STRIDES }.value, 1e-9)
+        assertEquals(72.0, elliptical.single { it.metric == MetricKind.CADENCE }.value, 1e-9)
+        assertEquals(220.0, elliptical.single { it.metric == MetricKind.POWER }.value, 1e-9)
+
+        val climberPage = FeCPage.SpecificClimberData(1, true, 38, 300, FeCEquipmentState.IN_USE)
+        val climber = FeCMetricMapper.samplesForClimberData(
+            climberPage,
+            FeCMeasurementSnapshot(climberCycleCount = 201),
+        )
+        assertEquals(201.0, climber.single { it.metric == MetricKind.TOTAL_STRIDES }.value, 1e-9)
+        assertEquals(402.0, climber.single { it.metric == MetricKind.TOTAL_STEPS }.value, 1e-9)
+        assertEquals(300.0, climber.single { it.metric == MetricKind.POWER }.value, 1e-9)
+
+        val skierPage = FeCPage.SpecificNordicSkierData(1, true, 52, 400, FeCEquipmentState.IN_USE)
+        val skier = FeCMetricMapper.samplesForNordicSkierData(
+            skierPage,
+            FeCMeasurementSnapshot(strideCount = 99),
+        )
+        assertEquals(99.0, skier.single { it.metric == MetricKind.TOTAL_STRIDES }.value, 1e-9)
+        assertEquals(52.0, skier.single { it.metric == MetricKind.CADENCE }.value, 1e-9)
+        assertEquals(400.0, skier.single { it.metric == MetricKind.POWER }.value, 1e-9)
+    }
+
+    @Test
+    fun `torque page emits power only when session derived a fresh value`() {
+        assertTrue(FeCMetricMapper.samplesForTrainerTorqueData(FeCMeasurementSnapshot()).isEmpty())
+        val samples = FeCMetricMapper.samplesForTrainerTorqueData(FeCMeasurementSnapshot(torquePowerWatts = 275.5))
+        assertEquals(275.5, samples.single().value, 1e-9)
+        assertEquals(MetricKind.POWER, samples.single().metric)
+    }
+
     // ── Specific Trainer Data (page 25) ───────────────────────────────────────────
 
     @Test
@@ -153,14 +212,15 @@ class FeCMetricMapperTest {
         assertEquals(ActivityType.ELLIPTICAL, FeCMetricMapper.activityTypeFor(20))
         assertEquals(ActivityType.ROWING, FeCMetricMapper.activityTypeFor(22))
         assertEquals(ActivityType.STAIRCLIMBER, FeCMetricMapper.activityTypeFor(23))
+        assertEquals(ActivityType.NORDIC_SKIER, FeCMetricMapper.activityTypeFor(24))
         // Trainer and Stationary Bike share wire value 25 per the official ANT+ spec (Table
         // 8-7) - see BluetoothIds.FEC_EQUIPMENT_STATIONARY_BIKE's doc.
         assertEquals(ActivityType.BIKING, FeCMetricMapper.activityTypeFor(25))
     }
 
     @Test
-    fun `Nordic Skier has no honest ActivityType and is left unclassified`() {
-        assertNull(FeCMetricMapper.activityTypeFor(24))
+    fun `Nordic Skier has a dedicated ActivityType`() {
+        assertEquals(ActivityType.NORDIC_SKIER, FeCMetricMapper.activityTypeFor(24))
     }
 
     @Test

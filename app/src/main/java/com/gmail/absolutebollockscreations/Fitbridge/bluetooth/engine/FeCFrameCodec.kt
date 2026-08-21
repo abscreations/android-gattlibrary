@@ -68,7 +68,16 @@ internal object FeCFrameCodec {
 
     private val KNOWN_PAGES = setOf(
         BluetoothIds.FEC_PAGE_GENERAL_FE_DATA,
+        BluetoothIds.FEC_PAGE_GENERAL_SETTINGS,
+        BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA,
+        BluetoothIds.FEC_PAGE_SPECIFIC_TREADMILL_DATA,
+        BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA,
+        BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA,
+        BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA,
+        BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA,
         BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA,
+        BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA,
+        BluetoothIds.FEC_PAGE_FE_CAPABILITIES,
         BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION,
     )
 

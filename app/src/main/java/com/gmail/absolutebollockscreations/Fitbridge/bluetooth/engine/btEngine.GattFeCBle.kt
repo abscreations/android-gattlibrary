@@ -36,11 +36,11 @@ import java.util.UUID
  * Precor make, since neither `MetricProtocol` nor `MetricSourceClass` has a dedicated FE-C
  * value (plan §9 explicitly calls for reuse rather than adding one).
  *
- * ## What this handler still does not do
+ * ## Capability and control path
  *
- * Control encoding, the 4Hz write scheduler, and capability translation are §9.6-9.9. A
- * measurement-only FE-C device (no FEC3) is fully supported by what is here; a device that also
- * exposes FEC3 is measured the same way and offers no control yet.
+ * A measurement-only FE-C device (no FEC3) remains fully supported. When FEC3 exists, the same
+ * bounded scheduler sends the page-54 capability request and all enabled target pages. FEC3 alone
+ * does not unlock a target mode; the corresponding page-54 bit must be present first.
  */
 internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
@@ -66,6 +66,8 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
     /** Rollover-corrected totals as of the previous page 25, for §9.4's average-power delta. */
     private var previousEventCountTotal: Long? = null
     private var previousAccumulatedPowerTotal: Long? = null
+    private var capabilityRequestDeadlineMs: Long? = null
+    private var capabilitiesResolved = false
 
     /** Whether the last activated link exposed FEC3. */
     internal fun controlChannelAvailable(): Boolean = controlAvailable
@@ -96,6 +98,8 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         deviceClassificationPublished = false
         previousEventCountTotal = null
         previousAccumulatedPowerTotal = null
+        capabilityRequestDeadlineMs = null
+        capabilitiesResolved = false
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -129,10 +133,10 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
             )
         }
 
-        // Unit 9.8: publish conservative capability booleans from the FEC3 presence/absence
-        // fact just determined above. Never claims a known Supported-* range - see
-        // FeCCapabilities's KDoc for why that would be an invented number, not a reading.
+        // FEC3 is only the transport. Page 54 determines which control modes the equipment
+        // actually claims; keep controls withheld until that response arrives.
         FeCCapabilities.publish(engine.state, controlAvailable)
+        capabilitiesResolved = !controlAvailable
 
         session = FeCProtocolSession(context.connectionId)
         val linkTransport = BtEngineGattTransport(engine, context.connectionId)
@@ -172,8 +176,21 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
             snap.equipmentType?.let { classifyDevice(engine, gatt, it) }
         }
 
+        if (page is FeCPage.FeCapabilities && !capabilitiesResolved) {
+            capabilityRequestDeadlineMs = null
+            capabilitiesResolved = true
+            FeCCapabilities.publish(engine.state, controlAvailable, page)
+            snap.equipmentType?.let { equipmentType ->
+                FeCMetricMapper.activityTypeFor(equipmentType)?.let {
+                    engine.maybeStartProviderAdvertisingAfterFeatures(it)
+                }
+            }
+        }
+
         val samples: List<FeCSample> = when (page) {
             is FeCPage.GeneralFe -> FeCMetricMapper.samplesForGeneralFe(page, snap)
+            is FeCPage.GeneralSettings -> FeCMetricMapper.samplesForGeneralSettings(page)
+            is FeCPage.GeneralMetabolicData -> FeCMetricMapper.samplesForMetabolicData(page, snap)
             is FeCPage.TrainerData -> {
                 val eventCountTotal = snap.eventCountRaw
                 val accumulatedPowerTotal = snap.accumulatedPowerRaw
@@ -192,8 +209,12 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 previousAccumulatedPowerTotal = accumulatedPowerTotal
                 mapped
             }
-            is FeCPage.SpecificTreadmillData -> FeCMetricMapper.samplesForTreadmillData(page)
-            is FeCPage.SpecificRowerData -> FeCMetricMapper.samplesForRowerData(page)
+            is FeCPage.SpecificTreadmillData -> FeCMetricMapper.samplesForTreadmillData(page, snap)
+            is FeCPage.SpecificEllipticalData -> FeCMetricMapper.samplesForEllipticalData(page, snap)
+            is FeCPage.SpecificRowerData -> FeCMetricMapper.samplesForRowerData(page, snap)
+            is FeCPage.SpecificClimberData -> FeCMetricMapper.samplesForClimberData(page, snap)
+            is FeCPage.SpecificNordicSkierData -> FeCMetricMapper.samplesForNordicSkierData(page, snap)
+            is FeCPage.TrainerTorqueData -> FeCMetricMapper.samplesForTrainerTorqueData(snap)
             else -> emptyList()
         }
         if (samples.isEmpty()) return
@@ -222,6 +243,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         val address = gatt.device?.address ?: return
         engine.state.updateDeviceMachineFeatureByAddress(address, activityType.ordinal)
         deviceClassificationPublished = true
+        engine.maybeStartProviderAdvertisingAfterFeatures(activityType)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -230,12 +252,42 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // §9.9: FEC2 subscribed + FEC3 present (scheduler only exists when it is) is the
         // whole start gate - there is no proprietary handshake to wait for, unlike Life
         // Fitness's FTMS setup.
-        scheduler?.start()
+        scheduler?.let {
+            it.submit(
+                FeCControlTarget.RequestDataPage(
+                    requestedPage = BluetoothIds.FEC_PAGE_FE_CAPABILITIES,
+                ),
+            )
+            capabilityRequestDeadlineMs = MonotonicMetricClock.SYSTEM.nowMs() + CAPABILITY_RESPONSE_TIMEOUT_MS
+            it.start()
+        }
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun onLivenessTick(engine: BtEngine, gatt: BluetoothGatt) {
         session?.onTick(MonotonicMetricClock.SYSTEM.nowMs())
+        val nowMs = MonotonicMetricClock.SYSTEM.nowMs()
+        val deadline = capabilityRequestDeadlineMs
+        if (deadline != null && nowMs >= deadline) {
+            capabilityRequestDeadlineMs = null
+            capabilitiesResolved = true
+            Timber.tag(BtEngineState.TAG).w("FE-C page 54 response timed out; withholding all control modes")
+            FeCCapabilities.publish(
+                engine.state,
+                controlAvailable,
+                FeCPage.FeCapabilities(
+                    maximumResistanceNewtons = null,
+                    supportsBasicResistance = false,
+                    supportsTargetPower = false,
+                    supportsSimulation = false,
+                ),
+            )
+            session?.snapshot?.equipmentType?.let { equipmentType ->
+                FeCMetricMapper.activityTypeFor(equipmentType)?.let {
+                    engine.maybeStartProviderAdvertisingAfterFeatures(it)
+                }
+            }
+        }
         // §9.9's "stops on demotion": there is no dedicated demotion callback into
         // ProtocolHandler, so this reuses the periodic liveness tick every other handler
         // already receives to notice when AdapterLivenessCoordinator has moved this link
@@ -248,5 +300,9 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         ) {
             activeScheduler.stop()
         }
+    }
+
+    companion object {
+        private const val CAPABILITY_RESPONSE_TIMEOUT_MS = 3_000L
     }
 }

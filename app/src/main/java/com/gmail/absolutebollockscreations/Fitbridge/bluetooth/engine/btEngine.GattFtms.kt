@@ -617,6 +617,7 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             ActivityType.STAIRSTEPPER -> "Stair Stepper"
             ActivityType.TREADMILL    -> "Treadmill"
             ActivityType.HEARTRATE    -> "Heart Rate Only"
+            ActivityType.NORDIC_SKIER -> "Nordic Skier"
         }
     }
 

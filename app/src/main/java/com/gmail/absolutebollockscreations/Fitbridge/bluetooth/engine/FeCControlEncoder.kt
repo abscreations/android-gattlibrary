@@ -26,6 +26,25 @@ internal object FeCControlEncoder {
     private const val RESERVED: Byte = 0xFF.toByte()
     private const val FIELD_UNAVAILABLE = 0xFF
 
+    /** Page 70 - request a specific data page from the fitness equipment. */
+    fun encodeRequestDataPage(
+        requestedPage: Int,
+        transmissionCount: Int = 2,
+        acknowledgedResponse: Boolean = false,
+    ): ByteArray {
+        require(requestedPage in 0..0xFF) { "requestedPage out of range: $requestedPage" }
+        require(transmissionCount in 1..0x7F) { "transmissionCount out of range: $transmissionCount" }
+        val commandType = if (acknowledgedResponse) 0x81 else 0x01
+        val payload = byteArrayOf(
+            BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE.toByte(),
+            RESERVED, RESERVED, RESERVED, RESERVED,
+            transmissionCount.toByte(),
+            requestedPage.toByte(),
+            commandType.toByte(),
+        )
+        return FeCFrameCodec.encode(BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
+    }
+
     /**
      * Page 48 - Basic Resistance. [percent] is total resistance in `0.0..100.0`, encoded at
      * 0.5% resolution (raw range 0..200). The legal range itself is the ANT+ FE-C spec's own

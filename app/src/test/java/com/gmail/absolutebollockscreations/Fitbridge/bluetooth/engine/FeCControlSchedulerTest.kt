@@ -58,6 +58,22 @@ class FeCControlSchedulerTest {
     }
 
     @Test
+    fun `a data-page request is dispatched through the same bounded FEC3 scheduler`() = runBlocking {
+        val transport = RecordingTransport()
+        val scheduler = FeCControlScheduler(transport, minIntervalMs = intervalMs)
+        scheduler.submit(FeCControlTarget.RequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES))
+        scheduler.start()
+        delay(intervalMs * 4)
+        scheduler.stop()
+
+        assertEquals(1, transport.writes.size)
+        assertArrayEquals(
+            FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES),
+            transport.writes.single(),
+        )
+    }
+
+    @Test
     fun `two submissions before the next tick coalesce to only the latest`() = runBlocking {
         val transport = RecordingTransport()
         val scheduler = FeCControlScheduler(transport, minIntervalMs = intervalMs)

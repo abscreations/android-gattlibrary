@@ -50,6 +50,21 @@ internal sealed interface FeCPage {
         val equipmentState: FeCEquipmentState?,
     ) : FeCPage
 
+    data class GeneralSettings(
+        val cycleLengthMeters: Double?,
+        val inclinePercent: Double?,
+        val resistancePercent: Double?,
+        val equipmentState: FeCEquipmentState?,
+    ) : FeCPage
+
+    data class GeneralMetabolicData(
+        val metabolicEquivalent: Double?,
+        val caloricBurnRateKcalPerHour: Double?,
+        val accumulatedCaloriesRaw: Int,
+        val accumulatedCaloriesEnabled: Boolean,
+        val equipmentState: FeCEquipmentState?,
+    ) : FeCPage
+
     /**
      * Page 25 - Specific Trainer Data.
      *
@@ -95,6 +110,16 @@ internal sealed interface FeCPage {
         val equipmentState: FeCEquipmentState?,
     ) : FeCPage
 
+    data class SpecificEllipticalData(
+        val positiveVerticalDistanceRaw: Int,
+        val positiveVerticalDistanceEnabled: Boolean,
+        val strideCountRaw: Int,
+        val strideCountEnabled: Boolean,
+        val cadenceRpm: Int?,
+        val instantaneousPowerWatts: Int?,
+        val equipmentState: FeCEquipmentState?,
+    ) : FeCPage
+
     /**
      * Page 22 - Specific Rower Data. Per the official ANT+ FE-C spec (D000001231 Rev 5.0, Table
      * 8-19): bytes 1-2 are reserved (do not interpret) - note this corrects an earlier
@@ -114,6 +139,37 @@ internal sealed interface FeCPage {
         val cadenceRpm: Int?,
         val instantaneousPowerWatts: Int?,
         val equipmentState: FeCEquipmentState?,
+    ) : FeCPage
+
+    data class SpecificClimberData(
+        val cycleCountRaw: Int,
+        val cycleCountEnabled: Boolean,
+        val cadenceRpm: Int?,
+        val instantaneousPowerWatts: Int?,
+        val equipmentState: FeCEquipmentState?,
+    ) : FeCPage
+
+    data class SpecificNordicSkierData(
+        val strideCountRaw: Int,
+        val strideCountEnabled: Boolean,
+        val cadenceRpm: Int?,
+        val instantaneousPowerWatts: Int?,
+        val equipmentState: FeCEquipmentState?,
+    ) : FeCPage
+
+    data class TrainerTorqueData(
+        val eventCountRaw: Int,
+        val wheelTicksRaw: Int,
+        val accumulatedWheelPeriodRaw: Int,
+        val accumulatedTorqueRaw: Int,
+        val equipmentState: FeCEquipmentState?,
+    ) : FeCPage
+
+    data class FeCapabilities(
+        val maximumResistanceNewtons: Int?,
+        val supportsBasicResistance: Boolean,
+        val supportsTargetPower: Boolean,
+        val supportsSimulation: Boolean,
     ) : FeCPage
 
     /**
@@ -139,6 +195,9 @@ internal object FeCPageParsers {
     private const val INSTANTANEOUS_POWER_UNAVAILABLE = 0xFFF
     private const val INSTANTANEOUS_POWER_16BIT_UNAVAILABLE = 0xFFFF
     private const val SERIAL_UNAVAILABLE = 0xFFFFFFFFL
+    private const val UINT8_UNAVAILABLE = 0xFF
+    private const val UINT16_UNAVAILABLE = 0xFFFF
+    private const val INCLINE_UNAVAILABLE = 0x7FFF
 
     /**
      * Decodes [data] (page number in `data[0]`, up to 7 payload bytes following) into a
@@ -152,9 +211,16 @@ internal object FeCPageParsers {
         val page = data[0].toInt() and 0xFF
         return when (page) {
             BluetoothIds.FEC_PAGE_GENERAL_FE_DATA -> decodeGeneralFe(data)
+            BluetoothIds.FEC_PAGE_GENERAL_SETTINGS -> decodeGeneralSettings(data)
+            BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA -> decodeGeneralMetabolicData(data)
             BluetoothIds.FEC_PAGE_SPECIFIC_TREADMILL_DATA -> decodeSpecificTreadmillData(data)
+            BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA -> decodeSpecificEllipticalData(data)
             BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA -> decodeSpecificRowerData(data)
+            BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA -> decodeSpecificClimberData(data)
+            BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA -> decodeSpecificNordicSkierData(data)
             BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA -> decodeTrainerData(data)
+            BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA -> decodeTrainerTorqueData(data)
+            BluetoothIds.FEC_PAGE_FE_CAPABILITIES -> decodeFeCapabilities(data)
             BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION -> decodeProductInformation(data)
             else -> FeCPage.Unknown(page)
         }
@@ -163,6 +229,8 @@ internal object FeCPageParsers {
     private fun ByteArray.u8(index: Int): Int = this[index].toInt() and 0xFF
 
     private fun ByteArray.u16le(index: Int): Int = u8(index) or (u8(index + 1) shl 8)
+
+    private fun ByteArray.i16le(index: Int): Int = u16le(index).toShort().toInt()
 
     private fun decodeGeneralFe(data: ByteArray): FeCPage {
         if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_GENERAL_FE_DATA)
@@ -183,6 +251,33 @@ internal object FeCPageParsers {
             heartRateBpm = if (hrByte == HR_UNAVAILABLE) null else hrByte,
             capabilitiesByte = capabilities,
             equipmentState = FeCEquipmentState.fromWireValue(equipmentStateBits),
+        )
+    }
+
+    private fun decodeGeneralSettings(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_GENERAL_SETTINGS)
+        val cycleLengthRaw = data.u8(3)
+        val inclineRaw = data.u16le(4)
+        val resistanceRaw = data.u8(6)
+        return FeCPage.GeneralSettings(
+            cycleLengthMeters = if (cycleLengthRaw == UINT8_UNAVAILABLE) null else cycleLengthRaw / 100.0,
+            inclinePercent = if (inclineRaw == INCLINE_UNAVAILABLE) null else data.i16le(4) / 100.0,
+            resistancePercent = if (resistanceRaw == UINT8_UNAVAILABLE) null else resistanceRaw / 2.0,
+            equipmentState = FeCEquipmentState.fromWireValue((data.u8(7) shr 4) and 0x07),
+        )
+    }
+
+    private fun decodeGeneralMetabolicData(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA)
+        val metRaw = data.u16le(2)
+        val burnRateRaw = data.u16le(4)
+        val capabilities = data.u8(7)
+        return FeCPage.GeneralMetabolicData(
+            metabolicEquivalent = if (metRaw == UINT16_UNAVAILABLE) null else metRaw / 100.0,
+            caloricBurnRateKcalPerHour = if (burnRateRaw == UINT16_UNAVAILABLE) null else burnRateRaw / 10.0,
+            accumulatedCaloriesRaw = data.u8(6),
+            accumulatedCaloriesEnabled = (capabilities and 0x01) != 0,
+            equipmentState = FeCEquipmentState.fromWireValue((capabilities shr 4) and 0x07),
         )
     }
 
@@ -246,6 +341,73 @@ internal object FeCPageParsers {
             cadenceRpm = if (cadenceByte == CADENCE_UNAVAILABLE) null else cadenceByte,
             instantaneousPowerWatts = if (powerRaw == INSTANTANEOUS_POWER_16BIT_UNAVAILABLE) null else powerRaw,
             equipmentState = FeCEquipmentState.fromWireValue(equipmentStateBits),
+        )
+    }
+
+    private fun decodeSpecificEllipticalData(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA)
+        val byte7 = data.u8(7)
+        val cadence = data.u8(4)
+        val power = data.u16le(5)
+        return FeCPage.SpecificEllipticalData(
+            positiveVerticalDistanceRaw = data.u8(2),
+            positiveVerticalDistanceEnabled = (byte7 and 0x02) != 0,
+            strideCountRaw = data.u8(3),
+            strideCountEnabled = (byte7 and 0x01) != 0,
+            cadenceRpm = if (cadence == CADENCE_UNAVAILABLE) null else cadence,
+            instantaneousPowerWatts = if (power == UINT16_UNAVAILABLE) null else power,
+            equipmentState = FeCEquipmentState.fromWireValue((byte7 shr 4) and 0x07),
+        )
+    }
+
+    private fun decodeSpecificClimberData(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA)
+        val byte7 = data.u8(7)
+        val cadence = data.u8(4)
+        val power = data.u16le(5)
+        return FeCPage.SpecificClimberData(
+            cycleCountRaw = data.u8(3),
+            cycleCountEnabled = (byte7 and 0x01) != 0,
+            cadenceRpm = if (cadence == CADENCE_UNAVAILABLE) null else cadence,
+            instantaneousPowerWatts = if (power == UINT16_UNAVAILABLE) null else power,
+            equipmentState = FeCEquipmentState.fromWireValue((byte7 shr 4) and 0x07),
+        )
+    }
+
+    private fun decodeSpecificNordicSkierData(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA)
+        val byte7 = data.u8(7)
+        val cadence = data.u8(4)
+        val power = data.u16le(5)
+        return FeCPage.SpecificNordicSkierData(
+            strideCountRaw = data.u8(3),
+            strideCountEnabled = (byte7 and 0x01) != 0,
+            cadenceRpm = if (cadence == CADENCE_UNAVAILABLE) null else cadence,
+            instantaneousPowerWatts = if (power == UINT16_UNAVAILABLE) null else power,
+            equipmentState = FeCEquipmentState.fromWireValue((byte7 shr 4) and 0x07),
+        )
+    }
+
+    private fun decodeTrainerTorqueData(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA)
+        return FeCPage.TrainerTorqueData(
+            eventCountRaw = data.u8(1),
+            wheelTicksRaw = data.u8(2),
+            accumulatedWheelPeriodRaw = data.u16le(3),
+            accumulatedTorqueRaw = data.u16le(5),
+            equipmentState = FeCEquipmentState.fromWireValue((data.u8(7) shr 4) and 0x07),
+        )
+    }
+
+    private fun decodeFeCapabilities(data: ByteArray): FeCPage {
+        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_FE_CAPABILITIES)
+        val maxResistance = data.u16le(5)
+        val capabilities = data.u8(7)
+        return FeCPage.FeCapabilities(
+            maximumResistanceNewtons = if (maxResistance == UINT16_UNAVAILABLE) null else maxResistance,
+            supportsBasicResistance = (capabilities and 0x01) != 0,
+            supportsTargetPower = (capabilities and 0x02) != 0,
+            supportsSimulation = (capabilities and 0x04) != 0,
         )
     }
 

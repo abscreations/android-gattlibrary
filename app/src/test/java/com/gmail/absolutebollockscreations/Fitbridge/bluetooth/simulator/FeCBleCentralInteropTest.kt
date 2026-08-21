@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FeCControlEncoder
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FeCEquipmentState as EngineFeState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FeCFrameCodec
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FeCFrameDecodeResult
@@ -33,6 +34,11 @@ import org.junit.Test
 class FeCBleCentralInteropTest {
 
     private fun freshState(type: FeCEquipmentType = FeCEquipmentType.TRAINER) = FeCBleMachineState(type)
+
+    private fun decodeSimulatorFrame(frame: ByteArray): FeCPage {
+        val decoded = FeCFrameCodec.decode(frame) as FeCFrameDecodeResult.Decoded
+        return FeCPageParsers.decodePage(decoded.frame.data)
+    }
 
     // ── Telemetry: peripheral encodes, central decodes (page 16 / 25 / 81) ─────────────────
 
@@ -134,6 +140,83 @@ class FeCBleCentralInteropTest {
         assertEquals(state.serialNumber, page.serialNumber)
     }
 
+    @Test
+    fun `simulator general settings metabolic and capabilities pages decode centrally`() {
+        val state = freshState(FeCEquipmentType.ELLIPTICAL).apply {
+            feState = FeCEquipmentState.IN_USE
+            inclinePercent = -2.75
+            resistanceLevelPercent = 42.5
+            metabolicEquivalent = 9.25
+            caloricBurnRateKcalPerHour = 612.4
+            accumulatedCaloriesKcal = 241.8
+        }
+
+        val settings = decodeSimulatorFrame(FeCBleTelemetryEncoder.encodePage17Frame(state)) as FeCPage.GeneralSettings
+        assertEquals(state.cycleLengthMeters, settings.cycleLengthMeters!!, 0.01)
+        assertEquals(-2.75, settings.inclinePercent!!, 0.01)
+        assertEquals(42.5, settings.resistancePercent!!, 0.01)
+
+        val metabolic = decodeSimulatorFrame(FeCBleTelemetryEncoder.encodePage18Frame(state)) as FeCPage.GeneralMetabolicData
+        assertEquals(9.25, metabolic.metabolicEquivalent!!, 0.01)
+        assertEquals(612.4, metabolic.caloricBurnRateKcalPerHour!!, 0.1)
+        assertEquals(241, metabolic.accumulatedCaloriesRaw)
+
+        val capabilities = decodeSimulatorFrame(FeCBleTelemetryEncoder.encodePage54Frame(state)) as FeCPage.FeCapabilities
+        assertEquals(state.equipmentType.maximumResistanceNewtons, capabilities.maximumResistanceNewtons)
+        assertTrue(!capabilities.supportsBasicResistance)
+        assertTrue(!capabilities.supportsTargetPower)
+        assertTrue(!capabilities.supportsSimulation)
+    }
+
+    @Test
+    fun `every simulator equipment-specific persona page decodes centrally`() {
+        val elliptical = freshState(FeCEquipmentType.ELLIPTICAL).apply {
+            movementCount = 77.0
+            cadenceRpm = 64
+            instantaneousPowerWatts = 210
+            positiveVerticalDistanceMeters = 12.3
+        }
+        val ellipticalPage = decodeSimulatorFrame(FeCBleTelemetryEncoder.encodePage20Frame(elliptical)) as FeCPage.SpecificEllipticalData
+        assertEquals(77, ellipticalPage.strideCountRaw)
+        assertEquals(64, ellipticalPage.cadenceRpm)
+        assertEquals(210, ellipticalPage.instantaneousPowerWatts)
+
+        val climber = freshState(FeCEquipmentType.CLIMBER).apply {
+            movementCount = 88.0
+            cadenceRpm = 41
+            instantaneousPowerWatts = 260
+        }
+        val climberPage = decodeSimulatorFrame(FeCBleTelemetryEncoder.encodePage23Frame(climber)) as FeCPage.SpecificClimberData
+        assertEquals(88, climberPage.cycleCountRaw)
+        assertEquals(41, climberPage.cadenceRpm)
+        assertEquals(260, climberPage.instantaneousPowerWatts)
+
+        val skier = freshState(FeCEquipmentType.NORDIC_SKIER).apply {
+            movementCount = 99.0
+            cadenceRpm = 53
+            instantaneousPowerWatts = 310
+        }
+        val skierPage = decodeSimulatorFrame(FeCBleTelemetryEncoder.encodePage24Frame(skier)) as FeCPage.SpecificNordicSkierData
+        assertEquals(99, skierPage.strideCountRaw)
+        assertEquals(53, skierPage.cadenceRpm)
+        assertEquals(310, skierPage.instantaneousPowerWatts)
+    }
+
+    @Test
+    fun `simulator trainer torque page decodes centrally without losing high bits`() {
+        val state = freshState().apply {
+            torqueEventCount = 0xFE
+            wheelTicks = 0xFD
+            wheelPeriodTicks = 0xF234
+            accumulatedTorqueThirtySecondNm = 0xE178.toDouble()
+        }
+        val page = decodeSimulatorFrame(FeCBleTelemetryEncoder.encodePage26Frame(state)) as FeCPage.TrainerTorqueData
+        assertEquals(0xFE, page.eventCountRaw)
+        assertEquals(0xFD, page.wheelTicksRaw)
+        assertEquals(0xF234, page.accumulatedWheelPeriodRaw)
+        assertEquals(0xE178, page.accumulatedTorqueRaw)
+    }
+
     // ── Control: central encodes, peripheral decodes (pages 48 / 49 / 50 / 51) ─────────────
 
     @Test
@@ -142,6 +225,15 @@ class FeCBleCentralInteropTest {
         val command = FeCBleControlDecoder.decode(wire)
         assertTrue("expected BasicResistance, got $command", command is FeCBleControlCommand.BasicResistance)
         assertEquals(37.5, (command as FeCBleControlCommand.BasicResistance).resistancePercent, 0.01)
+    }
+
+    @Test
+    fun `central page-54 request decodes through the simulator control parser`() {
+        val command = FeCBleControlDecoder.decode(
+            FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES),
+        ) as FeCBleControlCommand.RequestDataPage
+        assertEquals(BluetoothIds.FEC_PAGE_FE_CAPABILITIES, command.requestedPage)
+        assertEquals(2, command.transmissionCount)
     }
 
     @Test

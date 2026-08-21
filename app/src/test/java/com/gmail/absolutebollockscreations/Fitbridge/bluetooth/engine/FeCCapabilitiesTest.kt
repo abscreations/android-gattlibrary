@@ -7,18 +7,18 @@ import org.junit.Test
 
 /**
  * Per Unit 9.8 of `docs/fe-c-ble_central_implementation.md`, updated by the 2026-08-20 FE-C <->
- * FTMS control handshake review: [FeCCapabilities.publish] now claims a known Supported-* range
- * for resistance/power/inclination whenever FEC3 is present, using the ANT+ FE-C spec's own
- * encodable bounds for pages 48/49/51 - not a device-specific reading, but not a fabricated one
- * either (see [FeCCapabilities]'s own KDoc for why that distinction is the point of this test
- * file no longer asserting "no range is ever claimed known").
+ * FTMS control handshake review: [FeCCapabilities.publish] claims a known Supported-* range only
+ * when FEC3 exists and page 54 advertises that specific mode. The range is the ANT+ FE-C page's
+ * encodable domain, not page 54's device-specific maximum-resistance-in-newtons value.
  */
 class FeCCapabilitiesTest {
+
+    private val allModes = FeCPage.FeCapabilities(1_200, true, true, true)
 
     @Test
     fun `control available publishes resistance, power, inclination and simulation support`() {
         val state = BtEngineState()
-        FeCCapabilities.publish(state, controlAvailable = true)
+        FeCCapabilities.publish(state, controlAvailable = true, page = allModes)
 
         assertTrue(state.featuresRead)
         assertTrue(state.supportsResistance)
@@ -34,7 +34,7 @@ class FeCCapabilitiesTest {
     @Test
     fun `control available still declines speed - no page exists for it at all`() {
         val state = BtEngineState()
-        FeCCapabilities.publish(state, controlAvailable = true)
+        FeCCapabilities.publish(state, controlAvailable = true, page = allModes)
 
         assertFalse(state.supportsSpeed)
     }
@@ -64,7 +64,7 @@ class FeCCapabilitiesTest {
     @Test
     fun `control available claims the spec's own encodable bounds, in FTMS raw units`() {
         val state = BtEngineState()
-        FeCCapabilities.publish(state, controlAvailable = true)
+        FeCCapabilities.publish(state, controlAvailable = true, page = allModes)
 
         assertTrue(state.resistanceRangeKnown)
         assertEquals(0f, state.resistanceMin)
@@ -86,7 +86,7 @@ class FeCCapabilitiesTest {
     @Test
     fun `the merged ftmsCapabilities snapshot carries the same bounds`() {
         val state = BtEngineState()
-        FeCCapabilities.publish(state, controlAvailable = true)
+        FeCCapabilities.publish(state, controlAvailable = true, page = allModes)
 
         val caps = state.ftmsCapabilities
         assertTrue(caps.supportsResistance)
@@ -98,5 +98,32 @@ class FeCCapabilitiesTest {
         assertTrue(caps.supportsInclination)
         assertTrue(caps.inclineRangeKnown)
         assertEquals(2000f, caps.inclineMax)
+    }
+
+    @Test
+    fun `FEC3 alone leaves controls unresolved until page 54 arrives`() {
+        val state = BtEngineState()
+        FeCCapabilities.publish(state, controlAvailable = true)
+
+        assertFalse(state.featuresRead)
+        assertFalse(state.supportsResistance)
+        assertFalse(state.supportsPower)
+        assertFalse(state.supportsInclination)
+    }
+
+    @Test
+    fun `page 54 gates each control mode independently`() {
+        val state = BtEngineState()
+        FeCCapabilities.publish(
+            state,
+            controlAvailable = true,
+            page = FeCPage.FeCapabilities(700, true, false, false),
+        )
+
+        assertTrue(state.featuresRead)
+        assertTrue(state.supportsResistance)
+        assertFalse(state.supportsPower)
+        assertFalse(state.supportsIndoorBikeSimulation)
+        assertFalse(state.supportsInclination)
     }
 }
