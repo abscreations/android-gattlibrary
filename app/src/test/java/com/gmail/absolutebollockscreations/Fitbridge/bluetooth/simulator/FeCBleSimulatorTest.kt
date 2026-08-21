@@ -188,11 +188,31 @@ class FeCBleSimulatorTest {
     }
 
     @Test
-    fun `Treadmill scheduler emits page 16 every tick except the 32nd`() {
+    fun `Treadmill scheduler alternates page 16 and page 19 with page 81 every 32nd tick`() {
+        // Regression for "no metrics received... speed and distance remain 0" on Treadmill:
+        // this persona previously never reached a specific page at all (see git history), so
+        // cadence - which only ever lives on page 19 - was never transmitted.
         val state = FeCBleMachineState(FeCEquipmentType.TREADMILL)
+        state.enterInUseWithDefaults()
         val scheduler = FeCBleTelemetryScheduler(FeCEquipmentType.TREADMILL)
         val pages = (0 until 32).map { scheduler.tick(state)[4].toInt() and 0xFF }
-        assertTrue(pages.take(31).all { it == 0x10 })
+        assertEquals(0x10, pages[0])
+        assertEquals(0x13, pages[1])
+        assertEquals(0x10, pages[2])
+        assertEquals(0x51, pages[31])
+    }
+
+    @Test
+    fun `Rower scheduler alternates page 16 and page 22 with page 81 every 32nd tick`() {
+        // Same regression as the Treadmill case above, but for Rower's cadence and power, which
+        // only ever live on page 22.
+        val state = FeCBleMachineState(FeCEquipmentType.ROWER)
+        state.enterInUseWithDefaults()
+        val scheduler = FeCBleTelemetryScheduler(FeCEquipmentType.ROWER)
+        val pages = (0 until 32).map { scheduler.tick(state)[4].toInt() and 0xFF }
+        assertEquals(0x10, pages[0])
+        assertEquals(0x16, pages[1])
+        assertEquals(0x10, pages[2])
         assertEquals(0x51, pages[31])
     }
 
@@ -270,8 +290,14 @@ class FeCBleSimulatorTest {
         assertTrue(!FeCEquipmentType.STATIONARY_BIKE.supportsControl)
         assertTrue(!FeCEquipmentType.TREADMILL.supportsControl)
         assertTrue(!FeCEquipmentType.ROWER.supportsControl)
+        // Per the official ANT+ FE-C spec (D000001231 Rev 5.0, Table 8-7), Trainer and
+        // Stationary Bike share equipment-type wire value 25 - 21 is "Reserved - Do Not Use" for
+        // this field, a distinct concept from data page 21 (deprecated Stationary Bike specific
+        // data, §8.6.3). This was a real bug fixed alongside spec-accurate pages 19/22: the
+        // simulator's Stationary Bike persona previously broadcast a reserved/invalid equipment
+        // type on every page 16 frame.
         assertEquals(25, FeCEquipmentType.TRAINER.wireValue)
-        assertEquals(21, FeCEquipmentType.STATIONARY_BIKE.wireValue)
+        assertEquals(25, FeCEquipmentType.STATIONARY_BIKE.wireValue)
         assertEquals(19, FeCEquipmentType.TREADMILL.wireValue)
         assertEquals(22, FeCEquipmentType.ROWER.wireValue)
     }

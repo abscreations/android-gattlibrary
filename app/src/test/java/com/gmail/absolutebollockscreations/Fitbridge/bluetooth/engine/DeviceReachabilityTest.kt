@@ -392,6 +392,7 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_C2_ERG_SERVICE,
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,
+            BluetoothIds.UUID_FEC_SERVICE,
         )
 
         for (service in machineServices) {
@@ -418,6 +419,7 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_C2_ERG_SERVICE,
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,
+            BluetoothIds.UUID_FEC_SERVICE,
         )
         val handlerServices = HandlerFactory.standard(enablePhase05HardwareTest = false)
             .let { factory -> MACHINE_PROTOCOLS.map(factory::create) }

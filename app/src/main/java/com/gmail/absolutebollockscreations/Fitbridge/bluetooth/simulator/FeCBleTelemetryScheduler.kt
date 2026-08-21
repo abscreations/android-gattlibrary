@@ -19,23 +19,33 @@ internal class FeCBleTelemetryScheduler(private val equipmentType: FeCEquipmentT
         val emitProductInfo = (tickIndex % PRODUCT_INFO_EVERY_N_TICKS) == PRODUCT_INFO_EVERY_N_TICKS - 1
         val frame = when {
             emitProductInfo -> FeCBleTelemetryEncoder.encodePage81Frame(state)
-            supportsPage25Rotation() -> {
-                if (tickIndex % 2 == 0L) {
-                    FeCBleTelemetryEncoder.encodePage16Frame(state)
-                } else {
-                    FeCBleSyntheticModel.recordTrainerEvent(state)
-                    FeCBleTelemetryEncoder.encodePage25Frame(state)
-                }
-            }
-            else -> FeCBleTelemetryEncoder.encodePage16Frame(state)
+            tickIndex % 2 == 0L -> FeCBleTelemetryEncoder.encodePage16Frame(state)
+            else -> encodeSpecificPageFrame(state)
         }
         tickIndex++
         return frame
     }
 
-    /** Plan §11.2: Trainer and Stationary Bike alternate page 16 / page 25; others do not. */
-    private fun supportsPage25Rotation(): Boolean =
-        equipmentType == FeCEquipmentType.TRAINER || equipmentType == FeCEquipmentType.STATIONARY_BIKE
+    /**
+     * Plan §11.2: every persona alternates page 16 with its own equipment-specific page (this
+     * satisfies the official spec's minimum transmission rates - page 16 at 2.0Hz, specific
+     * pages 19-26 at 0.8Hz - with room to spare, since 4Hz/2 = 2Hz exceeds both). Previously only
+     * Trainer/Stationary Bike ever reached a specific page at all: Treadmill and Rower always
+     * got page 16 twice as often as page 16 itself, i.e. exclusively - the root cause of "no
+     * metrics received... only elapsed time advances" for those two personas, since cadence
+     * (both) and power (rower) only ever live on their equipment-specific page, never on page 16.
+     */
+    private fun encodeSpecificPageFrame(state: FeCBleMachineState): ByteArray = when (equipmentType) {
+        FeCEquipmentType.TRAINER, FeCEquipmentType.STATIONARY_BIKE -> {
+            FeCBleSyntheticModel.recordTrainerEvent(state)
+            FeCBleTelemetryEncoder.encodePage25Frame(state)
+        }
+        FeCEquipmentType.TREADMILL -> FeCBleTelemetryEncoder.encodePage19Frame(state)
+        FeCEquipmentType.ROWER -> {
+            FeCBleSyntheticModel.recordRowerEvent(state)
+            FeCBleTelemetryEncoder.encodePage22Frame(state)
+        }
+    }
 
     /** Current 0-based tick count, for tests and diagnostics. */
     fun tickCount(): Long = tickIndex

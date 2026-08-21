@@ -36,6 +36,16 @@ internal object FeCBleSyntheticModel {
         state.instantaneousPowerWatts?.let { power -> state.accumulatedPower += power }
     }
 
+    /**
+     * Record one page-22 rower event (Table 8-19's accumulated stroke count), mirroring
+     * [recordTrainerEvent]'s "advance only on an emitted specific-page frame" policy - called by
+     * the scheduler immediately before it encodes a page-22 frame, not once per model tick.
+     */
+    fun recordRowerEvent(state: FeCBleMachineState) {
+        if (state.feState != FeCEquipmentState.IN_USE) return
+        state.strokeCount += 1
+    }
+
     /** Apply one decoded control command (plan §13.6). Malformed writes never reach this. */
     fun applyControlCommand(state: FeCBleMachineState, command: FeCBleControlCommand, clientKey: String?) {
         if (!state.equipmentType.supportsControl) return

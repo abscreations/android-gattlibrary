@@ -1446,6 +1446,29 @@ class BtEngine internal constructor(
         }
     }
 
+    /**
+     * Unit 9.7: which [MachineControlEndpoint] drives control writes on the current
+     * machine connection. FTMS by default -- including when nothing has been selected
+     * yet, e.g. before [AdapterLivenessCoordinator] has built liveness candidates for
+     * this link -- which is exactly the pre-9.7 behavior for every non-FE-C machine. An
+     * FE-C over BLE link only switches once its [FeCOverBleProtocolHandler] instance is
+     * actually present in the connection's active handler list, so a link mid-activation
+     * is never routed to a not-yet-constructed handler.
+     */
+    private val ftmsControlEndpoint: MachineControlEndpoint by lazy { FtmsMachineControlEndpoint(this) }
+
+    private fun controlEndpoint(): MachineControlEndpoint {
+        val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
+        val adapterId = context?.let { state.adapterLiveness.selectedAdapterId(it.connectionId) }
+        if (adapterId == AdapterLivenessCoordinator.FEC_ADAPTER_ID) {
+            val handler = context.handlers.filterIsInstance<FeCOverBleProtocolHandler>().firstOrNull()
+            if (handler != null) {
+                return FeCBleMachineControlEndpoint(this, handler)
+            }
+        }
+        return ftmsControlEndpoint
+    }
+
     /* ───────────────────────────── FTMS Control Point ───────────────────────────── */
 
     /**
@@ -1488,6 +1511,10 @@ class BtEngine internal constructor(
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun startOrResume(): Boolean = guardConnectPerm(op = "startOrResume()", default = false) {
+        val endpoint = controlEndpoint()
+        if (endpoint is FeCBleMachineControlEndpoint) {
+            return@guardConnectPerm endpoint.startOrResume()
+        }
         if (!state.cccdReady.value) {
             Timber.tag(BtEngineState.TAG).d("startOrResume() deferred until CCCDs ready")
             scope.launch {
@@ -1551,6 +1578,10 @@ class BtEngine internal constructor(
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun stopOrPause(): Boolean = guardConnectPerm(op = "stopOrPause()", default = false) {
+        val endpoint = controlEndpoint()
+        if (endpoint is FeCBleMachineControlEndpoint) {
+            return@guardConnectPerm endpoint.stopOrPause()
+        }
         val ok: Boolean = BtEngineControlPoint.stopOrPause(this)
         if (!ok) {
             Timber.tag(BtEngineState.TAG).w(
@@ -1563,29 +1594,25 @@ class BtEngine internal constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setTargetSpeedKph(kph: Float): Boolean =
         guardConnectPerm(op = "setTargetSpeedKmh()", default = false) {
-            val ok: Boolean = BtEngineControlPoint.setTargetSpeedKph(this, kph)
-            ok
+            controlEndpoint().setTargetSpeedKph(kph)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setTargetInclinationPercent(percent: Float): Boolean =
         guardConnectPerm(op = "setTargetInclinationPercent()", default = false) {
-            val ok: Boolean = BtEngineControlPoint.setTargetInclinationPercent(this, percent)
-            ok
+            controlEndpoint().setTargetInclinationPercent(percent)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setTargetResistance(level: Float): Boolean =
         guardConnectPerm(op = "setTargetResistance()", default = false) {
-            val ok: Boolean = BtEngineControlPoint.setTargetResistance(this, level)
-            ok
+            controlEndpoint().setTargetResistance(level)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setTargetPowerWatts(watts: Int): Boolean =
         guardConnectPerm(op = "setTargetPowerWatts()", default = false) {
-            val ok: Boolean = BtEngineControlPoint.setTargetPowerWatts(this, watts)
-            ok
+            controlEndpoint().setTargetPowerWatts(watts)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -1596,8 +1623,7 @@ class BtEngine internal constructor(
         windResistanceCoefficient: Float,
     ): Boolean =
         guardConnectPerm(op = "setIndoorBikeSimulation()", default = false) {
-            BtEngineControlPoint.setIndoorBikeSimulation(
-                this,
+            controlEndpoint().setIndoorBikeSimulation(
                 windSpeedMps,
                 gradePercent,
                 rollingResistanceCoefficient,

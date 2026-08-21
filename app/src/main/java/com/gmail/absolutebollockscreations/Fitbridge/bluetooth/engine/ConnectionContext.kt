@@ -290,6 +290,11 @@ internal class ConnectionRegistry {
         contexts.values.firstOrNull { it.gatt === gatt }
     }
 
+    /** Direct lookup by identity, for connection-scoped collaborators (e.g. GattTransport). */
+    fun contextFor(connectionId: ConnectionId): ConnectionContext? = synchronized(lock) {
+        contexts[connectionId]?.takeIf { it.isActive }
+    }
+
     fun contextsForAddress(address: String): List<ConnectionContext> = synchronized(lock) {
         val canonicalAddress = canonicalConnectionAddress(address)
         contexts.values.filter { it.isActive && it.address == canonicalAddress }
@@ -570,6 +575,9 @@ internal class ConnectionRegistry {
 
         BluetoothIds.UUID_PRECOR_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.PRECOR_SPINNER_CHRONO_POWER
+
+        BluetoothIds.UUID_FEC_SERVICE in context.discoveredServiceUuids ->
+            BtEngineState.MachineIdentityFamily.FE_C_OVER_BLE
 
         context.lifeFitnessSetupState != LifeFitnessLinkSetupState.NOT_REQUIRED ->
             BtEngineState.MachineIdentityFamily.LIFE_FITNESS

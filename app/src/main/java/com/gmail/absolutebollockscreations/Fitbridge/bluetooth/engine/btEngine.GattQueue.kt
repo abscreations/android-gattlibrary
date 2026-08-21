@@ -123,8 +123,21 @@ internal data class StackEntry(
     val descriptorUuid: UUID? = descriptor?.uuid,
     /** Testable identity token; production descriptor entries use the descriptor instance. */
     val descriptorIdentity: Any? = descriptor,
+    /** WRITE only; ignored for READ/DESC_WRITE, which are always with-response by protocol. */
+    val writeMode: WriteMode = WriteMode.WITH_RESPONSE,
+    /**
+     * Optional per-entry completion signal, invoked exactly once with true (success) or
+     * false (failed) when this entry leaves the queue head - by GATT callback, immediate
+     * local completion (write-without-response has no protocol ACK to wait for), or
+     * failure. This is the single completion path the queue produces; GattTransport
+     * builds its bounded await on top of it rather than adding a second one.
+     */
+    val onComplete: ((Boolean) -> Unit)? = null,
 ) {
     enum class Op { READ, WRITE, DESC_WRITE }
+
+    /** Dispatch mode for a WRITE entry. FE-C's FEC3 control channel requires WITHOUT_RESPONSE. */
+    enum class WriteMode { WITH_RESPONSE, WITHOUT_RESPONSE }
 }
 
 internal fun <T> queueCompletionMatches(
@@ -216,19 +229,24 @@ internal fun BtEngine.pushWrite(
     context: ConnectionContext,
     bytes: ByteArray,
     uuid: UUID,
+    writeMode: StackEntry.WriteMode = StackEntry.WriteMode.WITH_RESPONSE,
+    onComplete: ((Boolean) -> Unit)? = null,
 ) {
     val size = context.queue.enqueue(
         StackEntry(
             StackEntry.Op.WRITE,
             charUuid = uuid,
             data = bytes,
+            writeMode = writeMode,
+            onComplete = onComplete,
         )
     )
     Timber.tag(BtEngineState.TAG).d(
-        "Queue WRITE %s len=%d size=%d context=%s",
+        "Queue WRITE %s len=%d size=%d mode=%s context=%s",
         uuid,
         bytes.size,
         size,
+        writeMode,
         context.connectionId,
     )
     handleStack(context)
@@ -240,14 +258,17 @@ internal fun BtEngine.pushWrite(
     context: ConnectionContext,
     uuid: UUID,
     bytes: ByteArray,
+    writeMode: StackEntry.WriteMode = StackEntry.WriteMode.WITH_RESPONSE,
+    onComplete: ((Boolean) -> Unit)? = null,
 ) {
     Timber.tag(BtEngineState.TAG).d(
-        "Queue WRITE (overload) %s len=%d context=%s",
+        "Queue WRITE (overload) %s len=%d mode=%s context=%s",
         uuid,
         bytes.size,
+        writeMode,
         context.connectionId,
     )
-    pushWrite(context, bytes, uuid)
+    pushWrite(context, bytes, uuid, writeMode, onComplete)
 }
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -661,6 +682,10 @@ internal fun BtEngine.handleStack(context: ConnectionContext) {
                     // Accepted; retain the READ head until onCharacteristicRead.
                 } else {
                     val value = entry.data ?: ByteArray(0)
+                    if (entry.writeMode == StackEntry.WriteMode.WITHOUT_RESPONSE) {
+                        dispatchWriteWithoutResponse(context, gatt, ch, uuid, value, entry)
+                        return
+                    }
                     if (Build.VERSION.SDK_INT >= 33) {
                         ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
                         val rc = try {
@@ -787,9 +812,153 @@ internal fun BtEngine.handleStack(context: ConnectionContext) {
     }
 }
 
+/**
+ * Dispatches a WRITE entry as write-without-response and completes the queue head
+ * immediately on acceptance, rather than waiting for [BluetoothGatt.onCharacteristicWrite].
+ *
+ * FE-C over BLE's FEC3 control channel has no protocol acknowledgement - "the stack
+ * accepted the packet for transmission" is the only local completion signal that exists.
+ * Waiting on the with-response callback path here would either hang (many stacks never
+ * call it back for WRITE_TYPE_NO_RESPONSE) or race a spurious later callback against the
+ * next queued entry. If a callback does arrive late, [queueCompletionMatches] against the
+ * (already-advanced) head causes it to be logged and ignored rather than mis-attributed.
+ */
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+private fun BtEngine.dispatchWriteWithoutResponse(
+    context: ConnectionContext,
+    gatt: BluetoothGatt,
+    ch: BluetoothGattCharacteristic,
+    uuid: UUID,
+    value: ByteArray,
+    entry: StackEntry,
+) {
+    fun completeLocally() {
+        CaptureHooks.wrote(
+            connectionId = context.connectionId,
+            characteristic = uuid,
+            payload = value,
+            withoutResponse = true,
+        )
+        val finished = context.queue.finishHead()
+        finished?.onComplete?.invoke(true)
+        Timber.tag(BtEngineState.TAG).d(
+            "Queue WRITE-NO-RESPONSE OK %s -> next (size=%d context=%s)",
+            uuid,
+            context.queue.size,
+            context.connectionId,
+        )
+        handleStack(context)
+    }
+
+    fun failLocally(msg: String) {
+        state.setGattErrorFor(gatt, msg)
+        failAndContinue(context, msg)
+    }
+
+    if (Build.VERSION.SDK_INT >= 33) {
+        ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+        val rc = try {
+            Timber.tag(BtEngineState.TAG).d(
+                "Dispatch WRITE-NO-RESPONSE %s len=%d on %s",
+                uuid,
+                value.size,
+                gattLabel(gatt),
+            )
+            gatt.writeCharacteristic(ch, value, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        } catch (_: SecurityException) {
+            BluetoothStatusCodes.ERROR_MISSING_BLUETOOTH_CONNECT_PERMISSION
+        }
+        when (rc) {
+            BluetoothStatusCodes.SUCCESS -> completeLocally()
+            BluetoothStatusCodes.ERROR_GATT_WRITE_REQUEST_BUSY -> {
+                queueIoScope.launch {
+                    delay(200)
+                    if (context.gatt !== gatt || !context.queue.isInFlight(entry)) {
+                        Timber.tag(BtEngineState.TAG).d(
+                            "WRITE-NO-RESPONSE retry cancelled for stale context %s",
+                            context.connectionId,
+                        )
+                        return@launch
+                    }
+                    val rcRetry = try {
+                        Timber.tag(BtEngineState.TAG).d(
+                            "WRITE-NO-RESPONSE retry (API33) %s on %s",
+                            uuid,
+                            gattLabel(gatt),
+                        )
+                        gatt.writeCharacteristic(
+                            ch,
+                            value,
+                            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE,
+                        )
+                    } catch (_: SecurityException) {
+                        BluetoothStatusCodes.ERROR_MISSING_BLUETOOTH_CONNECT_PERMISSION
+                    }
+                    if (rcRetry == BluetoothStatusCodes.SUCCESS) {
+                        completeLocally()
+                    } else {
+                        failLocally(
+                            "writeCharacteristic (no-response) retry rc=$rcRetry $uuid on ${gattLabel(gatt)}",
+                        )
+                    }
+                }
+            }
+            else -> failLocally("writeCharacteristic (no-response) rc=$rc $uuid on ${gattLabel(gatt)}")
+        }
+    } else {
+        @Suppress("DEPRECATION")
+        run {
+            ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            ch.value = value
+            val ok = try {
+                Timber.tag(BtEngineState.TAG).d(
+                    "Dispatch WRITE-NO-RESPONSE %s len=%d on %s",
+                    uuid,
+                    value.size,
+                    gattLabel(gatt),
+                )
+                gatt.writeCharacteristic(ch)
+            } catch (_: SecurityException) {
+                false
+            }
+            if (ok) {
+                completeLocally()
+            } else {
+                queueIoScope.launch {
+                    delay(150)
+                    if (context.gatt !== gatt || !context.queue.isInFlight(entry)) {
+                        Timber.tag(BtEngineState.TAG).d(
+                            "WRITE-NO-RESPONSE retry cancelled for stale context %s",
+                            context.connectionId,
+                        )
+                        return@launch
+                    }
+                    val okRetry = try {
+                        Timber.tag(BtEngineState.TAG).d(
+                            "WRITE-NO-RESPONSE retry (legacy) %s on %s",
+                            uuid,
+                            gattLabel(gatt),
+                        )
+                        @Suppress("DEPRECATION")
+                        gatt.writeCharacteristic(ch)
+                    } catch (_: SecurityException) {
+                        false
+                    }
+                    if (okRetry) {
+                        completeLocally()
+                    } else {
+                        failLocally("writeCharacteristic (no-response)=false $uuid on ${gattLabel(gatt)}")
+                    }
+                }
+            }
+        }
+    }
+}
+
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 internal fun BtEngine.failAndContinue(context: ConnectionContext, reason: String) {
     val justFinished = context.queue.finishHead()
+    justFinished?.onComplete?.invoke(false)
     Timber.tag(BtEngineState.TAG).w(
         "Queue FAIL (%s %s): %s → next (size=%d context=%s)",
         justFinished?.op,
@@ -873,6 +1042,7 @@ private fun BtEngine.completeQueueCallback(
     }
 
     val finished = context.queue.finishIfHead(head!!) ?: return false
+    finished.onComplete?.invoke(failureReason == null)
     Timber.tag(BtEngineState.TAG).d(
         "Queue %s (%s %s) → next (size=%d context=%s)",
         if (failureReason == null) "OK" else "FAIL: $failureReason",

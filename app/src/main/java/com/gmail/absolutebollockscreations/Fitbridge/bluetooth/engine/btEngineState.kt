@@ -84,6 +84,7 @@ class BtEngineState : HrmStateSink {
         LIFE_FITNESS,
         PRECOR_SPINNER_CHRONO_POWER,
         CONCEPT2_PM5,
+        FE_C_OVER_BLE,
     }
 
     /** Presentation-level machine kind; intentionally independent of session activity. */

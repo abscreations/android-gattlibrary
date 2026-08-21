@@ -1,0 +1,121 @@
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
+
+import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+
+/**
+ * One canonical metric derived from a decoded FE-C page, in FitBridge units. Mirrors
+ * `SchwinnX70Sample` - a plain data holder the handler turns into `MetricEmitter.emit` calls,
+ * kept separate from the emission call site so the mapping itself stays unit-testable without
+ * an Android `BluetoothGatt`.
+ */
+internal data class FeCSample(
+    val metric: MetricKind,
+    val value: Double,
+    val nativeCumulative: Double? = null,
+    val eventMs: Long? = null,
+)
+
+/**
+ * Maps decoded FE-C pages onto canonical metrics, per plan §9.
+ *
+ * Deliberately per-page rather than per-snapshot: a page 25 notification should not re-emit
+ * page 16's speed just because it is sitting in the merged snapshot, and vice versa. Only
+ * [FeCPage.GeneralFe] and [FeCPage.TrainerData] carry metrics - product info (page 81) and
+ * unrecognized pages produce nothing here.
+ */
+internal object FeCMetricMapper {
+
+    private const val METERS_PER_SECOND_TO_KMH = 3.6
+
+    /**
+     * Page 16 - General FE Data. [snapshot] supplies the rollover-corrected elapsed time and
+     * distance; every other field comes straight from [page] since neither needs accumulation.
+     */
+    fun samplesForGeneralFe(page: FeCPage.GeneralFe, snapshot: FeCMeasurementSnapshot): List<FeCSample> =
+        buildList {
+            add(FeCSample(MetricKind.SPEED, page.speedMetersPerSecond * METERS_PER_SECOND_TO_KMH))
+            snapshot.elapsedTimeSeconds?.let { add(FeCSample(MetricKind.ELAPSED, it)) }
+            if (page.distanceTraveledEnabled) {
+                snapshot.distanceMeters?.let {
+                    add(FeCSample(MetricKind.DISTANCE, it, nativeCumulative = it))
+                }
+            }
+            page.heartRateBpm?.let { add(FeCSample(MetricKind.HEART_RATE, it.toDouble())) }
+        }
+
+    /**
+     * Page 25 - Specific Trainer Data.
+     *
+     * [AVERAGE_POWER][MetricKind.AVERAGE_POWER] is only emitted when the rollover-corrected
+     * event count actually advanced since the previous frame ([previousEventCountTotal] to
+     * [eventCountTotal]) - the accumulated-power counter is a running total *per event*, so a
+     * delta computed against an unchanged event count would either divide by zero or restate a
+     * stale average as if it were fresh. Both "total" parameters are the session's
+     * rollover-corrected totals, not the raw wire bytes, so a byte-256 wraparound between two
+     * notifications does not appear as a huge (or negative) average power.
+     */
+    fun samplesForTrainerData(
+        page: FeCPage.TrainerData,
+        eventCountTotal: Long,
+        accumulatedPowerTotal: Long,
+        previousEventCountTotal: Long?,
+        previousAccumulatedPowerTotal: Long?,
+    ): List<FeCSample> = buildList {
+        page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+        page.instantaneousPowerWatts?.let { add(FeCSample(MetricKind.POWER, it.toDouble())) }
+
+        if (previousEventCountTotal != null && previousAccumulatedPowerTotal != null) {
+            val eventDelta = eventCountTotal - previousEventCountTotal
+            if (eventDelta > 0) {
+                val powerDelta = accumulatedPowerTotal - previousAccumulatedPowerTotal
+                add(FeCSample(MetricKind.AVERAGE_POWER, powerDelta.toDouble() / eventDelta.toDouble()))
+            }
+        }
+    }
+
+    /**
+     * Page 19 - Specific Treadmill Data. Speed/distance/HR already come from page 16
+     * ([samplesForGeneralFe]) per the spec's own minimum-requirements table (§10.1.2.1); this
+     * page only ever contributes cadence - it has no power field at all, unlike page 22's rower
+     * data, so there is nothing to guess or invent here for a value the wire format never
+     * carries.
+     */
+    fun samplesForTreadmillData(page: FeCPage.SpecificTreadmillData): List<FeCSample> = buildList {
+        page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+    }
+
+    /**
+     * Page 22 - Specific Rower Data. Speed/distance/HR come from page 16 per the spec's minimum
+     * requirements (§10.1.2.3); this page contributes cadence and instantaneous power. Unlike
+     * page 25's trainer data, page 22 has no accumulated-power counter, so there is no
+     * [MetricKind.AVERAGE_POWER] to derive here - only the instantaneous reading the wire
+     * actually carries.
+     */
+    fun samplesForRowerData(page: FeCPage.SpecificRowerData): List<FeCSample> = buildList {
+        page.cadenceRpm?.let { add(FeCSample(MetricKind.CADENCE, it.toDouble())) }
+        page.instantaneousPowerWatts?.let { add(FeCSample(MetricKind.POWER, it.toDouble())) }
+    }
+
+    /**
+     * Best-effort device classification from the page 16 equipment-type byte, for the existing
+     * `updateDeviceMachineFeatureByAddress` UI path (the same mechanism Concept2/Precor/Schwinn
+     * x70 use - none of them call `MetricFusion.setPersona` either, so this does not either).
+     *
+     * Returns `null` for Nordic Skier (wire value 24): `ActivityType` has no ski-specific case
+     * and none of its six options is an honest fit, per plan §9/FEC-Q7. Guessing STAIRCLIMBER or
+     * BIKING for a skier would misclassify the device in the UI, which is worse than showing
+     * nothing - this is a recorded open gap, not a silent guess.
+     */
+    fun activityTypeFor(equipmentType: Int): ActivityType? = when (equipmentType) {
+        BluetoothIds.FEC_EQUIPMENT_TREADMILL -> ActivityType.TREADMILL
+        BluetoothIds.FEC_EQUIPMENT_ELLIPTICAL -> ActivityType.ELLIPTICAL
+        BluetoothIds.FEC_EQUIPMENT_ROWER -> ActivityType.ROWING
+        BluetoothIds.FEC_EQUIPMENT_CLIMBER -> ActivityType.STAIRCLIMBER
+        // FEC_EQUIPMENT_STATIONARY_BIKE == FEC_EQUIPMENT_TRAINER == 25 on the wire (the ANT+
+        // spec gives Trainer and Stationary Bike the same equipment-type value - see
+        // BluetoothIds' doc on FEC_EQUIPMENT_STATIONARY_BIKE); one `when` branch covers both,
+        // since a duplicate-valued branch would be unreachable dead code, not a second case.
+        BluetoothIds.FEC_EQUIPMENT_TRAINER -> ActivityType.BIKING
+        else -> null
+    }
+}

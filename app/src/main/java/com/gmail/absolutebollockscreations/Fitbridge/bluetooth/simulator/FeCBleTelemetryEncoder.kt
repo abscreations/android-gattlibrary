@@ -81,6 +81,56 @@ internal object FeCBleTelemetryEncoder {
         return page
     }
 
+    /**
+     * Page 19 — Specific Treadmill Data (`0x13`). Table 8-15: bytes 1-3 reserved, byte 4
+     * cadence, bytes 5/6 negative/positive accumulated vertical distance (each independently
+     * gated by its own capability bit). Vertical distance is not simulated (both distance
+     * fields stay at zero, both capability bits stay clear) - this project has no incline model
+     * for the treadmill persona yet, and an unset capability bit is the spec-honest way to say
+     * "do not interpret these bytes" rather than transmitting a fabricated zero as if it were
+     * real data (mirrors [FeCCapabilities]' "never claim a range we can't back" norm on the
+     * central side).
+     */
+    fun encodePage19(state: FeCBleMachineState): ByteArray {
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_TREADMILL_DATA.toByte()
+        page[1] = 0xFF.toByte()
+        page[2] = 0xFF.toByte()
+        page[3] = 0xFF.toByte()
+        page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
+        page[5] = (state.negativeVerticalDistanceDeciMeters and 0xFF).toByte()
+        page[6] = (state.positiveVerticalDistanceDeciMeters and 0xFF).toByte()
+        // Capability bits 0/1 (positive/negative vertical distance transmitted) stay clear -
+        // see the class doc above. Bits 4-6 carry FE state, matching every other page's layout.
+        val byte7 = (state.feState.wireValue and 0x07) shl 4
+        page[7] = byte7.toByte()
+        return page
+    }
+
+    /**
+     * Page 22 — Specific Rower Data (`0x16`). Table 8-19: bytes 1-2 reserved, byte 3 accumulated
+     * stroke count, byte 4 cadence, bytes 5-6 instantaneous power (uint16LE) - this correction
+     * (bytes 1-2 both reserved, stroke count at byte 3) supersedes an earlier lower-confidence
+     * single-source extraction of this page that had misplaced the stroke count at byte 2.
+     */
+    fun encodePage22(state: FeCBleMachineState): ByteArray {
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA.toByte()
+        page[1] = 0xFF.toByte()
+        page[2] = 0xFF.toByte()
+        page[3] = (state.strokeCount and 0xFF).toByte()
+        page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
+        val instPower = state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF
+        page[5] = (instPower and 0xFF).toByte()
+        page[6] = ((instPower ushr 8) and 0xFF).toByte()
+        // Bit 0 (accumulated strokes transmitted in byte 3) is always set: recordRowerEvent
+        // always advances strokeCount while IN_USE, so byte 3 is always meaningful here.
+        var byte7 = 0x01
+        byte7 = byte7 or ((state.feState.wireValue and 0x07) shl 4)
+        page[7] = byte7.toByte()
+        return page
+    }
+
     /** Page 81 — Product Information (`0x51`). Plan §10.3. Synthetic serial only; never host identity. */
     fun encodePage81(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
@@ -97,6 +147,8 @@ internal object FeCBleTelemetryEncoder {
     }
 
     fun encodePage16Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage16(state))
+    fun encodePage19Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage19(state))
+    fun encodePage22Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage22(state))
     fun encodePage25Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage25(state))
     fun encodePage81Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage81(state))
 }

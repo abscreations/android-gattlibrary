@@ -151,6 +151,15 @@ internal class FeCBleMachineState(
     var trainerStatusRaw: Int = 0
     var targetStatusRaw: Int = 0
 
+    // Page 19 (Treadmill) fields. Internally wider than the wire's 0.1m/byte encoding, per the
+    // same §8.1 rationale as the trainer counters above - the wire value is `& 0xFF` at the
+    // encoder boundary only.
+    var positiveVerticalDistanceDeciMeters: Long = 0
+    var negativeVerticalDistanceDeciMeters: Long = 0
+
+    // Page 22 (Rower) field.
+    var strokeCount: Long = 0
+
     var controlMode: FeCBleControlMode = FeCBleControlMode.FREE
     var basicResistancePercent: Double? = null
     var targetPowerWatts: Double? = null
@@ -177,6 +186,9 @@ internal class FeCBleMachineState(
         eventCount = 0
         trainerStatusRaw = 0
         targetStatusRaw = 0
+        positiveVerticalDistanceDeciMeters = 0
+        negativeVerticalDistanceDeciMeters = 0
+        strokeCount = 0
         controlMode = FeCBleControlMode.FREE
         basicResistancePercent = null
         targetPowerWatts = null
@@ -186,15 +198,37 @@ internal class FeCBleMachineState(
         lastControlClient = null
     }
 
-    /** Enter [FeCEquipmentState.IN_USE] with the plan's §8.2 default Trainer fixture values. */
+    /**
+     * Enter [FeCEquipmentState.IN_USE] with the plan's §8.2 default fixture values.
+     *
+     * Previously this only seeded Trainer/Stationary Bike, leaving Treadmill and Rower personas
+     * stuck at speed=0/cadence=null/HR=null for their entire simulated session - the bug behind
+     * "no metrics received... speed and distance remain 0" for those two personas. Every
+     * persona now gets a coherent starting fixture; the per-persona branches below exist only
+     * because the *fields that mean anything* differ (a treadmill has no power field on its
+     * wire page 19 at all, so seeding [instantaneousPowerWatts] for it would set a value the
+     * encoder never transmits and the central never sees).
+     */
     fun enterInUseWithDefaults() {
         feState = FeCEquipmentState.IN_USE
-        if (equipmentType == FeCEquipmentType.TRAINER || equipmentType == FeCEquipmentType.STATIONARY_BIKE) {
-            speedMps = DEFAULT_SPEED_MPS
-            cadenceRpm = DEFAULT_CADENCE_RPM
-            instantaneousPowerWatts = DEFAULT_POWER_WATTS
-            heartRateBpm = DEFAULT_HEART_RATE_BPM
-            heartRateSource = FeCHeartRateSource.EM
+        heartRateBpm = DEFAULT_HEART_RATE_BPM
+        heartRateSource = FeCHeartRateSource.EM
+        when (equipmentType) {
+            FeCEquipmentType.TRAINER, FeCEquipmentType.STATIONARY_BIKE -> {
+                speedMps = DEFAULT_SPEED_MPS
+                cadenceRpm = DEFAULT_CADENCE_RPM
+                instantaneousPowerWatts = DEFAULT_POWER_WATTS
+            }
+            FeCEquipmentType.TREADMILL -> {
+                speedMps = DEFAULT_TREADMILL_SPEED_MPS
+                cadenceRpm = DEFAULT_TREADMILL_CADENCE_SPM
+                // No instantaneousPowerWatts: page 19 has no power field (Table 8-15).
+            }
+            FeCEquipmentType.ROWER -> {
+                speedMps = DEFAULT_ROWER_SPEED_MPS
+                cadenceRpm = DEFAULT_ROWER_CADENCE_SPM
+                instantaneousPowerWatts = DEFAULT_ROWER_POWER_WATTS
+            }
         }
     }
 
@@ -207,5 +241,13 @@ internal class FeCBleMachineState(
         const val DEFAULT_CADENCE_RPM = 90
         const val DEFAULT_POWER_WATTS = 200
         const val DEFAULT_HEART_RATE_BPM = 140
+
+        // Treadmill: a moderate jog. Rower: a moderate steady-state split, expressed as an
+        // equivalent linear speed for page 16's speed field per plan/spec §10.1.2.3.
+        const val DEFAULT_TREADMILL_SPEED_MPS = 2.5
+        const val DEFAULT_TREADMILL_CADENCE_SPM = 160
+        const val DEFAULT_ROWER_SPEED_MPS = 4.0
+        const val DEFAULT_ROWER_CADENCE_SPM = 24
+        const val DEFAULT_ROWER_POWER_WATTS = 150
     }
 }

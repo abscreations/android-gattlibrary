@@ -369,6 +369,33 @@ internal class AdapterLivenessCoordinator(
                     ),
                 )
             }
+            if (BluetoothIds.UUID_FEC_SERVICE in services) {
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = FEC_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_SERVICE,
+                                    structuralValue = BluetoothIds.UUID_FEC_SERVICE.toString(),
+                                    // Same weight as the other vendor facts: a certain structural
+                                    // identification. Preference against standard FTMS on the same
+                                    // link is `rank`'s job (plan §6.2), not this fact's.
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.LOW,
+                                    note = "FE-C over BLE service present in the discovered GATT database",
+                                ),
+                            ),
+                        ),
+                        rank = RANK_FEC,
+                        // No proprietary handshake precedes FE-C data: a subscribed FEC2 either
+                        // notifies or it does not, and the liveness timeout is the only signal
+                        // needed, same as Concept2/Precor/Schwinn x70.
+                        requiresSetup = false,
+                        livenessTimeoutMs = livenessTimeoutMs,
+                    ),
+                )
+            }
         }
     }
 
@@ -404,6 +431,7 @@ internal class AdapterLivenessCoordinator(
         const val RANK_PRECOR = 80
 
         const val SCHWINN_X70_ADAPTER_ID = "schwinn.x70"
+        const val FEC_ADAPTER_ID = "fec.ble"
 
         /**
          * Equal to [RANK_PRECOR] and [RANK_CONCEPT2], for the reason given above.
@@ -415,6 +443,16 @@ internal class AdapterLivenessCoordinator(
          * handler's, made when the frames arrive.
          */
         const val RANK_SCHWINN_X70 = 80
+
+        /**
+         * Equal to [RANK_CONCEPT2]/[RANK_PRECOR]/[RANK_SCHWINN_X70], for the same reason: FE-C
+         * over BLE advertises its own vendor service and no FTMS on any device seen so far, so
+         * it does not compete with the others. Plan §6.2 is explicit that a device exposing
+         * both standard FTMS and FE-C over BLE (hypothetical - none observed yet) must still
+         * rank FTMS first, via `rank` rather than inflating this fact's evidence weight, for the
+         * identical reason [RANK_CONCEPT2] gives.
+         */
+        const val RANK_FEC = 80
 
         /**
          * 30 s from subscription completion.

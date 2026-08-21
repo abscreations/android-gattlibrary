@@ -79,6 +79,18 @@ internal data class ProtocolKey(val value: String) {
          * x70 advertises its vendor service and no FTMS, so D6 never arises.
          */
         val SCHWINN_X70 = ProtocolKey("schwinn.x70")
+
+        /**
+         * FE-C over BLE, generic (plan §7 of `docs/fe-c-ble_central_implementation.md`). A
+         * machine protocol, absent from [sensorProtocolFor] for the same reason as FTMS,
+         * Concept2, Precor and Schwinn x70.
+         *
+         * One key regardless of persona (Trainer/Bike/Treadmill/Rower/Elliptical/Climber/
+         * Nordic Skier): the ANT+ FE-C page 16 equipment-type byte, not the GATT surface,
+         * is what tells personas apart, and that only becomes available after the first
+         * General FE Data notification.
+         */
+        val FEC = ProtocolKey("fec.ble")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -139,6 +151,7 @@ internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.CONCEPT2,
     ProtocolKey.PRECOR,
     ProtocolKey.SCHWINN_X70,
+    ProtocolKey.FEC,
 )
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
@@ -170,6 +183,7 @@ internal class HandlerFactory(
                 ProtocolKey.CONCEPT2 to { Concept2ProtocolHandler() },
                 ProtocolKey.PRECOR to { PrecorProtocolHandler() },
                 ProtocolKey.SCHWINN_X70 to { SchwinnX70ProtocolHandler() },
+                ProtocolKey.FEC to { FeCOverBleProtocolHandler() },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)

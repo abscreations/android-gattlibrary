@@ -240,7 +240,14 @@ class FtmsSimulator(
                 return
             }
             is SimulatorPersona.FeCBle -> {
-                startFeCBle(persona)
+                // The "Accept target commands" switch is a free test toggle for every FE-C
+                // equipment type (SimulatorPersona.FeCBle's own KDoc: overriding controlEnabled
+                // on a measurement-only persona is a supported test configuration, not a
+                // physical-equipment claim) - so what the UI asked for always wins over the
+                // persona's own equipment-type default, rather than being silently ignored the
+                // way it was before this fix (this branch used to call startFeCBle(persona)
+                // directly, so enableControls never reached FEC3 registration at all).
+                startFeCBle(persona.copy(controlEnabled = enableControls))
                 return
             }
             is SimulatorPersona.Ftms -> Unit
@@ -455,13 +462,16 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = false)
+        sessionProjection.begin(haveControl = persona.controlEnabled)
         FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
-            controlsEnabled = false,
-            controlsAvailable = false,
+            controlsEnabled = persona.controlEnabled,
+            // FEC3 availability is a free per-run toggle for every FE-C equipment type here
+            // (see the class doc above), so the switch is always interactive - not gated on
+            // equipment type the way FTMS's controlsAvailableFor(machine) gates by profile.
+            controlsAvailable = true,
             advertising = peripheral.isAdvertising,
         )
         Timber.tag(TAG).i(

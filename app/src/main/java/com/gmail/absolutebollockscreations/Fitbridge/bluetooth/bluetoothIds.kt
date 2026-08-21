@@ -589,6 +589,8 @@ object BluetoothIds {
 
     // FE-C data pages (machine -> central).
     const val FEC_PAGE_GENERAL_FE_DATA: Int = 0x10
+    const val FEC_PAGE_SPECIFIC_TREADMILL_DATA: Int = 0x13
+    const val FEC_PAGE_SPECIFIC_ROWER_DATA: Int = 0x16
     const val FEC_PAGE_SPECIFIC_TRAINER_DATA: Int = 0x19
     const val FEC_PAGE_PRODUCT_INFORMATION: Int = 0x51
 
@@ -599,11 +601,32 @@ object BluetoothIds {
     const val FEC_PAGE_TRACK_RESISTANCE: Int = 0x33
     const val FEC_PAGE_USER_CONFIGURATION: Int = 0x37
 
-    /** Page 16 byte 1, low 5 bits. Plan §3.1; only these four personas are simulated. */
+    /**
+     * Page 16 byte 1, low 5 bits. The simulator only emits TREADMILL/STATIONARY_BIKE/ROWER/
+     * TRAINER (plan §3.1); ELLIPTICAL/CLIMBER/NORDIC_SKIER are included here anyway because
+     * the central side must decode whatever a real machine reports, not just what this app's
+     * own simulator produces. See `docs/fe-c-ble_central_implementation.md` §2.4/§9.
+     *
+     * Per the official ANT+ FE-C spec (D000001231 Rev 5.0, Table 8-7), wire value 21 is
+     * "Reserved - Do Not Use" for this field, NOT Stationary Bike: Stationary Bike shares
+     * equipment type 25 with Trainer (the spec's own wording is "Trainer/StationaryBike"), and
+     * a stationary bike's specific data is required to use data page 25 (Specific Trainer Data)
+     * too - data page 21 (the *page*, a different "21" from this equipment-type byte) is
+     * separately deprecated/reserved for Stationary Bike and shall not be transmitted (§8.6.3).
+     * [FEC_EQUIPMENT_STATIONARY_BIKE] previously used the reserved value 21 here, which is
+     * itself a spec violation independent of that deprecated page - fixed to the shared wire
+     * value 25 discovered while implementing spec-accurate pages 19/22.
+     */
     const val FEC_EQUIPMENT_TREADMILL: Int = 19
-    const val FEC_EQUIPMENT_STATIONARY_BIKE: Int = 21
+    const val FEC_EQUIPMENT_ELLIPTICAL: Int = 20
+    const val FEC_EQUIPMENT_RESERVED_21: Int = 21
     const val FEC_EQUIPMENT_ROWER: Int = 22
+    const val FEC_EQUIPMENT_CLIMBER: Int = 23
+    const val FEC_EQUIPMENT_NORDIC_SKIER: Int = 24
     const val FEC_EQUIPMENT_TRAINER: Int = 25
+
+    /** Shares [FEC_EQUIPMENT_TRAINER]'s wire value 25 - see the class doc above. */
+    const val FEC_EQUIPMENT_STATIONARY_BIKE: Int = FEC_EQUIPMENT_TRAINER
 }
 
 // ============================================================================

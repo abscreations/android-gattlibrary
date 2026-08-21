@@ -169,7 +169,29 @@ internal class DeviceMatcherRegistry private constructor(
                 machineRole = definition.machineRole,
             )
         }.sortedWith(
+            // `machineRole` is placed ahead of `preference` deliberately (bug fix,
+            // 2026-08-20): a device that legitimately matches both a machine family and a
+            // SIG sensor family with tied evidence weight must not have the machine
+            // silently displaced by the sensor. This is exactly what happened to the FE-C
+            // simulator's Trainer and Stationary Bike personas, which additionally
+            // advertise the Incyclist Cycling Power Service compatibility overlay
+            // (`FeCEquipmentType.includesCpsOverlay`, `FeCBlePeripheralAdvertiser`): both
+            // `vendor.fec.ble` and `sig.cps` matched on a single 60-weight
+            // ADVERTISED_SERVICE fact, and `sig.cps`'s higher `preference` (500 vs 120) won
+            // the tie, so `startScanImpl`'s `candidates.firstOrNull()` picked the sensor
+            // candidate and the device was catalogued as `machineCandidate = false` -
+            // invisible to any machine-only device list, even though it is an FE-C machine
+            // that merely also exposes a read-only power-sensor view of the same data for a
+            // third-party client. The Treadmill and Rower personas carry no CPS overlay, so
+            // they only ever produced the `vendor.fec.ble` candidate and were unaffected -
+            // which is exactly the split reported ("only seeing treadmill and rower").
+            // Machine role does not change which candidate has more or better evidence, so
+            // this cannot invert an already-decided rank difference (e.g. a real standalone
+            // CPS power meter with only CPS evidence still ranks CPS, since no machine
+            // candidate exists for it to tie against); it only changes the tie-break among
+            // candidates already judged equally strong.
             compareByDescending<RankedMatchCandidate> { it.rank }
+                .thenByDescending { it.machineRole }
                 .thenByDescending { it.preference }
                 .thenBy { it.candidateId },
         )
@@ -295,6 +317,7 @@ internal class DeviceMatcherRegistry private constructor(
                 concept2Definition(),
                 precorDefinition(),
                 schwinnX70Definition(),
+                fecDefinition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
             ),
         )
@@ -450,6 +473,28 @@ internal class DeviceMatcherRegistry private constructor(
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SUPPLEMENTAL),
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SIBLING),
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_CONTROL),
+            ),
+        )
+
+        /**
+         * FE-C over BLE, generic (plan §6 of `docs/fe-c-ble_central_implementation.md`).
+         *
+         * No local-name pattern: unlike Concept2/Precor/Schwinn x70, FE-C over BLE has no
+         * fixed device-name convention across vendors, and none is needed — the FEC1 service
+         * UUID is proprietary enough on its own to be structural evidence (plan §6.1). Serves
+         * what it advertises (Kinomap's own BLE capture of the FitBridge FE-C simulator, and
+         * the Tacx spec's example advertisement, both show only FEC1 in the ad payload), so
+         * [MatchDefinition.advertisedServiceUuids] is left empty like every SIG definition.
+         */
+        private fun fecDefinition() = MatchDefinition(
+            candidateId = "vendor.fec.ble",
+            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_FEC_SERVICE),
+            machineRole = true,
+            knownService = null,
+            preference = 120,
+            personaCharacteristicUuids = linkedSetOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_FEC_MEASUREMENT),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_FEC_CONTROL),
             ),
         )
 
