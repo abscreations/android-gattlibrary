@@ -8,11 +8,10 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothI
 /**
  * FE-C-over-BLE GATT manifest (plan §6).
  *
- * `FEC2` is always served, notify + CCCD. `FEC3` (write-without-response) is served only for
- * personas the plan marks control-capable by default — the Trainer — proving FitBridge accepts
- * `FEC1 + FEC2` alone as a valid measurement-only machine for the others (plan §6.2). Tests may
- * still instantiate a non-Trainer persona with FEC3 enabled; that is a test configuration, not a
- * physical-equipment claim (plan §3.1).
+ * `FEC2` is always served, notify + CCCD. `FEC3` (write-without-response) is also served by every
+ * persona because the official profile requires every FE device to answer on-demand page 54 and
+ * Common Page 70 is the request path. Serving FEC3 does not imply target control: pages 48-55 are
+ * accepted only when the persona honestly advertises those modes.
  *
  * **`FEC3` is write-without-response only.** The Phase-9 central path is defined against the
  * no-response implementation; if later physical evidence shows a trainer advertises both write

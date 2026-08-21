@@ -18,11 +18,42 @@ internal object FeCBleSyntheticModel {
         if (state.feState != FeCEquipmentState.IN_USE) return
         state.elapsedQuarterSeconds += 1
         state.distanceMeters += state.speedMps * TICK_SECONDS
+        state.accumulatedCaloriesKcal += state.caloricBurnRateKcalPerHour * TICK_SECONDS / 3600.0
 
-        val target = targetPowerForCurrentMode(state) ?: return
-        val current = (state.instantaneousPowerWatts ?: 0).toDouble()
-        val delta = (target - current).coerceIn(-MAX_POWER_CHANGE_PER_TICK, MAX_POWER_CHANGE_PER_TICK)
-        state.instantaneousPowerWatts = (current + delta).roundToIntSafely()
+        val target = targetPowerForCurrentMode(state)
+        val currentPower = state.instantaneousPowerWatts
+        if (target != null && currentPower != null) {
+            val delta = (target - currentPower).coerceIn(-MAX_POWER_CHANGE_PER_TICK, MAX_POWER_CHANGE_PER_TICK)
+            state.instantaneousPowerWatts = (currentPower + delta).roundToIntSafely()
+        }
+
+        val verticalMeters = state.speedMps * (state.inclinePercent / 100.0) * TICK_SECONDS
+        if (verticalMeters >= 0.0) {
+            state.positiveVerticalDistanceMeters += verticalMeters
+        } else {
+            state.negativeVerticalDistanceMeters += -verticalMeters
+        }
+
+        when (state.equipmentType) {
+            FeCEquipmentType.ELLIPTICAL,
+            FeCEquipmentType.ROWER,
+            FeCEquipmentType.CLIMBER,
+            FeCEquipmentType.NORDIC_SKIER,
+            -> state.cadenceRpm?.let { state.movementCount += it * TICK_SECONDS / 60.0 }
+            else -> Unit
+        }
+
+        if (state.equipmentType == FeCEquipmentType.TRAINER) {
+            state.wheelPeriodTicks += WHEEL_PERIOD_TICKS_PER_MODEL_TICK
+            state.wheelRevolutions += state.speedMps * TICK_SECONDS / state.cycleLengthMeters
+            val completeRevolutions = kotlin.math.floor(state.wheelRevolutions).toLong()
+            state.torqueEventCount = completeRevolutions
+            state.wheelTicks = completeRevolutions
+            state.instantaneousPowerWatts?.let { power ->
+                state.accumulatedTorqueThirtySecondNm +=
+                    power * WHEEL_PERIOD_TICKS_PER_MODEL_TICK / (128.0 * Math.PI)
+            }
+        }
     }
 
     /**
@@ -36,16 +67,6 @@ internal object FeCBleSyntheticModel {
         state.instantaneousPowerWatts?.let { power -> state.accumulatedPower += power }
     }
 
-    /**
-     * Record one page-22 rower event (Table 8-19's accumulated stroke count), mirroring
-     * [recordTrainerEvent]'s "advance only on an emitted specific-page frame" policy - called by
-     * the scheduler immediately before it encodes a page-22 frame, not once per model tick.
-     */
-    fun recordRowerEvent(state: FeCBleMachineState) {
-        if (state.feState != FeCEquipmentState.IN_USE) return
-        state.strokeCount += 1
-    }
-
     /** Apply one decoded control command (plan §13.6). Malformed writes never reach this. */
     fun applyControlCommand(state: FeCBleMachineState, command: FeCBleControlCommand, clientKey: String?) {
         if (!state.equipmentType.supportsControl) return
@@ -53,6 +74,7 @@ internal object FeCBleSyntheticModel {
             is FeCBleControlCommand.BasicResistance -> {
                 state.controlMode = FeCBleControlMode.BASIC_RESISTANCE
                 state.basicResistancePercent = command.resistancePercent
+                state.resistanceLevelPercent = command.resistancePercent
             }
             is FeCBleControlCommand.TargetPower -> {
                 state.controlMode = FeCBleControlMode.ERG
@@ -77,6 +99,7 @@ internal object FeCBleSyntheticModel {
                 state.userConfig = FeCBleUserConfig(command.userWeightKg, command.rawPage)
                 // Plan §12.8: user configuration is recorded but never changes telemetry.
             }
+            is FeCBleControlCommand.RequestDataPage -> Unit
             is FeCBleControlCommand.Unsupported, is FeCBleControlCommand.Rejected -> Unit
         }
         clientKey?.let { state.lastControlClient = it }
@@ -99,4 +122,7 @@ internal object FeCBleSyntheticModel {
 
     private fun Double.roundToIntSafely(): Int =
         kotlin.math.round(this).toInt().coerceIn(0, 0xFFE)
+
+    /** 0.25 s at the page-26 wheel-period resolution of 1/2048 s. */
+    private const val WHEEL_PERIOD_TICKS_PER_MODEL_TICK = 512L
 }

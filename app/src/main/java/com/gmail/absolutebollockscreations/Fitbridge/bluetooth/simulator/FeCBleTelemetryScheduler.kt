@@ -12,14 +12,17 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 internal class FeCBleTelemetryScheduler(private val equipmentType: FeCEquipmentType) {
 
     private var tickIndex: Long = 0
+    private var trainerSpecificIndex: Long = 0
 
     /** Advance the model by one tick and encode the frame that tick's rotation calls for. */
     fun tick(state: FeCBleMachineState): ByteArray {
         FeCBleSyntheticModel.advanceTick(state)
-        val emitProductInfo = (tickIndex % PRODUCT_INFO_EVERY_N_TICKS) == PRODUCT_INFO_EVERY_N_TICKS - 1
-        val frame = when {
-            emitProductInfo -> FeCBleTelemetryEncoder.encodePage81Frame(state)
-            tickIndex % 2 == 0L -> FeCBleTelemetryEncoder.encodePage16Frame(state)
+        val cycleTick = (tickIndex % ROTATION_TICKS).toInt()
+        val frame = when (cycleTick) {
+            in 0 until ROTATION_TICKS step 2 -> FeCBleTelemetryEncoder.encodePage16Frame(state)
+            15, 35 -> FeCBleTelemetryEncoder.encodePage17Frame(state)
+            17, 37 -> FeCBleTelemetryEncoder.encodePage18Frame(state)
+            31 -> FeCBleTelemetryEncoder.encodePage81Frame(state)
             else -> encodeSpecificPageFrame(state)
         }
         tickIndex++
@@ -36,23 +39,34 @@ internal class FeCBleTelemetryScheduler(private val equipmentType: FeCEquipmentT
      * (both) and power (rower) only ever live on their equipment-specific page, never on page 16.
      */
     private fun encodeSpecificPageFrame(state: FeCBleMachineState): ByteArray = when (equipmentType) {
-        FeCEquipmentType.TRAINER, FeCEquipmentType.STATIONARY_BIKE -> {
+        FeCEquipmentType.TRAINER -> {
+            val frame = if (trainerSpecificIndex % 2L == 0L) {
+                // Page 25 is mandatory for trainers, but 0xFFF makes both direct-power fields
+                // unavailable. Page 26 is this persona's sole FE-C power source.
+                FeCBleTelemetryEncoder.encodePage25Frame(state, powerAvailable = false)
+            } else {
+                FeCBleTelemetryEncoder.encodePage26Frame(state)
+            }
+            trainerSpecificIndex++
+            frame
+        }
+        FeCEquipmentType.STATIONARY_BIKE -> {
             FeCBleSyntheticModel.recordTrainerEvent(state)
             FeCBleTelemetryEncoder.encodePage25Frame(state)
         }
         FeCEquipmentType.TREADMILL -> FeCBleTelemetryEncoder.encodePage19Frame(state)
-        FeCEquipmentType.ROWER -> {
-            FeCBleSyntheticModel.recordRowerEvent(state)
-            FeCBleTelemetryEncoder.encodePage22Frame(state)
-        }
+        FeCEquipmentType.ELLIPTICAL -> FeCBleTelemetryEncoder.encodePage20Frame(state)
+        FeCEquipmentType.ROWER -> FeCBleTelemetryEncoder.encodePage22Frame(state)
+        FeCEquipmentType.CLIMBER -> FeCBleTelemetryEncoder.encodePage23Frame(state)
+        FeCEquipmentType.NORDIC_SKIER -> FeCBleTelemetryEncoder.encodePage24Frame(state)
     }
 
     /** Current 0-based tick count, for tests and diagnostics. */
     fun tickCount(): Long = tickIndex
 
     companion object {
-        /** Approximately every 8 seconds at the 4 Hz base cadence (plan §11.2/§11.3). */
-        const val PRODUCT_INFO_EVERY_N_TICKS = 32L
+        /** Ten-second deterministic schedule at 4 Hz. */
+        const val ROTATION_TICKS = 40
 
         /** Total scheduler cadence; the whole point of the 250 ms tick (plan §11.1). */
         const val TICK_PERIOD_MS = 250L

@@ -5,7 +5,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothI
 /**
  * Equipment persona this FE-C-over-BLE simulator instance is playing.
  *
- * Page 16 declares equipment type on the wire, so one implementation serves all four; see
+ * Page 16 declares equipment type on the wire, so one implementation serves all seven; see
  * `docs/fe-c-ble_simulator_implementation.md` §3.1.
  */
 enum class FeCEquipmentType(
@@ -19,30 +19,89 @@ enum class FeCEquipmentType(
      * user-selectable: it is baked into the persona so the debug UI never needs to describe it.
      */
     val includesCpsOverlay: Boolean,
+    /** Deterministic simulator fixtures, not claims about a physical product. */
+    val cycleLengthMeters: Double,
+    val inclinePercent: Double,
+    val resistanceLevelPercent: Double,
+    val metabolicEquivalent: Double,
+    val maximumResistanceNewtons: Int,
 ) {
     TRAINER(
         BluetoothIds.FEC_EQUIPMENT_TRAINER,
         "Trainer",
         supportsControl = true,
         includesCpsOverlay = true,
+        cycleLengthMeters = 2.10,
+        inclinePercent = 0.0,
+        resistanceLevelPercent = 35.0,
+        metabolicEquivalent = 8.0,
+        maximumResistanceNewtons = 1_200,
     ),
     STATIONARY_BIKE(
         BluetoothIds.FEC_EQUIPMENT_STATIONARY_BIKE,
         "Stationary Bike",
         supportsControl = false,
         includesCpsOverlay = true,
+        cycleLengthMeters = 2.10,
+        inclinePercent = 0.0,
+        resistanceLevelPercent = 30.0,
+        metabolicEquivalent = 7.5,
+        maximumResistanceNewtons = 650,
     ),
     TREADMILL(
         BluetoothIds.FEC_EQUIPMENT_TREADMILL,
         "Treadmill",
         supportsControl = false,
         includesCpsOverlay = false,
+        cycleLengthMeters = 1.20,
+        inclinePercent = 3.0,
+        resistanceLevelPercent = 0.0,
+        metabolicEquivalent = 9.8,
+        maximumResistanceNewtons = 1_500,
+    ),
+    ELLIPTICAL(
+        BluetoothIds.FEC_EQUIPMENT_ELLIPTICAL,
+        "Elliptical",
+        supportsControl = false,
+        includesCpsOverlay = false,
+        cycleLengthMeters = 1.40,
+        inclinePercent = 4.0,
+        resistanceLevelPercent = 40.0,
+        metabolicEquivalent = 6.5,
+        maximumResistanceNewtons = 800,
     ),
     ROWER(
         BluetoothIds.FEC_EQUIPMENT_ROWER,
         "Rower",
         supportsControl = false,
         includesCpsOverlay = false,
+        cycleLengthMeters = 0.90,
+        inclinePercent = 0.0,
+        resistanceLevelPercent = 45.0,
+        metabolicEquivalent = 7.5,
+        maximumResistanceNewtons = 700,
+    ),
+    CLIMBER(
+        BluetoothIds.FEC_EQUIPMENT_CLIMBER,
+        "Climber",
+        supportsControl = false,
+        includesCpsOverlay = false,
+        cycleLengthMeters = 0.20,
+        inclinePercent = 0.0,
+        resistanceLevelPercent = 50.0,
+        metabolicEquivalent = 8.8,
+        maximumResistanceNewtons = 1_000,
+    ),
+    NORDIC_SKIER(
+        BluetoothIds.FEC_EQUIPMENT_NORDIC_SKIER,
+        "Nordic Skier",
+        supportsControl = false,
+        includesCpsOverlay = false,
+        cycleLengthMeters = 1.50,
+        inclinePercent = 0.0,
+        resistanceLevelPercent = 40.0,
+        metabolicEquivalent = 9.0,
+        maximumResistanceNewtons = 600,
     ),
 }
 
@@ -72,8 +131,9 @@ internal enum class FeCHeartRateSource(val wireValue: Int) {
  * stricter requirement than the transport document itself establishes (plan §18.1).
  *
  * **Not a user-selectable debug option.** [FeCEquipmentType.includesCpsOverlay] decides this
- * automatically per equipment type (Trainer and Stationary Bike always carry it, Treadmill and
- * Rower never do) — there is no separate "+ CPS" persona in the debug UI, and the overlay is
+ * automatically per equipment type (Trainer and Stationary Bike always carry it; the five
+ * non-cycling personas never do) — there is no separate "+ CPS" persona in the debug UI, and the
+ * overlay is
  * never mentioned in a persona's label or summary text. Only the two overlays required for
  * Phase-9's definition of done are modeled; the plan's optional test-only overlays (CSC,
  * FTMS_HEALTHY, FTMS_SILENT_DATA) are deferred.
@@ -129,6 +189,7 @@ internal data class FeCBleUserConfig(
  */
 internal class FeCBleMachineState(
     val equipmentType: FeCEquipmentType,
+    val controlEnabled: Boolean = equipmentType.supportsControl,
     val serialNumber: Long = DEFAULT_SERIAL,
     val softwareRevisionSupplemental: Int = DEFAULT_SW_SUPPLEMENTAL,
     val softwareRevisionMain: Int = DEFAULT_SW_MAIN,
@@ -151,14 +212,28 @@ internal class FeCBleMachineState(
     var trainerStatusRaw: Int = 0
     var targetStatusRaw: Int = 0
 
+    var cycleLengthMeters: Double = equipmentType.cycleLengthMeters
+    var inclinePercent: Double = equipmentType.inclinePercent
+    var resistanceLevelPercent: Double = equipmentType.resistanceLevelPercent
+    var metabolicEquivalent: Double = equipmentType.metabolicEquivalent
+    var caloricBurnRateKcalPerHour: Double = metabolicEquivalent * METABOLIC_FIXTURE_BODY_MASS_KG
+    var accumulatedCaloriesKcal: Double = 0.0
+
     // Page 19 (Treadmill) fields. Internally wider than the wire's 0.1m/byte encoding, per the
     // same §8.1 rationale as the trainer counters above - the wire value is `& 0xFF` at the
     // encoder boundary only.
-    var positiveVerticalDistanceDeciMeters: Long = 0
-    var negativeVerticalDistanceDeciMeters: Long = 0
+    var positiveVerticalDistanceMeters: Double = 0.0
+    var negativeVerticalDistanceMeters: Double = 0.0
 
-    // Page 22 (Rower) field.
-    var strokeCount: Long = 0
+    /** Strides, strokes, or complete climber cycles according to the active specific page. */
+    var movementCount: Double = 0.0
+
+    // Page 26 trainer wheel-torque accumulators. Doubles retain sub-unit increments until encode.
+    var torqueEventCount: Long = 0
+    var wheelTicks: Long = 0
+    var wheelRevolutions: Double = 0.0
+    var wheelPeriodTicks: Long = 0
+    var accumulatedTorqueThirtySecondNm: Double = 0.0
 
     var controlMode: FeCBleControlMode = FeCBleControlMode.FREE
     var basicResistancePercent: Double? = null
@@ -186,9 +261,20 @@ internal class FeCBleMachineState(
         eventCount = 0
         trainerStatusRaw = 0
         targetStatusRaw = 0
-        positiveVerticalDistanceDeciMeters = 0
-        negativeVerticalDistanceDeciMeters = 0
-        strokeCount = 0
+        cycleLengthMeters = equipmentType.cycleLengthMeters
+        inclinePercent = equipmentType.inclinePercent
+        resistanceLevelPercent = equipmentType.resistanceLevelPercent
+        metabolicEquivalent = equipmentType.metabolicEquivalent
+        caloricBurnRateKcalPerHour = metabolicEquivalent * METABOLIC_FIXTURE_BODY_MASS_KG
+        accumulatedCaloriesKcal = 0.0
+        positiveVerticalDistanceMeters = 0.0
+        negativeVerticalDistanceMeters = 0.0
+        movementCount = 0.0
+        torqueEventCount = 0
+        wheelTicks = 0
+        wheelRevolutions = 0.0
+        wheelPeriodTicks = 0
+        accumulatedTorqueThirtySecondNm = 0.0
         controlMode = FeCBleControlMode.FREE
         basicResistancePercent = null
         targetPowerWatts = null
@@ -224,10 +310,25 @@ internal class FeCBleMachineState(
                 cadenceRpm = DEFAULT_TREADMILL_CADENCE_SPM
                 // No instantaneousPowerWatts: page 19 has no power field (Table 8-15).
             }
+            FeCEquipmentType.ELLIPTICAL -> {
+                speedMps = DEFAULT_ELLIPTICAL_SPEED_MPS
+                cadenceRpm = DEFAULT_ELLIPTICAL_CADENCE_SPM
+                instantaneousPowerWatts = DEFAULT_ELLIPTICAL_POWER_WATTS
+            }
             FeCEquipmentType.ROWER -> {
                 speedMps = DEFAULT_ROWER_SPEED_MPS
                 cadenceRpm = DEFAULT_ROWER_CADENCE_SPM
                 instantaneousPowerWatts = DEFAULT_ROWER_POWER_WATTS
+            }
+            FeCEquipmentType.CLIMBER -> {
+                speedMps = DEFAULT_CLIMBER_SPEED_MPS
+                cadenceRpm = DEFAULT_CLIMBER_CADENCE_CPM
+                instantaneousPowerWatts = DEFAULT_CLIMBER_POWER_WATTS
+            }
+            FeCEquipmentType.NORDIC_SKIER -> {
+                speedMps = DEFAULT_NORDIC_SKIER_SPEED_MPS
+                cadenceRpm = DEFAULT_NORDIC_SKIER_CADENCE_SPM
+                instantaneousPowerWatts = DEFAULT_NORDIC_SKIER_POWER_WATTS
             }
         }
     }
@@ -249,5 +350,17 @@ internal class FeCBleMachineState(
         const val DEFAULT_ROWER_SPEED_MPS = 4.0
         const val DEFAULT_ROWER_CADENCE_SPM = 24
         const val DEFAULT_ROWER_POWER_WATTS = 150
+        const val DEFAULT_ELLIPTICAL_SPEED_MPS = 2.2
+        const val DEFAULT_ELLIPTICAL_CADENCE_SPM = 70
+        const val DEFAULT_ELLIPTICAL_POWER_WATTS = 170
+        const val DEFAULT_CLIMBER_SPEED_MPS = 0.5
+        const val DEFAULT_CLIMBER_CADENCE_CPM = 50
+        const val DEFAULT_CLIMBER_POWER_WATTS = 190
+        const val DEFAULT_NORDIC_SKIER_SPEED_MPS = 3.5
+        const val DEFAULT_NORDIC_SKIER_CADENCE_SPM = 55
+        const val DEFAULT_NORDIC_SKIER_POWER_WATTS = 210
+
+        /** Synthetic metabolic pages assume one fixed 75 kg rider for internally coherent kcal/h. */
+        const val METABOLIC_FIXTURE_BODY_MASS_KG = 75.0
     }
 }

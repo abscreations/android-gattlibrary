@@ -83,7 +83,7 @@ class FeCBleCentralInteropTest {
 
     @Test
     fun `page 25 from the simulator decodes correctly through the central's independent parser`() {
-        val state = freshState().apply {
+        val state = freshState(FeCEquipmentType.STATIONARY_BIKE).apply {
             feState = FeCEquipmentState.IN_USE
             eventCount = 44
             cadenceRpm = 88
@@ -106,7 +106,7 @@ class FeCBleCentralInteropTest {
 
     @Test
     fun `page 25 with cadence and power unavailable round-trips those sentinels as null`() {
-        val state = freshState().apply {
+        val state = freshState(FeCEquipmentType.STATIONARY_BIKE).apply {
             cadenceRpm = null
             instantaneousPowerWatts = null
         }

@@ -62,16 +62,51 @@ internal object FeCBleTelemetryEncoder {
         return page
     }
 
+    /** Page 17 — General Settings (official FE profile Rev 5.0, Table 8-11). */
+    fun encodePage17(state: FeCBleMachineState): ByteArray {
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_GENERAL_SETTINGS.toByte()
+        page[1] = 0xFF.toByte()
+        page[2] = 0xFF.toByte()
+        page[3] = (state.cycleLengthMeters * 100.0).roundToInt().coerceIn(0, 0xFE).toByte()
+        val inclineRaw = (state.inclinePercent * 100.0).roundToInt().coerceIn(-10_000, 10_000)
+        page[4] = (inclineRaw and 0xFF).toByte()
+        page[5] = ((inclineRaw ushr 8) and 0xFF).toByte()
+        page[6] = (state.resistanceLevelPercent * 2.0).roundToInt().coerceIn(0, 200).toByte()
+        page[7] = ((state.feState.wireValue and 0x07) shl 4).toByte()
+        return page
+    }
+
+    /** Page 18 — General FE Metabolic Data (Table 8-13). */
+    fun encodePage18(state: FeCBleMachineState): ByteArray {
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA.toByte()
+        page[1] = 0xFF.toByte()
+        val metsRaw = (state.metabolicEquivalent * 100.0).roundToInt().coerceIn(0, 10_000)
+        page[2] = (metsRaw and 0xFF).toByte()
+        page[3] = ((metsRaw ushr 8) and 0xFF).toByte()
+        val burnRateRaw = (state.caloricBurnRateKcalPerHour * 10.0).roundToInt().coerceIn(0, 0xFFFE)
+        page[4] = (burnRateRaw and 0xFF).toByte()
+        page[5] = ((burnRateRaw ushr 8) and 0xFF).toByte()
+        page[6] = (floor(state.accumulatedCaloriesKcal).toLong() and 0xFF).toByte()
+        page[7] = (0x01 or ((state.feState.wireValue and 0x07) shl 4)).toByte()
+        return page
+    }
+
     /** Page 25 — Specific Trainer Data (`0x19`). Plan §10.2. */
-    fun encodePage25(state: FeCBleMachineState): ByteArray {
+    fun encodePage25(state: FeCBleMachineState, powerAvailable: Boolean = true): ByteArray {
         val page = ByteArray(8)
         page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA.toByte()
         page[1] = (state.eventCount and 0xFF).toByte()
         page[2] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
-        val accPower = (state.accumulatedPower and 0xFFFF)
+        val accPower = if (powerAvailable) state.accumulatedPower and 0xFFFF else 0L
         page[3] = (accPower and 0xFF).toByte()
         page[4] = ((accPower ushr 8) and 0xFF).toByte()
-        val instPower = state.instantaneousPowerWatts?.coerceIn(0, 0xFFE) ?: 0xFFF
+        val instPower = if (powerAvailable) {
+            state.instantaneousPowerWatts?.coerceIn(0, 0xFFE) ?: 0xFFF
+        } else {
+            0xFFF
+        }
         page[5] = (instPower and 0xFF).toByte()
         val nibbleByte = ((instPower ushr 8) and 0x0F) or ((state.trainerStatusRaw and 0x0F) shl 4)
         page[6] = nibbleByte.toByte()
@@ -84,12 +119,8 @@ internal object FeCBleTelemetryEncoder {
     /**
      * Page 19 — Specific Treadmill Data (`0x13`). Table 8-15: bytes 1-3 reserved, byte 4
      * cadence, bytes 5/6 negative/positive accumulated vertical distance (each independently
-     * gated by its own capability bit). Vertical distance is not simulated (both distance
-     * fields stay at zero, both capability bits stay clear) - this project has no incline model
-     * for the treadmill persona yet, and an unset capability bit is the spec-honest way to say
-     * "do not interpret these bytes" rather than transmitting a fabricated zero as if it were
-     * real data (mirrors [FeCCapabilities]' "never claim a range we can't back" norm on the
-     * central side).
+     * gated by its own capability bit). The general-settings incline fixture drives coherent
+     * accumulated vertical distance, so both capability bits are set.
      */
     fun encodePage19(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
@@ -98,12 +129,24 @@ internal object FeCBleTelemetryEncoder {
         page[2] = 0xFF.toByte()
         page[3] = 0xFF.toByte()
         page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
-        page[5] = (state.negativeVerticalDistanceDeciMeters and 0xFF).toByte()
-        page[6] = (state.positiveVerticalDistanceDeciMeters and 0xFF).toByte()
-        // Capability bits 0/1 (positive/negative vertical distance transmitted) stay clear -
-        // see the class doc above. Bits 4-6 carry FE state, matching every other page's layout.
-        val byte7 = (state.feState.wireValue and 0x07) shl 4
+        page[5] = (floor(state.negativeVerticalDistanceMeters * 10.0).toLong() and 0xFF).toByte()
+        page[6] = (floor(state.positiveVerticalDistanceMeters * 10.0).toLong() and 0xFF).toByte()
+        // Both accumulated vertical-distance fields are present in this deterministic fixture.
+        val byte7 = 0x03 or ((state.feState.wireValue and 0x07) shl 4)
         page[7] = byte7.toByte()
+        return page
+    }
+
+    /** Page 20 — Specific Elliptical Data (Table 8-17). */
+    fun encodePage20(state: FeCBleMachineState): ByteArray {
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA.toByte()
+        page[1] = 0xFF.toByte()
+        page[2] = (floor(state.positiveVerticalDistanceMeters * 10.0).toLong() and 0xFF).toByte()
+        page[3] = (floor(state.movementCount).toLong() and 0xFF).toByte()
+        page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
+        putU16(page, 5, state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
+        page[7] = (0x03 or ((state.feState.wireValue and 0x07) shl 4)).toByte()
         return page
     }
 
@@ -118,16 +161,49 @@ internal object FeCBleTelemetryEncoder {
         page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA.toByte()
         page[1] = 0xFF.toByte()
         page[2] = 0xFF.toByte()
-        page[3] = (state.strokeCount and 0xFF).toByte()
+        page[3] = (floor(state.movementCount).toLong() and 0xFF).toByte()
         page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
         val instPower = state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF
         page[5] = (instPower and 0xFF).toByte()
         page[6] = ((instPower ushr 8) and 0xFF).toByte()
-        // Bit 0 (accumulated strokes transmitted in byte 3) is always set: recordRowerEvent
-        // always advances strokeCount while IN_USE, so byte 3 is always meaningful here.
+        // Bit 0 is set because the model advances movementCount from the rower's cadence.
         var byte7 = 0x01
         byte7 = byte7 or ((state.feState.wireValue and 0x07) shl 4)
         page[7] = byte7.toByte()
+        return page
+    }
+
+    /** Page 23 — Specific Climber Data (Table 8-21). */
+    fun encodePage23(state: FeCBleMachineState): ByteArray = encodeStridePowerPage(
+        state = state,
+        pageNumber = BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA,
+    )
+
+    /** Page 24 — Specific Nordic Skier Data (Table 8-23). */
+    fun encodePage24(state: FeCBleMachineState): ByteArray = encodeStridePowerPage(
+        state = state,
+        pageNumber = BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA,
+    )
+
+    /** Page 26 — Specific Trainer Torque Data (Table 8-29). */
+    fun encodePage26(state: FeCBleMachineState): ByteArray {
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA.toByte()
+        page[1] = (state.torqueEventCount and 0xFF).toByte()
+        page[2] = (state.wheelTicks and 0xFF).toByte()
+        putU16(page, 3, (state.wheelPeriodTicks and 0xFFFF).toInt())
+        putU16(page, 5, (floor(state.accumulatedTorqueThirtySecondNm).toLong() and 0xFFFF).toInt())
+        page[7] = ((state.feState.wireValue and 0x07) shl 4).toByte()
+        return page
+    }
+
+    /** Page 54 — FE Capabilities (Tables 8-45/8-46). */
+    fun encodePage54(state: FeCBleMachineState): ByteArray {
+        val page = ByteArray(8)
+        page[0] = BluetoothIds.FEC_PAGE_FE_CAPABILITIES.toByte()
+        for (offset in 1..4) page[offset] = 0xFF.toByte()
+        putU16(page, 5, state.equipmentType.maximumResistanceNewtons)
+        page[7] = if (state.controlEnabled && state.equipmentType.supportsControl) 0x07 else 0x00
         return page
     }
 
@@ -147,8 +223,38 @@ internal object FeCBleTelemetryEncoder {
     }
 
     fun encodePage16Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage16(state))
+    fun encodePage17Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage17(state))
+    fun encodePage18Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage18(state))
     fun encodePage19Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage19(state))
+    fun encodePage20Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage20(state))
     fun encodePage22Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage22(state))
-    fun encodePage25Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage25(state))
+    fun encodePage23Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage23(state))
+    fun encodePage24Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage24(state))
+    fun encodePage25Frame(
+        state: FeCBleMachineState,
+        powerAvailable: Boolean = true,
+    ): ByteArray = buildAntFrame(encodePage25(state, powerAvailable))
+    fun encodePage26Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage26(state))
+    fun encodePage54Frame(
+        state: FeCBleMachineState,
+        messageType: Int = BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA,
+    ): ByteArray = buildAntFrame(encodePage54(state), messageType)
     fun encodePage81Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage81(state))
+
+    private fun encodeStridePowerPage(state: FeCBleMachineState, pageNumber: Int): ByteArray {
+        val page = ByteArray(8)
+        page[0] = pageNumber.toByte()
+        page[1] = 0xFF.toByte()
+        page[2] = 0xFF.toByte()
+        page[3] = (floor(state.movementCount).toLong() and 0xFF).toByte()
+        page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
+        putU16(page, 5, state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
+        page[7] = (0x01 or ((state.feState.wireValue and 0x07) shl 4)).toByte()
+        return page
+    }
+
+    private fun putU16(page: ByteArray, offset: Int, value: Int) {
+        page[offset] = (value and 0xFF).toByte()
+        page[offset + 1] = ((value ushr 8) and 0xFF).toByte()
+    }
 }

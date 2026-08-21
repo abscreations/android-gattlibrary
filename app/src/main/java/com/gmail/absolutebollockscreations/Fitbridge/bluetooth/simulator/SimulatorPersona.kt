@@ -64,10 +64,8 @@ sealed interface SimulatorPersona {
      * FEC3 can converge the same `FeCBleTelemetryEncoder` output the scheduler is emitting. See
      * `FeCBlePeripheralController` for why.
      *
-     * @param controlEnabled whether FEC3 is served at all. Defaults to the equipment type's own
-     * default (Trainer only, plan §3.1); tests may override it to exercise transport behaviour on
-     * a measurement-only persona, which the plan is explicit is a test configuration and not a
-     * physical-equipment claim.
+     * @param controlEnabled whether pages 48-55 may mutate the machine. FEC3 itself is always
+     * served so every persona can answer Common Page 70 requests for required FE Capabilities.
      * @param overlay the GATT compatibility overlay layered on the protocol-minimal persona (plan
      * §3.2). Defaults to [FeCEquipmentType.includesCpsOverlay] — Trainer and Stationary Bike always
      * carry `CPS_INCYCLIST_COMPAT`, publishing FitBridge's existing standards-compliant Cycling
@@ -226,11 +224,14 @@ private fun c2Notify(uuid: UUID) = Concept2CharacteristicManifest(uuid, notifiab
 
 /**
  * Discovery correctness is by the `FEC1` service UUID (plan §5), never by this name — it exists
- * only so a human picking from the debug persona list is not shown four identical rows.
+ * only so a human picking from the debug persona list is not shown seven identical rows.
  */
 fun feCBleAdvertisedName(equipmentType: FeCEquipmentType): String = when (equipmentType) {
     FeCEquipmentType.TRAINER -> "FitBridge FE-C Trainer"
     FeCEquipmentType.STATIONARY_BIKE -> "FitBridge FE-C Bike"
     FeCEquipmentType.TREADMILL -> "FitBridge FE-C Treadmill"
+    FeCEquipmentType.ELLIPTICAL -> "FitBridge FE-C Elliptical"
     FeCEquipmentType.ROWER -> "FitBridge FE-C Rower"
+    FeCEquipmentType.CLIMBER -> "FitBridge FE-C Climber"
+    FeCEquipmentType.NORDIC_SKIER -> "FitBridge FE-C Skier"
 }

@@ -566,8 +566,8 @@ object BluetoothIds {
      * FE-C over BLE primary service, per `docs/How-to FE-C over BLE v1_0_0.pdf`.
      *
      * **Generic FE-C-over-BLE protocol identity, not a Tacx-model-specific one.** Page 16 of the
-     * ANT+ FE-C payload declares equipment type, so one GATT surface serves Trainer, Stationary
-     * Bike, Treadmill, and Rower personas without a model-specific driver. See
+     * ANT+ FE-C payload declares equipment type, so one GATT surface serves all seven defined
+     * equipment personas without a model-specific driver. See
      * `docs/fe-c-ble_simulator_implementation.md` and `docs/fe-c-ble_central_implementation.md`.
      */
     val UUID_FEC_SERVICE: UUID =
@@ -589,9 +589,16 @@ object BluetoothIds {
 
     // FE-C data pages (machine -> central).
     const val FEC_PAGE_GENERAL_FE_DATA: Int = 0x10
+    const val FEC_PAGE_GENERAL_SETTINGS: Int = 0x11
+    const val FEC_PAGE_GENERAL_METABOLIC_DATA: Int = 0x12
     const val FEC_PAGE_SPECIFIC_TREADMILL_DATA: Int = 0x13
+    const val FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA: Int = 0x14
     const val FEC_PAGE_SPECIFIC_ROWER_DATA: Int = 0x16
+    const val FEC_PAGE_SPECIFIC_CLIMBER_DATA: Int = 0x17
+    const val FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA: Int = 0x18
     const val FEC_PAGE_SPECIFIC_TRAINER_DATA: Int = 0x19
+    const val FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA: Int = 0x1A
+    const val FEC_PAGE_FE_CAPABILITIES: Int = 0x36
     const val FEC_PAGE_PRODUCT_INFORMATION: Int = 0x51
 
     // FE-C control pages (central -> machine).
@@ -600,12 +607,12 @@ object BluetoothIds {
     const val FEC_PAGE_WIND_RESISTANCE: Int = 0x32
     const val FEC_PAGE_TRACK_RESISTANCE: Int = 0x33
     const val FEC_PAGE_USER_CONFIGURATION: Int = 0x37
+    const val FEC_PAGE_REQUEST_DATA_PAGE: Int = 0x46
 
     /**
-     * Page 16 byte 1, low 5 bits. The simulator only emits TREADMILL/STATIONARY_BIKE/ROWER/
-     * TRAINER (plan §3.1); ELLIPTICAL/CLIMBER/NORDIC_SKIER are included here anyway because
-     * the central side must decode whatever a real machine reports, not just what this app's
-     * own simulator produces. See `docs/fe-c-ble_central_implementation.md` §2.4/§9.
+     * Page 16 byte 1, low 5 bits. The simulator emits all seven defined equipment personas, and
+     * the central side must likewise decode whatever a real machine reports. See
+     * `docs/fe-c-ble_central_implementation.md` §2.4/§9.
      *
      * Per the official ANT+ FE-C spec (D000001231 Rev 5.0, Table 8-7), wire value 21 is
      * "Reserved - Do Not Use" for this field, NOT Stationary Bike: Stationary Bike shares

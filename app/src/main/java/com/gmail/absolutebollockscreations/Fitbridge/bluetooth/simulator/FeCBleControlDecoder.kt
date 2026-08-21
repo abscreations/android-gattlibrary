@@ -13,6 +13,11 @@ internal sealed interface FeCBleControlCommand {
     ) : FeCBleControlCommand
     data class TrackResistance(val gradePercent: Double, val crr: Double) : FeCBleControlCommand
     data class UserConfiguration(val userWeightKg: Double?, val rawPage: ByteArray) : FeCBleControlCommand
+    data class RequestDataPage(
+        val requestedPage: Int,
+        val transmissionCount: Int,
+        val acknowledgedResponse: Boolean,
+    ) : FeCBleControlCommand
     data class Unsupported(val page: Int) : FeCBleControlCommand
 
     /** Structural envelope rejection (plan §30.3): never mutates state. */
@@ -66,6 +71,7 @@ internal object FeCBleControlDecoder {
             BluetoothIds.FEC_PAGE_WIND_RESISTANCE -> decodeWindResistance(pageBytes)
             BluetoothIds.FEC_PAGE_TRACK_RESISTANCE -> decodeTrackResistance(pageBytes)
             BluetoothIds.FEC_PAGE_USER_CONFIGURATION -> decodeUserConfiguration(pageBytes)
+            BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE -> decodeRequestDataPage(pageBytes)
             else -> FeCBleControlCommand.Unsupported(page)
         }
     }
@@ -108,6 +114,21 @@ internal object FeCBleControlDecoder {
         return FeCBleControlCommand.UserConfiguration(weight, page.copyOf())
     }
 
+    /** Common page 70: request a supported page N times, with command type 1. */
+    private fun decodeRequestDataPage(page: ByteArray): FeCBleControlCommand {
+        val response = page[5].toInt() and 0xFF
+        val count = response and 0x7F
+        val commandType = page[7].toInt() and 0xFF
+        if (count == 0 || commandType != 0x01) {
+            return FeCBleControlCommand.Unsupported(BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE)
+        }
+        return FeCBleControlCommand.RequestDataPage(
+            requestedPage = page[6].toInt() and 0xFF,
+            transmissionCount = count,
+            acknowledgedResponse = response and 0x80 != 0,
+        )
+    }
+
     private fun u16le(page: ByteArray, offset: Int): Int =
         (page[offset].toInt() and 0xFF) or ((page[offset + 1].toInt() and 0xFF) shl 8)
 
@@ -117,5 +138,6 @@ internal object FeCBleControlDecoder {
         BluetoothIds.FEC_PAGE_WIND_RESISTANCE,
         BluetoothIds.FEC_PAGE_TRACK_RESISTANCE,
         BluetoothIds.FEC_PAGE_USER_CONFIGURATION,
+        BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE,
     )
 }

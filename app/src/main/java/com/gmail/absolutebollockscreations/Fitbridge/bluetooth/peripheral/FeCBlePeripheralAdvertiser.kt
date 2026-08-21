@@ -63,13 +63,14 @@ import timber.log.Timber
  * advertised alongside FEC1's 128-bit UUID (plan §5.3, §6.3, §18). This is not a new one-off CPS
  * implementation — it reuses the same encoder the Indoor Bike FTMS persona uses. The caller
  * ([FeCBlePeripheralController]) is responsible for calling [publishCps] with a frame whose
- * instantaneous power equals the same tick's FE-C page-25 power (plan §18.2); this class never
- * generates CPS data itself.
+     * instantaneous power equals the same coherent machine-state power used by page 25 on
+     * Stationary Bike and the page-26 torque accumulator on Trainer; this class never generates
+     * CPS data itself.
  */
 internal class FeCBlePeripheralAdvertiser(
     private val context: Context,
     private val state: FeCBleMachineState,
-    private val includeControl: Boolean,
+    private val controlsEnabled: Boolean,
     private val includeCps: Boolean,
     private val listener: Listener,
 ) {
@@ -87,6 +88,7 @@ internal class FeCBlePeripheralAdvertiser(
         var cpsSubscribed = false
         var inFlight = false
         var pendingFec2: ByteArray? = null
+        val requestedFec2: ArrayDeque<ByteArray> = ArrayDeque()
         var pendingCps: ByteArray? = null
     }
 
@@ -136,7 +138,9 @@ internal class FeCBlePeripheralAdvertiser(
             finishStart(Result.failure(IllegalStateException("Could not open FE-C GATT server")))
             return
         }
-        pendingServices = ArrayDeque(FeCBleGattProfile.buildServices(includeControl, includeCps))
+        // Every FE persona needs FEC3 for Common Page 70 requests, even when target control is
+        // disabled. [controlsEnabled] gates pages 48-55; the characteristic itself is always served.
+        pendingServices = ArrayDeque(FeCBleGattProfile.buildServices(includeControl = true, includeCps))
         addNextService()
     }
 
@@ -239,10 +243,43 @@ internal class FeCBlePeripheralAdvertiser(
                 when (val command = FeCBleControlDecoder.decode(value)) {
                     is FeCBleControlCommand.Rejected -> listener.onControlWriteRejected(command.reason)
                     is FeCBleControlCommand.Unsupported -> listener.onUnsupportedControlPage(command.page)
+                    is FeCBleControlCommand.RequestDataPage -> {
+                        if (command.requestedPage == BluetoothIds.FEC_PAGE_FE_CAPABILITIES && client.subscribed) {
+                            val messageType = if (command.acknowledgedResponse) {
+                                BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA
+                            } else {
+                                BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA
+                            }
+                            val response = synchronized(state) {
+                                FeCBleTelemetryEncoder.encodePage54Frame(state, messageType)
+                            }
+                            synchronized(client) {
+                                client.requestedFec2.clear()
+                                repeat(command.transmissionCount) { client.requestedFec2.addLast(response.copyOf()) }
+                            }
+                            drain(client)
+                            accepted = true
+                            listener.onControlWriteAccepted(
+                                BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE,
+                                device.address,
+                            )
+                        } else {
+                            listener.onUnsupportedControlPage(command.requestedPage)
+                        }
+                    }
                     else -> {
-                        synchronized(state) { FeCBleSyntheticModel.applyControlCommand(state, command, device.address) }
-                        accepted = true
-                        listener.onControlWriteAccepted((value.getOrNull(4)?.toInt() ?: -1) and 0xFF, device.address)
+                        if (controlsEnabled && state.equipmentType.supportsControl) {
+                            synchronized(state) {
+                                FeCBleSyntheticModel.applyControlCommand(state, command, device.address)
+                            }
+                            accepted = true
+                            listener.onControlWriteAccepted(
+                                (value.getOrNull(4)?.toInt() ?: -1) and 0xFF,
+                                device.address,
+                            )
+                        } else {
+                            listener.onUnsupportedControlPage((value.getOrNull(4)?.toInt() ?: -1) and 0xFF)
+                        }
                     }
                 }
             }
@@ -307,6 +344,7 @@ internal class FeCBlePeripheralAdvertiser(
                     } else if (disable) {
                         client.subscribed = false
                         synchronized(client) { client.pendingFec2 = null }
+                        synchronized(client) { client.requestedFec2.clear() }
                     }
                 } else {
                     if (enable) {
@@ -436,9 +474,11 @@ internal class FeCBlePeripheralAdvertiser(
     private fun drain(client: Client) {
         val chosen = synchronized(client) {
             if (client.inFlight) return
+            val requestedFrame = client.requestedFec2.removeFirstOrNull()
             val fec2Frame = client.pendingFec2
             val cpsFrame = client.pendingCps
             val next = when {
+                requestedFrame != null -> BluetoothIds.UUID_FEC_MEASUREMENT to requestedFrame
                 fec2Frame != null -> {
                     client.pendingFec2 = null
                     BluetoothIds.UUID_FEC_MEASUREMENT to fec2Frame

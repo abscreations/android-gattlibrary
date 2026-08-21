@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.CyclingRevolutionSnapshot
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.CyclingSensorEncoders
 import org.junit.Assert.assertEquals
@@ -21,6 +22,9 @@ class FeCBleSimulatorTest {
 
     private fun bytes(spec: String): ByteArray =
         spec.trim().split(Regex("\\s+")).map { it.toInt(16).toByte() }.toByteArray()
+
+    private fun u16(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
 
     // ── §22 pinned vectors ──────────────────────────────────────────────────
 
@@ -46,8 +50,8 @@ class FeCBleSimulatorTest {
     }
 
     @Test
-    fun `22-3 representative Trainer page 25 vector`() {
-        val state = FeCBleMachineState(FeCEquipmentType.TRAINER)
+    fun `22-3 representative Stationary Bike page 25 vector`() {
+        val state = FeCBleMachineState(FeCEquipmentType.STATIONARY_BIKE)
         state.feState = FeCEquipmentState.IN_USE
         state.eventCount = 1
         state.cadenceRpm = 90
@@ -62,6 +66,83 @@ class FeCBleSimulatorTest {
         val state = FeCBleMachineState(FeCEquipmentType.TRAINER)
         val frame = FeCBleTelemetryEncoder.encodePage81Frame(state)
         assertEquals("A4 09 4E 05 51 FF 05 01 78 56 34 12 44", hex(frame))
+    }
+
+    @Test
+    fun `official page 17 layout encodes cycle incline resistance and state`() {
+        val state = FeCBleMachineState(FeCEquipmentType.TREADMILL).apply {
+            feState = FeCEquipmentState.IN_USE
+            cycleLengthMeters = 1.23
+            inclinePercent = -4.25
+            resistanceLevelPercent = 37.5
+        }
+        val page = FeCBleTelemetryEncoder.encodePage17(state)
+        assertEquals("11 FF FF 7B 57 FE 4B 30", hex(page))
+    }
+
+    @Test
+    fun `official page 18 layout encodes METs rate accumulated calories and capability`() {
+        val state = FeCBleMachineState(FeCEquipmentType.ELLIPTICAL).apply {
+            feState = FeCEquipmentState.IN_USE
+            metabolicEquivalent = 6.50
+            caloricBurnRateKcalPerHour = 487.5
+            accumulatedCaloriesKcal = 257.9
+        }
+        val page = FeCBleTelemetryEncoder.encodePage18(state)
+        assertEquals("12 FF 8A 02 0B 13 01 31", hex(page))
+    }
+
+    @Test
+    fun `pages 20 23 and 24 encode their official count cadence and power layout`() {
+        val expectedPages = listOf(
+            FeCEquipmentType.ELLIPTICAL to 0x14,
+            FeCEquipmentType.CLIMBER to 0x17,
+            FeCEquipmentType.NORDIC_SKIER to 0x18,
+        )
+        expectedPages.forEach { (type, pageNumber) ->
+            val state = FeCBleMachineState(type).apply {
+                feState = FeCEquipmentState.IN_USE
+                movementCount = 258.9
+                cadenceRpm = 77
+                instantaneousPowerWatts = 345
+                positiveVerticalDistanceMeters = 25.7
+            }
+            val page = when (type) {
+                FeCEquipmentType.ELLIPTICAL -> FeCBleTelemetryEncoder.encodePage20(state)
+                FeCEquipmentType.CLIMBER -> FeCBleTelemetryEncoder.encodePage23(state)
+                FeCEquipmentType.NORDIC_SKIER -> FeCBleTelemetryEncoder.encodePage24(state)
+                else -> error("unexpected test persona")
+            }
+            assertEquals(pageNumber, page[0].toInt() and 0xFF)
+            assertEquals(2, page[3].toInt() and 0xFF)
+            assertEquals(77, page[4].toInt() and 0xFF)
+            assertEquals(345, u16(page, 5))
+            assertEquals(
+                if (type == FeCEquipmentType.ELLIPTICAL) 0x03 else 0x01,
+                page[7].toInt() and 0x0F,
+            )
+        }
+    }
+
+    @Test
+    fun `page 54 publishes persona max resistance and only honest control mode flags`() {
+        FeCEquipmentType.entries.forEach { type ->
+            val page = FeCBleTelemetryEncoder.encodePage54(FeCBleMachineState(type))
+            assertEquals(type.maximumResistanceNewtons, u16(page, 5))
+            assertEquals(if (type == FeCEquipmentType.TRAINER) 0x07 else 0x00, page[7].toInt() and 0xFF)
+        }
+    }
+
+    @Test
+    fun `common page 70 requests page 54 twice as broadcast data`() {
+        val wire = FeCBleTelemetryEncoder.buildAntFrame(
+            bytes("46 FF FF FF FF 02 36 01"),
+            BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
+        )
+        val request = FeCBleControlDecoder.decode(wire) as FeCBleControlCommand.RequestDataPage
+        assertEquals(0x36, request.requestedPage)
+        assertEquals(2, request.transmissionCount)
+        assertTrue(!request.acknowledgedResponse)
     }
 
     @Test
@@ -176,44 +257,61 @@ class FeCBleSimulatorTest {
     // ── §24 GATT/scheduler shape ────────────────────────────────────────────
 
     @Test
-    fun `Trainer scheduler alternates page 16 and page 25 with page 81 every 32nd tick`() {
-        val state = FeCBleMachineState(FeCEquipmentType.TRAINER)
-        state.enterInUseWithDefaults()
-        val scheduler = FeCBleTelemetryScheduler(FeCEquipmentType.TRAINER)
-        val pages = (0 until 32).map { scheduler.tick(state)[4].toInt() and 0xFF }
-        assertEquals(0x10, pages[0])
-        assertEquals(0x19, pages[1])
-        assertEquals(0x10, pages[2])
-        assertEquals(0x51, pages[31])
+    fun `all personas meet required rotation rates and use their own specific page`() {
+        val specificPages = mapOf(
+            FeCEquipmentType.STATIONARY_BIKE to 0x19,
+            FeCEquipmentType.TREADMILL to 0x13,
+            FeCEquipmentType.ELLIPTICAL to 0x14,
+            FeCEquipmentType.ROWER to 0x16,
+            FeCEquipmentType.CLIMBER to 0x17,
+            FeCEquipmentType.NORDIC_SKIER to 0x18,
+        )
+        specificPages.forEach { (type, specificPage) ->
+            val state = FeCBleMachineState(type).apply { enterInUseWithDefaults() }
+            val scheduler = FeCBleTelemetryScheduler(type)
+            val pages = (0 until FeCBleTelemetryScheduler.ROTATION_TICKS)
+                .map { scheduler.tick(state)[4].toInt() and 0xFF }
+            assertEquals("$type page 16 count", 20, pages.count { it == 0x10 })
+            assertEquals("$type specific count", 15, pages.count { it == specificPage })
+            assertEquals("$type page 17 count", 2, pages.count { it == 0x11 })
+            assertEquals("$type page 18 count", 2, pages.count { it == 0x12 })
+            assertEquals("$type page 54 is on-demand only", 0, pages.count { it == 0x36 })
+            assertEquals("$type page 81 count", 1, pages.count { it == 0x51 })
+        }
+
+        val trainerState = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
+        val trainerScheduler = FeCBleTelemetryScheduler(FeCEquipmentType.TRAINER)
+        val trainerFrames = (0 until FeCBleTelemetryScheduler.ROTATION_TICKS)
+            .map { trainerScheduler.tick(trainerState) }
+        assertEquals(8, trainerFrames.count { (it[4].toInt() and 0xFF) == 0x19 })
+        assertEquals(7, trainerFrames.count { (it[4].toInt() and 0xFF) == 0x1A })
+        trainerFrames.filter { (it[4].toInt() and 0xFF) == 0x19 }.forEach { frame ->
+            val directPower = (frame[9].toInt() and 0xFF) or ((frame[10].toInt() and 0x0F) shl 8)
+            assertEquals("Trainer page 25 direct power must be unavailable", 0xFFF, directPower)
+        }
     }
 
     @Test
-    fun `Treadmill scheduler alternates page 16 and page 19 with page 81 every 32nd tick`() {
-        // Regression for "no metrics received... speed and distance remain 0" on Treadmill:
-        // this persona previously never reached a specific page at all (see git history), so
-        // cadence - which only ever lives on page 19 - was never transmitted.
-        val state = FeCBleMachineState(FeCEquipmentType.TREADMILL)
-        state.enterInUseWithDefaults()
-        val scheduler = FeCBleTelemetryScheduler(FeCEquipmentType.TREADMILL)
-        val pages = (0 until 32).map { scheduler.tick(state)[4].toInt() and 0xFF }
-        assertEquals(0x10, pages[0])
-        assertEquals(0x13, pages[1])
-        assertEquals(0x10, pages[2])
-        assertEquals(0x51, pages[31])
-    }
+    fun `trainer page 26 deltas reproduce torque-derived power and roll over at wire widths`() {
+        val state = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
+        repeat(2) { FeCBleSyntheticModel.advanceTick(state) }
+        val first = FeCBleTelemetryEncoder.encodePage26(state)
+        repeat(2) { FeCBleSyntheticModel.advanceTick(state) }
+        val second = FeCBleTelemetryEncoder.encodePage26(state)
+        val periodDelta = (u16(second, 3) - u16(first, 3)) and 0xFFFF
+        val torqueDelta = (u16(second, 5) - u16(first, 5)) and 0xFFFF
+        val derivedPower = 128.0 * Math.PI * torqueDelta / periodDelta
+        assertEquals(200.0, derivedPower, 1.0)
 
-    @Test
-    fun `Rower scheduler alternates page 16 and page 22 with page 81 every 32nd tick`() {
-        // Same regression as the Treadmill case above, but for Rower's cadence and power, which
-        // only ever live on page 22.
-        val state = FeCBleMachineState(FeCEquipmentType.ROWER)
-        state.enterInUseWithDefaults()
-        val scheduler = FeCBleTelemetryScheduler(FeCEquipmentType.ROWER)
-        val pages = (0 until 32).map { scheduler.tick(state)[4].toInt() and 0xFF }
-        assertEquals(0x10, pages[0])
-        assertEquals(0x16, pages[1])
-        assertEquals(0x10, pages[2])
-        assertEquals(0x51, pages[31])
+        state.torqueEventCount = 256
+        state.wheelTicks = 257
+        state.wheelPeriodTicks = 65_536
+        state.accumulatedTorqueThirtySecondNm = 65_538.0
+        val rolled = FeCBleTelemetryEncoder.encodePage26(state)
+        assertEquals(0, rolled[1].toInt() and 0xFF)
+        assertEquals(1, rolled[2].toInt() and 0xFF)
+        assertEquals(0, u16(rolled, 3))
+        assertEquals(2, u16(rolled, 5))
     }
 
     // ── §25 control behaviour ───────────────────────────────────────────────
@@ -289,7 +387,10 @@ class FeCBleSimulatorTest {
         assertTrue(FeCEquipmentType.TRAINER.supportsControl)
         assertTrue(!FeCEquipmentType.STATIONARY_BIKE.supportsControl)
         assertTrue(!FeCEquipmentType.TREADMILL.supportsControl)
+        assertTrue(!FeCEquipmentType.ELLIPTICAL.supportsControl)
         assertTrue(!FeCEquipmentType.ROWER.supportsControl)
+        assertTrue(!FeCEquipmentType.CLIMBER.supportsControl)
+        assertTrue(!FeCEquipmentType.NORDIC_SKIER.supportsControl)
         // Per the official ANT+ FE-C spec (D000001231 Rev 5.0, Table 8-7), Trainer and
         // Stationary Bike share equipment-type wire value 25 - 21 is "Reserved - Do Not Use" for
         // this field, a distinct concept from data page 21 (deprecated Stationary Bike specific
@@ -299,7 +400,10 @@ class FeCBleSimulatorTest {
         assertEquals(25, FeCEquipmentType.TRAINER.wireValue)
         assertEquals(25, FeCEquipmentType.STATIONARY_BIKE.wireValue)
         assertEquals(19, FeCEquipmentType.TREADMILL.wireValue)
+        assertEquals(20, FeCEquipmentType.ELLIPTICAL.wireValue)
         assertEquals(22, FeCEquipmentType.ROWER.wireValue)
+        assertEquals(23, FeCEquipmentType.CLIMBER.wireValue)
+        assertEquals(24, FeCEquipmentType.NORDIC_SKIER.wireValue)
     }
 
     // ── §18.2 Incyclist CPS overlay coherence ──────────────────────────────
@@ -316,9 +420,9 @@ class FeCBleSimulatorTest {
     }
 
     @Test
-    fun `18-2 CPS instantaneous power equals the same tick's page-25 instantaneous power`() {
+    fun `18-2 Stationary Bike CPS power equals the same tick's page-25 power`() {
         listOf(0, 1, 200, 987, 0xFFE).forEach { watts ->
-            val state = FeCBleMachineState(FeCEquipmentType.TRAINER)
+            val state = FeCBleMachineState(FeCEquipmentType.STATIONARY_BIKE)
             state.feState = FeCEquipmentState.IN_USE
             state.cadenceRpm = 90
             state.instantaneousPowerWatts = watts

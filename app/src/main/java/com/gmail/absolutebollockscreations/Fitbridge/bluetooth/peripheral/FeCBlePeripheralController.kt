@@ -126,7 +126,10 @@ internal class FeCBlePeripheralController(
         active = true
 
         val includeCps = persona.overlay == FeCBleSimulatorOverlay.CPS_INCYCLIST_COMPAT
-        val newState = FeCBleMachineState(equipmentType = persona.equipmentType)
+        val newState = FeCBleMachineState(
+            equipmentType = persona.equipmentType,
+            controlEnabled = persona.controlEnabled,
+        )
         state = newState
         scheduler = FeCBleTelemetryScheduler(persona.equipmentType)
         cpsAccumulator = if (includeCps) {
