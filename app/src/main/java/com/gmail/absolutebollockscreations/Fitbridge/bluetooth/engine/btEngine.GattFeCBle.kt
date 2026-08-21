@@ -242,6 +242,12 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         val activityType = FeCMetricMapper.activityTypeFor(equipmentType) ?: return
         val address = gatt.device?.address ?: return
         engine.state.updateDeviceMachineFeatureByAddress(address, activityType.ordinal)
+        engine.state.connectionRegistry.contextForGatt(gatt)?.let { context ->
+            engine.state.connectionRegistry.setMachineDeviceType(
+                context,
+                FeCMetricMapper.machineDeviceTypeFor(equipmentType),
+            )
+        }
         deviceClassificationPublished = true
         engine.maybeStartProviderAdvertisingAfterFeatures(activityType)
     }

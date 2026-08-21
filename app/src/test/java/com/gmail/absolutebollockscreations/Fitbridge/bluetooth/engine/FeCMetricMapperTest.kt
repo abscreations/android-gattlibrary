@@ -212,15 +212,19 @@ class FeCMetricMapperTest {
         assertEquals(ActivityType.ELLIPTICAL, FeCMetricMapper.activityTypeFor(20))
         assertEquals(ActivityType.ROWING, FeCMetricMapper.activityTypeFor(22))
         assertEquals(ActivityType.STAIRCLIMBER, FeCMetricMapper.activityTypeFor(23))
-        assertEquals(ActivityType.NORDIC_SKIER, FeCMetricMapper.activityTypeFor(24))
+        assertEquals(ActivityType.ROWING, FeCMetricMapper.activityTypeFor(24))
         // Trainer and Stationary Bike share wire value 25 per the official ANT+ spec (Table
         // 8-7) - see BluetoothIds.FEC_EQUIPMENT_STATIONARY_BIKE's doc.
         assertEquals(ActivityType.BIKING, FeCMetricMapper.activityTypeFor(25))
     }
 
     @Test
-    fun `Nordic Skier has a dedicated ActivityType`() {
-        assertEquals(ActivityType.NORDIC_SKIER, FeCMetricMapper.activityTypeFor(24))
+    fun `Nordic Skier follows PM5 SkiErg rowing activity while retaining ski identity`() {
+        assertEquals(ActivityType.ROWING, FeCMetricMapper.activityTypeFor(24))
+        assertEquals(
+            BtEngineState.MachineDeviceType.SKI_ERG,
+            FeCMetricMapper.machineDeviceTypeFor(24),
+        )
     }
 
     @Test

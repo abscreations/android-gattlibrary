@@ -97,7 +97,6 @@ class BtEngineState : HrmStateSink {
         STAIR_CLIMBER,
         STAIR_STEPPER,
         TREADMILL,
-        NORDIC_SKIER,
     }
 
     data class CscRoleCapability(
