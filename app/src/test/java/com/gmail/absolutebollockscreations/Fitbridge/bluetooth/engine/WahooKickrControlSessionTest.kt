@@ -1,0 +1,218 @@
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
+
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.util.Collections
+import java.util.UUID
+
+class WahooKickrControlSessionTest {
+    private class FakeTransport(
+        override val connectionId: ConnectionId = ConnectionId("AA:BB:CC:DD:EE:10", 1L),
+    ) : GattTransport {
+        val writes: MutableList<ByteArray> = Collections.synchronizedList(mutableListOf())
+        var accepted = true
+        var onWrite: suspend (ByteArray) -> Unit = {}
+
+        override fun enableNotifications(uuid: UUID): Boolean = true
+
+        override suspend fun write(
+            uuid: UUID,
+            payload: ByteArray,
+            mode: GattWriteMode,
+            timeoutMs: Long,
+            operationName: String,
+        ): Boolean {
+            assertEquals(WahooKickrUuids.CONTROL, uuid)
+            assertEquals(GattWriteMode.WITH_RESPONSE, mode)
+            writes += payload.copyOf()
+            onWrite(payload)
+            return accepted
+        }
+    }
+
+    private val timing = WahooKickrSessionTiming(
+        unlockOverallTimeoutMs = 300,
+        unlockAttemptIntervalMs = 20,
+        attWriteTimeoutMs = 100,
+        indicationTimeoutMs = 30,
+        ergMinIntervalMs = 40,
+    )
+
+    private suspend fun awaitCondition(condition: () -> Boolean) {
+        repeat(200) {
+            if (condition()) return
+            delay(5)
+        }
+        error("condition not reached")
+    }
+
+    private fun acknowledgingSession(
+        transport: FakeTransport,
+        outcomes: MutableList<Pair<Int, WahooKickrCommandOutcome>> = mutableListOf(),
+    ): WahooKickrControlSession {
+        lateinit var session: WahooKickrControlSession
+        session = WahooKickrControlSession(
+            transport = transport,
+            timing = timing,
+            onOutcome = { opcode, outcome -> outcomes += opcode to outcome },
+        )
+        transport.onWrite = { payload ->
+            val opcode = payload[0].toInt() and 0xFF
+            session.onIndication(
+                transport.connectionId,
+                byteArrayOf(1, opcode.toByte(), 1, 0),
+            )
+        }
+        return session
+    }
+
+    @Test
+    fun `no unlock or target write occurs before confirmed CCCD readiness`() = runBlocking {
+        val transport = FakeTransport()
+        val session = acknowledgingSession(transport)
+
+        assertFalse(session.submit(WahooKickrControlTarget.Erg(200)))
+        delay(50)
+        assertTrue(transport.writes.isEmpty())
+
+        assertTrue(session.startAfterCccdReady())
+        awaitCondition { session.controlGranted }
+        assertEquals(0x20, transport.writes.single()[0].toInt() and 0xFF)
+        session.close()
+    }
+
+    @Test
+    fun `unlock retries are bounded and silence never grants control`() = runBlocking {
+        val transport = FakeTransport()
+        val outcomes = mutableListOf<Pair<Int, WahooKickrCommandOutcome>>()
+        val session = WahooKickrControlSession(transport, timing, onOutcome = { op, result ->
+            outcomes += op to result
+        })
+
+        session.startAfterCccdReady()
+        awaitCondition { transport.writes.size == WahooKickrUuids.UNLOCK_MAX_ATTEMPTS }
+        delay(80)
+
+        assertFalse(session.controlGranted)
+        assertEquals(3, transport.writes.size)
+        assertTrue(outcomes.all { it.second == WahooKickrCommandOutcome.REJECTED })
+        session.close()
+    }
+
+    @Test
+    fun `stale-generation and wrong-opcode indications cannot unlock`() = runBlocking {
+        val transport = FakeTransport()
+        lateinit var session: WahooKickrControlSession
+        session = WahooKickrControlSession(transport, timing)
+        transport.onWrite = {
+            session.onIndication(
+                transport.connectionId.copy(linkGeneration = 2L),
+                byteArrayOf(1, 0x20, 1, 0),
+            )
+            session.onIndication(transport.connectionId, byteArrayOf(1, 0x42, 1, 0))
+        }
+
+        session.startAfterCccdReady()
+        awaitCondition { transport.writes.size == 3 }
+        delay(60)
+        assertFalse(session.controlGranted)
+        session.close()
+    }
+
+    @Test
+    fun `ATT success plus indication silence is accepted-unconfirmed after unlock`() = runBlocking {
+        val transport = FakeTransport()
+        val outcomes = mutableListOf<Pair<Int, WahooKickrCommandOutcome>>()
+        val session = acknowledgingSession(transport, outcomes)
+        session.startAfterCccdReady()
+        awaitCondition { session.controlGranted }
+        transport.onWrite = {}
+
+        assertTrue(session.submit(WahooKickrControlTarget.Erg(250)))
+        awaitCondition { session.mode == WahooKickrControlMode.ERG }
+
+        assertTrue(outcomes.contains(0x42 to WahooKickrCommandOutcome.ACCEPTED_UNCONFIRMED))
+        session.close()
+    }
+
+    @Test
+    fun `ATT failure does not commit a new mode`() = runBlocking {
+        val transport = FakeTransport()
+        val session = acknowledgingSession(transport)
+        session.startAfterCccdReady()
+        awaitCondition { session.controlGranted }
+        transport.accepted = false
+
+        assertTrue(session.submit(WahooKickrControlTarget.Resistance(0.5)))
+        awaitCondition { transport.writes.any { (it[0].toInt() and 0xFF) == 0x40 } }
+        delay(20)
+
+        assertEquals(WahooKickrControlMode.NONE, session.mode)
+        session.close()
+    }
+
+    @Test
+    fun `pending targets coalesce to the latest while a write is in flight`() = runBlocking {
+        val transport = FakeTransport()
+        val session = acknowledgingSession(transport)
+        session.startAfterCccdReady()
+        awaitCondition { session.controlGranted }
+
+        val gate = CompletableDeferred<Unit>()
+        transport.onWrite = { payload ->
+            if ((payload[0].toInt() and 0xFF) == 0x42 && !gate.isCompleted) gate.await()
+        }
+        session.submit(WahooKickrControlTarget.Erg(100))
+        awaitCondition { transport.writes.count { (it[0].toInt() and 0xFF) == 0x42 } == 1 }
+        session.submit(WahooKickrControlTarget.Erg(200))
+        session.submit(WahooKickrControlTarget.Erg(300))
+        gate.complete(Unit)
+
+        awaitCondition { transport.writes.count { (it[0].toInt() and 0xFF) == 0x42 } == 2 }
+        val ergWrites = transport.writes.filter { (it[0].toInt() and 0xFF) == 0x42 }
+        assertEquals(listOf(100, 300), ergWrites.map { (it[1].toInt() and 0xFF) or ((it[2].toInt() and 0xFF) shl 8) })
+        session.close()
+    }
+
+    @Test
+    fun `simulation transaction is atomic before a newly pending resistance target`() = runBlocking {
+        val transport = FakeTransport()
+        lateinit var session: WahooKickrControlSession
+        session = acknowledgingSession(transport)
+        session.startAfterCccdReady()
+        awaitCondition { session.controlGranted }
+
+        transport.onWrite = { payload ->
+            val opcode = payload[0].toInt() and 0xFF
+            session.onIndication(transport.connectionId, byteArrayOf(1, opcode.toByte(), 1, 0))
+            if (opcode == 0x46) session.submit(WahooKickrControlTarget.Resistance(0.5))
+        }
+        session.submit(WahooKickrControlTarget.Simulation(85.0, 0.004, 0.51, 5.0, 0.0))
+        awaitCondition { transport.writes.any { (it[0].toInt() and 0xFF) == 0x40 } }
+
+        assertEquals(
+            listOf(0x20, 0x43, 0x46, 0x47, 0x40),
+            transport.writes.map { it[0].toInt() and 0xFF },
+        )
+        session.close()
+    }
+
+    @Test
+    fun `close clears authority and rejects future submissions`() = runBlocking {
+        val transport = FakeTransport()
+        val session = acknowledgingSession(transport)
+        session.startAfterCccdReady()
+        awaitCondition { session.controlGranted }
+        session.close()
+
+        assertTrue(session.isClosed)
+        assertFalse(session.controlGranted)
+        assertEquals(WahooKickrControlMode.NONE, session.mode)
+        assertFalse(session.submit(WahooKickrControlTarget.Erg(200)))
+    }
+}
