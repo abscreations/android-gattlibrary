@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "family": "wahoo-kickr",
+  "acquisition": "sanitized-qz-application-debug-log-extraction",
+  "extracted": "2026-08-21",
+  "capture_kind": "application debug logs, not raw Bluetooth HCI/btsnoop",
+  "privacy": "Bluetooth addresses, platform device identifiers, absolute timestamps, and physical device-name suffixes are excluded from retained vectors.",
+  "evidence_limit": "The logs establish physical advertising, discovered GATT, Cycling Power notifications, and standard FTMS control. They contain no write or indication on the Wahoo a026e005 control point and therefore do not validate proprietary opcode encodings or acknowledgements.",
+  "sources": [
+    {
+      "source_file": "kickr_core_debug-Sun_Oct_20_15_17_57_2024.log",
+      "source_sha256": "ed2eaec64ee68b321627664fe24765a5482b3de1cc154059272aa47777df3b9c",
+      "qz_version": "2.16.66",
+      "model": "KICKR Core",
+      "usable_link_evidence": false
+    },
+    {
+      "source_file": "kickr_core_debug-Wed_Oct_23_20_49_13_2024.log",
+      "source_sha256": "09faafec4712d405a62d32bdf019efc5821c5df945caf325e5f52d756d3356bf",
+      "qz_version": "2.16.66",
+      "model": "KICKR Core",
+      "usable_link_evidence": true
+    },
+    {
+      "source_file": "kickr_core_debug-Wed_Oct_23_21_36_19_2024.log",
+      "source_sha256": "783f91e8fe1b160928e50e9dd784da3d1dfbac266bd301c2354de1e6eae6dcbe",
+      "qz_version": "2.16.70",
+      "model": "KICKR Core",
+      "usable_link_evidence": true
+    },
+    {
+      "source_file": "kickr_v5_debug-Tue_Nov_25_23_06_08_2025.log",
+      "source_sha256": "944e202c3b130e0928e5f49507f5a12db97f59159a0f94c2d55127019198ddb9",
+      "qz_version": "1120",
+      "model": "KICKR v5",
+      "usable_link_evidence": true
+    },
+    {
+      "source_file": "kickr_v5_debug-Wed_Nov_26_07_59_46_2025.log",
+      "source_sha256": "4fc59801bae04fae38c705cd70a82a603556b9eda7962ef679a0a1109fcb5e71",
+      "qz_version": "1120",
+      "model": "KICKR v5",
+      "usable_link_evidence": true
+    },
+    {
+      "source_file": "kickr_v5_debug-Wed_Nov_26_08_03_15_2025.log",
+      "source_sha256": "3399817ce74759f85d10d777145258fae961de1a0e37ab059ec4ece394d648c0",
+      "qz_version": "1120",
+      "model": "KICKR v5",
+      "usable_link_evidence": true
+    },
+    {
+      "source_file": "kickr_v5_debug-Wed_Nov_26_09_17_17_2025.log",
+      "source_sha256": "8cb52934570eb243560592f59ddc9de49ea37180572a723fd1b72e693b121e62",
+      "qz_version": "1120",
+      "model": "KICKR v5",
+      "usable_link_evidence": false
+    }
+  ],
+  "observations": {
+    "core_advertised_services": [
+      "00001818-0000-1000-8000-00805f9b34fb"
+    ],
+    "v5_advertised_services": [
+      "00001818-0000-1000-8000-00805f9b34fb",
+      "00001826-0000-1000-8000-00805f9b34fb"
+    ],
+    "services_discovered_on_both_models": [
+      "0000180a-0000-1000-8000-00805f9b34fb",
+      "00001818-0000-1000-8000-00805f9b34fb",
+      "0000181c-0000-1000-8000-00805f9b34fb",
+      "00001826-0000-1000-8000-00805f9b34fb",
+      "a026ee01-0a7d-4ab3-97fa-f1500f9feb8b",
+      "a026ee06-0a7d-4ab3-97fa-f1500f9feb8b",
+      "a026ee0b-0a7d-4ab3-97fa-f1500f9feb8b"
+    ],
+    "additional_core_services": [
+      "00000001-19ca-4651-86e5-fa29dcdd09d1",
+      "00001800-0000-1000-8000-00805f9b34fb",
+      "00001801-0000-1000-8000-00805f9b34fb",
+      "a026ee03-0a7d-4ab3-97fa-f1500f9feb8b"
+    ],
+    "wahoo_control_point": {
+      "uuid": "a026e005-0a7d-4ab3-97fa-f1500f9feb8b",
+      "observed_parent_service": "00001818-0000-1000-8000-00805f9b34fb",
+      "properties": ["write", "indicate"],
+      "cccd_present": true,
+      "proprietary_writes_observed": 0,
+      "proprietary_indications_observed": 0
+    },
+    "wahoo_services": {
+      "a026ee01_characteristics": [
+        "a026e002-0a7d-4ab3-97fa-f1500f9feb8b",
+        "a026e004-0a7d-4ab3-97fa-f1500f9feb8b"
+      ],
+      "a026ee06_characteristics": [
+        "a026e023-0a7d-4ab3-97fa-f1500f9feb8b"
+      ],
+      "a026ee0b_characteristics": [
+        "a026e037-0a7d-4ab3-97fa-f1500f9feb8b"
+      ]
+    }
+  },
+  "cycling_power_measurements": [
+    {
+      "session": "core-2.16.66",
+      "hex": "340046002d9bd5e80000d36aff4a15ac",
+      "expect": {
+        "flags": 52,
+        "power_watts": 70,
+        "accumulated_torque_nm": 1241.40625,
+        "wheel_revolutions": 59605,
+        "wheel_event_ticks": 27347,
+        "crank_revolutions": 19199,
+        "crank_event_ticks": 44053
+      }
+    },
+    {
+      "session": "core-2.16.70",
+      "hex": "3400160082e890e90000a6f8194b5435",
+      "expect": {
+        "flags": 52,
+        "power_watts": 22,
+        "accumulated_torque_nm": 1860.0625,
+        "wheel_revolutions": 59792,
+        "wheel_event_ticks": 63654,
+        "crank_revolutions": 19225,
+        "crank_event_ticks": 13652
+      }
+    },
+    {
+      "session": "v5-1120-a",
+      "hex": "34009200ccef3c060000a96df101e6ad",
+      "expect": {
+        "flags": 52,
+        "power_watts": 146,
+        "accumulated_torque_nm": 1918.375,
+        "wheel_revolutions": 1596,
+        "wheel_event_ticks": 28073,
+        "crank_revolutions": 497,
+        "crank_event_ticks": 44518
+      }
+    },
+    {
+      "session": "v5-1120-b",
+      "hex": "34003f00220102000000a9da00000000",
+      "expect": {
+        "flags": 52,
+        "power_watts": 63,
+        "accumulated_torque_nm": 9.0625,
+        "wheel_revolutions": 2,
+        "wheel_event_ticks": 55977,
+        "crank_revolutions": 0,
+        "crank_event_ticks": 0
+      }
+    }
+  ],
+  "standard_ftms_control": [
+    {
+      "request": "00",
+      "response": "800001",
+      "meaning": "request control accepted"
+    },
+    {
+      "request": "07",
+      "response": "800701",
+      "meaning": "start or resume accepted"
+    },
+    {
+      "request": "110000d2002819",
+      "response": "801101",
+      "meaning": "indoor bike simulation parameters accepted"
+    }
+  ]
+}

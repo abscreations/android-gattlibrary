@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "family": "wahoo-kickr-core-climb",
+  "acquisition": "sanitized-android-btsnoop-and-scanner-screenshot-extraction",
+  "extracted": "2026-08-21",
+  "privacy": "Bluetooth addresses, phone identity, serial values, and absolute timestamps are excluded. Device-name suffixes are retained only as model/session labels and are not persistent addresses.",
+  "evidence_limit": "The raw HCI session establishes KICKR Core advertising, GATT, FTMS features, concurrent CPS/FTMS telemetry, and RideOn traffic. The CLIMB is advertised but never connected by the phone. Neither a026e005 nor the standard FTMS Control Point carries a control request, so proprietary opcode payloads and control-route precedence remain unverified.",
+  "sources": [
+    {
+      "source_file": "core_climb_btsnoop_hci_202411260855.zip",
+      "source_sha256": "85ae23a6a9caf96102b0ea273aa50bb960d06228c7dbcfcff18be55fb11e8afc",
+      "member_file": "btsnoop_hci_202411260855.cfa",
+      "member_sha256": "9c4a1c6baf2901e15bd8a54b0cc638ff43fb27db79eab3b5556f8348f497b45e",
+      "capture_kind": "raw Android Bluetooth HCI btsnoop",
+      "packet_count": 25198,
+      "capture_duration_seconds": 5848.249688
+    },
+    {
+      "source_file": "move_climb_389498303-3d7cc2bb-8fb1-4eac-9687-c7e1ecc3e620.png",
+      "source_sha256": "e3dcc49cb74512016ddc222fbde97d464aacdb0a237bb77214436f863e63d85c",
+      "capture_kind": "scanner screenshot"
+    }
+  ],
+  "advertising": {
+    "core": {
+      "name": "KICKR CORE C3FB",
+      "connectable": true,
+      "scannable": true,
+      "legacy": true,
+      "address_type": "random",
+      "payload_hex": "02010605031818261810094b49434b5220434f52452043334642",
+      "service_uuids": [
+        "00001818-0000-1000-8000-00805f9b34fb",
+        "00001826-0000-1000-8000-00805f9b34fb"
+      ]
+    },
+    "climb": {
+      "name": "KICKR CLIMB 3D1F",
+      "connectable": true,
+      "scannable": true,
+      "legacy": true,
+      "address_type": "random",
+      "payload_hex": "02010611094b49434b5220434c494d422033443146",
+      "service_uuids": []
+    },
+    "move_screenshot": {
+      "name": "KICKR MOVE 668F",
+      "rendered_service_uuids": [
+        "00001818-0000-1000-8000-00805f9b34fb",
+        "00001826-0000-1000-8000-00805f9b34fb"
+      ],
+      "rendered_service_data": [
+        {
+          "uuid": "00000001-19ca-4651-86e5-fa29dcdd09d1",
+          "value_hex": "01"
+        },
+        {
+          "uuid": "00001826-0000-1000-8000-00805f9b34fb",
+          "value_hex": "012000"
+        }
+      ]
+    },
+    "climb_screenshot": {
+      "name": "KICKR CLIMB C2CE",
+      "service_list_rendered": false
+    }
+  },
+  "core_gatt": {
+    "device_identity": {
+      "manufacturer": "Wahoo Fitness",
+      "hardware_revision": "1",
+      "firmware_revision": "1.5.36"
+    },
+    "services": [
+      "00001800-0000-1000-8000-00805f9b34fb",
+      "00001801-0000-1000-8000-00805f9b34fb",
+      "0000180a-0000-1000-8000-00805f9b34fb",
+      "a026ee01-0a7d-4ab3-97fa-f1500f9feb8b",
+      "00001818-0000-1000-8000-00805f9b34fb",
+      "00001826-0000-1000-8000-00805f9b34fb",
+      "0000181c-0000-1000-8000-00805f9b34fb",
+      "a026ee0b-0a7d-4ab3-97fa-f1500f9feb8b",
+      "a026ee06-0a7d-4ab3-97fa-f1500f9feb8b",
+      "00000001-19ca-4651-86e5-fa29dcdd09d1"
+    ],
+    "wahoo_control_point": {
+      "uuid": "a026e005-0a7d-4ab3-97fa-f1500f9feb8b",
+      "parent_service": "00001818-0000-1000-8000-00805f9b34fb",
+      "cccd_enabled": true,
+      "value_writes": 0,
+      "notifications_or_indications": 0
+    },
+    "ftms_control_point": {
+      "uuid": "00002ad9-0000-1000-8000-00805f9b34fb",
+      "cccd_enabled": true,
+      "value_writes": 0,
+      "notifications_or_indications": 0
+    },
+    "ftms_feature": {
+      "value_hex": "034000000c600000",
+      "machine_features": 16387,
+      "target_setting_features": 24588,
+      "machine_feature_names": ["average_speed", "cadence", "power_measurement"],
+      "target_feature_names": ["resistance", "power", "indoor_bike_simulation", "wheel_circumference"]
+    },
+    "rideon_service": {
+      "uuid": "00000001-19ca-4651-86e5-fa29dcdd09d1",
+      "notify_characteristic": "00000002-19ca-4651-86e5-fa29dcdd09d1",
+      "write_command_characteristic": "00000003-19ca-4651-86e5-fa29dcdd09d1",
+      "indicate_characteristic": "00000004-19ca-4651-86e5-fa29dcdd09d1",
+      "write_commands": 142,
+      "indications": 12,
+      "handshake_request_hex": "526964654f6e0202",
+      "handshake_response_hex": "526964654f6e0202"
+    }
+  },
+  "connection_observations": {
+    "phone_connected_to": ["KICKR CORE C3FB", "Zwift Click"],
+    "phone_connected_to_climb": false,
+    "core_connected_duration_seconds": 374.445764,
+    "cps_measurement_notifications": 373,
+    "ftms_indoor_bike_notifications": 372
+  },
+  "cycling_power_measurements": [
+    {
+      "session": "core-raw-hci",
+      "hex": "34004b00b087ee0000006dd95d005749",
+      "expect": {
+        "flags": 52,
+        "power_watts": 75,
+        "accumulated_torque_nm": 1085.5,
+        "wheel_revolutions": 238,
+        "wheel_event_ticks": 55661,
+        "crank_revolutions": 93,
+        "crank_event_ticks": 18775
+      }
+    }
+  ],
+  "ftms_indoor_bike_measurements": [
+    {
+      "hex": "4400a40788004300",
+      "expect": {
+        "flags": 68,
+        "speed_kph": 19.56,
+        "cadence_rpm": 68.0,
+        "power_watts": 67
+      }
+    },
+    {
+      "hex": "4400590898008800",
+      "expect": {
+        "flags": 68,
+        "speed_kph": 21.37,
+        "cadence_rpm": 76.0,
+        "power_watts": 136
+      }
+    }
+  ]
+}
