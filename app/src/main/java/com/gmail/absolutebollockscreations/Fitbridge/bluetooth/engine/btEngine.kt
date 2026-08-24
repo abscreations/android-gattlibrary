@@ -1461,12 +1461,13 @@ class BtEngine internal constructor(
         val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
         val adapterId = context?.let { state.adapterLiveness.selectedAdapterId(it.connectionId) }
         val handler = context?.handlers?.filterIsInstance<FeCOverBleProtocolHandler>()?.firstOrNull()
-        if (machineControlRoute(adapterId, handler != null) == MachineControlRoute.FEC) {
-            if (handler != null) {
-                return FeCBleMachineControlEndpoint(this, handler)
-            }
+        return when (machineControlRoute(adapterId, handler != null)) {
+            MachineControlRoute.FEC ->
+                handler?.let { FeCBleMachineControlEndpoint(this, it) }
+                    ?: UnavailableMachineControlEndpoint
+            MachineControlRoute.UNAVAILABLE -> UnavailableMachineControlEndpoint
+            MachineControlRoute.FTMS -> ftmsControlEndpoint
         }
-        return ftmsControlEndpoint
     }
 
     /* ───────────────────────────── FTMS Control Point ───────────────────────────── */

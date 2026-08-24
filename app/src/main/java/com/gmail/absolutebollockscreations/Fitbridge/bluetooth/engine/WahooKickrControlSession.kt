@@ -58,6 +58,8 @@ internal class WahooKickrControlSession(
     private val monotonicMs: () -> Long = { System.nanoTime() / 1_000_000L },
     private val onOutcome: (Int, WahooKickrCommandOutcome) -> Unit = { _, _ -> },
     private val onUnrecognizedResponse: (WahooKickrResponse) -> Unit = {},
+    private val onControlGranted: () -> Unit = {},
+    private val onInitializationFailed: () -> Unit = {},
 ) {
     private data class Waiter(
         val opcode: Int,
@@ -105,9 +107,11 @@ internal class WahooKickrControlSession(
             } ?: false
             if (!unlocked || closed.get()) {
                 controlGranted = false
+                if (!closed.get()) onInitializationFailed()
                 return@launch
             }
             controlGranted = true
+            onControlGranted()
             startConsumer()
         }
         return true

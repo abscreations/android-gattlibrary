@@ -5,6 +5,8 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.BleCapture
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.ErrorEvent
 import timber.log.Timber
 import java.util.UUID
 
@@ -49,9 +51,12 @@ internal fun List<BluetoothGattService>.toWahooKickrInventory(): WahooKickrGattI
         },
     )
 
+internal fun shouldStartWahooSession(selectedAdapterId: String?, cccdReady: Boolean): Boolean =
+    cccdReady && selectedAdapterId == AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID
+
 /**
- * Write-free Phase-10.1 handler. It proves the control surface belongs to this link, then retains
- * only structural evidence for adapter selection. A later work unit owns CCCD and unlock writes.
+ * Legacy KICKR handler. Phase 10.4 owns CCCD/session lifecycle but deliberately exposes no
+ * downstream endpoint or target capability; those remain a later, separately gated unit.
  */
 internal class WahooKickrProtocolHandler : BtEngineGattCore.ProtocolHandler {
     override val primaryServices: Set<UUID> = setOf(WahooKickrUuids.CYCLING_POWER_SERVICE)
@@ -59,14 +64,43 @@ internal class WahooKickrProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     internal var structuralMatch: WahooKickrGattMatch? = null
         private set
+    internal var controlSession: WahooKickrControlSession? = null
+        private set
 
     internal fun resetLinkState() {
+        controlSession?.close()
+        controlSession = null
         structuralMatch = null
     }
 
     /** Test seam for liveness plumbing without constructing Android framework GATT objects. */
     internal fun recordStructuralMatch(match: WahooKickrGattMatch) {
         structuralMatch = match
+    }
+
+    /** Production and unit tests share these exact generation/characteristic gates. */
+    internal fun bindControlSession(session: WahooKickrControlSession) {
+        controlSession?.close()
+        controlSession = session
+    }
+
+    internal fun handleCccdReady(connectionId: ConnectionId): Boolean {
+        val session = controlSession ?: return false
+        if (session.connectionId != connectionId) return false
+        return session.startAfterCccdReady()
+    }
+
+    internal fun handleControlIndication(
+        connectionId: ConnectionId,
+        characteristicUuid: UUID,
+        value: ByteArray,
+    ): Boolean {
+        val session = controlSession ?: return false
+        if (characteristicUuid != WahooKickrUuids.CONTROL || session.connectionId != connectionId) {
+            return false
+        }
+        session.onIndication(connectionId, value)
+        return true
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -86,7 +120,60 @@ internal class WahooKickrProtocolHandler : BtEngineGattCore.ProtocolHandler {
             return false
         }
         val match = matchWahooKickrGatt(services.toWahooKickrInventory()) ?: return false
+        val controlCharacteristic = services
+            .first { it.uuid == WahooKickrUuids.CYCLING_POWER_SERVICE }
+            .characteristics
+            .first { it.uuid == WahooKickrUuids.CONTROL }
         structuralMatch = match
+        val transport = BtEngineGattTransport(engine, context.connectionId)
+        bindControlSession(
+            WahooKickrControlSession(
+                transport = transport,
+                onOutcome = { opcode, outcome ->
+                    BleCapture.emit(
+                        ErrorEvent(
+                            conn = BleCapture.labelFor(context.connectionId.address),
+                            where = "wahoo_control",
+                            message = "opcode=0x${opcode.toString(16)} outcome=$outcome",
+                        ),
+                    )
+                },
+                onUnrecognizedResponse = { response ->
+                    // The exact bytes are already retained by CaptureHooks.notified before handler
+                    // dispatch. This companion event adds classification and length only.
+                    BleCapture.emit(
+                        ErrorEvent(
+                            conn = BleCapture.labelFor(context.connectionId.address),
+                            where = "wahoo_response",
+                            message = "classification=${response::class.java.simpleName} " +
+                                "length=${response.raw.size}",
+                        ),
+                    )
+                },
+                onControlGranted = {
+                    if (engine.state.connectionRegistry.contextFor(context.connectionId) === context) {
+                        engine.state.adapterLiveness.setupSucceeded(
+                            context,
+                            MonotonicMetricClock.SYSTEM.nowMs(),
+                        )
+                    }
+                },
+                onInitializationFailed = {
+                    if (engine.state.connectionRegistry.contextFor(context.connectionId) === context) {
+                        engine.state.adapterLiveness.setupFailed(
+                            context,
+                            "legacy KICKR unlock failed",
+                        )
+                    }
+                },
+            ),
+        )
+        // Use the transport so CCCD queuing stays on this ConnectionContext's shared GATT queue.
+        // The session does not start here; merged-plan readiness calls onCccdPlanReady below.
+        if (!transport.enableNotifications(controlCharacteristic.uuid)) {
+            resetLinkState()
+            return false
+        }
         Timber.tag(BtEngineState.TAG).i(
             "Legacy KICKR surface matched on link generation %d; markers=%d rideOn=%d",
             context.connectionId.linkGeneration,
@@ -94,5 +181,36 @@ internal class WahooKickrProtocolHandler : BtEngineGattCore.ProtocolHandler {
             match.rideOnServices.size,
         )
         return true
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onCccdPlanReady(engine: BtEngine, gatt: BluetoothGatt) {
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+        startSessionIfSelected(engine, context)
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onCharacteristicChanged(
+        engine: BtEngine,
+        gatt: BluetoothGatt,
+        ch: BluetoothGattCharacteristic,
+        value: ByteArray,
+    ) {
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+        handleControlIndication(context.connectionId, ch.uuid, value)
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onLivenessTick(engine: BtEngine, gatt: BluetoothGatt) {
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+        // AdapterLivenessCoordinator ticks immediately before handlers. If silent FTMS has just
+        // promoted Wahoo, this is the first safe moment to unlock the fallback—never before.
+        startSessionIfSelected(engine, context)
+    }
+
+    private fun startSessionIfSelected(engine: BtEngine, context: ConnectionContext): Boolean {
+        val selected = engine.state.adapterLiveness.selectedAdapterId(context.connectionId)
+        if (!shouldStartWahooSession(selected, context.cccd.ready.value)) return false
+        return handleCccdReady(context.connectionId)
     }
 }

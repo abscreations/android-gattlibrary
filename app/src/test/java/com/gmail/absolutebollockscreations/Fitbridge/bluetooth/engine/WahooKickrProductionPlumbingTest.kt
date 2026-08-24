@@ -1,7 +1,9 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import android.bluetooth.BluetoothGattCharacteristic
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
@@ -13,6 +15,25 @@ import java.util.UUID
 
 /** Phase 10.1 reachability, adversarial fingerprint, ranking, and reconnect obligations. */
 class WahooKickrProductionPlumbingTest {
+
+    private class RecordingTransport(
+        override val connectionId: ConnectionId,
+    ) : GattTransport {
+        val writes = mutableListOf<ByteArray>()
+        var onWrite: (ByteArray) -> Unit = {}
+        override fun enableNotifications(uuid: UUID) = true
+        override suspend fun write(
+            uuid: UUID,
+            payload: ByteArray,
+            mode: GattWriteMode,
+            timeoutMs: Long,
+            operationName: String,
+        ): Boolean {
+            writes += payload.copyOf()
+            onWrite(payload)
+            return true
+        }
+    }
 
     private val validProperties = BluetoothGattCharacteristic.PROPERTY_WRITE or
         BluetoothGattCharacteristic.PROPERTY_INDICATE
@@ -237,5 +258,147 @@ class WahooKickrProductionPlumbingTest {
             coordinator.selectedAdapterId(kickr.connectionId),
         )
         assertEquals(AdapterPolicyState.SETUP_REQUIRED, coordinator.stateOf(kickr.connectionId))
+    }
+
+    @Test
+    fun `session start gate follows selected adapter and confirmed CCCD readiness`() {
+        assertFalse(shouldStartWahooSession(null, cccdReady = true))
+        assertFalse(
+            shouldStartWahooSession(
+                AdapterLivenessCoordinator.FTMS_ADAPTER_ID,
+                cccdReady = true,
+            ),
+        )
+        assertFalse(
+            shouldStartWahooSession(
+                AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID,
+                cccdReady = false,
+            ),
+        )
+        assertTrue(
+            shouldStartWahooSession(
+                AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID,
+                cccdReady = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `handler starts unlock only through exact-generation CCCD-ready gate`() = runBlocking {
+        val ctx = context()
+        val transport = RecordingTransport(ctx.connectionId)
+        val session = WahooKickrControlSession(
+            transport,
+            WahooKickrSessionTiming(
+                unlockOverallTimeoutMs = 200,
+                unlockAttemptIntervalMs = 10,
+                attWriteTimeoutMs = 50,
+                indicationTimeoutMs = 20,
+                ergMinIntervalMs = 20,
+            ),
+        )
+        val handler = WahooKickrProtocolHandler()
+        handler.bindControlSession(session)
+        transport.onWrite = { payload ->
+            val opcode = payload[0].toInt() and 0xFF
+            handler.handleControlIndication(
+                ctx.connectionId,
+                WahooKickrUuids.CONTROL,
+                byteArrayOf(1, opcode.toByte(), 1, 0),
+            )
+        }
+
+        delay(30)
+        assertTrue("discovery alone must not unlock", transport.writes.isEmpty())
+        assertFalse(
+            handler.handleCccdReady(ctx.connectionId.copy(linkGeneration = 2L)),
+        )
+        assertTrue(transport.writes.isEmpty())
+        assertTrue(handler.handleCccdReady(ctx.connectionId))
+        repeat(40) {
+            if (session.controlGranted) return@repeat
+            delay(5)
+        }
+        assertTrue(session.controlGranted)
+        assertEquals(listOf(0x20), transport.writes.map { it[0].toInt() and 0xFF })
+
+        handler.resetLinkState()
+        assertTrue(session.isClosed)
+        assertNull(handler.controlSession)
+    }
+
+    @Test
+    fun `wrong characteristic cannot reach the bound control session`() {
+        val ctx = context()
+        val session = WahooKickrControlSession(RecordingTransport(ctx.connectionId))
+        val handler = WahooKickrProtocolHandler()
+        handler.bindControlSession(session)
+
+        assertFalse(
+            handler.handleControlIndication(
+                ctx.connectionId,
+                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                byteArrayOf(1, 0x20, 1, 0),
+            ),
+        )
+        assertFalse(
+            handler.handleControlIndication(
+                ctx.connectionId.copy(linkGeneration = 2L),
+                WahooKickrUuids.CONTROL,
+                byteArrayOf(1, 0x20, 1, 0),
+            ),
+        )
+        session.close()
+    }
+
+    @Test
+    fun `selected Wahoo liveness is credited only by same-link CPS samples`() {
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val kickr = context()
+        coordinator.onSubscriptionsComplete(kickr, 0L)
+        assertTrue(coordinator.setupSucceeded(kickr.connectionId))
+        coordinator.onSubscriptionsComplete(kickr, 0L)
+
+        val ftmsSample = MetricSample(
+            connectionId = kickr.connectionId,
+            sourceId = MetricSourceId(
+                kickr.connectionId,
+                MetricProtocol.FTMS,
+                BluetoothIds.UUID_BIKING_DATA,
+            ),
+            protocol = MetricProtocol.FTMS,
+            sourceClass = MetricSourceClass.FTMS,
+            metric = MetricKind.POWER,
+            arrivalMs = 100L,
+            value = 200.0,
+        )
+        coordinator.onSample(ftmsSample)
+        assertEquals(AdapterPolicyState.AWAITING_DATA, coordinator.stateOf(kickr.connectionId))
+
+        coordinator.onSample(
+            ftmsSample.copy(
+                sourceId = MetricSourceId(
+                    kickr.connectionId,
+                    MetricProtocol.CPS,
+                    BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                ),
+                protocol = MetricProtocol.CPS,
+                sourceClass = MetricSourceClass.CPS,
+                arrivalMs = 200L,
+            ),
+        )
+        assertEquals(AdapterPolicyState.READY, coordinator.stateOf(kickr.connectionId))
+    }
+
+    @Test
+    fun `Wahoo-selected downstream route rejects every command until endpoint unit lands`() {
+        assertEquals(
+            MachineControlRoute.UNAVAILABLE,
+            machineControlRoute(AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID, false),
+        )
+        assertFalse(UnavailableMachineControlEndpoint.requestControl())
+        assertFalse(UnavailableMachineControlEndpoint.setTargetPowerWatts(250))
+        assertFalse(UnavailableMachineControlEndpoint.setTargetResistance(50f))
+        assertFalse(UnavailableMachineControlEndpoint.setIndoorBikeSimulation(0f, 5f, 0.004f, 0.51f))
     }
 }

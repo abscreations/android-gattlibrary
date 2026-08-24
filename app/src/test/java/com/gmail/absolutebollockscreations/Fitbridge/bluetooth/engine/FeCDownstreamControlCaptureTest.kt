@@ -55,6 +55,11 @@ class FeCDownstreamControlCaptureTest {
             MachineControlRoute.FEC,
             machineControlRoute(AdapterLivenessCoordinator.FEC_ADAPTER_ID, true),
         )
+        assertEquals(
+            "a selected Wahoo adapter remains closed until its endpoint unit lands",
+            MachineControlRoute.UNAVAILABLE,
+            machineControlRoute(AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID, false),
+        )
     }
 
     @Test

@@ -83,7 +83,17 @@ internal class AdapterLivenessCoordinator(
      */
     fun onSample(sample: MetricSample) {
         val policy = synchronized(lock) { policies[sample.connectionId] } ?: return
-        policy.metricSampleArrived(sample.connectionId, FTMS_ADAPTER_ID, sample.arrivalMs)
+        val selectedAdapter = policy.snapshot().selected?.adapterId
+        val creditedAdapter = if (
+            selectedAdapter == WAHOO_KICKR_ADAPTER_ID && sample.protocol == MetricProtocol.CPS
+        ) {
+            // Legacy KICKR deliberately reuses the existing same-link CPS handler for telemetry.
+            // Crediting it here avoids a duplicate decoder/emitter in the Wahoo handler.
+            WAHOO_KICKR_ADAPTER_ID
+        } else {
+            FTMS_ADAPTER_ID
+        }
+        policy.metricSampleArrived(sample.connectionId, creditedAdapter, sample.arrivalMs)
     }
 
     /** Periodic evaluation. Cheap and allocation-free when nothing has expired. */

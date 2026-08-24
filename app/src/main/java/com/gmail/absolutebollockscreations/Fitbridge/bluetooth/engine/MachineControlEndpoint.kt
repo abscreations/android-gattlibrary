@@ -68,15 +68,36 @@ internal interface MachineControlEndpoint {
     ): Boolean
 }
 
-internal enum class MachineControlRoute { FTMS, FEC }
+internal enum class MachineControlRoute { FTMS, FEC, UNAVAILABLE }
 
 /** Pure selected-adapter routing decision; a half-activated FE-C link safely remains on FTMS. */
 internal fun machineControlRoute(selectedAdapterId: String?, hasFeCHandler: Boolean): MachineControlRoute =
-    if (selectedAdapterId == AdapterLivenessCoordinator.FEC_ADAPTER_ID && hasFeCHandler) {
-        MachineControlRoute.FEC
-    } else {
-        MachineControlRoute.FTMS
+    when {
+        selectedAdapterId == AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID ->
+            // Phase 10.4 has a live unlock session but deliberately no downstream endpoint yet.
+            // Never leak a Wahoo-selected request into the unrelated/global FTMS control point.
+            MachineControlRoute.UNAVAILABLE
+        selectedAdapterId == AdapterLivenessCoordinator.FEC_ADAPTER_ID && hasFeCHandler ->
+            MachineControlRoute.FEC
+        else -> MachineControlRoute.FTMS
     }
+
+/** Honest closed route used while a selected adapter has no published endpoint. */
+internal object UnavailableMachineControlEndpoint : MachineControlEndpoint {
+    override fun requestControl() = false
+    override fun startOrResume() = false
+    override fun stopOrPause() = false
+    override fun setTargetSpeedKph(kph: Float) = false
+    override fun setTargetInclinationPercent(percent: Float) = false
+    override fun setTargetResistance(level: Float) = false
+    override fun setTargetPowerWatts(watts: Int) = false
+    override fun setIndoorBikeSimulation(
+        windSpeedMps: Float,
+        gradePercent: Float,
+        rollingResistanceCoefficient: Float,
+        windResistanceCoefficient: Float,
+    ) = false
+}
 
 /**
  * Wraps the existing [BtEngineControlPoint] FTMS Control Point helpers behind
