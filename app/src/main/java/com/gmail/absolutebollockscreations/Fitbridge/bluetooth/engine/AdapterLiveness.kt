@@ -250,6 +250,12 @@ internal class AdapterLivenessCoordinator(
                 LifeFitnessFingerprint.isSetupSurface(
                     context.discoveredServices.toLifeFitnessInventory(),
                 )
+        // Service presence alone is insufficient here: a bare CPS meter shares 0x1818. The
+        // retained active handler proves this link passed the control-parent, property, and
+        // marker checks before adapter selection sees it.
+        val wahooMatch = context.handlers
+            .filterIsInstance<WahooKickrProtocolHandler>()
+            .firstNotNullOfOrNull { it.structuralMatch }
         return buildList {
             if (BluetoothIds.UUID_FTMS_SERVICE in services) {
                 add(
@@ -396,6 +402,41 @@ internal class AdapterLivenessCoordinator(
                     ),
                 )
             }
+            if (wahooMatch != null) {
+                val markerSummary = wahooMatch.markerServices
+                    .map { it.toString() }
+                    .sorted()
+                    .joinToString(",")
+                val rideOnSummary = wahooMatch.rideOnServices
+                    .map { it.toString() }
+                    .sorted()
+                    .joinToString(",")
+                    .ifEmpty { "none" }
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = WAHOO_KICKR_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_CHARACTERISTIC,
+                                    structuralValue = WahooKickrUuids.CONTROL.toString(),
+                                    // Equal certainty to the FTMS structural fact. D89's rank,
+                                    // not evidence inflation, implements 100 > 80 precedence.
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.LOW,
+                                    note = "Legacy KICKR control under CPS; markers=$markerSummary; " +
+                                        "rideOn=$rideOnSummary",
+                                ),
+                            ),
+                        ),
+                        rank = RANK_WAHOO_KICKR,
+                        // Unlock is the setup gate. Phase 10.1 intentionally has no path to mark
+                        // it successful, so downstream target capability remains unreachable.
+                        requiresSetup = true,
+                        livenessTimeoutMs = livenessTimeoutMs,
+                    ),
+                )
+            }
         }
     }
 
@@ -405,6 +446,7 @@ internal class AdapterLivenessCoordinator(
         const val FTMS_ADAPTER_ID = "ftms.generic"
         const val CONCEPT2_ADAPTER_ID = "concept2.pm"
         const val PRECOR_ADAPTER_ID = "precor.chrono"
+        const val WAHOO_KICKR_ADAPTER_ID = "wahoo.kickr.legacy"
 
         /**
          * Standard FTMS outranks the Concept2 proprietary path on a PM5 that advertises both.
@@ -417,6 +459,7 @@ internal class AdapterLivenessCoordinator(
          */
         const val RANK_FTMS = 100
         const val RANK_CONCEPT2 = 80
+        const val RANK_WAHOO_KICKR = 80
 
         /**
          * Equal to [RANK_CONCEPT2], because the two can never compete.

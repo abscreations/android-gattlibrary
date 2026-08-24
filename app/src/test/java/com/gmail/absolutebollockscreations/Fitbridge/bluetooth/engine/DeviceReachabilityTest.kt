@@ -393,6 +393,10 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,
             BluetoothIds.UUID_FEC_SERVICE,
+            // Legacy KICKR shares CPS with ordinary power meters. This equality asserts only
+            // that its machine handler/candidate chain covers CPS; the Phase-10 fingerprint
+            // tests separately prove that bare CPS never activates the candidate.
+            BluetoothIds.UUID_CYCLING_POWER_SERVICE,
         )
 
         for (service in machineServices) {
@@ -420,6 +424,7 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,
             BluetoothIds.UUID_FEC_SERVICE,
+            BluetoothIds.UUID_CYCLING_POWER_SERVICE,
         )
         val handlerServices = HandlerFactory.standard(enablePhase05HardwareTest = false)
             .let { factory -> MACHINE_PROTOCOLS.map(factory::create) }

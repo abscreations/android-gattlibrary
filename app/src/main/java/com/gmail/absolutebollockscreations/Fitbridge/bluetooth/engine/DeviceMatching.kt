@@ -136,6 +136,12 @@ internal data class MatchDefinition(
      * instead of inheriting one from an enum it does not belong to.
      */
     val machineRole: Boolean = false,
+    /**
+     * Optional conjunction gates. At least one alternative must be wholly represented by the
+     * observed facts. This lets a CPS-advertising KICKR be admitted on CPS + supporting name
+     * without allowing either weak fact alone to create a proprietary machine candidate.
+     */
+    val requiredEvidenceAlternatives: List<Set<MatchEvidenceKind>> = emptyList(),
 ) {
     /** The UUIDs to match an advertisement against, and to build a scan filter from. */
     val effectiveAdvertisedUuids: Set<CanonicalUuid> =
@@ -160,7 +166,10 @@ internal class DeviceMatcherRegistry private constructor(
     fun rankedCandidates(observation: MatchObservation): List<RankedMatchCandidate> =
         definitions.mapNotNull { definition ->
             val facts = evidenceFor(definition, observation)
-            if (facts.isEmpty()) null else RankedMatchCandidate(
+            val observedKinds = facts.mapTo(mutableSetOf()) { it.kind }
+            val satisfiesGate = definition.requiredEvidenceAlternatives.isEmpty() ||
+                definition.requiredEvidenceAlternatives.any(observedKinds::containsAll)
+            if (facts.isEmpty() || !satisfiesGate) null else RankedMatchCandidate(
                 candidateId = definition.candidateId,
                 serviceUuid = definition.serviceUuid,
                 knownService = definition.knownService,
@@ -304,6 +313,7 @@ internal class DeviceMatcherRegistry private constructor(
                     machineRole = true,
                 ),
                 sigDefinition("sig.cps", 0x1818, 0x2a63..0x2a63, KnownBleService.CPS, 500),
+                wahooKickrDefinition(),
                 sigDefinition(
                     "sig.hrm",
                     0x180d,
@@ -319,6 +329,32 @@ internal class DeviceMatcherRegistry private constructor(
                 schwinnX70Definition(),
                 fecDefinition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
+            ),
+        )
+
+        /**
+         * Provisional scan admission and post-connect identity for legacy KICKR control.
+         *
+         * A SNAP capture advertises CPS without either Wahoo marker, so requiring a marker in
+         * the Android scan filter would make the supported trainer invisible. CPS alone is also
+         * the ordinary power-meter profile and must remain a sensor. The pre-connect alternative
+         * therefore requires CPS plus the supporting `KICKR` name. That name never activates
+         * control: [WahooKickrProtocolHandler] separately requires the full parent/property/marker
+         * fingerprint from the discovered GATT database.
+         */
+        private fun wahooKickrDefinition() = MatchDefinition(
+            candidateId = "vendor.wahoo.kickr.legacy",
+            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_CYCLING_POWER_SERVICE),
+            knownService = null,
+            preference = 125,
+            localNamePatterns = listOf(Regex("^KICKR(?:\\s|$)", RegexOption.IGNORE_CASE)),
+            personaCharacteristicUuids = setOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_KICKR_CONTROL),
+            ),
+            machineRole = true,
+            requiredEvidenceAlternatives = listOf(
+                setOf(MatchEvidenceKind.ADVERTISED_SERVICE, MatchEvidenceKind.LOCAL_NAME_PATTERN),
+                setOf(MatchEvidenceKind.GATT_SERVICE, MatchEvidenceKind.GATT_CHARACTERISTIC),
             ),
         )
 

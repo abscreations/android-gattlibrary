@@ -159,6 +159,31 @@ object BluetoothIds {
     val UUID_CYCLING_POWER_CONTROL_POINT: UUID = shortUuid(0x2A66) // write / indicate
 
     // ─────────────────────────────────────────────────────────────
+    // Wahoo KICKR proprietary control fingerprints (Phase 10)
+    // ─────────────────────────────────────────────────────────────
+    // Full UUIDs are transcribed from the corroborated sources and retained capture inventory
+    // recorded in docs/KICKR_PROPRIETARY_GATT_PORT_DESIGN.md. The two EE services are marker
+    // evidence only. Legacy commands belong exclusively to A026E005 under CPS.
+    val UUID_WAHOO_KICKR_MARKER_EE01: UUID =
+        UUID.fromString("a026ee01-0a7d-4ab3-97fa-f1500f9feb8b")
+    val UUID_WAHOO_KICKR_MARKER_EE0B: UUID =
+        UUID.fromString("a026ee0b-0a7d-4ab3-97fa-f1500f9feb8b")
+    val UUID_WAHOO_KICKR_CONTROL: UUID =
+        UUID.fromString("a026e005-0a7d-4ab3-97fa-f1500f9feb8b")
+
+    // Recorded now for inventory/diagnostics only. RideOn activation and writes are a separate
+    // future backend and must not be inferred from these constants existing.
+    val UUID_WAHOO_RIDEON_SERVICE: UUID =
+        UUID.fromString("00000001-19ca-4651-86e5-fa29dcdd09d1")
+    val UUID_WAHOO_RIDEON_CORE2_SERVICE: UUID = shortUuid(0xFC82)
+    val UUID_WAHOO_RIDEON_ASYNC_TX: UUID =
+        UUID.fromString("00000002-19ca-4651-86e5-fa29dcdd09d1")
+    val UUID_WAHOO_RIDEON_SYNC_RX: UUID =
+        UUID.fromString("00000003-19ca-4651-86e5-fa29dcdd09d1")
+    val UUID_WAHOO_RIDEON_SYNC_TX: UUID =
+        UUID.fromString("00000004-19ca-4651-86e5-fa29dcdd09d1")
+
+    // ─────────────────────────────────────────────────────────────
     // Concept2 PM (proprietary, base CE06xxxx-43E5-11E4-916C-0800200C9A66)
     // ─────────────────────────────────────────────────────────────
     /**

@@ -91,6 +91,7 @@ internal data class ProtocolKey(val value: String) {
          * General FE Data notification.
          */
         val FEC = ProtocolKey("fec.ble")
+        val WAHOO_KICKR = ProtocolKey("wahoo.kickr.legacy")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -152,6 +153,7 @@ internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.PRECOR,
     ProtocolKey.SCHWINN_X70,
     ProtocolKey.FEC,
+    ProtocolKey.WAHOO_KICKR,
 )
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
@@ -184,6 +186,7 @@ internal class HandlerFactory(
                 ProtocolKey.PRECOR to { PrecorProtocolHandler() },
                 ProtocolKey.SCHWINN_X70 to { SchwinnX70ProtocolHandler() },
                 ProtocolKey.FEC to { FeCOverBleProtocolHandler() },
+                ProtocolKey.WAHOO_KICKR to { WahooKickrProtocolHandler() },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)
