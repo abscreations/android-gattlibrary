@@ -21,7 +21,10 @@ internal data class RideOnSessionTiming(
     val retryIntervalMs: Long = 250,
     val writeTimeoutMs: Long = 1_000,
     val ergMinIntervalMs: Long = 2_000,
+    val shiftResponseTimeoutMs: Long = 800,
 )
+
+internal enum class RideOnShiftOutcome { ACKNOWLEDGED, ACCEPTED_UNCONFIRMED, TRANSPORT_FAILED }
 
 /** Pure readiness gate: no negotiation write is legal before both receive surfaces are subscribed. */
 internal class RideOnSubscriptionGate(private val connectionId: ConnectionId) {
@@ -43,6 +46,7 @@ internal class RideOnControlSession(
     private val onRidingData: (RideOnDecodedPacket) -> Unit = {},
     private val onControlGranted: () -> Unit = {},
     private val onInitializationFailed: () -> Unit = {},
+    initialShiftSequence: Long = 0,
 ) {
     private val supervisor = SupervisorJob()
     private val scope = CoroutineScope(dispatcher + supervisor)
@@ -50,7 +54,10 @@ internal class RideOnControlSession(
     private val closed = AtomicBoolean(false)
     private val negotiationWaiter = AtomicReference<CompletableDeferred<Unit>?>(null)
     private val pendingTarget = AtomicReference<RideOnControlTarget?>(null)
-    private val targetWake = Channel<Unit>(Channel.CONFLATED)
+    private val pendingGear = AtomicReference<Int?>(null)
+    private val workWake = Channel<Unit>(Channel.CONFLATED)
+    private val shiftWaiter = AtomicReference<Pair<Long, CompletableDeferred<Unit>>?>(null)
+    @Volatile private var nextShiftSequence = initialShiftSequence.also { require(it in 0..0xFFFF_FFFFL) }
     @Volatile private var lastErgAcceptedAtMs: Long? = null
 
     @Volatile var controlGranted = false
@@ -98,6 +105,16 @@ internal class RideOnControlSession(
         ) {
             onRidingData(decoded.packet)
         }
+        if (decoded is RideOnDecodeResult.Decoded &&
+            decoded.packet.opcode == RideOnUuids.OPCODE_VIRTUAL_SHIFT_RESPONSE
+        ) {
+            val sequence = decoded.packet.fields
+                .filterIsInstance<RideOnProtoField.Varint>()
+                .firstOrNull { it.number == 2 }
+                ?.value
+            val waiter = shiftWaiter.get()
+            if (sequence != null && waiter?.first == sequence) waiter.second.complete(Unit)
+        }
         val acceptable = bytes.contentEquals(handshake()) ||
             (serviceForm == RideOnServiceForm.CORE2 && decoded is RideOnDecodeResult.Decoded)
         if (acceptable) negotiationWaiter.get()?.complete(Unit)
@@ -108,21 +125,35 @@ internal class RideOnControlSession(
         controlGranted = false
         negotiationWaiter.getAndSet(null)?.cancel()
         pendingTarget.set(null)
-        targetWake.close()
+        pendingGear.set(null)
+        shiftWaiter.getAndSet(null)?.second?.cancel()
+        workWake.close()
         supervisor.cancel()
     }
 
     fun submit(target: RideOnControlTarget): Boolean {
         if (!controlGranted || closed.get() || encodeRideOnTarget(target) == null) return false
         pendingTarget.set(target)
-        targetWake.trySend(Unit)
+        workWake.trySend(Unit)
+        return true
+    }
+
+    fun submitVirtualGear(index: Int): Boolean {
+        if (!controlGranted || closed.get() || index !in 1..RIDEON_GEAR_RATIOS.size) return false
+        pendingGear.set(index)
+        workWake.trySend(Unit)
         return true
     }
 
     private fun startTargetConsumer() = scope.launch {
         while (isActive && !closed.get()) {
-            targetWake.receiveCatching().getOrNull() ?: break
-            val target = pendingTarget.getAndSet(null) ?: continue
+            workWake.receiveCatching().getOrNull() ?: break
+            val target = pendingTarget.getAndSet(null)
+            if (target == null) {
+                pendingGear.getAndSet(null)?.let { executeShift(it) }
+                if (pendingTarget.get() != null || pendingGear.get() != null) workWake.trySend(Unit)
+                continue
+            }
             if (target is RideOnControlTarget.Erg) {
                 lastErgAcceptedAtMs?.let { last ->
                     val remaining = timing.ergMinIntervalMs - (System.nanoTime() / 1_000_000L - last)
@@ -134,8 +165,28 @@ internal class RideOnControlSession(
             if (write(encoded, "target")) {
                 if (target is RideOnControlTarget.Erg) lastErgAcceptedAtMs = System.nanoTime() / 1_000_000L
             }
-            if (pendingTarget.get() != null) targetWake.trySend(Unit)
+            if (pendingTarget.get() != null || pendingGear.get() != null) workWake.trySend(Unit)
         }
+    }
+
+    private suspend fun executeShift(index: Int): RideOnShiftOutcome {
+        val sequence = nextShiftSequence
+        val waiter = CompletableDeferred<Unit>()
+        val activeWaiter = sequence to waiter
+        shiftWaiter.set(activeWaiter)
+        val accepted = write(
+            RideOnProtoCodec.virtualShift(1, sequence, RIDEON_GEAR_RATIOS[index - 1].toLong()),
+            "virtual-shift",
+        )
+        if (!accepted) {
+            shiftWaiter.compareAndSet(activeWaiter, null)
+            return RideOnShiftOutcome.TRANSPORT_FAILED
+        }
+        nextShiftSequence = (sequence + 1) and UINT32_MAX
+        val acknowledged = withTimeoutOrNull(timing.shiftResponseTimeoutMs) { waiter.await() } != null
+        shiftWaiter.set(null)
+        return if (acknowledged) RideOnShiftOutcome.ACKNOWLEDGED
+        else RideOnShiftOutcome.ACCEPTED_UNCONFIRMED
     }
 
     private suspend fun write(payload: ByteArray, label: String): Boolean = runCatching {
@@ -165,5 +216,12 @@ internal class RideOnControlSession(
     private companion object {
         const val MAX_NEGOTIATION_ATTEMPTS = 2
         val INITIALIZATION = byteArrayOf(0x41, 0x08, 0x05)
+        const val UINT32_MAX = 0xFFFF_FFFFL
     }
 }
+
+internal val RIDEON_GEAR_RATIOS = listOf(
+    7500, 8700, 9900, 11100, 12300, 13800, 15300, 16800,
+    18600, 20400, 22200, 24000, 26099, 28200, 30300, 32400,
+    34900, 37400, 39900, 42399, 45400, 48400, 51400, 54899,
+)
