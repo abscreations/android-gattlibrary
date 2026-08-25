@@ -85,12 +85,27 @@ class LifeFitnessSetupTest {
     // ── Encodings ────────────────────────────────────────────────────────────────
 
     @Test
-    fun `names and email are NUL-terminated UTF-8`() {
+    fun `names and email are plain UTF-8 with no terminator`() {
+        // TMIW appends a NUL and FitBridge copied it until 2026-08-25. The #1018 capture writes
+        // "Ben" as three octets with nothing after it, so the terminator came out. See the wire
+        // forms table in plan §6.
         val firstName = op("first name").payload!!
 
-        assertEquals("Given", String(firstName.dropLast(1).toByteArray(), Charsets.UTF_8))
-        assertEquals(0, firstName.last().toInt())
-        assertEquals(0, op("email").payload!!.last().toInt())
+        assertEquals("Given", String(firstName, Charsets.UTF_8))
+        assertFalse("no terminator", firstName.any { it.toInt() == 0 })
+        assertFalse("no terminator", op("last name").payload!!.any { it.toInt() == 0 })
+        assertFalse("no terminator", op("email").payload!!.any { it.toInt() == 0 })
+    }
+
+    @Test
+    fun `an empty email is a zero-length write, not a lone NUL`() {
+        // The capture's email write carries no octets at all, and the handshake completed.
+        // A one-byte `00` would be a different write than the one a machine has accepted.
+        val blank = LifeFitnessSetup.transcript(
+            control, user, status, profile.copy(email = ""), ageYears = 41,
+        ).single { it.label == "email" }
+
+        assertEquals(0, blank.payload!!.size)
     }
 
     @Test
@@ -105,15 +120,18 @@ class LifeFitnessSetupTest {
     }
 
     @Test
-    fun `age is a single octet and is clamped rather than truncated`() {
-        assertEquals(listOf(41), op("age").payload!!.map { it.toInt() and 0xFF })
+    fun `age is two octets little-endian and is clamped rather than truncated`() {
+        // 0x2A80 is uint8 in the SIG spec and TMIW writes one octet, but the #1018 capture writes
+        // `23 00`. FitBridge matches the capture.
+        assertEquals(listOf(41, 0), op("age").payload!!.map { it.toInt() and 0xFF })
 
         val absurd = LifeFitnessSetup.transcript(control, user, status, profile, ageYears = 400)
             .single { it.label == "age" }
         assertEquals(
-            "a nonsense age must saturate, not wrap to a plausible one",
-            255,
-            absurd.payload!!.single().toInt() and 0xFF,
+            "a nonsense age must saturate, not wrap to a plausible one, and must not " +
+                "start emitting a high octet the capture never shows",
+            listOf(255, 0),
+            absurd.payload!!.map { it.toInt() and 0xFF },
         )
     }
 
@@ -133,6 +151,15 @@ class LifeFitnessSetupTest {
 
         assertEquals(32, token.size)
         assertEquals("f77ab82b7a2440078f33c5aa6ee7a31b", String(token, Charsets.US_ASCII))
+    }
+
+    @Test
+    fun `token 2 matches the #1018 capture`() {
+        // V14, resolved 2026-08-25. TMIW writes 0x00 and QZ writes 0x01; the register carried
+        // this as an unresolvable coin flip on the claim that the #1018 trace did not capture the
+        // step. Re-decoding that capture's full ATT layer shows a Write Command of 0x00 to
+        // ce78e85e-... in both sessions, each followed by a completed handshake and sustained
+        // Treadmill Data. Changing this constant now contradicts hardware, so it fails here.
         assertEquals(listOf(0x00), op("vendor token 2").payload!!.map { it.toInt() and 0xFF })
     }
 

@@ -1,0 +1,5641 @@
+{
+  "schemaVersion": 1,
+  "model": "Tacx Neo 2",
+  "source": "QZ issue attachments; physical Android HCI captures of one Tacx Neo 2",
+  "client": "qdomyos-zwift (QZ), attributed by the submitter and consistent with the framing defect recorded below; not confirmed from the capture itself",
+  "acquisition": "sanitized-hci-extraction",
+  "extracted": "2026-08-25",
+  "evidenceTier": "upstream hardware-observed evidence on one unit of unknown firmware; not FitBridge tier H",
+  "sources": [
+    {
+      "sourceFile": "neo2btsnoop_hci.log",
+      "sourceSha256": "c6fe1de70a683737f1e764c6f3ca6a3ce77d94f63d6d2cd9a369a297eaf9780d",
+      "session": 1
+    },
+    {
+      "sourceFile": "neo2btsnoop_hci1.log",
+      "sourceSha256": "2f5a10cc0f1469a4b0370a5d33728ad8d5cc35ddf0dd5895a03483a501b02f32",
+      "session": 2
+    }
+  ],
+  "family": "ant.fec-over-ble.tacx-neo-2.control-writes",
+  "transport": "ANT+ FE-C control frames written to 6e40fec3-b5a3-f393-e0a9-e50e24dcca9e",
+  "why": [
+    "The existing fec_tacx_neo_2 corpus explicitly excludes application transmit lines, so FitBridge",
+    "has had no FE-C CONTROL corpus from any device. These captures are one SIM/grade session and one",
+    "ERG session against real hardware.",
+    "They also carry a framing defect worth more than the frames themselves - see checksum below."
+  ],
+  "frameCount": 363,
+  "pageCounts": {
+    "0x33": 58,
+    "0xFC": 62,
+    "0x31": 243
+  },
+  "checksum": {
+    "antStandardRule": "XOR of every octet from SYNC through the last data octet, compared against the trailing octet. This is the rule every RECEIVED frame in fec_tacx_neo_2.json satisfies, and the rule FeCBleControlDecoder enforces.",
+    "framesSatisfyingAntStandardRule": 0,
+    "observedRule": "sum(octets[1..10]) mod 256 - an ADDITIVE checksum that excludes the SYNC octet AND excludes the final data octet",
+    "framesSatisfyingObservedRule": 363,
+    "finding": "Not one of the frames carries a valid ANT checksum, and all of them fit the additive rule exactly. Excluding the final data octet is what identifies it as a defect rather than an alternative convention: for page 0x31 the excluded octet is the target-power high byte, so two commands 256 quarter-watts apart produce the same checksum.",
+    "hardwareBehaviour": "The trainer honoured them anyway. See ergTargetCorrelation: measured instantaneous power tracks a thirteen-step ERG ladder from 92 W to 174 W within a few watts. A Tacx Neo 2 does NOT validate the ANT checksum on FE-C control writes.",
+    "implicationForFitBridge": "FeCBleControlDecoder rejects a mismatched checksum with RejectReason.BAD_CHECKSUM, so every frame in this corpus would be refused by the FitBridge FE-C simulator while real hardware accepts it. That is a strictness gap between the simulator and the machine it emulates, and it is the shape of defect that surfaces to a user as 'the app does not control the trainer' with no diagnosable cause. This fixture does not decide whether to loosen it; it makes the gap executable.",
+    "implicationForFitBridgeCentral": "None. FitBridge emits the standard XOR when it writes, which is correct and which this trainer also accepts."
+  },
+  "ergTargetCorrelation": {
+    "session": 2,
+    "note": "Measured power is CPS 0x2A63 instantaneous power from the same session; window is 5-25 s after each target change.",
+    "steps": [
+      {
+        "relativeMs": 25206,
+        "targetWatts": 92.0,
+        "measuredMeanWatts": 54.0,
+        "samples": 80
+      },
+      {
+        "relativeMs": 53543,
+        "targetWatts": 99.0,
+        "measuredMeanWatts": 94.9,
+        "samples": 42
+      },
+      {
+        "relativeMs": 69028,
+        "targetWatts": 106.0,
+        "measuredMeanWatts": 106.1,
+        "samples": 38
+      },
+      {
+        "relativeMs": 83534,
+        "targetWatts": 113.0,
+        "measuredMeanWatts": 115.4,
+        "samples": 42
+      },
+      {
+        "relativeMs": 99089,
+        "targetWatts": 120.0,
+        "measuredMeanWatts": 116.2,
+        "samples": 39
+      },
+      {
+        "relativeMs": 114906,
+        "targetWatts": 127.0,
+        "measuredMeanWatts": 126.9,
+        "samples": 35
+      },
+      {
+        "relativeMs": 128620,
+        "targetWatts": 133.0,
+        "measuredMeanWatts": 134.8,
+        "samples": 41
+      },
+      {
+        "relativeMs": 143959,
+        "targetWatts": 140.0,
+        "measuredMeanWatts": 141.2,
+        "samples": 40
+      },
+      {
+        "relativeMs": 158949,
+        "targetWatts": 147.0,
+        "measuredMeanWatts": 147.7,
+        "samples": 39
+      },
+      {
+        "relativeMs": 173658,
+        "targetWatts": 154.0,
+        "measuredMeanWatts": 152.1,
+        "samples": 42
+      },
+      {
+        "relativeMs": 189219,
+        "targetWatts": 161.0,
+        "measuredMeanWatts": 163.0,
+        "samples": 39
+      },
+      {
+        "relativeMs": 204886,
+        "targetWatts": 168.0,
+        "measuredMeanWatts": 168.8,
+        "samples": 37
+      },
+      {
+        "relativeMs": 219362,
+        "targetWatts": 174.0,
+        "measuredMeanWatts": 172.4,
+        "samples": 79
+      }
+    ]
+  },
+  "unresolvedPage": {
+    "page": "0xFC",
+    "count": 62,
+    "note": "Present in both sessions and in the existing notification corpus. Payload is 0xFC then 00 00 64 00 00 <varying> 00. NOT decoded and deliberately not guessed. Retained as opaque so a future resolution has vectors."
+  },
+  "expectations": "Raw replay corpus. Decode with the FE-C specification and the production codec; the checksum fields are golden and are the point of the fixture.",
+  "privacy": "FE-C control frames only, with session-relative timing. No addresses, absolute timestamps, device name or unrelated traffic. FE-C control frames carry no personal data.",
+  "frames": [
+    {
+      "session": 1,
+      "relativeMs": 1970,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 2983,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 5011,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 5369,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 8470,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 19388,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 19504,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffb94fff93",
+      "antXorChecksum": "0xDC",
+      "trailingOctet": "0x93",
+      "antXorValid": false,
+      "observedRuleValue": "0x93",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.09,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 19776,
+      "page": "0xFC",
+      "frame": "a4094e05fc00006400001200ce",
+      "antXorChecksum": "0x6C",
+      "trailingOctet": "0xCE",
+      "antXorValid": false,
+      "observedRuleValue": "0xCE",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400001200"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 20033,
+      "page": "0xFC",
+      "frame": "a4094e05fc00006400001200ce",
+      "antXorChecksum": "0x6C",
+      "trailingOctet": "0xCE",
+      "antXorValid": false,
+      "observedRuleValue": "0xCE",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400001200"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 20442,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffbd4fff97",
+      "antXorChecksum": "0xD8",
+      "trailingOctet": "0x97",
+      "antXorValid": false,
+      "observedRuleValue": "0x97",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.13,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 21461,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffc14fff9b",
+      "antXorChecksum": "0xA4",
+      "trailingOctet": "0x9B",
+      "antXorValid": false,
+      "observedRuleValue": "0x9B",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.17,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 22485,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffc44fff9e",
+      "antXorChecksum": "0xA1",
+      "trailingOctet": "0x9E",
+      "antXorValid": false,
+      "observedRuleValue": "0x9E",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.2,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 23508,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffc74fffa1",
+      "antXorChecksum": "0xA2",
+      "trailingOctet": "0xA1",
+      "antXorValid": false,
+      "observedRuleValue": "0xA1",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.23,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 24525,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffcc4fffa6",
+      "antXorChecksum": "0xA9",
+      "trailingOctet": "0xA6",
+      "antXorValid": false,
+      "observedRuleValue": "0xA6",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.28,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 25049,
+      "page": "0xFC",
+      "frame": "a4094e05fc00006400000e00ca",
+      "antXorChecksum": "0x70",
+      "trailingOctet": "0xCA",
+      "antXorValid": false,
+      "observedRuleValue": "0xCA",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400000e00"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 25533,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffcf4fffa9",
+      "antXorChecksum": "0xAA",
+      "trailingOctet": "0xA9",
+      "antXorValid": false,
+      "observedRuleValue": "0xA9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.31,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 26535,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd14fffab",
+      "antXorChecksum": "0xB4",
+      "trailingOctet": "0xAB",
+      "antXorValid": false,
+      "observedRuleValue": "0xAB",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.33,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 27549,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd24fffac",
+      "antXorChecksum": "0xB7",
+      "trailingOctet": "0xAC",
+      "antXorValid": false,
+      "observedRuleValue": "0xAC",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.34,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 28562,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd34fffad",
+      "antXorChecksum": "0xB6",
+      "trailingOctet": "0xAD",
+      "antXorValid": false,
+      "observedRuleValue": "0xAD",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.35,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 29570,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd34fffad",
+      "antXorChecksum": "0xB6",
+      "trailingOctet": "0xAD",
+      "antXorValid": false,
+      "observedRuleValue": "0xAD",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.35,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 30061,
+      "page": "0xFC",
+      "frame": "a4094e05fc00006400000c00c8",
+      "antXorChecksum": "0x72",
+      "trailingOctet": "0xC8",
+      "antXorValid": false,
+      "observedRuleValue": "0xC8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400000c00"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 30589,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd34fffad",
+      "antXorChecksum": "0xB6",
+      "trailingOctet": "0xAD",
+      "antXorValid": false,
+      "observedRuleValue": "0xAD",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.35,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 31599,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd34fffad",
+      "antXorChecksum": "0xB6",
+      "trailingOctet": "0xAD",
+      "antXorValid": false,
+      "observedRuleValue": "0xAD",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.35,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 32614,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd24fffac",
+      "antXorChecksum": "0xB7",
+      "trailingOctet": "0xAC",
+      "antXorValid": false,
+      "observedRuleValue": "0xAC",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.34,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 33618,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffd14fffab",
+      "antXorChecksum": "0xB4",
+      "trailingOctet": "0xAB",
+      "antXorValid": false,
+      "observedRuleValue": "0xAB",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.33,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 34620,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffce4fffa8",
+      "antXorChecksum": "0xAB",
+      "trailingOctet": "0xA8",
+      "antXorValid": false,
+      "observedRuleValue": "0xA8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.3,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 35077,
+      "page": "0xFC",
+      "frame": "a4094e05fc00006400000d00c9",
+      "antXorChecksum": "0x73",
+      "trailingOctet": "0xC9",
+      "antXorValid": false,
+      "observedRuleValue": "0xC9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400000d00"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 35632,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffcb4fffa5",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0xA5",
+      "antXorValid": false,
+      "observedRuleValue": "0xA5",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.27,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 36633,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffc84fffa2",
+      "antXorChecksum": "0xAD",
+      "trailingOctet": "0xA2",
+      "antXorValid": false,
+      "observedRuleValue": "0xA2",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.24,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 37652,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffc44fff9e",
+      "antXorChecksum": "0xA1",
+      "trailingOctet": "0x9E",
+      "antXorValid": false,
+      "observedRuleValue": "0x9E",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.2,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 38656,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffbf4fff99",
+      "antXorChecksum": "0xDA",
+      "trailingOctet": "0x99",
+      "antXorValid": false,
+      "observedRuleValue": "0x99",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.15,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 39673,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffb94fff93",
+      "antXorChecksum": "0xDC",
+      "trailingOctet": "0x93",
+      "antXorValid": false,
+      "observedRuleValue": "0x93",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.09,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 40088,
+      "page": "0xFC",
+      "frame": "a4094e05fc00006400001200ce",
+      "antXorChecksum": "0x6C",
+      "trailingOctet": "0xCE",
+      "antXorValid": false,
+      "observedRuleValue": "0xCE",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400001200"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 40680,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffb24fff8c",
+      "antXorChecksum": "0xD7",
+      "trailingOctet": "0x8C",
+      "antXorValid": false,
+      "observedRuleValue": "0x8C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 4.02,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 41682,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffffaa4fff84",
+      "antXorChecksum": "0xCF",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 3.94,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 42700,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff9a4fff74",
+      "antXorChecksum": "0xFF",
+      "trailingOctet": "0x74",
+      "antXorValid": false,
+      "observedRuleValue": "0x74",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 3.78,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 43709,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff844fff5e",
+      "antXorChecksum": "0xE1",
+      "trailingOctet": "0x5E",
+      "antXorValid": false,
+      "observedRuleValue": "0x5E",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 3.56,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 44729,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff724fff4c",
+      "antXorChecksum": "0x17",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 3.38,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 45102,
+      "page": "0xFC",
+      "frame": "a4094e05fc00006400002000dc",
+      "antXorChecksum": "0x5E",
+      "trailingOctet": "0xDC",
+      "antXorValid": false,
+      "observedRuleValue": "0xDC",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400002000"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 45734,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff664fff40",
+      "antXorChecksum": "0x03",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 3.26,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 46751,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff654fff3f",
+      "antXorChecksum": "0x00",
+      "trailingOctet": "0x3F",
+      "antXorValid": false,
+      "observedRuleValue": "0x3F",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 3.25,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 47762,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 48764,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 49834,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 50133,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 64021,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 64084,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 64740,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 65756,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 1,
+      "relativeMs": 66786,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 1999,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 3118,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 4002,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 5006,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 6007,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 7009,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 8011,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 9068,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 10148,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 11026,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 14462,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 15478,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 17073,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 17498,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 21251,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 22268,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 23284,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 24286,
+      "page": "0x33",
+      "frame": "a4094e0533ffffffff204efff9",
+      "antXorChecksum": "0x44",
+      "trailingOctet": "0xF9",
+      "antXorValid": false,
+      "observedRuleValue": "0xF9",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "trackResistance",
+        "gradePercent": 0.0,
+        "rollingResistanceCoefficient": "0xFF"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 25206,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 26222,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 27228,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 28238,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 33670,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 36190,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 36803,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 37073,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 37270,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 37405,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 38468,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 39564,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 40644,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 41728,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 42413,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 42756,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 43852,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 44883,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 45993,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 47138,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 47488,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 48278,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 49287,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 50344,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 51515,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 52511,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 52639,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff7001f8",
+      "antXorChecksum": "0x59",
+      "trailingOctet": "0xF8",
+      "antXorValid": false,
+      "observedRuleValue": "0xF8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 92.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 53543,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 54553,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 55577,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 56631,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 57551,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 57696,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 58726,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 59753,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 60798,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 61806,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 62566,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 62816,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 63820,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 64822,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 65921,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 66967,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 67618,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 68012,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff8c0114",
+      "antXorChecksum": "0xA5",
+      "trailingOctet": "0x14",
+      "antXorValid": false,
+      "observedRuleValue": "0x14",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 99.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 69028,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 70064,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 71120,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 72178,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 72695,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 73218,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 74228,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 75275,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 76330,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 77370,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 77728,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 78404,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 79418,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 80440,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 81473,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 82505,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa80130",
+      "antXorChecksum": "0x81",
+      "trailingOctet": "0x30",
+      "antXorValid": false,
+      "observedRuleValue": "0x30",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 106.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 82837,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 83534,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 84576,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 85602,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 86645,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 87680,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 87795,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 88721,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 89767,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 90782,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 91834,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 92819,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 92896,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 93912,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 94962,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 95991,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 96992,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 97819,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 98049,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffc4014c",
+      "antXorChecksum": "0xED",
+      "trailingOctet": "0x4C",
+      "antXorValid": false,
+      "observedRuleValue": "0x4C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 113.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 99089,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 100158,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 101221,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 102299,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 102891,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 103361,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 104380,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 105474,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 106488,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 107556,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 107917,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 108562,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 109592,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 110707,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 111782,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 112857,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffe00168",
+      "antXorChecksum": "0xC9",
+      "trailingOctet": "0x68",
+      "antXorValid": false,
+      "observedRuleValue": "0x68",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 120.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 112956,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 113872,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffff80180",
+      "antXorChecksum": "0xD1",
+      "trailingOctet": "0x80",
+      "antXorValid": false,
+      "observedRuleValue": "0x80",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 126.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 114906,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 115908,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 117032,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 118001,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 118126,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 119162,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 120244,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 121332,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 122338,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 123026,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 123389,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 124440,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 125442,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 126518,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 127578,
+      "page": "0x31",
+      "frame": "a4094e0531fffffffffffc0184",
+      "antXorChecksum": "0xD5",
+      "trailingOctet": "0x84",
+      "antXorValid": false,
+      "observedRuleValue": "0x84",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 127.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 128036,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 128620,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 129682,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 130749,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 132143,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 133063,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 133176,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 134212,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 135233,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 136380,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 137461,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 138174,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 138563,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 139696,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 140710,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 141842,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 142949,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff14029c",
+      "antXorChecksum": "0x3E",
+      "trailingOctet": "0x9C",
+      "antXorValid": false,
+      "observedRuleValue": "0x9C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 133.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 143189,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 143959,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 144994,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 146090,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 147111,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 148198,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 148337,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 149222,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 150323,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 151339,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 152380,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 153207,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 153459,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 154564,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 155651,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 156715,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 157867,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff3002b8",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0xB8",
+      "antXorValid": false,
+      "observedRuleValue": "0xB8",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 140.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 158256,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 158949,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 160041,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 161147,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 162183,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 163237,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 163309,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 164314,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 165353,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 166390,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 167402,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 168343,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 168440,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 169477,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 170525,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 171591,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 172621,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff4c02d4",
+      "antXorChecksum": "0x66",
+      "trailingOctet": "0xD4",
+      "antXorValid": false,
+      "observedRuleValue": "0xD4",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 147.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 173368,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 173658,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 174689,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 175701,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 176746,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 177775,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 178416,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 178806,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 179823,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 180843,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 181863,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 182920,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 183468,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 183978,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 184982,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 186049,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 187129,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 188164,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff6802f0",
+      "antXorChecksum": "0x42",
+      "trailingOctet": "0xF0",
+      "antXorValid": false,
+      "observedRuleValue": "0xF0",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 154.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 188483,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 189219,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 190272,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 191324,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 192429,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 193508,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 193576,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 194572,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 195651,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 196659,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 197669,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 198511,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 198722,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 199734,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 200755,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 201764,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 202811,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff84020c",
+      "antXorChecksum": "0xAE",
+      "trailingOctet": "0x0C",
+      "antXorValid": false,
+      "observedRuleValue": "0x0C",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 161.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 203550,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 203839,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffff9c0224",
+      "antXorChecksum": "0xB6",
+      "trailingOctet": "0x24",
+      "antXorValid": false,
+      "observedRuleValue": "0x24",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 167.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 204886,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 205946,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 207001,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 208039,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 208586,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 209068,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 210106,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 211111,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 212143,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 213218,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 213571,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 214240,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 215264,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 216307,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 217328,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 218344,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffa00228",
+      "antXorChecksum": "0x8A",
+      "trailingOctet": "0x28",
+      "antXorValid": false,
+      "observedRuleValue": "0x28",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 168.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 218615,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 219362,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 220414,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 221429,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 222466,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 223474,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 223633,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 224478,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 225519,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 226550,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 227552,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 228588,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 228677,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 229627,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 230646,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 231684,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 232716,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 233639,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 233756,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 234782,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 235798,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 236820,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 237837,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 238744,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 238870,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 239882,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 240928,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 241945,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 242959,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 243686,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 243961,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 245007,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 246026,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 247046,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 248066,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 248731,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 249131,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 250141,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 251181,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 252198,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 253278,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 253764,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 254298,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 255342,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 256355,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 257386,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 258398,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 258769,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 259442,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 260485,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 261525,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 262539,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 263558,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 263773,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 264576,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 265615,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 266639,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 267650,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 268681,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 268807,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 269689,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 270711,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 271741,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 272791,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 273808,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 273919,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 274829,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 275868,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 276889,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 277992,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 278887,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 278961,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 280013,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 281052,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 282187,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 283132,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 284103,
+      "page": "0xFC",
+      "frame": "a4094e05fc0000640000640020",
+      "antXorChecksum": "0x1A",
+      "trailingOctet": "0x20",
+      "antXorValid": false,
+      "observedRuleValue": "0x20",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "unresolved",
+        "payload": "fc00006400006400"
+      }
+    },
+    {
+      "session": 2,
+      "relativeMs": 284931,
+      "page": "0x31",
+      "frame": "a4094e0531ffffffffffb80240",
+      "antXorChecksum": "0x92",
+      "trailingOctet": "0x40",
+      "antXorValid": false,
+      "observedRuleValue": "0x40",
+      "observedRuleValid": true,
+      "decoded": {
+        "field": "targetPowerWatts",
+        "value": 174.0
+      }
+    }
+  ]
+}

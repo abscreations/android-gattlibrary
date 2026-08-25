@@ -83,7 +83,19 @@ internal object LifeFitnessSetup {
     const val CONTROL_1_OPEN: Byte = 0x01
     const val CONTROL_1_CLOSE: Byte = 0x02
 
-    /** `[0x00]`, per both reference implementations. Purpose unknown. */
+    /**
+     * `[0x00]` — TMIW's value, and now the hardware-observed one (V14, resolved 2026-08-25).
+     *
+     * TMIW writes `[0x00]` and QZ writes `[0x01]`; the divergence register carried this as an
+     * unresolvable coin flip on the stated ground that the QZ issue #1018 trace did not capture
+     * the step. It does. Re-decoding that capture's full ATT layer shows
+     * `Write Command → ce78e85e-… = 0x00` in both sessions, each followed by a completed handshake
+     * and sustained Treadmill Data. FitBridge was already writing this value; it is no longer a
+     * guess.
+     *
+     * The octet's *purpose* remains unknown, and QZ's `[0x01]` is not thereby wrong — QZ users
+     * work too, so the console probably does not validate it strictly.
+     */
     val VENDOR_TOKEN_2 = byteArrayOf(0x00)
 
     /** ISO 639-1, matching TMIW. Not localised: the machine's use of it is unknown. */
@@ -166,12 +178,13 @@ internal object LifeFitnessSetup {
             ),
         )
 
-        // The profile block, in the order both references write it. Names and email are
-        // NUL-terminated UTF-8; the rest are fixed-width SIG encodings.
-        add(profileOp(user, BluetoothIds.UUID_USER_FIRST_NAME, nulTerminated(profile.firstName), "first name"))
-        add(profileOp(user, BluetoothIds.UUID_USER_LAST_NAME, nulTerminated(profile.lastName), "last name"))
-        add(profileOp(user, BluetoothIds.UUID_USER_EMAIL, nulTerminated(profile.email), "email"))
-        add(profileOp(user, BluetoothIds.UUID_USER_AGE, byteArrayOf(ageYears.coerceIn(0, 255).toByte()), "age"))
+        // The profile block, in the order both references write it. Names and email are plain
+        // UTF-8 with no terminator; the rest are fixed-width SIG encodings. See [utf8] and
+        // [ageWireUnits] for why those two differ from TMIW.
+        add(profileOp(user, BluetoothIds.UUID_USER_FIRST_NAME, utf8(profile.firstName), "first name"))
+        add(profileOp(user, BluetoothIds.UUID_USER_LAST_NAME, utf8(profile.lastName), "last name"))
+        add(profileOp(user, BluetoothIds.UUID_USER_EMAIL, utf8(profile.email), "email"))
+        add(profileOp(user, BluetoothIds.UUID_USER_AGE, uint16Le(ageWireUnits(ageYears)), "age"))
         add(profileOp(user, BluetoothIds.UUID_USER_GENDER, byteArrayOf(profile.gender.toByte()), "gender"))
         add(profileOp(user, BluetoothIds.UUID_USER_LANGUAGE, LANGUAGE, "language"))
         add(profileOp(user, BluetoothIds.UUID_LF_VENDOR_TOKEN_1, VENDOR_TOKEN, "vendor token 1"))
@@ -202,8 +215,34 @@ internal object LifeFitnessSetup {
     private fun profileOp(service: UUID, characteristic: UUID, payload: ByteArray, label: String) =
         Op(OpKind.PROFILE_WRITE, service, characteristic, payload, label)
 
-    private fun nulTerminated(value: String): ByteArray =
-        value.toByteArray(Charsets.UTF_8) + 0x00
+    /**
+     * The string encoding the wire actually shows: UTF-8, no terminator.
+     *
+     * TMIW appends a NUL to first name, last name and email, and FitBridge copied that. The QZ
+     * issue #1018 capture — the only trace of a console being sent a profile and then streaming —
+     * writes `"Ben"` as three octets and `"Koh"` as three, with no terminator anywhere, and sends
+     * the empty email as a **zero-length** write rather than a lone `0x00`. An empty [value]
+     * therefore produces an empty array here, which is the observed form.
+     *
+     * Neither encoding is known to be *required*: TMIW ships the NUL and TMIW users work. But
+     * where a reference implementation and a machine's own accepted traffic disagree, the traffic
+     * wins, because only one of the two is evidence about the console.
+     */
+    private fun utf8(value: String): ByteArray = value.toByteArray(Charsets.UTF_8)
+
+    /**
+     * Age in the width the capture writes: two octets, little-endian.
+     *
+     * `0x2A80` is a `uint8` in the SIG specification and TMIW writes one octet. The #1018 capture
+     * writes `23 00` — thirty-five, plus a high octet of zero. Widening to `uint16` matches it and
+     * is harmless if the console reads only the first byte.
+     *
+     * **The clamp stays at a single octet's range deliberately.** Widening the field does not
+     * widen the set of plausible human ages, and the capture never shows a non-zero high octet, so
+     * emitting one would be inventing a wire fact rather than reproducing one. A nonsense age
+     * saturates at 255 exactly as it did before; the second octet is always zero.
+     */
+    private fun ageWireUnits(ageYears: Int): Int = ageYears.coerceIn(0, 255)
 
     private fun uint16Le(value: Int): ByteArray =
         byteArrayOf((value and 0xFF).toByte(), ((value shr 8) and 0xFF).toByte())

@@ -1,0 +1,632 @@
+{
+  "family": "vendor.life_fitness.setup_transcript.qz_issue_1018",
+  "source": "QZ issue #1018 physical Life Fitness treadmill Android HCI capture",
+  "sourceUrl": "https://github.com/cagnulein/qdomyos-zwift/issues/1018",
+  "captureFile": "btsnoop_hci.5.log",
+  "captureSha256": "e1cb4ad709edaa9cbfddb699e66740dc75a4e3f00b3a19e4a719ce7098603236",
+  "extracted": "2026-08-25",
+  "acquisition": "sanitized-hci-extraction",
+  "extractionFilter": "cid == 0x0004 && opcode in (0x12, 0x52, 0x1b) && handle in the setup/status set",
+  "evidenceTier": "upstream hardware-observed evidence; not FitBridge tier H",
+  "vendor": "Life Fitness",
+  "persona": "treadmill",
+  "supersedes": "Nothing. This is the first fixture of an observed Life Fitness setup handshake; the transcript was previously evidenced only from TMIW and QZ source.",
+  "why": [
+    "The 2026-08-13 extraction from this same log filtered on btatt.uuid16 == 0x2acd and therefore",
+    "discarded every write. Plan V14 was recorded as unresolvable on the explicit ground that 'the",
+    "#1018 trace does not capture' vendor token 2. It does. Re-decoding the full ATT layer yields",
+    "the transcript below, byte-identical across both of the capture's sessions."
+  ],
+  "sessionCount": 2,
+  "wireFacts": {
+    "operationOrder": "control 1 open, first name, last name, email, age, gender, language, vendor token 1, vendor token 2, weight, height, control 2 magic, control 1 close",
+    "profileWriteOpcode": "0x52 Write Command (write without response) for every profile field",
+    "controlWriteOpcode": "0x12 Write Request (write with response) for control 1 and control 2",
+    "stringTermination": "none - first name, last name and language carry no trailing NUL octet",
+    "emptyEmail": "zero-length write, not a one-octet NUL",
+    "ageWidth": "two octets, little-endian, high octet zero",
+    "vendorToken2": "single octet 0x00 - TMIW's value, resolving plan V14",
+    "statusSubscription": "no CCCD write to the status characteristic in either session; the peer notifies regardless, consistent with a bonded client whose CCCD state the server persisted",
+    "measurementSubscription": "CCCD 0x0001 (notify) written to the Treadmill Data and Training Status descriptors AFTER control 1 close, never before"
+  },
+  "expectations": "Ordering, opcodes, byte lengths and non-personal payloads are golden. Personal field values are redacted and must never be reintroduced; their structural facts (length, terminator presence) are the testable part.",
+  "privacy": "Profile field VALUES are redacted to 'redacted' and only their byte length and terminator structure is retained. Addresses, device name, absolute timestamps and unrelated host traffic are omitted. The vendor token is a vendor application constant, not personal data, and is retained.",
+  "sessions": [
+    {
+      "session": 1,
+      "caseCount": 21,
+      "cases": [
+        {
+          "relativeMs": 2098,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x005C",
+          "characteristic": "5da558dc-9cb2-11e5-8994-feff819cdc9f",
+          "step": "control 1",
+          "byteLength": 1,
+          "encoding": "octet",
+          "bytes": [
+            1
+          ]
+        },
+        {
+          "relativeMs": 2593,
+          "opcode": "NOTIFY",
+          "handle": "0x0059",
+          "characteristic": "5da551de-9cb2-11e5-8994-feff819cdc9f",
+          "step": "status",
+          "byteLength": 1,
+          "encoding": "opaque",
+          "bytes": [
+            7
+          ]
+        },
+        {
+          "relativeMs": 2597,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x003C",
+          "characteristic": "00002a8a-0000-1000-8000-00805f9b34fb",
+          "step": "first name",
+          "byteLength": 3,
+          "encoding": "utf8",
+          "value": "redacted",
+          "containsNulOctet": false,
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 2599,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x003E",
+          "characteristic": "00002a90-0000-1000-8000-00805f9b34fb",
+          "step": "last name",
+          "byteLength": 3,
+          "encoding": "utf8",
+          "value": "redacted",
+          "containsNulOctet": false,
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 2601,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0040",
+          "characteristic": "00002a87-0000-1000-8000-00805f9b34fb",
+          "step": "email",
+          "byteLength": 0,
+          "encoding": "utf8",
+          "value": "redacted",
+          "containsNulOctet": false,
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 2603,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0042",
+          "characteristic": "00002a80-0000-1000-8000-00805f9b34fb",
+          "step": "age",
+          "byteLength": 2,
+          "encoding": "uint16le",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 2606,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0046",
+          "characteristic": "00002a8c-0000-1000-8000-00805f9b34fb",
+          "step": "gender",
+          "byteLength": 1,
+          "encoding": "uint8",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 2608,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0050",
+          "characteristic": "00002aa2-0000-1000-8000-00805f9b34fb",
+          "step": "language",
+          "byteLength": 2,
+          "encoding": "utf8",
+          "bytes": [
+            101,
+            110
+          ],
+          "ascii": "en",
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 2610,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0054",
+          "characteristic": "5da54cf2-9cb2-11e5-8994-feff819cdc9f",
+          "step": "vendor token 1",
+          "byteLength": 32,
+          "encoding": "ascii-hex",
+          "bytes": [
+            56,
+            102,
+            101,
+            100,
+            97,
+            56,
+            56,
+            57,
+            49,
+            100,
+            98,
+            97,
+            52,
+            48,
+            49,
+            102,
+            56,
+            57,
+            57,
+            48,
+            48,
+            50,
+            51,
+            48,
+            55,
+            57,
+            53,
+            102,
+            48,
+            56,
+            54,
+            48
+          ],
+          "ascii": "8feda8891dba401f89900230795f0860"
+        },
+        {
+          "relativeMs": 2611,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0052",
+          "characteristic": "ce78e85e-9cb6-11e5-8994-feff819cdc9f",
+          "step": "vendor token 2",
+          "byteLength": 1,
+          "encoding": "octet",
+          "bytes": [
+            0
+          ]
+        },
+        {
+          "relativeMs": 2613,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0048",
+          "characteristic": "00002a98-0000-1000-8000-00805f9b34fb",
+          "step": "weight",
+          "byteLength": 2,
+          "encoding": "uint16le-0.005kg",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 2615,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x004A",
+          "characteristic": "00002a8e-0000-1000-8000-00805f9b34fb",
+          "step": "height",
+          "byteLength": 2,
+          "encoding": "uint16le-0.01m",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 2617,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0072",
+          "characteristic": "5da569e2-9cb2-11e5-8994-feff819cdc9f",
+          "step": "control 2",
+          "byteLength": 7,
+          "encoding": "opaque",
+          "bytes": [
+            0,
+            0,
+            0,
+            1,
+            184,
+            91,
+            93
+          ]
+        },
+        {
+          "relativeMs": 2716,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x005C",
+          "characteristic": "5da558dc-9cb2-11e5-8994-feff819cdc9f",
+          "step": "control 1",
+          "byteLength": 1,
+          "encoding": "octet",
+          "bytes": [
+            2
+          ]
+        },
+        {
+          "relativeMs": 3373,
+          "opcode": "NOTIFY",
+          "handle": "0x0059",
+          "characteristic": "5da551de-9cb2-11e5-8994-feff819cdc9f",
+          "step": "status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            4,
+            1
+          ]
+        },
+        {
+          "relativeMs": 3383,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0019",
+          "characteristic": "00002902-0000-1000-8000-00805f9b34fb",
+          "step": "CCCD of 0x2AD3 Training Status",
+          "byteLength": 2,
+          "encoding": "cccd",
+          "bytes": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 3673,
+          "opcode": "NOTIFY",
+          "handle": "0x0018",
+          "characteristic": "00002ad3-0000-1000-8000-00805f9b34fb",
+          "step": "Training Status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            14,
+            0
+          ]
+        },
+        {
+          "relativeMs": 3676,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0014",
+          "characteristic": "00002902-0000-1000-8000-00805f9b34fb",
+          "step": "CCCD of 0x2ACD Treadmill Data",
+          "byteLength": 2,
+          "encoding": "cccd",
+          "bytes": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 16093,
+          "opcode": "NOTIFY",
+          "handle": "0x0018",
+          "characteristic": "00002ad3-0000-1000-8000-00805f9b34fb",
+          "step": "Training Status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            13,
+            0
+          ]
+        },
+        {
+          "relativeMs": 16096,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0014",
+          "characteristic": "00002902-0000-1000-8000-00805f9b34fb",
+          "step": "CCCD of 0x2ACD Treadmill Data",
+          "byteLength": 2,
+          "encoding": "cccd",
+          "bytes": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 159971,
+          "opcode": "NOTIFY",
+          "handle": "0x0018",
+          "characteristic": "00002ad3-0000-1000-8000-00805f9b34fb",
+          "step": "Training Status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            15,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "session": 2,
+      "caseCount": 21,
+      "cases": [
+        {
+          "relativeMs": 391,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x005C",
+          "characteristic": "5da558dc-9cb2-11e5-8994-feff819cdc9f",
+          "step": "control 1",
+          "byteLength": 1,
+          "encoding": "octet",
+          "bytes": [
+            1
+          ]
+        },
+        {
+          "relativeMs": 765,
+          "opcode": "NOTIFY",
+          "handle": "0x0059",
+          "characteristic": "5da551de-9cb2-11e5-8994-feff819cdc9f",
+          "step": "status",
+          "byteLength": 1,
+          "encoding": "opaque",
+          "bytes": [
+            7
+          ]
+        },
+        {
+          "relativeMs": 767,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x003C",
+          "characteristic": "00002a8a-0000-1000-8000-00805f9b34fb",
+          "step": "first name",
+          "byteLength": 3,
+          "encoding": "utf8",
+          "value": "redacted",
+          "containsNulOctet": false,
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 769,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x003E",
+          "characteristic": "00002a90-0000-1000-8000-00805f9b34fb",
+          "step": "last name",
+          "byteLength": 3,
+          "encoding": "utf8",
+          "value": "redacted",
+          "containsNulOctet": false,
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 771,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0040",
+          "characteristic": "00002a87-0000-1000-8000-00805f9b34fb",
+          "step": "email",
+          "byteLength": 0,
+          "encoding": "utf8",
+          "value": "redacted",
+          "containsNulOctet": false,
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 773,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0042",
+          "characteristic": "00002a80-0000-1000-8000-00805f9b34fb",
+          "step": "age",
+          "byteLength": 2,
+          "encoding": "uint16le",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 775,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0046",
+          "characteristic": "00002a8c-0000-1000-8000-00805f9b34fb",
+          "step": "gender",
+          "byteLength": 1,
+          "encoding": "uint8",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 777,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0050",
+          "characteristic": "00002aa2-0000-1000-8000-00805f9b34fb",
+          "step": "language",
+          "byteLength": 2,
+          "encoding": "utf8",
+          "bytes": [
+            101,
+            110
+          ],
+          "ascii": "en",
+          "trailingNulTerminator": false
+        },
+        {
+          "relativeMs": 779,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0054",
+          "characteristic": "5da54cf2-9cb2-11e5-8994-feff819cdc9f",
+          "step": "vendor token 1",
+          "byteLength": 32,
+          "encoding": "ascii-hex",
+          "bytes": [
+            56,
+            102,
+            101,
+            100,
+            97,
+            56,
+            56,
+            57,
+            49,
+            100,
+            98,
+            97,
+            52,
+            48,
+            49,
+            102,
+            56,
+            57,
+            57,
+            48,
+            48,
+            50,
+            51,
+            48,
+            55,
+            57,
+            53,
+            102,
+            48,
+            56,
+            54,
+            48
+          ],
+          "ascii": "8feda8891dba401f89900230795f0860"
+        },
+        {
+          "relativeMs": 781,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0052",
+          "characteristic": "ce78e85e-9cb6-11e5-8994-feff819cdc9f",
+          "step": "vendor token 2",
+          "byteLength": 1,
+          "encoding": "octet",
+          "bytes": [
+            0
+          ]
+        },
+        {
+          "relativeMs": 783,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x0048",
+          "characteristic": "00002a98-0000-1000-8000-00805f9b34fb",
+          "step": "weight",
+          "byteLength": 2,
+          "encoding": "uint16le-0.005kg",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 786,
+          "opcode": "WRITE_COMMAND",
+          "handle": "0x004A",
+          "characteristic": "00002a8e-0000-1000-8000-00805f9b34fb",
+          "step": "height",
+          "byteLength": 2,
+          "encoding": "uint16le-0.01m",
+          "value": "redacted"
+        },
+        {
+          "relativeMs": 788,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0072",
+          "characteristic": "5da569e2-9cb2-11e5-8994-feff819cdc9f",
+          "step": "control 2",
+          "byteLength": 7,
+          "encoding": "opaque",
+          "bytes": [
+            0,
+            0,
+            0,
+            1,
+            184,
+            91,
+            93
+          ]
+        },
+        {
+          "relativeMs": 947,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x005C",
+          "characteristic": "5da558dc-9cb2-11e5-8994-feff819cdc9f",
+          "step": "control 1",
+          "byteLength": 1,
+          "encoding": "octet",
+          "bytes": [
+            2
+          ]
+        },
+        {
+          "relativeMs": 1364,
+          "opcode": "NOTIFY",
+          "handle": "0x0059",
+          "characteristic": "5da551de-9cb2-11e5-8994-feff819cdc9f",
+          "step": "status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            4,
+            1
+          ]
+        },
+        {
+          "relativeMs": 1369,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0019",
+          "characteristic": "00002902-0000-1000-8000-00805f9b34fb",
+          "step": "CCCD of 0x2AD3 Training Status",
+          "byteLength": 2,
+          "encoding": "cccd",
+          "bytes": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 1664,
+          "opcode": "NOTIFY",
+          "handle": "0x0018",
+          "characteristic": "00002ad3-0000-1000-8000-00805f9b34fb",
+          "step": "Training Status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            14,
+            0
+          ]
+        },
+        {
+          "relativeMs": 1666,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0014",
+          "characteristic": "00002902-0000-1000-8000-00805f9b34fb",
+          "step": "CCCD of 0x2ACD Treadmill Data",
+          "byteLength": 2,
+          "encoding": "cccd",
+          "bytes": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 10367,
+          "opcode": "NOTIFY",
+          "handle": "0x0018",
+          "characteristic": "00002ad3-0000-1000-8000-00805f9b34fb",
+          "step": "Training Status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            13,
+            0
+          ]
+        },
+        {
+          "relativeMs": 10373,
+          "opcode": "WRITE_REQUEST",
+          "handle": "0x0014",
+          "characteristic": "00002902-0000-1000-8000-00805f9b34fb",
+          "step": "CCCD of 0x2ACD Treadmill Data",
+          "byteLength": 2,
+          "encoding": "cccd",
+          "bytes": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 95384,
+          "opcode": "NOTIFY",
+          "handle": "0x0018",
+          "characteristic": "00002ad3-0000-1000-8000-00805f9b34fb",
+          "step": "Training Status",
+          "byteLength": 2,
+          "encoding": "opaque",
+          "bytes": [
+            15,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

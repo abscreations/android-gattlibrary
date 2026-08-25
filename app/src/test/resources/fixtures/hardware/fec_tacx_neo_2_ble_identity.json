@@ -1,0 +1,480 @@
+{
+  "schemaVersion": 1,
+  "model": "Tacx Neo 2",
+  "source": "QZ issue attachments; physical Android HCI captures of one Tacx Neo 2",
+  "client": "qdomyos-zwift (QZ), attributed by the submitter and consistent with the framing defect recorded below; not confirmed from the capture itself",
+  "acquisition": "sanitized-hci-extraction",
+  "extracted": "2026-08-25",
+  "evidenceTier": "upstream hardware-observed evidence on one unit of unknown firmware; not FitBridge tier H",
+  "sources": [
+    {
+      "sourceFile": "neo2btsnoop_hci.log",
+      "sourceSha256": "c6fe1de70a683737f1e764c6f3ca6a3ce77d94f63d6d2cd9a369a297eaf9780d",
+      "session": 1
+    },
+    {
+      "sourceFile": "neo2btsnoop_hci1.log",
+      "sourceSha256": "2f5a10cc0f1469a4b0370a5d33728ad8d5cc35ddf0dd5895a03483a501b02f32",
+      "session": 2
+    }
+  ],
+  "family": "ant.fec-over-ble.tacx-neo-2.ble-identity",
+  "why": [
+    "The existing fec_tacx_neo_2 corpus is a QZ debug-text notification extraction and carries no",
+    "advertising or GATT structure at all. These HCI captures supply both, byte-identical across",
+    "two sessions two days apart on the same unit.",
+    "Its load-bearing use is negative: it establishes that the Neo 2 is a DIFFERENT BLE identity",
+    "from the legacy Neo the TACX_NEO simulator persona reproduces, not a variant of it."
+  ],
+  "advertising": {
+    "addressType": "random (static)",
+    "addressOmitted": true,
+    "advIndObservations": 1035,
+    "scanResponseObservations": 978,
+    "identicalAcrossAllObservations": true,
+    "advInd": {
+      "eventType": "ADV_IND (connectable undirected)",
+      "rawHex": "020106110954616378204e656f2032203930303033",
+      "structures": [
+        {
+          "length": 2,
+          "type": "0x01",
+          "name": "Flags",
+          "bytes": [
+            6
+          ],
+          "decoded": "LE General Discoverable Mode + BR/EDR Not Supported"
+        },
+        {
+          "length": 17,
+          "type": "0x09",
+          "name": "Complete Local Name",
+          "text": "Tacx Neo 2 90003",
+          "suffixSubstituted": true
+        }
+      ]
+    },
+    "scanResponse": {
+      "eventType": "SCAN_RSP",
+      "rawHex": "031980040703181816180a1811079ecadc240ee5a9e093f3a3b5c1fe406e",
+      "structures": [
+        {
+          "length": 3,
+          "type": "0x19",
+          "name": "Appearance",
+          "value": "0x0480",
+          "decoded": "Generic Cycling"
+        },
+        {
+          "length": 7,
+          "type": "0x03",
+          "name": "Complete List of 16-bit Service UUIDs",
+          "uuids": [
+            "00001818-0000-1000-8000-00805f9b34fb",
+            "00001816-0000-1000-8000-00805f9b34fb",
+            "0000180a-0000-1000-8000-00805f9b34fb"
+          ]
+        },
+        {
+          "length": 17,
+          "type": "0x07",
+          "name": "Complete List of 128-bit Service UUIDs",
+          "uuids": [
+            "6e40fec1-b5a3-f393-e0a9-e50e24dcca9e"
+          ]
+        }
+      ]
+    },
+    "noFitnessMachineService": true,
+    "noManufacturerSpecificData": true,
+    "noServiceData": true,
+    "appearanceCaveat": "Android's public legacy advertiser exposes no GAP Appearance setter, so 0x0480 can be pinned in an advertising plan but not emitted - the same limitation already recorded for the legacy Neo identity."
+  },
+  "gatt": {
+    "discoveryPerformedInBothSessions": true,
+    "serviceCount": 9,
+    "serviceDiscoveryOrder": [
+      "00001800-0000-1000-8000-00805f9b34fb",
+      "00001801-0000-1000-8000-00805f9b34fb",
+      "00001816-0000-1000-8000-00805f9b34fb",
+      "00001818-0000-1000-8000-00805f9b34fb",
+      "6e40fec1-b5a3-f393-e0a9-e50e24dcca9e",
+      "0000fe59-0000-1000-8000-00805f9b34fb",
+      "0000180a-0000-1000-8000-00805f9b34fb",
+      "cf285001-00db-15a1-0e3f-ffa5794c3719",
+      "fa1c030e-52d1-2062-0777-bc61f0b8e27b"
+    ],
+    "services": [
+      {
+        "startHandle": "0x0001",
+        "endHandle": "0x0009",
+        "uuid": "00001800-0000-1000-8000-00805f9b34fb",
+        "characteristicCount": 4,
+        "characteristics": [
+          {
+            "declarationHandle": "0x0002",
+            "valueHandle": "0x0003",
+            "uuid": "00002a00-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read",
+              "write"
+            ],
+            "propertiesOctet": "0x0A",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0004",
+            "valueHandle": "0x0005",
+            "uuid": "00002a01-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0006",
+            "valueHandle": "0x0007",
+            "uuid": "00002a04-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0008",
+            "valueHandle": "0x0009",
+            "uuid": "00002aa6-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          }
+        ]
+      },
+      {
+        "startHandle": "0x000A",
+        "endHandle": "0x000D",
+        "uuid": "00001801-0000-1000-8000-00805f9b34fb",
+        "characteristicCount": 1,
+        "characteristics": [
+          {
+            "declarationHandle": "0x000B",
+            "valueHandle": "0x000C",
+            "uuid": "00002a05-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "indicate"
+            ],
+            "propertiesOctet": "0x20",
+            "hasCccd": true,
+            "cccdHandle": "0x000D"
+          }
+        ]
+      },
+      {
+        "startHandle": "0x000E",
+        "endHandle": "0x0018",
+        "uuid": "00001816-0000-1000-8000-00805f9b34fb",
+        "characteristicCount": 4,
+        "characteristics": [
+          {
+            "declarationHandle": "0x000F",
+            "valueHandle": "0x0010",
+            "uuid": "00002a5b-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "notify"
+            ],
+            "propertiesOctet": "0x10",
+            "hasCccd": true,
+            "cccdHandle": "0x0011"
+          },
+          {
+            "declarationHandle": "0x0012",
+            "valueHandle": "0x0013",
+            "uuid": "00002a5c-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0014",
+            "valueHandle": "0x0015",
+            "uuid": "00002a5d-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0016",
+            "valueHandle": "0x0017",
+            "uuid": "00002a55-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "write",
+              "indicate"
+            ],
+            "propertiesOctet": "0x28",
+            "hasCccd": true,
+            "cccdHandle": "0x0018"
+          }
+        ]
+      },
+      {
+        "startHandle": "0x0019",
+        "endHandle": "0x0026",
+        "uuid": "00001818-0000-1000-8000-00805f9b34fb",
+        "characteristicCount": 5,
+        "characteristics": [
+          {
+            "declarationHandle": "0x001A",
+            "valueHandle": "0x001B",
+            "uuid": "00002a63-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "notify"
+            ],
+            "propertiesOctet": "0x10",
+            "hasCccd": true,
+            "cccdHandle": "0x001C"
+          },
+          {
+            "declarationHandle": "0x001D",
+            "valueHandle": "0x001E",
+            "uuid": "00002a65-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x001F",
+            "valueHandle": "0x0020",
+            "uuid": "00002a5d-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0021",
+            "valueHandle": "0x0022",
+            "uuid": "00002a64-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "notify"
+            ],
+            "propertiesOctet": "0x10",
+            "hasCccd": true,
+            "cccdHandle": "0x0023"
+          },
+          {
+            "declarationHandle": "0x0024",
+            "valueHandle": "0x0025",
+            "uuid": "00002a66-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "write",
+              "indicate"
+            ],
+            "propertiesOctet": "0x28",
+            "hasCccd": true,
+            "cccdHandle": "0x0026"
+          }
+        ]
+      },
+      {
+        "startHandle": "0x0027",
+        "endHandle": "0x002C",
+        "uuid": "6e40fec1-b5a3-f393-e0a9-e50e24dcca9e",
+        "characteristicCount": 2,
+        "characteristics": [
+          {
+            "declarationHandle": "0x0028",
+            "valueHandle": "0x0029",
+            "uuid": "6e40fec2-b5a3-f393-e0a9-e50e24dcca9e",
+            "properties": [
+              "notify"
+            ],
+            "propertiesOctet": "0x10",
+            "hasCccd": true,
+            "cccdHandle": "0x002A"
+          },
+          {
+            "declarationHandle": "0x002B",
+            "valueHandle": "0x002C",
+            "uuid": "6e40fec3-b5a3-f393-e0a9-e50e24dcca9e",
+            "properties": [
+              "writeWithoutResponse",
+              "write"
+            ],
+            "propertiesOctet": "0x0C",
+            "hasCccd": false
+          }
+        ]
+      },
+      {
+        "startHandle": "0x002D",
+        "endHandle": "0x0030",
+        "uuid": "0000fe59-0000-1000-8000-00805f9b34fb",
+        "characteristicCount": 1,
+        "characteristics": [
+          {
+            "declarationHandle": "0x002E",
+            "valueHandle": "0x002F",
+            "uuid": "8ec90003-f315-4f60-9fb8-838830daea50",
+            "properties": [
+              "write",
+              "indicate"
+            ],
+            "propertiesOctet": "0x28",
+            "hasCccd": true,
+            "cccdHandle": "0x0030"
+          }
+        ]
+      },
+      {
+        "startHandle": "0x0031",
+        "endHandle": "0x003B",
+        "uuid": "0000180a-0000-1000-8000-00805f9b34fb",
+        "characteristicCount": 5,
+        "characteristics": [
+          {
+            "declarationHandle": "0x0032",
+            "valueHandle": "0x0033",
+            "uuid": "00002a29-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0034",
+            "valueHandle": "0x0035",
+            "uuid": "00002a24-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0036",
+            "valueHandle": "0x0037",
+            "uuid": "00002a25-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0038",
+            "valueHandle": "0x0039",
+            "uuid": "00002a27-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x003A",
+            "valueHandle": "0x003B",
+            "uuid": "00002a26-0000-1000-8000-00805f9b34fb",
+            "properties": [
+              "read"
+            ],
+            "propertiesOctet": "0x02",
+            "hasCccd": false
+          }
+        ]
+      },
+      {
+        "startHandle": "0x003C",
+        "endHandle": "0x0041",
+        "uuid": "cf285001-00db-15a1-0e3f-ffa5794c3719",
+        "characteristicCount": 2,
+        "characteristics": [
+          {
+            "declarationHandle": "0x003D",
+            "valueHandle": "0x003E",
+            "uuid": "cf285002-00db-15a1-0e3f-ffa5794c3719",
+            "properties": [
+              "writeWithoutResponse",
+              "write"
+            ],
+            "propertiesOctet": "0x0C",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x003F",
+            "valueHandle": "0x0040",
+            "uuid": "cf285003-00db-15a1-0e3f-ffa5794c3719",
+            "properties": [
+              "notify"
+            ],
+            "propertiesOctet": "0x10",
+            "hasCccd": true,
+            "cccdHandle": "0x0041"
+          }
+        ]
+      },
+      {
+        "startHandle": "0x0042",
+        "endHandle": "0xFFFF",
+        "uuid": "fa1c030e-52d1-2062-0777-bc61f0b8e27b",
+        "characteristicCount": 2,
+        "characteristics": [
+          {
+            "declarationHandle": "0x0043",
+            "valueHandle": "0x0044",
+            "uuid": "fa1c0302-52d1-2062-0777-bc61f0b8e27b",
+            "properties": [
+              "writeWithoutResponse",
+              "write"
+            ],
+            "propertiesOctet": "0x0C",
+            "hasCccd": false
+          },
+          {
+            "declarationHandle": "0x0045",
+            "valueHandle": "0x0046",
+            "uuid": "fa1c0301-52d1-2062-0777-bc61f0b8e27b",
+            "properties": [
+              "notify"
+            ],
+            "propertiesOctet": "0x10",
+            "hasCccd": true,
+            "cccdHandle": "0x0047"
+          }
+        ]
+      }
+    ]
+  },
+  "assertions": {
+    "differsFromLegacyNeo": {
+      "absentHere": [
+        "669aa501-0c08-969e-e211-86ad5062675f"
+      ],
+      "presentOnlyHere": [
+        "0000fe59-0000-1000-8000-00805f9b34fb",
+        "cf285001-00db-15a1-0e3f-ffa5794c3719",
+        "fa1c030e-52d1-2062-0777-bc61f0b8e27b",
+        "00002a55-0000-1000-8000-00805f9b34fb"
+      ],
+      "note": "The legacy Neo exposes 669AA501 with characteristic AC01 and no DFU or cf28/fa1c services; its CSC has no SC Control Point. A Neo 2 simulator identity is therefore a new identity, not a parameter change to TACX_NEO."
+    },
+    "noFitnessMachineService": true,
+    "deviceInformationValuesObserved": false,
+    "deviceInformationNote": "0x180A is present with all five characteristics readable (0x2A29, 0x2A24, 0x2A25, 0x2A27, 0x2A26) and the client issued ZERO Read Requests in either session. Manufacturer name, model number, serial, hardware revision and firmware revision are UNKNOWN for this unit and must not be carried over from the legacy Neo capture.",
+    "featureValuesObserved": false,
+    "featureNote": "CP Feature (0x2A65), CSC Feature (0x2A5C) and Sensor Location (0x2A5D) are present and readable and were likewise never read. Their values are unknown.",
+    "simulatorIdentityBlocked": "This fixture is sufficient to reproduce the Neo 2's advertisement and GATT SHAPE. It is NOT sufficient to create a simulator identity, because a persona must also serve DIS and feature READ values and this evidence supplies none. Resolve with one nRF Connect session reading 0x2A29/0x2A24/0x2A25/0x2A27/0x2A26/0x2A65/0x2A5C/0x2A5D against the same unit."
+  },
+  "privacy": "Advertising structure, GATT structure and handle layout only. The Bluetooth address is omitted; the physical device-name serial suffix is replaced with synthetic 90003 and flagged; no characteristic values, absolute timestamps or unrelated traffic."
+}

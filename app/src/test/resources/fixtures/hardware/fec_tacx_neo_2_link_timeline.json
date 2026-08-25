@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "model": "Tacx Neo 2",
+  "source": "QZ issue attachments; physical Android HCI captures of one Tacx Neo 2",
+  "client": "qdomyos-zwift (QZ), attributed by the submitter; not confirmed from the capture itself",
+  "acquisition": "sanitized-hci-extraction",
+  "extracted": "2026-08-25",
+  "evidenceTier": "upstream hardware-observed evidence on one unit of unknown firmware; not FitBridge tier H",
+  "sources": [
+    {
+      "sourceFile": "neo2btsnoop_hci.log",
+      "sourceSha256": "c6fe1de70a683737f1e764c6f3ca6a3ce77d94f63d6d2cd9a369a297eaf9780d",
+      "session": 1
+    },
+    {
+      "sourceFile": "neo2btsnoop_hci1.log",
+      "sourceSha256": "2f5a10cc0f1469a4b0370a5d33728ad8d5cc35ddf0dd5895a03483a501b02f32",
+      "session": 2
+    }
+  ],
+  "family": "ant.fec-over-ble.tacx-neo-2.link-timeline",
+  "why": [
+    "Plan section 11 wants observed timing in a hardware evidence record and Phase 9 has none",
+    "archived for the Neo 2. It also records the single most consequential structural fact about",
+    "these captures, which is an absence - see subscriptions."
+  ],
+  "sessions": [
+    {
+      "session": 1,
+      "sourceFile": "neo2btsnoop_hci.log",
+      "serviceDiscoveryPerformed": true,
+      "connectionIntervalsMs": [
+        7.5,
+        48.75,
+        60.0
+      ],
+      "peripheralLatency": 0,
+      "supervisionTimeoutMs": 4000,
+      "cccdWrites": [
+        {
+          "relativeMs": 1513,
+          "handle": "0x0011",
+          "value": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 1532,
+          "handle": "0x001C",
+          "value": [
+            1,
+            0
+          ]
+        }
+      ],
+      "connectToFirstMeasurementMs": 1791,
+      "sessionEnd": {
+        "relativeMs": null,
+        "reason": "capture ends while still connected"
+      },
+      "mode": "track resistance / SIM"
+    },
+    {
+      "session": 2,
+      "sourceFile": "neo2btsnoop_hci1.log",
+      "serviceDiscoveryPerformed": true,
+      "connectionIntervalsMs": [
+        7.5,
+        48.75,
+        60.0
+      ],
+      "peripheralLatency": 0,
+      "supervisionTimeoutMs": 4000,
+      "cccdWrites": [
+        {
+          "relativeMs": 1476,
+          "handle": "0x0011",
+          "value": [
+            1,
+            0
+          ]
+        },
+        {
+          "relativeMs": 1497,
+          "handle": "0x001C",
+          "value": [
+            1,
+            0
+          ]
+        }
+      ],
+      "connectToFirstMeasurementMs": 1634,
+      "sessionEnd": {
+        "relativeMs": 289754,
+        "reason": "0x00"
+      },
+      "mode": "target power / ERG"
+    }
+  ],
+  "subscriptions": {
+    "armed": [
+      "00002a63-0000-1000-8000-00805f9b34fb (CPS)",
+      "00002a5b-0000-1000-8000-00805f9b34fb (CSC)"
+    ],
+    "notArmed": [
+      "6e40fec2-b5a3-f393-e0a9-e50e24dcca9e (FE-C notify)"
+    ],
+    "note": "The client wrote 363 FE-C CONTROL frames without ever subscribing to the FE-C notify characteristic, so it issued commands it could not observe the response to, and read its telemetry from the standard CPS/CSC services instead. Consequence for this corpus: it contains NO FE-C telemetry frames. It is the exact complement of fec_tacx_neo_2.json, which contains FE-C telemetry and no control."
+  },
+  "readRequests": {
+    "count": 0,
+    "note": "Zero ATT Read Requests across both sessions. Every readable value on the device - DIS strings, CP Feature, CSC Feature, Sensor Location - is therefore unobserved. This is what blocks a Neo 2 simulator identity."
+  },
+  "privacy": "Link parameters, subscription structure and session-relative timing only. No addresses, device name, absolute timestamps or payloads."
+}

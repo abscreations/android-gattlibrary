@@ -1,0 +1,167 @@
+{
+  "family": "vendor.life_fitness.link_timeline.qz_issue_1018",
+  "source": "QZ issue #1018 physical Life Fitness treadmill Android HCI capture",
+  "sourceUrl": "https://github.com/cagnulein/qdomyos-zwift/issues/1018",
+  "captureFile": "btsnoop_hci.5.log",
+  "captureSha256": "e1cb4ad709edaa9cbfddb699e66740dc75a4e3f00b3a19e4a719ce7098603236",
+  "extracted": "2026-08-25",
+  "acquisition": "sanitized-hci-extraction",
+  "evidenceTier": "upstream hardware-observed evidence; not FitBridge tier H",
+  "vendor": "Life Fitness",
+  "persona": "treadmill",
+  "why": [
+    "Plan section 11 requires observed timing as part of a hardware evidence record, and Phase 6 had",
+    "none archived. It also indexes the continuity hazards inside the existing measurement corpus",
+    "(life_fitness_issue_1018_ftms_treadmill_capture.json) by sequence, so a fusion or parser test",
+    "can reach them by name instead of by eyeballing 221 packets.",
+    "Sequence numbers here are the same 1-based numbering that fixture uses."
+  ],
+  "sessionCount": 2,
+  "sessions": [
+    {
+      "session": 1,
+      "firstSequence": 1,
+      "lastSequence": 139,
+      "measurementCount": 139,
+      "firstElapsedTimeSeconds": 1,
+      "lastElapsedTimeSeconds": 138,
+      "connectionIntervalsMs": [
+        60.0,
+        7.5,
+        60.0
+      ],
+      "supervisionTimeoutMs": 5000,
+      "peripheralLatency": 0,
+      "mtuExchange": [
+        {
+          "pdu": "REQ",
+          "fromClient": false,
+          "mtu": 672
+        },
+        {
+          "pdu": "RSP",
+          "fromClient": true,
+          "mtu": 517
+        },
+        {
+          "pdu": "REQ",
+          "fromClient": true,
+          "mtu": 517
+        },
+        {
+          "pdu": "RSP",
+          "fromClient": false,
+          "mtu": 672
+        }
+      ],
+      "connectToFirstMeasurementMs": 16696,
+      "disconnectReason": "0x00",
+      "sessionDurationMs": 162790
+    },
+    {
+      "session": 2,
+      "firstSequence": 140,
+      "lastSequence": 221,
+      "measurementCount": 82,
+      "firstElapsedTimeSeconds": 1,
+      "lastElapsedTimeSeconds": 81,
+      "connectionIntervalsMs": [
+        60.0
+      ],
+      "supervisionTimeoutMs": 5000,
+      "peripheralLatency": 0,
+      "mtuExchange": [
+        {
+          "pdu": "REQ",
+          "fromClient": false,
+          "mtu": 672
+        },
+        {
+          "pdu": "RSP",
+          "fromClient": true,
+          "mtu": 517
+        },
+        {
+          "pdu": "REQ",
+          "fromClient": true,
+          "mtu": 517
+        },
+        {
+          "pdu": "RSP",
+          "fromClient": false,
+          "mtu": 672
+        }
+      ],
+      "connectToFirstMeasurementMs": 11208,
+      "disconnectReason": "0x00",
+      "sessionDurationMs": 97964
+    }
+  ],
+  "notificationCadence": {
+    "observedMinMs": 419,
+    "observedMaxMs": 1142,
+    "observedMedianMs": 1019,
+    "note": "nominally 1 Hz and not actually 1 Hz. A freshness or staleness bound derived from an assumed exact 1000 ms would false-positive on this machine."
+  },
+  "continuityHazards": {
+    "duplicateNotifications": [
+      {
+        "kind": "DUPLICATE_NOTIFICATION",
+        "session": 1,
+        "sequence": 139,
+        "previousSequence": 138,
+        "deltaMs": 419,
+        "note": "byte-identical repeat of the previous notification, including the elapsed-time counter. Naive cumulative accumulation double-counts distance and energy here.",
+        "packet": [
+          158,
+          4,
+          49,
+          1,
+          97,
+          1,
+          134,
+          0,
+          0,
+          5,
+          0,
+          255,
+          127,
+          30,
+          0,
+          255,
+          127,
+          11,
+          0,
+          255,
+          255,
+          255,
+          138,
+          0
+        ]
+      }
+    ],
+    "flagTransitions": [
+      {
+        "session": 1,
+        "sequence": 14,
+        "fromFlags": "0x049E",
+        "toFlags": "0x059E",
+        "fromLength": 24,
+        "toLength": 25,
+        "note": "flag word changes mid-stream, so field offsets shift between consecutive notifications on the same characteristic"
+      },
+      {
+        "session": 1,
+        "sequence": 37,
+        "fromFlags": "0x059E",
+        "toFlags": "0x049E",
+        "fromLength": 25,
+        "toLength": 24,
+        "note": "flag word changes mid-stream, so field offsets shift between consecutive notifications on the same characteristic"
+      }
+    ],
+    "elapsedTimeRestart": "Session 2 restarts the elapsed-time counter at 1 while total distance and expended energy also restart at 0. A cumulative-metric carry across a reconnect must treat the counter reset as a new session rather than as a rollover.",
+    "sentinelValues": "Ramp angle is 0x7FFF and negative elevation gain is 0x7FFF in every packet; energy per hour is 0xFFFF and energy per minute is 0xFF until the machine has a value. These are the SIG not-available sentinels and must be surfaced as absent, never as 3276.7 degrees or 65535 kcal/h."
+  },
+  "privacy": "Timing, link parameters and structural anomaly indices only. No addresses, device name, absolute timestamps or profile data. The one retained packet is FTMS Treadmill Data, which carries no identifying values."
+}

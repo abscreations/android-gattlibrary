@@ -1,0 +1,651 @@
+{
+  "family": "vendor.life_fitness.gatt_inventory.qz_issue_1018",
+  "source": "QZ issue #1018 physical Life Fitness treadmill Android HCI capture",
+  "sourceUrl": "https://github.com/cagnulein/qdomyos-zwift/issues/1018",
+  "captureFile": "btsnoop_hci.5.log",
+  "captureSha256": "e1cb4ad709edaa9cbfddb699e66740dc75a4e3f00b3a19e4a719ce7098603236",
+  "extracted": "2026-08-25",
+  "acquisition": "sanitized-hci-extraction",
+  "extractionFilter": "cid == 0x0004 && opcode in (0x11, 0x09, 0x05) - the discovery responses",
+  "evidenceTier": "upstream hardware-observed evidence; not FitBridge tier H",
+  "vendor": "Life Fitness",
+  "persona": "treadmill",
+  "why": [
+    "The setup-gated standard-FTMS Life Fitness variant had no archived GATT inventory; only the",
+    "Discover SE variant (issue #3374) did. This is the discovery the #1018 client actually",
+    "performed, reassembled from the capture's ATT layer.",
+    "Its load-bearing fact is an ABSENCE: service 0x1826 contains no 0x2AD9 Fitness Machine Control",
+    "Point and none of 0x2AD4-0x2AD8 supported-range characteristics. Plan section 6c.0 keeps the",
+    "Life Fitness control path unreachable on the untestable-family rule; this is the first direct",
+    "observation that the machine offers no control surface to reach."
+  ],
+  "assertions": {
+    "ftmsServicePresent": true,
+    "ftmsCharacteristics": [
+      "00002acd-0000-1000-8000-00805f9b34fb",
+      "00002acc-0000-1000-8000-00805f9b34fb",
+      "00002ad3-0000-1000-8000-00805f9b34fb",
+      "00002ada-0000-1000-8000-00805f9b34fb"
+    ],
+    "ftmsControlPointPresent": false,
+    "ftmsSupportedRangeCharacteristicsPresent": false,
+    "ftmsFeatureReadable": true,
+    "ftmsFeatureValueObserved": false,
+    "ftmsFeatureNote": "0x2ACC is present at handle 0x0016 with the READ property, but the client never issued a Read Request against it in either session. The feature bitfield for this machine is UNKNOWN and must not be inferred from this fixture.",
+    "lifeFitnessControlServicePresent": true,
+    "lifeFitnessUserServicePresent": true,
+    "userDataCharacteristicsLiveUnderVendorService": "The SIG User Data characteristics (0x2A8A, 0x2A90, 0x2A87, 0x2A80, 0x2A8C, 0x2AA2, 0x2A98, 0x2A8E and others) are children of fb694b91-f49e-4597-8306-171bba78f846, NOT of a 0x181C User Data service. Targeting them by UUID alone without naming the parent service would be a lookup this machine does not satisfy."
+  },
+  "privacy": "Structure only - service and characteristic UUIDs, handles, properties and descriptor presence. No characteristic values, addresses, device name or absolute timestamps.",
+  "serviceCount": 9,
+  "services": [
+    {
+      "startHandle": "0x0001",
+      "endHandle": "0x0007",
+      "uuid": "00001800-0000-1000-8000-00805f9b34fb",
+      "characteristicCount": 3,
+      "characteristics": [
+        {
+          "declarationHandle": "0x0002",
+          "valueHandle": "0x0003",
+          "uuid": "00002a00-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0004",
+          "valueHandle": "0x0005",
+          "uuid": "00002a01-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0006",
+          "valueHandle": "0x0007",
+          "uuid": "00002a02-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        }
+      ]
+    },
+    {
+      "startHandle": "0x0008",
+      "endHandle": "0x000B",
+      "uuid": "00001801-0000-1000-8000-00805f9b34fb",
+      "characteristicCount": 1,
+      "characteristics": [
+        {
+          "declarationHandle": "0x0009",
+          "valueHandle": "0x000A",
+          "uuid": "00002a05-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "indicate"
+          ],
+          "propertiesOctet": "0x20",
+          "hasCccd": true,
+          "cccdHandle": "0x000B"
+        }
+      ]
+    },
+    {
+      "startHandle": "0x000C",
+      "endHandle": "0x0010",
+      "uuid": "0000181e-0000-1000-8000-00805f9b34fb",
+      "characteristicCount": 2,
+      "characteristics": [
+        {
+          "declarationHandle": "0x000D",
+          "valueHandle": "0x000E",
+          "uuid": "00002aa4-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0C",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x000F",
+          "valueHandle": "0x0010",
+          "uuid": "00002aa5-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        }
+      ]
+    },
+    {
+      "startHandle": "0x0011",
+      "endHandle": "0x001C",
+      "uuid": "00001826-0000-1000-8000-00805f9b34fb",
+      "characteristicCount": 4,
+      "characteristics": [
+        {
+          "declarationHandle": "0x0012",
+          "valueHandle": "0x0013",
+          "uuid": "00002acd-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "notify"
+          ],
+          "propertiesOctet": "0x10",
+          "hasCccd": true,
+          "cccdHandle": "0x0014"
+        },
+        {
+          "declarationHandle": "0x0015",
+          "valueHandle": "0x0016",
+          "uuid": "00002acc-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0017",
+          "valueHandle": "0x0018",
+          "uuid": "00002ad3-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "notify"
+          ],
+          "propertiesOctet": "0x12",
+          "hasCccd": true,
+          "cccdHandle": "0x0019"
+        },
+        {
+          "declarationHandle": "0x001A",
+          "valueHandle": "0x001B",
+          "uuid": "00002ada-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "notify"
+          ],
+          "propertiesOctet": "0x10",
+          "hasCccd": true,
+          "cccdHandle": "0x001C"
+        }
+      ]
+    },
+    {
+      "startHandle": "0x001D",
+      "endHandle": "0x0022",
+      "uuid": "0000fe13-0000-1000-8000-00805f9b34fb",
+      "characteristicCount": 2,
+      "characteristics": [
+        {
+          "declarationHandle": "0x001E",
+          "valueHandle": "0x001F",
+          "uuid": "00002adb-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "writeWithoutResponse"
+          ],
+          "propertiesOctet": "0x04",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0020",
+          "valueHandle": "0x0021",
+          "uuid": "00002add-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "notify"
+          ],
+          "propertiesOctet": "0x12",
+          "hasCccd": true,
+          "cccdHandle": "0x0022"
+        }
+      ]
+    },
+    {
+      "startHandle": "0x0023",
+      "endHandle": "0x002A",
+      "uuid": "0000fd00-ebae-4526-9511-8357c35d7be2",
+      "characteristicCount": 3,
+      "characteristics": [
+        {
+          "declarationHandle": "0x0024",
+          "valueHandle": "0x0025",
+          "uuid": "0000fd01-ebae-4526-9511-8357c35d7be2",
+          "properties": [
+            "writeWithoutResponse"
+          ],
+          "propertiesOctet": "0x04",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0026",
+          "valueHandle": "0x0027",
+          "uuid": "0000fd02-ebae-4526-9511-8357c35d7be2",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0028",
+          "valueHandle": "0x0029",
+          "uuid": "0000fd05-ebae-4526-9511-8357c35d7be2",
+          "properties": [
+            "write",
+            "indicate"
+          ],
+          "propertiesOctet": "0x28",
+          "hasCccd": true,
+          "cccdHandle": "0x002A"
+        }
+      ]
+    },
+    {
+      "startHandle": "0x002B",
+      "endHandle": "0x0039",
+      "uuid": "0000180a-0000-1000-8000-00805f9b34fb",
+      "characteristicCount": 7,
+      "characteristics": [
+        {
+          "declarationHandle": "0x002C",
+          "valueHandle": "0x002D",
+          "uuid": "00002a29-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x002E",
+          "valueHandle": "0x002F",
+          "uuid": "00002a24-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0030",
+          "valueHandle": "0x0031",
+          "uuid": "00002a25-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0032",
+          "valueHandle": "0x0033",
+          "uuid": "00002a27-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0034",
+          "valueHandle": "0x0035",
+          "uuid": "00002a26-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0036",
+          "valueHandle": "0x0037",
+          "uuid": "00002a28-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0038",
+          "valueHandle": "0x0039",
+          "uuid": "00002a50-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        }
+      ]
+    },
+    {
+      "startHandle": "0x003A",
+      "endHandle": "0x0054",
+      "uuid": "fb694b91-f49e-4597-8306-171bba78f846",
+      "characteristicCount": 13,
+      "characteristics": [
+        {
+          "declarationHandle": "0x003B",
+          "valueHandle": "0x003C",
+          "uuid": "00002a8a-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x003D",
+          "valueHandle": "0x003E",
+          "uuid": "00002a90-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x003F",
+          "valueHandle": "0x0040",
+          "uuid": "00002a87-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0041",
+          "valueHandle": "0x0042",
+          "uuid": "00002a80-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0043",
+          "valueHandle": "0x0044",
+          "uuid": "00002a85-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0045",
+          "valueHandle": "0x0046",
+          "uuid": "00002a8c-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0047",
+          "valueHandle": "0x0048",
+          "uuid": "00002a98-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0049",
+          "valueHandle": "0x004A",
+          "uuid": "00002a8e-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x004B",
+          "valueHandle": "0x004C",
+          "uuid": "00002a96-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x004D",
+          "valueHandle": "0x004E",
+          "uuid": "00002a91-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x004F",
+          "valueHandle": "0x0050",
+          "uuid": "00002aa2-0000-1000-8000-00805f9b34fb",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0051",
+          "valueHandle": "0x0052",
+          "uuid": "ce78e85e-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0053",
+          "valueHandle": "0x0054",
+          "uuid": "5da54cf2-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "read",
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0E",
+          "hasCccd": false
+        }
+      ]
+    },
+    {
+      "startHandle": "0x0055",
+      "endHandle": "0x0074",
+      "uuid": "fb694b90-f49e-4597-8306-171bba78f846",
+      "characteristicCount": 14,
+      "characteristics": [
+        {
+          "declarationHandle": "0x0056",
+          "valueHandle": "0x0057",
+          "uuid": "5da55aa9-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0058",
+          "valueHandle": "0x0059",
+          "uuid": "5da551de-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "notify"
+          ],
+          "propertiesOctet": "0x10",
+          "hasCccd": true,
+          "cccdHandle": "0x005A"
+        },
+        {
+          "declarationHandle": "0x005B",
+          "valueHandle": "0x005C",
+          "uuid": "5da558dc-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "write"
+          ],
+          "propertiesOctet": "0x08",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x005D",
+          "valueHandle": "0x005E",
+          "uuid": "5da552a6-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "read",
+            "write",
+            "notify"
+          ],
+          "propertiesOctet": "0x1A",
+          "hasCccd": true,
+          "cccdHandle": "0x005F"
+        },
+        {
+          "declarationHandle": "0x0060",
+          "valueHandle": "0x0061",
+          "uuid": "5da55aa8-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "notify"
+          ],
+          "propertiesOctet": "0x10",
+          "hasCccd": true,
+          "cccdHandle": "0x0062"
+        },
+        {
+          "declarationHandle": "0x0063",
+          "valueHandle": "0x0064",
+          "uuid": "ce78eca0-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0065",
+          "valueHandle": "0x0066",
+          "uuid": "ce78ef5c-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "read"
+          ],
+          "propertiesOctet": "0x02",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0067",
+          "valueHandle": "0x0068",
+          "uuid": "ce78f4e8-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0C",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0069",
+          "valueHandle": "0x006A",
+          "uuid": "ce78f164-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0C",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x006B",
+          "valueHandle": "0x006C",
+          "uuid": "ce78f330-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0C",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x006D",
+          "valueHandle": "0x006E",
+          "uuid": "ce78fb00-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0C",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x006F",
+          "valueHandle": "0x0070",
+          "uuid": "ce78fd94-9cb6-11e5-8994-feff819cdc9f",
+          "properties": [
+            "writeWithoutResponse",
+            "write"
+          ],
+          "propertiesOctet": "0x0C",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0071",
+          "valueHandle": "0x0072",
+          "uuid": "5da569e2-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "write"
+          ],
+          "propertiesOctet": "0x08",
+          "hasCccd": false
+        },
+        {
+          "declarationHandle": "0x0073",
+          "valueHandle": "0x0074",
+          "uuid": "5da56ab6-9cb2-11e5-8994-feff819cdc9f",
+          "properties": [
+            "write"
+          ],
+          "propertiesOctet": "0x08",
+          "hasCccd": false
+        }
+      ]
+    }
+  ]
+}
