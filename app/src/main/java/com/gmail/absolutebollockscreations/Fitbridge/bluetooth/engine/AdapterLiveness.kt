@@ -457,6 +457,8 @@ internal class AdapterLivenessCoordinator(
         const val CONCEPT2_ADAPTER_ID = "concept2.pm"
         const val PRECOR_ADAPTER_ID = "precor.chrono"
         const val WAHOO_KICKR_ADAPTER_ID = "wahoo.kickr.legacy"
+        const val RIDEON_ADAPTER_ID = "wahoo.kickr.rideon"
+        const val RANK_RIDEON = 90
 
         /**
          * Standard FTMS outranks the Concept2 proprietary path on a PM5 that advertises both.

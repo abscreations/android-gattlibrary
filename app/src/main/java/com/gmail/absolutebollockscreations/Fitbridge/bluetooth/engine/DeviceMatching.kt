@@ -314,6 +314,8 @@ internal class DeviceMatcherRegistry private constructor(
                 ),
                 sigDefinition("sig.cps", 0x1818, 0x2a63..0x2a63, KnownBleService.CPS, 500),
                 wahooKickrDefinition(),
+                rideOnDefinition("vendor.wahoo.rideon.original", BluetoothIds.UUID_WAHOO_RIDEON_SERVICE),
+                rideOnDefinition("vendor.wahoo.rideon.core2", BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE),
                 sigDefinition(
                     "sig.hrm",
                     0x180d,
@@ -354,6 +356,22 @@ internal class DeviceMatcherRegistry private constructor(
             machineRole = true,
             requiredEvidenceAlternatives = listOf(
                 setOf(MatchEvidenceKind.ADVERTISED_SERVICE, MatchEvidenceKind.LOCAL_NAME_PATTERN),
+                setOf(MatchEvidenceKind.GATT_SERVICE, MatchEvidenceKind.GATT_CHARACTERISTIC),
+            ),
+        )
+
+        private fun rideOnDefinition(candidateId: String, service: java.util.UUID) = MatchDefinition(
+            candidateId = candidateId,
+            serviceUuid = CanonicalUuid.fromUuid(service),
+            preference = 130,
+            localNamePatterns = listOf(Regex("^KICKR CORE", RegexOption.IGNORE_CASE)),
+            personaCharacteristicUuids = setOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX),
+            ),
+            machineRole = true,
+            requiredEvidenceAlternatives = listOf(
                 setOf(MatchEvidenceKind.GATT_SERVICE, MatchEvidenceKind.GATT_CHARACTERISTIC),
             ),
         )
