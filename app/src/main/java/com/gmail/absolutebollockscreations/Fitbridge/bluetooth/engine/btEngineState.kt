@@ -157,6 +157,8 @@ class BtEngineState : HrmStateSink {
         val supportsPower: Boolean = false,
         /** Target Setting Features bit 13. Gates the downstream `indoorBikeSimulation` claim. */
         val supportsIndoorBikeSimulation: Boolean = false,
+        /** Target Setting Features bit 14. No Supported-* Range characteristic accompanies it. */
+        val supportsWheelCircumference: Boolean = false,
 
         val speedMin: Float? = null,
         val speedMax: Float? = null,
@@ -205,6 +207,8 @@ class BtEngineState : HrmStateSink {
             supportsPower         = update.supportsPower         || old.supportsPower,
             supportsIndoorBikeSimulation =
                 update.supportsIndoorBikeSimulation || old.supportsIndoorBikeSimulation,
+            supportsWheelCircumference =
+                update.supportsWheelCircumference || old.supportsWheelCircumference,
 
             speedMin              = update.speedMin              ?: old.speedMin,
             speedMax              = update.speedMax              ?: old.speedMax,

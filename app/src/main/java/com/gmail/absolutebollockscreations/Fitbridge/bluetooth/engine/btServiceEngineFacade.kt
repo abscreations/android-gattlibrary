@@ -116,6 +116,9 @@ interface BtServiceEngineFacade {
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun setTargetPowerWatts(watts: Int): Boolean
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun setWheelCircumferenceMm(millimetres: Float): Boolean = false
+
     /**
      * FTMS `0x11` Set Indoor Bike Simulation Parameters (plan §9.5.6).
      *

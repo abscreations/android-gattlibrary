@@ -226,6 +226,24 @@ class FtmsControlPointHandler(
                 true
             }
 
+            o.SET_WHEEL_CIRCUMFERENCE -> {
+                if (!hasExactLength(op, value)) return Outcome(response(op, r.INVALID_PARAMETER))
+                val raw = u16(value, 1)
+                if (raw == 0) return Outcome(response(op, r.INVALID_PARAMETER))
+                val millimetres = raw / 10.0
+                target(
+                    op, value, sink.targetCapabilities.wheelCircumference,
+                    null,
+                    FtmsSpec.Status.WHEEL_CIRCUMFERENCE_CHANGED,
+                    rawValue = null,
+                    statusOperand = null,
+                ) {
+                    if (!sink.setWheelCircumferenceMm(millimetres)) return@target false
+                    session.acceptedTargets.wheelCircumferenceMm = millimetres
+                    true
+                }
+            }
+
             else -> Outcome(response(op, r.OPCODE_NOT_SUPPORTED))
         }
     }

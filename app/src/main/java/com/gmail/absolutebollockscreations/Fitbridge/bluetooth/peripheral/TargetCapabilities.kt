@@ -76,6 +76,7 @@ data class TargetCapabilities(
     val power: Boolean = false,
     val heartRate: Boolean = false,
     val indoorBikeSimulation: Boolean = false,
+    val wheelCircumference: Boolean = false,
     val speedRange: FtmsTargetRange? = null,
     val inclinationRange: FtmsTargetRange? = null,
     val resistanceRange: FtmsTargetRange? = null,
@@ -98,12 +99,13 @@ data class TargetCapabilities(
         if (supportsPower) bits = bits or (1 shl t.POWER)
         if (supportsHeartRate) bits = bits or (1 shl t.HEART_RATE)
         if (indoorBikeSimulation) bits = bits or (1 shl t.INDOOR_BIKE_SIMULATION)
+        if (wheelCircumference) bits = bits or (1 shl t.WHEEL_CIRCUMFERENCE)
         return bits
     }
 
     val any: Boolean
         get() = supportsSpeed || supportsInclination || supportsResistance ||
-            supportsPower || supportsHeartRate || indoorBikeSimulation
+            supportsPower || supportsHeartRate || indoorBikeSimulation || wheelCircumference
 
     companion object {
         val NONE = TargetCapabilities()
@@ -182,6 +184,7 @@ data class TargetCapabilities(
                 // characteristic to validate against — the honesty gate is the feature bit
                 // alone, which is why the upstream write is gated on the same bit.
                 indoorBikeSimulation = caps.supportsIndoorBikeSimulation,
+                wheelCircumference = caps.supportsWheelCircumference,
                 speedRange = speed,
                 inclinationRange = inclination,
                 resistanceRange = resistance,

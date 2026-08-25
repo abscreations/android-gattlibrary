@@ -60,6 +60,9 @@ internal interface MachineControlEndpoint {
     fun setTargetPowerWatts(watts: Int): Boolean
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun setWheelCircumferenceMm(millimetres: Float): Boolean
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun setIndoorBikeSimulation(
         windSpeedMps: Float,
         gradePercent: Float,
@@ -68,14 +71,35 @@ internal interface MachineControlEndpoint {
     ): Boolean
 }
 
-internal enum class MachineControlRoute { FTMS, FEC, UNAVAILABLE }
+internal enum class MachineControlRoute { FTMS, FEC, WAHOO, UNAVAILABLE }
+
+/** Exact downstream ranges approved for the legacy KICKR protocol surface. */
+internal fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
+    featuresRead = true,
+    supportsResistance = true,
+    supportsPower = true,
+    supportsIndoorBikeSimulation = true,
+    supportsWheelCircumference = true,
+    resistanceMin = 0f,
+    resistanceMax = 1_000f,
+    resistanceIncr = 1f,
+    resistanceRangeKnown = true,
+    powerMin = 0f,
+    powerMax = 2_000f,
+    powerIncr = 1f,
+    powerRangeKnown = true,
+)
 
 /** Pure selected-adapter routing decision; a half-activated FE-C link safely remains on FTMS. */
-internal fun machineControlRoute(selectedAdapterId: String?, hasFeCHandler: Boolean): MachineControlRoute =
+internal fun machineControlRoute(
+    selectedAdapterId: String?,
+    hasFeCHandler: Boolean,
+    hasWahooControl: Boolean = false,
+): MachineControlRoute =
     when {
+        selectedAdapterId == AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID && hasWahooControl ->
+            MachineControlRoute.WAHOO
         selectedAdapterId == AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID ->
-            // Phase 10.4 has a live unlock session but deliberately no downstream endpoint yet.
-            // Never leak a Wahoo-selected request into the unrelated/global FTMS control point.
             MachineControlRoute.UNAVAILABLE
         selectedAdapterId == AdapterLivenessCoordinator.FEC_ADAPTER_ID && hasFeCHandler ->
             MachineControlRoute.FEC
@@ -91,6 +115,7 @@ internal object UnavailableMachineControlEndpoint : MachineControlEndpoint {
     override fun setTargetInclinationPercent(percent: Float) = false
     override fun setTargetResistance(level: Float) = false
     override fun setTargetPowerWatts(watts: Int) = false
+    override fun setWheelCircumferenceMm(millimetres: Float) = false
     override fun setIndoorBikeSimulation(
         windSpeedMps: Float,
         gradePercent: Float,
@@ -131,6 +156,8 @@ internal class FtmsMachineControlEndpoint(private val engine: BtEngine) : Machin
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setTargetPowerWatts(watts: Int): Boolean =
         BtEngineControlPoint.setTargetPowerWatts(engine, watts)
+
+    override fun setWheelCircumferenceMm(millimetres: Float): Boolean = false
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun setIndoorBikeSimulation(
@@ -264,6 +291,8 @@ internal class FeCBleMachineControlEndpoint(
         return submit(FeCControlTarget.Erg(safeWatts.toDouble()))
     }
 
+    override fun setWheelCircumferenceMm(millimetres: Float): Boolean = false
+
     /**
      * Coalesced into one [FeCControlTarget.Sim], which the scheduler expands into page 50
      * (Wind Resistance) then page 51 (Track Resistance) on each tick — two ANT frames sent
@@ -312,5 +341,51 @@ internal class FeCBleMachineControlEndpoint(
         }
         scheduler.submit(target)
         return true
+    }
+}
+
+/** Legacy KICKR control is reachable only after this exact link's unlock completed. */
+internal class WahooKickrMachineControlEndpoint(
+    private val session: WahooKickrControlSession,
+    private val athleteMassKg: () -> Double,
+) : MachineControlEndpoint {
+    override fun requestControl(): Boolean = session.controlGranted
+    override fun startOrResume(): Boolean = session.controlGranted
+    override fun stopOrPause(): Boolean {
+        if (!session.controlGranted) return false
+        session.clearPending()
+        return true
+    }
+
+    override fun setTargetSpeedKph(kph: Float): Boolean = false
+    override fun setTargetInclinationPercent(percent: Float): Boolean = false
+
+    override fun setTargetResistance(level: Float): Boolean = session.submit(
+        WahooKickrControlTarget.Resistance((level.toDouble() / 100.0).coerceIn(0.0, 1.0)),
+    )
+
+    override fun setTargetPowerWatts(watts: Int): Boolean =
+        session.submit(WahooKickrControlTarget.Erg(watts.coerceIn(0, 2_000)))
+
+    override fun setWheelCircumferenceMm(millimetres: Float): Boolean =
+        session.submit(WahooKickrControlTarget.WheelCircumference(millimetres.toDouble()))
+
+    override fun setIndoorBikeSimulation(
+        windSpeedMps: Float,
+        gradePercent: Float,
+        rollingResistanceCoefficient: Float,
+        windResistanceCoefficient: Float,
+    ): Boolean = session.submit(
+        WahooKickrControlTarget.Simulation(
+            totalMassKg = athleteMassKg() + DEFAULT_BICYCLE_MASS_KG,
+            crr = rollingResistanceCoefficient.toDouble(),
+            cw = windResistanceCoefficient.toDouble(),
+            gradePercent = gradePercent.toDouble(),
+            windSpeedMps = windSpeedMps.toDouble(),
+        ),
+    )
+
+    private companion object {
+        const val DEFAULT_BICYCLE_MASS_KG = 10.0
     }
 }

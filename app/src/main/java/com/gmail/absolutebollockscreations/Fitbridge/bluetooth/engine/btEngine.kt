@@ -126,6 +126,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.roundToInt
 import timber.log.Timber
 import java.util.UUID
 
@@ -353,7 +354,7 @@ class BtEngine internal constructor(
                     val capabilities = if (sensorOnly) {
                         sensorOnlyProviderCapabilities()
                     } else {
-                        state.ftmsCapabilities
+                        providerMachineCapabilities()
                     }
                     if (!capabilities.isReadyForProviderAdvertising()) {
                         Timber.tag(BtEngineState.TAG).d(
@@ -1377,6 +1378,24 @@ class BtEngine internal constructor(
         )
     }
 
+    internal fun acceptWheelCircumference(millimetres: Double) {
+        val wheelMm = millimetres.roundToInt()
+        if (wheelMm !in com.gmail.absolutebollockscreations.Fitbridge.AppSettings.MIN_CSC_WHEEL_CIRCUMFERENCE_MM..
+            com.gmail.absolutebollockscreations.Fitbridge.AppSettings.MAX_CSC_WHEEL_CIRCUMFERENCE_MM
+        ) {
+            Timber.tag(BtEngineState.TAG).w(
+                "Accepted KICKR circumference %.1f mm is outside local CSC calibration bounds",
+                millimetres,
+            )
+            return
+        }
+        synchronized(cscSessionLock) {
+            val updated = cscCalibration.copy(wheelCircumferenceMm = wheelMm)
+            cscCalibration = updated
+            activeCscSession = activeCscSession?.copy(calibration = updated)
+        }
+    }
+
     internal fun cscSessionSnapshot(): CscSessionSnapshot? = activeCscSession
 
     private fun clearCscSession() = synchronized(cscSessionLock) {
@@ -1460,14 +1479,38 @@ class BtEngine internal constructor(
     private fun controlEndpoint(): MachineControlEndpoint {
         val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
         val adapterId = context?.let { state.adapterLiveness.selectedAdapterId(it.connectionId) }
-        val handler = context?.handlers?.filterIsInstance<FeCOverBleProtocolHandler>()?.firstOrNull()
-        return when (machineControlRoute(adapterId, handler != null)) {
+        val fecHandler = context?.handlers?.filterIsInstance<FeCOverBleProtocolHandler>()?.firstOrNull()
+        val wahooSession = context?.handlers
+            ?.filterIsInstance<WahooKickrProtocolHandler>()
+            ?.firstOrNull()
+            ?.controlSession
+            ?.takeIf { it.controlGranted && it.connectionId == context.connectionId }
+        return when (machineControlRoute(adapterId, fecHandler != null, wahooSession != null)) {
             MachineControlRoute.FEC ->
-                handler?.let { FeCBleMachineControlEndpoint(this, it) }
+                fecHandler?.let { FeCBleMachineControlEndpoint(this, it) }
+                    ?: UnavailableMachineControlEndpoint
+            MachineControlRoute.WAHOO ->
+                wahooSession?.let {
+                    WahooKickrMachineControlEndpoint(it) {
+                        state.lifeFitnessProfile.weightKg.toDouble()
+                    }
+                }
                     ?: UnavailableMachineControlEndpoint
             MachineControlRoute.UNAVAILABLE -> UnavailableMachineControlEndpoint
             MachineControlRoute.FTMS -> ftmsControlEndpoint
         }
+    }
+
+    internal fun providerMachineCapabilities(): BtEngineState.FtmsCapabilities {
+        val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
+            ?: return BtEngineState.FtmsCapabilities()
+        val selected = state.adapterLiveness.selectedAdapterId(context.connectionId)
+        if (selected != AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID) {
+            return state.ftmsCapabilities
+        }
+        val unlocked = context.handlers.filterIsInstance<WahooKickrProtocolHandler>()
+            .firstOrNull()?.controlSession?.controlGranted == true
+        return if (unlocked) wahooKickrProviderCapabilities() else BtEngineState.FtmsCapabilities()
     }
 
     /* ───────────────────────────── FTMS Control Point ───────────────────────────── */
@@ -1614,6 +1657,11 @@ class BtEngine internal constructor(
     override fun setTargetPowerWatts(watts: Int): Boolean =
         guardConnectPerm(op = "setTargetPowerWatts()", default = false) {
             controlEndpoint().setTargetPowerWatts(watts)
+        }
+
+    override fun setWheelCircumferenceMm(millimetres: Float): Boolean =
+        guardConnectPerm(op = "setWheelCircumferenceMm()", default = false) {
+            controlEndpoint().setWheelCircumferenceMm(millimetres)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)

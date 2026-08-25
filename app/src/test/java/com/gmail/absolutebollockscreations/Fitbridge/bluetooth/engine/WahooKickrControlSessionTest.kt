@@ -54,12 +54,14 @@ class WahooKickrControlSessionTest {
     private fun acknowledgingSession(
         transport: FakeTransport,
         outcomes: MutableList<Pair<Int, WahooKickrCommandOutcome>> = mutableListOf(),
+        acceptedCommands: MutableList<WahooKickrCommand> = mutableListOf(),
     ): WahooKickrControlSession {
         lateinit var session: WahooKickrControlSession
         session = WahooKickrControlSession(
             transport = transport,
             timing = timing,
             onOutcome = { opcode, outcome -> outcomes += opcode to outcome },
+            onCommandAccepted = { command, _ -> acceptedCommands += command },
         )
         transport.onWrite = { payload ->
             val opcode = payload[0].toInt() and 0xFF
@@ -214,5 +216,54 @@ class WahooKickrControlSessionTest {
         assertFalse(session.controlGranted)
         assertEquals(WahooKickrControlMode.NONE, session.mode)
         assertFalse(session.submit(WahooKickrControlTarget.Erg(200)))
+    }
+
+    @Test
+    fun `machine endpoint stays closed until unlock and never exposes motion targets`() {
+        val session = acknowledgingSession(FakeTransport())
+        val endpoint = WahooKickrMachineControlEndpoint(session) { 75.0 }
+
+        assertFalse(endpoint.requestControl())
+        assertFalse(endpoint.startOrResume())
+        assertFalse(endpoint.stopOrPause())
+        assertFalse(endpoint.setTargetSpeedKph(20f))
+        assertFalse(endpoint.setTargetInclinationPercent(5f))
+        assertFalse(endpoint.setTargetPowerWatts(200))
+        session.close()
+    }
+
+    @Test
+    fun `machine endpoint maps resistance erg simulation and circumference to approved commands`() = runBlocking {
+        val transport = FakeTransport()
+        val acceptedCommands = mutableListOf<WahooKickrCommand>()
+        val session = acknowledgingSession(transport, acceptedCommands = acceptedCommands)
+        val endpoint = WahooKickrMachineControlEndpoint(session) { 75.0 }
+        session.startAfterCccdReady()
+        awaitCondition { session.controlGranted }
+
+        assertTrue(endpoint.setTargetResistance(50f))
+        awaitCondition { transport.writes.size == 2 }
+        assertTrue(endpoint.setTargetPowerWatts(250))
+        awaitCondition { transport.writes.size == 3 }
+        assertTrue(endpoint.setIndoorBikeSimulation(1.5f, 4f, 0.004f, 0.51f))
+        awaitCondition { transport.writes.size == 6 }
+        assertTrue(endpoint.setWheelCircumferenceMm(2107.4f))
+        awaitCondition { transport.writes.size == 7 }
+
+        assertEquals(listOf(0x20, 0x40, 0x42, 0x43, 0x46, 0x47, 0x48),
+            transport.writes.map { it[0].toInt() and 0xFF })
+        assertEquals(
+            (WahooKickrCodec.encode(WahooKickrCommand.Resistance(0.5)) as WahooKickrEncodeResult.Encoded)
+                .bytes.toList(),
+            transport.writes[1].toList(),
+        )
+        assertEquals(
+            (WahooKickrCodec.encode(WahooKickrCommand.Simulation(85.0, 0.004, 0.51)) as
+                WahooKickrEncodeResult.Encoded).bytes.toList(),
+            transport.writes[3].toList(),
+        )
+        assertTrue(acceptedCommands.last() is WahooKickrCommand.WheelCircumference)
+        assertTrue(endpoint.stopOrPause())
+        session.close()
     }
 }

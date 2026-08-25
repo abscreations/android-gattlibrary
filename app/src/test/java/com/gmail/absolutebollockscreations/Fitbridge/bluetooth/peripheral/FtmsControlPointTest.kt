@@ -49,6 +49,7 @@ class FtmsControlPointTest {
         var stopped: Boolean? = null
         var started = false
         var reset = false
+        var wheelCircumferenceMm: Double? = null
 
         override fun requestControl() = true
         override fun reset(): Boolean { reset = true; return succeed }
@@ -59,6 +60,10 @@ class FtmsControlPointTest {
         override fun setTargetResistance(level: Double): Boolean { resistance = level; return succeed }
         override fun setTargetPowerWatts(watts: Int): Boolean { power = watts; return succeed }
         override fun setTargetHeartRate(bpm: Int): Boolean { heartRate = bpm; return succeed }
+        override fun setWheelCircumferenceMm(millimetres: Double): Boolean {
+            wheelCircumferenceMm = millimetres
+            return succeed
+        }
         override fun setIndoorBikeSimulation(
             windMps: Double, gradePercent: Double, crr: Double, cw: Double,
         ): Boolean { sim = listOf(windMps, gradePercent, crr, cw); return succeed }
@@ -552,5 +557,24 @@ class FtmsControlPointTest {
         val out = cp.handle(byteArrayOf(0x7E, 0x00), hasControl = true)
         assertEquals(R.OPCODE_NOT_SUPPORTED, result(out))
         assertEquals(0x7E.toByte(), out.response[1])
+    }
+
+    @Test
+    fun `wheel circumference 0x12 validates exact framing and forwards tenths of a millimetre`() {
+        val sink = RecordingSink(
+            targetCapabilities = TargetCapabilities(wheelCircumference = true),
+            reportsTargetChangesAsynchronously = true,
+        )
+        val cp = FtmsControlPointHandler(sink)
+        val session = FtmsProcedureSession().apply { hasControl = true }
+
+        assertEquals(R.INVALID_PARAMETER, result(cp.handle(byteArrayOf(O.SET_WHEEL_CIRCUMFERENCE, 1), session)))
+        assertEquals(R.INVALID_PARAMETER, result(cp.handle(byteArrayOf(O.SET_WHEEL_CIRCUMFERENCE, 0, 0), session)))
+
+        val accepted = cp.handle(byteArrayOf(O.SET_WHEEL_CIRCUMFERENCE, 0x52, 0x52), session)
+        assertEquals(R.SUCCESS, result(accepted))
+        assertEquals(2107.4, sink.wheelCircumferenceMm!!, 0.0001)
+        assertEquals(2107.4, session.acceptedTargets.wheelCircumferenceMm!!, 0.0001)
+        assertNull(accepted.status)
     }
 }

@@ -3,12 +3,27 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.wahooKickrProviderCapabilities
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TargetCapabilitiesTest {
+
+    @Test
+    fun `legacy KICKR publishes only approved control targets and exact ranges`() {
+        val caps = TargetCapabilities.fromEngineCapabilities(wahooKickrProviderCapabilities())
+        val bits = caps.toTargetFeatureBits()
+
+        assertEquals(FtmsTargetRange(0, 1_000, 1), caps.resistanceRange)
+        assertEquals(FtmsTargetRange(0, 2_000, 1), caps.powerRange)
+        assertTrue(caps.indoorBikeSimulation)
+        assertTrue(caps.wheelCircumference)
+        assertEquals(0, bits and (1 shl FtmsSpec.TargetFeature.SPEED))
+        assertEquals(0, bits and (1 shl FtmsSpec.TargetFeature.INCLINATION))
+        assertEquals(0, bits and (1 shl FtmsSpec.TargetFeature.HEART_RATE))
+    }
 
     @Test
     fun `a target bit requires a valid range of the correct wire width`() {

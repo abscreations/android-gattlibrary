@@ -33,6 +33,7 @@ class FtmsProcedureSession {
         var powerWatts: Int? = null,
         var heartRateBpm: Int? = null,
         var indoorBikeSimulation: IndoorBikeSimulation? = null,
+        var wheelCircumferenceMm: Double? = null,
     ) {
         fun clear() {
             speedKph = null
@@ -41,6 +42,7 @@ class FtmsProcedureSession {
             powerWatts = null
             heartRateBpm = null
             indoorBikeSimulation = null
+            wheelCircumferenceMm = null
         }
     }
 

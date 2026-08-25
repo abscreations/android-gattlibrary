@@ -102,6 +102,7 @@ object FtmsSpec {
         const val TARGET_POWER_CHANGED: Byte = 0x08
         const val TARGET_HEART_RATE_CHANGED: Byte = 0x09
         const val INDOOR_BIKE_SIMULATION_PARAMETERS_CHANGED: Byte = 0x12
+        const val WHEEL_CIRCUMFERENCE_CHANGED: Byte = 0x13
         const val CONTROL_PERMISSION_LOST: Byte = 0xFF.toByte()
     }
 
@@ -144,6 +145,7 @@ object FtmsControlPointSchema {
         FtmsSpec.Opcode.SET_TARGET_SPEED,
         FtmsSpec.Opcode.SET_TARGET_INCLINATION,
         FtmsSpec.Opcode.SET_TARGET_POWER,
+        FtmsSpec.Opcode.SET_WHEEL_CIRCUMFERENCE,
         -> 3
 
         FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION -> 7

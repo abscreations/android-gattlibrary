@@ -57,6 +57,7 @@ internal class WahooKickrControlSession(
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val monotonicMs: () -> Long = { System.nanoTime() / 1_000_000L },
     private val onOutcome: (Int, WahooKickrCommandOutcome) -> Unit = { _, _ -> },
+    private val onCommandAccepted: (WahooKickrCommand, WahooKickrCommandOutcome) -> Unit = { _, _ -> },
     private val onUnrecognizedResponse: (WahooKickrResponse) -> Unit = {},
     private val onControlGranted: () -> Unit = {},
     private val onInitializationFailed: () -> Unit = {},
@@ -251,6 +252,7 @@ internal class WahooKickrControlSession(
         }
         inFlight.compareAndSet(waiter, null)
         onOutcome(opcode, outcome)
+        if (accepted(outcome)) onCommandAccepted(command, outcome)
         return outcome
     }
 

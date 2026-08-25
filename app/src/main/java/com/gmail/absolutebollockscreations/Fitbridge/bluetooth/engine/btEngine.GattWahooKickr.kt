@@ -138,6 +138,14 @@ internal class WahooKickrProtocolHandler : BtEngineGattCore.ProtocolHandler {
                         ),
                     )
                 },
+                onCommandAccepted = { command, _ ->
+                    if (command is WahooKickrCommand.WheelCircumference &&
+                        engine.state.connectionRegistry.contextFor(context.connectionId) === context
+                    ) {
+                        engine.acceptWheelCircumference(command.millimetres)
+                        engine.serviceControlSink?.onWheelCircumferenceChangedMm(command.millimetres)
+                    }
+                },
                 onUnrecognizedResponse = { response ->
                     // The exact bytes are already retained by CaptureHooks.notified before handler
                     // dispatch. This companion event adds classification and length only.

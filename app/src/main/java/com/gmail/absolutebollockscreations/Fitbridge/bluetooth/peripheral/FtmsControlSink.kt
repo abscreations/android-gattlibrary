@@ -59,6 +59,9 @@ interface FtmsControlSink {
 
     fun setTargetHeartRate(bpm: Int): Boolean
 
+    /** FTMS 0x12 value in millimetres (wire: uint16, 0.1 mm). */
+    fun setWheelCircumferenceMm(millimetres: Double): Boolean = false
+
     /**
      * FTMS 0x11 Set Indoor Bike Simulation Parameters.
      *
@@ -109,6 +112,7 @@ object InertFtmsControlSink : FtmsControlSink {
     override fun setTargetResistance(level: Double): Boolean = false
     override fun setTargetPowerWatts(watts: Int): Boolean = false
     override fun setTargetHeartRate(bpm: Int): Boolean = false
+    override fun setWheelCircumferenceMm(millimetres: Double): Boolean = false
     override fun setIndoorBikeSimulation(
         windMps: Double,
         gradePercent: Double,
@@ -157,6 +161,8 @@ class SwitchableFtmsControlSink(private val default: FtmsControlSink) : FtmsCont
     override fun setTargetResistance(level: Double): Boolean = active.setTargetResistance(level)
     override fun setTargetPowerWatts(watts: Int): Boolean = active.setTargetPowerWatts(watts)
     override fun setTargetHeartRate(bpm: Int): Boolean = active.setTargetHeartRate(bpm)
+    override fun setWheelCircumferenceMm(millimetres: Double): Boolean =
+        active.setWheelCircumferenceMm(millimetres)
     override fun setIndoorBikeSimulation(
         windMps: Double,
         gradePercent: Double,
@@ -247,6 +253,10 @@ class EngineFtmsControlSink(
 
     /** No upstream heart-rate target path exists on the facade. */
     override fun setTargetHeartRate(bpm: Int): Boolean = false
+
+    @SuppressLint("MissingPermission")
+    override fun setWheelCircumferenceMm(millimetres: Double): Boolean =
+        forwardTarget("setWheelCircumferenceMm") { it.setWheelCircumferenceMm(millimetres.toFloat()) }
 
     /**
      * Forwarded since 2026-08-10 (plan §9.5.6). This previously returned `false` with the

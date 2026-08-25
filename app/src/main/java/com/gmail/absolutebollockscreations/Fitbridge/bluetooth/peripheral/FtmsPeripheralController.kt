@@ -19,6 +19,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceE
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -691,6 +692,11 @@ class FtmsPeripheralController(
 
     fun emitStatusTargetPowerChanged(watts: Int) {
         broadcastStatus(byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED) + s16le(watts))
+    }
+
+    fun emitStatusWheelCircumferenceChanged(millimetres: Double) {
+        val raw = (millimetres * 10.0).roundToInt().coerceIn(1, 0xFFFF)
+        broadcastStatus(byteArrayOf(FtmsSpec.Status.WHEEL_CIRCUMFERENCE_CHANGED) + u16le(raw))
     }
 
     fun emitStatusTargetHeartRateChanged(bpm: Int) {

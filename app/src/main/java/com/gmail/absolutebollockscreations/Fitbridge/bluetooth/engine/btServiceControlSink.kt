@@ -207,6 +207,9 @@ interface BtServiceControlSink {
      */
     fun onTargetPowerChangedWatts(watts: Int)
 
+    /** Accepted FTMS 0x12 / KICKR 0x48 value, in millimetres. */
+    fun onWheelCircumferenceChangedMm(millimetres: Double) {}
+
     /**
      * Called when the upstream FTMS device reports that the target heart rate
      * has changed (via Fitness Machine Status 0x09).
@@ -293,6 +296,11 @@ class LoggingBtServiceControlSink(
     override fun onTargetPowerChangedWatts(watts: Int) {
         Timber.tag(tag).d("onTargetPowerChangedWatts(watts=%d)", watts)
         delegate.onTargetPowerChangedWatts(watts)
+    }
+
+    override fun onWheelCircumferenceChangedMm(millimetres: Double) {
+        Timber.tag(tag).d("onWheelCircumferenceChangedMm(millimetres=%.1f)", millimetres)
+        delegate.onWheelCircumferenceChangedMm(millimetres)
     }
 
     override fun onTargetHeartRateChangedBpm(bpm: Int) {
