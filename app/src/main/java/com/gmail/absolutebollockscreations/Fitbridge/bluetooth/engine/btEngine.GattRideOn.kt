@@ -76,13 +76,16 @@ internal class RideOnProtocolHandler : BtEngineGattCore.ProtocolHandler {
     override val primaryServices = setOf(RideOnUuids.ORIGINAL_SERVICE, RideOnUuids.CORE2_SERVICE)
     internal var structuralMatch: RideOnGattMatch? = null
         private set
+    internal var controlSession: RideOnControlSession? = null
+        private set
+    private var subscriptionGate: RideOnSubscriptionGate? = null
 
     override fun onConnected(engine: BtEngine, gatt: BluetoothGatt) {
-        structuralMatch = null
+        resetLinkState()
     }
 
     override fun onDisconnected(engine: BtEngine) {
-        structuralMatch = null
+        resetLinkState()
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -98,4 +101,82 @@ internal class RideOnProtocolHandler : BtEngineGattCore.ProtocolHandler {
     internal fun recordStructuralMatch(match: RideOnGattMatch) {
         structuralMatch = match
     }
+
+    internal fun bindQualifiedSession(session: RideOnControlSession) {
+        controlSession?.close()
+        controlSession = session
+        subscriptionGate = RideOnSubscriptionGate(session.connectionId)
+    }
+
+    internal fun createQualifiedSession(
+        engine: BtEngine,
+        context: ConnectionContext,
+        model: String?,
+        firmware: String?,
+    ): Boolean {
+        val match = structuralMatch ?: return false
+        if (!RideOnActivationPolicy.isQualified(model, firmware)) return false
+        val gatt = context.gatt ?: return false
+        val transport = BtEngineGattTransport(engine, context.connectionId)
+        val form = if (match.serviceUuid == RideOnUuids.CORE2_SERVICE) RideOnServiceForm.CORE2
+        else RideOnServiceForm.ORIGINAL
+        val session = RideOnControlSession(
+            transport,
+            form,
+            onRidingData = { telemetry -> emitRideOnTelemetry(engine, gatt, telemetry) },
+            onControlGranted = {
+                engine.state.adapterLiveness.setupSucceeded(context, MonotonicMetricClock.SYSTEM.nowMs())
+            },
+            onInitializationFailed = {
+                engine.state.adapterLiveness.setupFailed(context, "RideOn initialization failed")
+            },
+        )
+        bindQualifiedSession(session)
+        if (!transport.enableNotifications(RideOnUuids.ASYNC_TX) ||
+            !transport.enableNotifications(RideOnUuids.SYNC_TX)
+        ) {
+            resetLinkState()
+            return false
+        }
+        return true
+    }
+
+    internal fun markSubscriptionReady(connectionId: ConnectionId, characteristic: UUID): Boolean {
+        val bothReady = subscriptionGate?.markReady(connectionId, characteristic) == true
+        return bothReady && controlSession?.startAfterSubscriptionsReady() == true
+    }
+
+    internal fun handlePacket(connectionId: ConnectionId, characteristic: UUID, value: ByteArray): Boolean {
+        val session = controlSession ?: return false
+        if (session.connectionId != connectionId) return false
+        session.onPacket(connectionId, characteristic, value)
+        return true
+    }
+
+    private fun resetLinkState() {
+        controlSession?.close()
+        controlSession = null
+        subscriptionGate = null
+        structuralMatch = null
+    }
+
+    override fun onCharacteristicChanged(
+        engine: BtEngine,
+        gatt: BluetoothGatt,
+        ch: BluetoothGattCharacteristic,
+        value: ByteArray,
+    ) {
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+        handlePacket(context.connectionId, ch.uuid, value)
+    }
+}
+
+private fun emitRideOnTelemetry(engine: BtEngine, gatt: BluetoothGatt, telemetry: RideOnTelemetry) {
+    val emitter = engine.metricEmitterFor(
+        gatt, RideOnUuids.ASYNC_TX, MetricProtocol.VENDOR, MetricSourceClass.VENDOR_NATIVE,
+    ) ?: return
+    telemetry.powerWatts?.let { emitter.emit(MetricKind.POWER, it.toDouble()) }
+    telemetry.cadenceRpm?.let { emitter.emit(MetricKind.CADENCE, it.toDouble()) }
+    telemetry.speedKph?.let { emitter.emit(MetricKind.SPEED, it) }
+    telemetry.heartRateBpm?.let { emitter.emit(MetricKind.HEART_RATE, it.toDouble()) }
 }

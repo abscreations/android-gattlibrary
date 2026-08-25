@@ -1485,7 +1485,10 @@ class BtEngine internal constructor(
             ?.firstOrNull()
             ?.controlSession
             ?.takeIf { it.controlGranted && it.connectionId == context.connectionId }
-        return when (machineControlRoute(adapterId, fecHandler != null, wahooSession != null)) {
+        val rideOnSession = context?.handlers?.filterIsInstance<RideOnProtocolHandler>()
+            ?.firstOrNull()?.controlSession
+            ?.takeIf { it.controlGranted && it.connectionId == context.connectionId }
+        return when (machineControlRoute(adapterId, fecHandler != null, wahooSession != null, rideOnSession != null)) {
             MachineControlRoute.FEC ->
                 fecHandler?.let { FeCBleMachineControlEndpoint(this, it) }
                     ?: UnavailableMachineControlEndpoint
@@ -1496,6 +1499,13 @@ class BtEngine internal constructor(
                     }
                 }
                     ?: UnavailableMachineControlEndpoint
+            MachineControlRoute.RIDEON ->
+                rideOnSession?.let {
+                    RideOnMachineControlEndpoint(
+                        it,
+                        riderMassKg = { state.lifeFitnessProfile.weightKg.toDouble() },
+                    )
+                } ?: UnavailableMachineControlEndpoint
             MachineControlRoute.UNAVAILABLE -> UnavailableMachineControlEndpoint
             MachineControlRoute.FTMS -> ftmsControlEndpoint
         }
@@ -1505,6 +1515,11 @@ class BtEngine internal constructor(
         val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
             ?: return BtEngineState.FtmsCapabilities()
         val selected = state.adapterLiveness.selectedAdapterId(context.connectionId)
+        if (selected == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID) {
+            val unlocked = context.handlers.filterIsInstance<RideOnProtocolHandler>()
+                .firstOrNull()?.controlSession?.controlGranted == true
+            return if (unlocked) rideOnProviderCapabilities() else BtEngineState.FtmsCapabilities()
+        }
         if (selected != AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID) {
             return state.ftmsCapabilities
         }

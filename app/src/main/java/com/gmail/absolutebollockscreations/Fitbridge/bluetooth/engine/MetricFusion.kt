@@ -745,12 +745,12 @@ internal class MetricFusion(
             FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
         }
         MetricKind.CADENCE, MetricKind.AVERAGE_CADENCE -> when (persona) {
-            FusionPersona.RIDE -> rank(source, MetricSourceClass.CPS_CRANK, MetricSourceClass.CSC_CRANK, MetricSourceClass.FTMS, MetricSourceClass.MOTION)
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.CPS_CRANK, MetricSourceClass.CSC_CRANK, MetricSourceClass.FTMS, MetricSourceClass.MOTION, MetricSourceClass.VENDOR_NATIVE)
             FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.MOTION)
             FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
         }
         MetricKind.SPEED, MetricKind.AVERAGE_SPEED -> when (persona) {
-            FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.CSC_WHEEL, MetricSourceClass.CPS_WHEEL, MetricSourceClass.DERIVED)
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.CSC_WHEEL, MetricSourceClass.CPS_WHEEL, MetricSourceClass.DERIVED, MetricSourceClass.VENDOR_NATIVE)
             FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.GPS)
             FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
         }

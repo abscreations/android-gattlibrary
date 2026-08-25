@@ -43,7 +43,7 @@ internal class RideOnControlSession(
     private val serviceForm: RideOnServiceForm,
     private val timing: RideOnSessionTiming = RideOnSessionTiming(),
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val onRidingData: (RideOnDecodedPacket) -> Unit = {},
+    private val onRidingData: (RideOnTelemetry) -> Unit = {},
     private val onControlGranted: () -> Unit = {},
     private val onInitializationFailed: () -> Unit = {},
     initialShiftSequence: Long = 0,
@@ -103,7 +103,7 @@ internal class RideOnControlSession(
         if (decoded is RideOnDecodeResult.Decoded &&
             decoded.packet.opcode == RideOnUuids.OPCODE_RIDING_DATA
         ) {
-            onRidingData(decoded.packet)
+            decodeRideOnTelemetry(bytes)?.let(onRidingData)
         }
         if (decoded is RideOnDecodeResult.Decoded &&
             decoded.packet.opcode == RideOnUuids.OPCODE_VIRTUAL_SHIFT_RESPONSE

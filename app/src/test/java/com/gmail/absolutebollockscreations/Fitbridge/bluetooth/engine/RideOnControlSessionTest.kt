@@ -73,7 +73,7 @@ class RideOnControlSessionTest {
     @Test
     fun `CORE2 accepts first valid protocol packet and riding data before general response`() = runBlocking {
         val transport = FakeTransport()
-        val riding = mutableListOf<RideOnDecodedPacket>()
+        val riding = mutableListOf<RideOnTelemetry>()
         lateinit var session: RideOnControlSession
         session = RideOnControlSession(transport, RideOnServiceForm.CORE2, timing, onRidingData = { riding += it })
         transport.onWrite = { payload ->

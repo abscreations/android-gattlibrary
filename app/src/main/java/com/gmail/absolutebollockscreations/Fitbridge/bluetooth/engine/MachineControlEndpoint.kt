@@ -71,7 +71,7 @@ internal interface MachineControlEndpoint {
     ): Boolean
 }
 
-internal enum class MachineControlRoute { FTMS, FEC, WAHOO, UNAVAILABLE }
+internal enum class MachineControlRoute { FTMS, FEC, WAHOO, RIDEON, UNAVAILABLE }
 
 /** Exact downstream ranges approved for the legacy KICKR protocol surface. */
 internal fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
@@ -95,8 +95,13 @@ internal fun machineControlRoute(
     selectedAdapterId: String?,
     hasFeCHandler: Boolean,
     hasWahooControl: Boolean = false,
+    hasRideOnControl: Boolean = false,
 ): MachineControlRoute =
     when {
+        selectedAdapterId == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID && hasRideOnControl ->
+            MachineControlRoute.RIDEON
+        selectedAdapterId == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID ->
+            MachineControlRoute.UNAVAILABLE
         selectedAdapterId == AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID && hasWahooControl ->
             MachineControlRoute.WAHOO
         selectedAdapterId == AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID ->
