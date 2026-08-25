@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnServiceForm
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -82,6 +83,8 @@ class KickrPersonaManifestTest {
         val v5 = manifest(KickrSimulatorPersona.V5_STANDARD_LEGACY)
 
         assertNull(v5.service(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE))
+        assertNull(v5.zwiftServiceForm)
+        assertEquals(RideOnServiceForm.ORIGINAL, original.zwiftServiceForm)
         assertNull(v5.service(BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE03))
         assertCharacteristic(
             original,
@@ -126,6 +129,8 @@ class KickrPersonaManifestTest {
         assertNull(core2.service(BluetoothIds.UUID_CYCLING_POWER_SERVICE))
         assertNull(core2.service(BluetoothIds.UUID_FTMS_SERVICE))
         assertNull(core2.service(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE))
+        assertEquals(RideOnServiceForm.CORE2, core2.zwiftServiceForm)
+        assertTrue(core2.identity.evidence.all { it == KickrEvidenceLabel.SYN })
     }
 
     @Test

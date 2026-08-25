@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import java.util.UUID
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnServiceForm
 
 /** Field-level provenance carried into diagnostics and evidence exports. */
 internal enum class KickrEvidenceLabel { HCI, LOG, P, M, X, R, SYN }
@@ -117,6 +118,7 @@ internal data class KickrPersonaManifest(
     val identity: KickrDeviceIdentity,
     val services: List<KickrServiceManifest>,
     val legacyAckMode: KickrLegacyAckMode?,
+    val zwiftServiceForm: RideOnServiceForm?,
 ) {
     fun service(uuid: UUID): KickrServiceManifest? = services.singleOrNull { it.uuid == uuid }
 
@@ -140,6 +142,7 @@ internal data class KickrPersonaManifest(
             identity = KickrDeviceIdentity(null, null, null, setOf(KickrEvidenceLabel.SYN)),
             services = standardKickrServices(setOf(KickrEvidenceLabel.LOG)),
             legacyAckMode = KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
+            zwiftServiceForm = null,
         )
 
         private fun originalCore(): KickrPersonaManifest = KickrPersonaManifest(
@@ -168,6 +171,7 @@ internal data class KickrPersonaManifest(
                 zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE, KickrEvidenceLabel.HCI),
             ),
             legacyAckMode = KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
+            zwiftServiceForm = RideOnServiceForm.ORIGINAL,
         )
 
         private fun core2Probe(): KickrPersonaManifest = KickrPersonaManifest(
@@ -182,6 +186,7 @@ internal data class KickrPersonaManifest(
                 zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE, KickrEvidenceLabel.M),
             ),
             legacyAckMode = null,
+            zwiftServiceForm = RideOnServiceForm.CORE2,
         )
 
         private fun standardKickrServices(evidence: Set<KickrEvidenceLabel>): List<KickrServiceManifest> =

@@ -27,7 +27,6 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrPe
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrStandardEncoders
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnServiceForm
 import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -71,8 +70,7 @@ internal class KickrPeripheralAdvertiser(
 
     fun publish(snapshot: KickrMachineSnapshot) {
         val selected = manifest?.persona ?: return
-        if (selected == KickrSimulatorPersona.CORE2_FC82_PROVISIONAL) return
-        val frames = listOf(
+        val frames = if (selected == KickrSimulatorPersona.CORE2_FC82_PROVISIONAL) emptyList() else listOf(
             KickrTxFrame(
                 BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
                 KickrStandardEncoders.cyclingPowerMeasurement(snapshot),
@@ -175,11 +173,7 @@ internal class KickrPeripheralAdvertiser(
                         generation.incrementAndGet(),
                         model,
                         legacyAckMode,
-                        if (manifest?.persona == KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT) {
-                            RideOnServiceForm.ORIGINAL
-                        } else {
-                            null
-                        },
+                        manifest?.zwiftServiceForm,
                     ),
                 )
                 connectionRetention.retainOnce(key) { server?.connect(device, false) == true }

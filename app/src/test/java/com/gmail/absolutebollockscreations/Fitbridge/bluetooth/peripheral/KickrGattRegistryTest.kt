@@ -131,6 +131,21 @@ class KickrGattRegistryTest {
         assertNull(session.route)
     }
 
+    @Test
+    fun `CORE2 session never falls back to original marker`() {
+        val session = KickrPeripheralSession(
+            12L,
+            KickrSyntheticModel(),
+            zwiftServiceForm = RideOnServiceForm.CORE2,
+        )
+        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        assertFalse(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
+        assertNull(session.route)
+        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
+        assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
+    }
+
     private fun properties(values: Set<KickrGattProperty>): Int {
         var result = 0
         if (KickrGattProperty.READ in values) result = result or BluetoothGattCharacteristic.PROPERTY_READ

@@ -17,6 +17,24 @@ import org.junit.Test
 
 class ZwiftTrainerPeripheralServerTest {
     @Test
+    fun `CORE2 form accepts only 02 03 and uses shared FreeWheel vectors`() {
+        val model = KickrSyntheticModel()
+        val server = ZwiftTrainerPeripheralServer(RideOnServiceForm.CORE2, model)
+        assertFalse(server.handle(RideOnUuids.HANDSHAKE_ORIGINAL, true).accepted)
+        val handshake = server.handle(RideOnUuids.HANDSHAKE_CORE2, true)
+        assertTrue(handshake.accepted)
+        assertArrayEquals(RideOnUuids.HANDSHAKE_CORE2, handshake.frames.single().value)
+        assertTrue(server.handle(hex("41 08 05"), true).accepted)
+        assertTrue(server.handle(hex("00 08 00"), true).accepted)
+        assertTrue(server.handle(hex("04 18 FA 01"), true).accepted)
+        assertEquals(250, model.snapshot().targetPowerWatts)
+        val shift = server.handle(RideOnProtoCodec.virtualShift(1, 0, 24_000), true)
+        assertTrue(shift.accepted)
+        assertArrayEquals(hex("40 10 00"), shift.frames.single().value)
+        assertEquals(12, model.snapshot().virtualGearIndex)
+    }
+
+    @Test
     fun `original form requires both CCCDs and exact 02 02 marker`() {
         val server = subject()
         assertFalse(server.handle(RideOnUuids.HANDSHAKE_ORIGINAL, false).accepted)
