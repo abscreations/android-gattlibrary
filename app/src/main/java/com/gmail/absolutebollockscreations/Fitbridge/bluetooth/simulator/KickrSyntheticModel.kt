@@ -43,6 +43,8 @@ internal data class KickrMachineSnapshot(
     val cumulativeCrankRevolutions: Int,
     val lastCrankEventTicks: Int,
     val accumulatedTorqueRaw: Int,
+    val virtualGearIndex: Int,
+    val gearRatio: Double,
 )
 
 /**
@@ -66,6 +68,8 @@ internal class KickrSyntheticModel(
     private var resistanceLevel = DEFAULT_RESISTANCE
     private var targetPowerWatts: Int? = null
     private var simulation = KickrSimulationTarget()
+    private var virtualGearIndex = DEFAULT_VIRTUAL_GEAR_INDEX
+    private var gearRatio = DEFAULT_GEAR_RATIO
     private var wheelCircumferenceMm = checkedCircumference(initialWheelCircumferenceMm)
 
     private var wheelPhase = 0.0
@@ -109,6 +113,8 @@ internal class KickrSyntheticModel(
         resistanceLevel = DEFAULT_RESISTANCE
         targetPowerWatts = null
         simulation = KickrSimulationTarget()
+        virtualGearIndex = DEFAULT_VIRTUAL_GEAR_INDEX
+        gearRatio = DEFAULT_GEAR_RATIO
         wheelPhase = 0.0
         crankPhase = 0.0
         cumulativeWheelRevolutions = 0L
@@ -158,6 +164,14 @@ internal class KickrSyntheticModel(
     }
 
     @Synchronized
+    fun setVirtualGear(index: Int, ratio: Double): Boolean {
+        if (index !in 1..24 || !ratio.isFinite() || ratio <= 0.0) return false
+        virtualGearIndex = index
+        gearRatio = ratio
+        return true
+    }
+
+    @Synchronized
     fun advance(dtSeconds: Double): KickrMachineSnapshot {
         if (!dtSeconds.isFinite() || dtSeconds <= 0.0 || dtSeconds > MAX_TICK_SECONDS) return snapshot()
         elapsedSeconds += dtSeconds
@@ -169,7 +183,7 @@ internal class KickrSyntheticModel(
             KickrControlMode.RESISTANCE -> 45.0 + resistanceLevel * 14.0
             KickrControlMode.SIMULATION -> (
                 130.0 + simulation.gradePercent * 9.0 + simulation.windMps * 1.5 +
-                    simulation.crr * 4_000.0 + simulation.cw * 18.0
+                    simulation.crr * 4_000.0 + simulation.cw * 18.0 + (gearRatio - DEFAULT_GEAR_RATIO) * 20.0
                 ).coerceIn(0.0, MAX_POWER_WATTS.toDouble())
         }
         powerWatts = approach(powerWatts, desiredPower, dtSeconds, POWER_TIME_CONSTANT_SECONDS)
@@ -212,6 +226,8 @@ internal class KickrSyntheticModel(
         cumulativeCrankRevolutions = cumulativeCrankRevolutions,
         lastCrankEventTicks = lastCrankEventTicks,
         accumulatedTorqueRaw = accumulatedTorque.roundToInt() and 0xFFFF,
+        virtualGearIndex = virtualGearIndex,
+        gearRatio = gearRatio,
     )
 
     private fun advanceEvents(dtSeconds: Double) {
@@ -261,6 +277,8 @@ internal class KickrSyntheticModel(
         const val MAX_WHEEL_CIRCUMFERENCE_MM = 6_553.5
         const val DEFAULT_WHEEL_CIRCUMFERENCE_MM = 2_096.0
         const val MAX_TICK_SECONDS = 10.0
+        const val DEFAULT_VIRTUAL_GEAR_INDEX = 12
+        const val DEFAULT_GEAR_RATIO = 2.4
         private const val DEFAULT_RESISTANCE = 5.0
         private const val IDLE_HEART_RATE = 80
         private const val MAX_HEART_RATE = 220

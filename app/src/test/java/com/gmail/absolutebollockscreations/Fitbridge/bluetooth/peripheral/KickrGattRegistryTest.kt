@@ -7,6 +7,8 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLe
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrPersonaManifest
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnServiceForm
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnUuids
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -106,6 +108,27 @@ class KickrGattRegistryTest {
         assertEquals(KickrControlRoute.LEGACY_WAHOO, legacyFirst.route)
         assertNull(legacyFirst.handleFtmsControl(byteArrayOf(0x00)))
         assertFalse(legacyFirst.ftms.session.hasControl)
+    }
+
+    @Test
+    fun `original Zwift route requires both CCCDs and excludes FTMS`() {
+        val session = KickrPeripheralSession(
+            11L,
+            KickrSyntheticModel(),
+            zwiftServiceForm = RideOnServiceForm.ORIGINAL,
+        )
+        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        assertFalse(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
+        assertNull(session.route)
+        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
+        assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
+        assertEquals(RideOnUuids.SYNC_TX, session.beginNext()!!.characteristicUuid)
+        session.subscribe(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
+        assertNull(session.handleFtmsControl(byteArrayOf(0x00)))
+        session.clear()
+        assertFalse(session.zwift!!.controlReady)
+        assertNull(session.route)
     }
 
     private fun properties(values: Set<KickrGattProperty>): Int {

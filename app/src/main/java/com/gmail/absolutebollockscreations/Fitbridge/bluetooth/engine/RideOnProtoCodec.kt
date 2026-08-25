@@ -110,6 +110,24 @@ internal object RideOnProtoCodec {
         return packet(RideOnUuids.OPCODE_VIRTUAL_SHIFT, body)
     }
 
+    fun virtualShiftResponse(sequence: Long): ByteArray = packet(
+        RideOnUuids.OPCODE_VIRTUAL_SHIFT_RESPONSE,
+        uint32Field(2, sequence),
+    )
+
+    fun ridingData(
+        powerWatts: Long,
+        cadenceRpm: Long,
+        speedX100: Long,
+        heartRateBpm: Long,
+    ): ByteArray = packet(
+        RideOnUuids.OPCODE_RIDING_DATA,
+        uint32Field(1, powerWatts) +
+            uint32Field(2, cadenceRpm) +
+            uint32Field(3, speedX100) +
+            uint32Field(4, heartRateBpm),
+    )
+
     fun zigZagEncode32(value: Int): Long =
         ((value.toLong() shl 1) xor (value.toLong() shr 31)) and UINT32_MAX
 

@@ -6,6 +6,10 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLe
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLegacyControlOutcome
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnServiceForm
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnUuids
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.ZwiftTrainerPeripheralServer
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.ZwiftTrainerServerOutcome
 import java.util.ArrayDeque
 import java.util.UUID
 
@@ -22,12 +26,14 @@ internal class KickrPeripheralSession(
     val generation: Long,
     val model: KickrSyntheticModel,
     legacyAckMode: KickrLegacyAckMode? = null,
+    zwiftServiceForm: RideOnServiceForm? = null,
     private val queueCapacity: Int = DEFAULT_QUEUE_CAPACITY,
 ) {
     private val subscriptions = mutableMapOf<UUID, PeripheralConnection.CccdMode>()
     private val queue = ArrayDeque<KickrTxFrame>()
     val ftms = KickrFtmsControlProcessor(model)
     val legacy = legacyAckMode?.let { KickrLegacyControlServer(model, it) }
+    val zwift = zwiftServiceForm?.let { ZwiftTrainerPeripheralServer(it, model) }
 
     var route: KickrControlRoute? = null
         private set
@@ -96,6 +102,42 @@ internal class KickrPeripheralSession(
         return outcome
     }
 
+    @Synchronized
+    fun handleZwiftControl(value: ByteArray): ZwiftTrainerServerOutcome? {
+        val server = zwift ?: return null
+        if (route !in setOf(null, KickrControlRoute.ZWIFT_PROPRIETARY)) return null
+        val bothTxSubscribed =
+            subscription(RideOnUuids.ASYNC_TX) == PeripheralConnection.CccdMode.NOTIFY &&
+                subscription(RideOnUuids.SYNC_TX) == PeripheralConnection.CccdMode.INDICATE
+        val outcome = server.handle(value, bothTxSubscribed)
+        if (outcome.negotiated && !acquire(KickrControlRoute.ZWIFT_PROPRIETARY)) return null
+        if (outcome.accepted) enqueueZwiftFrames(outcome)
+        return outcome
+    }
+
+    @Synchronized
+    fun enqueueZwiftTelemetry() {
+        val server = zwift ?: return
+        if (!server.controlReady ||
+            subscription(RideOnUuids.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
+            subscription(RideOnUuids.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
+        ) return
+        enqueueZwiftFrame(server.telemetryFrame())
+    }
+
+    private fun enqueueZwiftFrames(outcome: ZwiftTrainerServerOutcome) =
+        outcome.frames.forEach(::enqueueZwiftFrame)
+
+    private fun enqueueZwiftFrame(frame: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.ZwiftTrainerServerFrame) {
+        enqueue(
+            KickrTxFrame(
+                if (frame.async) RideOnUuids.ASYNC_TX else RideOnUuids.SYNC_TX,
+                frame.value,
+                indicate = !frame.async,
+            ),
+        )
+    }
+
     fun enqueue(frame: KickrTxFrame) {
         if (queue.size >= queueCapacity) {
             queue.removeFirst()
@@ -130,6 +172,7 @@ internal class KickrPeripheralSession(
         route = null
         ftms.disconnect()
         legacy?.reset()
+        zwift?.reset()
     }
 
     val pendingCount: Int get() = queue.size

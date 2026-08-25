@@ -27,6 +27,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrPe
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrStandardEncoders
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.RideOnServiceForm
 import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -90,6 +91,7 @@ internal class KickrPeripheralAdvertiser(
                         client.session.enqueue(frame)
                     }
                 }
+                client.session.enqueueZwiftTelemetry()
             }
             drain(client)
         }
@@ -173,6 +175,11 @@ internal class KickrPeripheralAdvertiser(
                         generation.incrementAndGet(),
                         model,
                         legacyAckMode,
+                        if (manifest?.persona == KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT) {
+                            RideOnServiceForm.ORIGINAL
+                        } else {
+                            null
+                        },
                     ),
                 )
                 connectionRetention.retainOnce(key) { server?.connect(device, false) == true }
@@ -220,6 +227,8 @@ internal class KickrPeripheralAdvertiser(
                     if (structurallyValid) handleFtms(client, value) else BluetoothGatt.GATT_FAILURE
                 BluetoothIds.UUID_WAHOO_KICKR_CONTROL ->
                     if (structurallyValid) handleLegacy(client, value) else BluetoothGatt.GATT_FAILURE
+                BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX ->
+                    if (structurallyValid) handleZwift(client, value) else BluetoothGatt.GATT_FAILURE
                 BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT ->
                     if (structurallyValid) handleCyclingPowerControl(client, value) else BluetoothGatt.GATT_FAILURE
                 BluetoothIds.UUID_USER_WEIGHT -> {
@@ -321,6 +330,12 @@ internal class KickrPeripheralAdvertiser(
     private fun handleLegacy(client: Client, value: ByteArray): Int = synchronized(client.session) {
         if (client.session.legacy == null) return BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
         if (client.session.handleLegacyControl(value)?.accepted == true) BluetoothGatt.GATT_SUCCESS
+        else BluetoothGatt.GATT_FAILURE
+    }
+
+    private fun handleZwift(client: Client, value: ByteArray): Int = synchronized(client.session) {
+        if (client.session.zwift == null) return BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
+        if (client.session.handleZwiftControl(value)?.accepted == true) BluetoothGatt.GATT_SUCCESS
         else BluetoothGatt.GATT_FAILURE
     }
 
