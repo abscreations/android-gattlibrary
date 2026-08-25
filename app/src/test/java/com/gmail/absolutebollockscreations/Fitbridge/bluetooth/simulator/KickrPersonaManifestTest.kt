@@ -135,6 +135,20 @@ class KickrPersonaManifestTest {
         }
     }
 
+    @Test
+    fun `legacy acknowledgement defaults are explicit and evidence labelled`() {
+        listOf(
+            KickrSimulatorPersona.V5_STANDARD_LEGACY,
+            KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT,
+        ).forEach { persona ->
+            val mode = manifest(persona).legacyAckMode
+            assertEquals(KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC, mode)
+            assertEquals(KickrEvidenceLabel.SYN, mode!!.evidence)
+        }
+        assertNull(manifest(KickrSimulatorPersona.CORE2_FC82_PROVISIONAL).legacyAckMode)
+        assertEquals(KickrEvidenceLabel.X, KickrLegacyAckMode.SILENT_CORROBORATED.evidence)
+    }
+
     private fun manifest(persona: KickrSimulatorPersona) = KickrPersonaManifest.forPersona(persona)
 
     private fun assertCharacteristic(

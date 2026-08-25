@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 import android.bluetooth.BluetoothGattCharacteristic
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrGattProperty
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLegacyAckMode
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrPersonaManifest
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
@@ -38,7 +39,12 @@ class KickrGattRegistryTest {
 
     @Test
     fun `per-link session isolates subscriptions route and bounded queue`() {
-        val session = KickrPeripheralSession(7L, KickrSyntheticModel(), queueCapacity = 2)
+        val session = KickrPeripheralSession(
+            7L,
+            KickrSyntheticModel(),
+            KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
+            queueCapacity = 2,
+        )
         session.subscribe(BluetoothIds.UUID_BIKING_DATA, PeripheralConnection.CccdMode.NOTIFY)
         assertEquals(PeripheralConnection.CccdMode.NOTIFY, session.subscription(BluetoothIds.UUID_BIKING_DATA))
         assertTrue(session.acquire(KickrControlRoute.FTMS))
@@ -59,6 +65,47 @@ class KickrGattRegistryTest {
         assertNull(session.route)
         assertNull(session.inFlight)
         assertEquals(0, session.pendingCount)
+        assertFalse(session.legacy!!.unlocked)
+    }
+
+    @Test
+    fun `coalescing keeps only the newest acknowledgement for an opcode`() {
+        val session = KickrPeripheralSession(8L, KickrSyntheticModel(), queueCapacity = 3)
+        session.enqueueCoalesced(KickrTxFrame(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, byteArrayOf(1, 0x42, 1), true))
+        session.enqueueCoalesced(KickrTxFrame(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, byteArrayOf(1, 0x42, 2), true))
+        assertEquals(1, session.pendingCount)
+        assertEquals(2, session.beginNext()!!.value[2].toInt())
+    }
+
+    @Test
+    fun `route is acquired only by successful FTMS request control or legacy unlock`() {
+        val ftmsFirst = KickrPeripheralSession(
+            9L,
+            KickrSyntheticModel(),
+            KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
+        )
+        ftmsFirst.subscribe(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
+        ftmsFirst.subscribe(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
+
+        val deniedTarget = ftmsFirst.handleFtmsControl(byteArrayOf(0x05, 0xFA.toByte(), 0x00))
+        assertEquals(0x05, deniedTarget!!.response[1].toInt())
+        assertNull(ftmsFirst.route)
+        ftmsFirst.handleFtmsControl(byteArrayOf(0x00))
+        assertEquals(KickrControlRoute.FTMS, ftmsFirst.route)
+        assertNull(ftmsFirst.handleLegacyControl(byteArrayOf(0x20, 0xEE.toByte(), 0xFC.toByte())))
+        assertFalse(ftmsFirst.legacy!!.unlocked)
+
+        val legacyFirst = KickrPeripheralSession(
+            10L,
+            KickrSyntheticModel(),
+            KickrLegacyAckMode.SILENT_CORROBORATED,
+        )
+        legacyFirst.subscribe(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
+        legacyFirst.subscribe(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
+        assertTrue(legacyFirst.handleLegacyControl(byteArrayOf(0x20, 0xEE.toByte(), 0xFC.toByte()))!!.accepted)
+        assertEquals(KickrControlRoute.LEGACY_WAHOO, legacyFirst.route)
+        assertNull(legacyFirst.handleFtmsControl(byteArrayOf(0x00)))
+        assertFalse(legacyFirst.ftms.session.hasControl)
     }
 
     private fun properties(values: Set<KickrGattProperty>): Int {

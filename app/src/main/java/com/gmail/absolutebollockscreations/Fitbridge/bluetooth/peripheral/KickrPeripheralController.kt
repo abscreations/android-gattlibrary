@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrPersonaManifest
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLegacyAckMode
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
 import java.util.concurrent.atomic.AtomicLong
@@ -25,6 +26,7 @@ internal class KickrPeripheralController(
         val subscribed: Boolean = false,
         val advertisedName: String? = null,
         val packetsSent: Long = 0,
+        val legacyAckMode: KickrLegacyAckMode? = null,
         val lastError: String? = null,
     )
 
@@ -69,7 +71,11 @@ internal class KickrPeripheralController(
     val isAdvertising: Boolean get() = advertiser.isAdvertising
 
     @SuppressLint("MissingPermission")
-    fun start(persona: KickrSimulatorPersona, onResult: (Result<Unit>) -> Unit) {
+    fun start(
+        persona: KickrSimulatorPersona,
+        legacyAckModeOverride: KickrLegacyAckMode? = null,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
         val epoch = operationEpoch.incrementAndGet()
         if (!hasPermissions()) {
             val error = IllegalStateException("Bluetooth advertising permission has not been granted")
@@ -87,7 +93,7 @@ internal class KickrPeripheralController(
             if (operationEpoch.get() != epoch) return@nameCallback
             nameResult.fold(
                 onSuccess = {
-                    advertiser.start(persona) advertiserCallback@{ result ->
+                    advertiser.start(persona, legacyAckModeOverride) advertiserCallback@{ result ->
                         if (operationEpoch.get() != epoch) return@advertiserCallback
                         result.fold(
                             onSuccess = {
@@ -99,7 +105,14 @@ internal class KickrPeripheralController(
                                 ) { foreground ->
                                     foreground.fold(
                                         onSuccess = {
-                                            publishStatus(status.copy(persona = persona, advertisedName = plan.localName))
+                                            publishStatus(
+                                                status.copy(
+                                                    persona = persona,
+                                                    advertisedName = plan.localName,
+                                                    legacyAckMode = legacyAckModeOverride ?:
+                                                        KickrPersonaManifest.forPersona(persona).legacyAckMode,
+                                                ),
+                                            )
                                             onResult(Result.success(Unit))
                                         },
                                         onFailure = { failStart(it, onResult) },

@@ -57,6 +57,7 @@ internal class KickrPeripheralAdvertiser(
     private var advertiseCallback: AdvertiseCallback? = null
     private var startResult: ((Result<Unit>) -> Unit)? = null
     private var manifest: KickrPersonaManifest? = null
+    private var legacyAckMode: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLegacyAckMode? = null
     private var pendingServices = ArrayDeque<BluetoothGattService>()
     private var characteristicServices: Map<UUID, UUID> = emptyMap()
     private var userWeight = KickrStandardEncoders.readValue(
@@ -95,10 +96,15 @@ internal class KickrPeripheralAdvertiser(
     }
 
     @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE])
-    fun start(persona: KickrSimulatorPersona, onResult: (Result<Unit>) -> Unit) {
+    fun start(
+        persona: KickrSimulatorPersona,
+        legacyAckModeOverride: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLegacyAckMode? = null,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
         stop()
         val selected = KickrPersonaManifest.forPersona(persona)
         manifest = selected
+        legacyAckMode = legacyAckModeOverride ?: selected.legacyAckMode
         characteristicServices = selected.services.flatMap { service ->
             service.characteristics.map { it.uuid to service.uuid }
         }.toMap()
@@ -139,6 +145,7 @@ internal class KickrPeripheralAdvertiser(
         runCatching { server?.close() }
         server = null
         manifest = null
+        legacyAckMode = null
         characteristicServices = emptyMap()
         startResult?.invoke(Result.failure(IllegalStateException("KICKR simulator start was stopped")))
         startResult = null
@@ -160,7 +167,14 @@ internal class KickrPeripheralAdvertiser(
             if (epoch.get() != callbackEpoch) return
             val key = device.address.lowercase()
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                clients[key] = Client(device, KickrPeripheralSession(generation.incrementAndGet(), model))
+                clients[key] = Client(
+                    device,
+                    KickrPeripheralSession(
+                        generation.incrementAndGet(),
+                        model,
+                        legacyAckMode,
+                    ),
+                )
                 connectionRetention.retainOnce(key) { server?.connect(device, false) == true }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 connectionRetention.release(key)
@@ -204,6 +218,8 @@ internal class KickrPeripheralAdvertiser(
             val status = when (characteristic.uuid) {
                 BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT ->
                     if (structurallyValid) handleFtms(client, value) else BluetoothGatt.GATT_FAILURE
+                BluetoothIds.UUID_WAHOO_KICKR_CONTROL ->
+                    if (structurallyValid) handleLegacy(client, value) else BluetoothGatt.GATT_FAILURE
                 BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT ->
                     if (structurallyValid) handleCyclingPowerControl(client, value) else BluetoothGatt.GATT_FAILURE
                 BluetoothIds.UUID_USER_WEIGHT -> {
@@ -283,29 +299,8 @@ internal class KickrPeripheralAdvertiser(
     }
 
     private fun handleFtms(client: Client, value: ByteArray): Int = synchronized(client.session) {
-        if (client.session.subscription(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT) != PeripheralConnection.CccdMode.INDICATE ||
-            !client.session.acquire(KickrControlRoute.FTMS) ||
-            !client.session.ftms.session.tryBeginProcedure()
-        ) return BluetoothGatt.GATT_FAILURE
-        val outcome = client.session.ftms.handle(value)
-        client.session.enqueue(KickrTxFrame(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, outcome.response, true))
-        outcome.status?.let { status ->
-            if (client.session.subscription(BluetoothIds.UUID_FITNESS_MACHINE_STATUS) == PeripheralConnection.CccdMode.NOTIFY) {
-                client.session.enqueue(KickrTxFrame(BluetoothIds.UUID_FITNESS_MACHINE_STATUS, status, false))
-            }
-        }
-        if (outcome.trainingStatusChanged &&
-            client.session.subscription(BluetoothIds.UUID_TRAINING_STATUS) == PeripheralConnection.CccdMode.NOTIFY
-        ) {
-            client.session.enqueue(
-                KickrTxFrame(
-                    BluetoothIds.UUID_TRAINING_STATUS,
-                    client.session.ftms.session.trainingStatusPayload(),
-                    false,
-                ),
-            )
-        }
-        BluetoothGatt.GATT_SUCCESS
+        if (client.session.handleFtmsControl(value) != null) BluetoothGatt.GATT_SUCCESS
+        else BluetoothGatt.GATT_FAILURE
     }
 
     private fun handleCyclingPowerControl(client: Client, value: ByteArray): Int = synchronized(client.session) {
@@ -321,6 +316,12 @@ internal class KickrPeripheralAdvertiser(
             ),
         )
         BluetoothGatt.GATT_SUCCESS
+    }
+
+    private fun handleLegacy(client: Client, value: ByteArray): Int = synchronized(client.session) {
+        if (client.session.legacy == null) return BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
+        if (client.session.handleLegacyControl(value)?.accepted == true) BluetoothGatt.GATT_SUCCESS
+        else BluetoothGatt.GATT_FAILURE
     }
 
     @SuppressLint("MissingPermission")

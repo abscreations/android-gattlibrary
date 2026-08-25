@@ -116,6 +116,7 @@ internal data class KickrPersonaManifest(
     val advertising: KickrAdvertisingPlan,
     val identity: KickrDeviceIdentity,
     val services: List<KickrServiceManifest>,
+    val legacyAckMode: KickrLegacyAckMode?,
 ) {
     fun service(uuid: UUID): KickrServiceManifest? = services.singleOrNull { it.uuid == uuid }
 
@@ -138,6 +139,7 @@ internal data class KickrPersonaManifest(
             ),
             identity = KickrDeviceIdentity(null, null, null, setOf(KickrEvidenceLabel.SYN)),
             services = standardKickrServices(setOf(KickrEvidenceLabel.LOG)),
+            legacyAckMode = KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
         )
 
         private fun originalCore(): KickrPersonaManifest = KickrPersonaManifest(
@@ -165,6 +167,7 @@ internal data class KickrPersonaManifest(
                 ),
                 zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE, KickrEvidenceLabel.HCI),
             ),
+            legacyAckMode = KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
         )
 
         private fun core2Probe(): KickrPersonaManifest = KickrPersonaManifest(
@@ -178,6 +181,7 @@ internal data class KickrPersonaManifest(
             services = listOf(
                 zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE, KickrEvidenceLabel.M),
             ),
+            legacyAckMode = null,
         )
 
         private fun standardKickrServices(evidence: Set<KickrEvidenceLabel>): List<KickrServiceManifest> =
