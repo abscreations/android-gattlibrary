@@ -288,6 +288,18 @@ class AdapterNameCoordinatorTest {
     }
 
     @Test
+    fun `stranded KICKR simulator names are never recorded as the user's original`() {
+        listOf("Wahoo KICKR AEE4", "KICKR CORE C3FB", "KICKR CORE 2 SIM").forEach { name ->
+            val gateway = FakeGateway(name)
+            val store = FakeStore()
+
+            coordinator(gateway, store).apply("FBRG-Bike") {}
+
+            assertNull("must not save KICKR persona name $name as the original", store.value)
+        }
+    }
+
+    @Test
     fun `a failed restore keeps the saved name for the next launch`() {
         val gateway = FakeGateway("FBRG-Bike")
         val store = FakeStore("Pixel 9")
