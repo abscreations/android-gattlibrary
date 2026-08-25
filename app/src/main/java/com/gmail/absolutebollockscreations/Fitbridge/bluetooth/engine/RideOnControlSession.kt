@@ -6,6 +6,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
@@ -18,6 +20,7 @@ internal data class RideOnSessionTiming(
     val negotiationTimeoutMs: Long = 3_000,
     val retryIntervalMs: Long = 250,
     val writeTimeoutMs: Long = 1_000,
+    val ergMinIntervalMs: Long = 2_000,
 )
 
 /** Pure readiness gate: no negotiation write is legal before both receive surfaces are subscribed. */
@@ -46,6 +49,9 @@ internal class RideOnControlSession(
     private val started = AtomicBoolean(false)
     private val closed = AtomicBoolean(false)
     private val negotiationWaiter = AtomicReference<CompletableDeferred<Unit>?>(null)
+    private val pendingTarget = AtomicReference<RideOnControlTarget?>(null)
+    private val targetWake = Channel<Unit>(Channel.CONFLATED)
+    @Volatile private var lastErgAcceptedAtMs: Long? = null
 
     @Volatile var controlGranted = false
         private set
@@ -78,6 +84,7 @@ internal class RideOnControlSession(
             }
             controlGranted = true
             onControlGranted()
+            startTargetConsumer()
         }
         return true
     }
@@ -100,7 +107,35 @@ internal class RideOnControlSession(
         if (!closed.compareAndSet(false, true)) return
         controlGranted = false
         negotiationWaiter.getAndSet(null)?.cancel()
+        pendingTarget.set(null)
+        targetWake.close()
         supervisor.cancel()
+    }
+
+    fun submit(target: RideOnControlTarget): Boolean {
+        if (!controlGranted || closed.get() || encodeRideOnTarget(target) == null) return false
+        pendingTarget.set(target)
+        targetWake.trySend(Unit)
+        return true
+    }
+
+    private fun startTargetConsumer() = scope.launch {
+        while (isActive && !closed.get()) {
+            targetWake.receiveCatching().getOrNull() ?: break
+            val target = pendingTarget.getAndSet(null) ?: continue
+            if (target is RideOnControlTarget.Erg) {
+                lastErgAcceptedAtMs?.let { last ->
+                    val remaining = timing.ergMinIntervalMs - (System.nanoTime() / 1_000_000L - last)
+                    if (remaining > 0) delay(remaining)
+                    if (pendingTarget.get() != null) continue
+                }
+            }
+            val encoded = encodeRideOnTarget(target) ?: continue
+            if (write(encoded, "target")) {
+                if (target is RideOnControlTarget.Erg) lastErgAcceptedAtMs = System.nanoTime() / 1_000_000L
+            }
+            if (pendingTarget.get() != null) targetWake.trySend(Unit)
+        }
     }
 
     private suspend fun write(payload: ByteArray, label: String): Boolean = runCatching {
