@@ -69,6 +69,14 @@ class FtmsControlPointHandler(
             }
         }
 
+        // Wheel circumference configures measurement interpretation; it does not move the
+        // machine or establish workout control. Clients such as Wahoo send this setup value
+        // before Request Control, so keep it outside both the ownership and route-acquisition
+        // paths while still requiring an honestly advertised/applicable sink capability.
+        if (op == o.SET_WHEEL_CIRCUMFERENCE) {
+            return handleWheelCircumference(value, session)
+        }
+
         if (!session.hasControl) {
             return Outcome(response(op, r.CONTROL_NOT_PERMITTED))
         }
@@ -226,26 +234,36 @@ class FtmsControlPointHandler(
                 true
             }
 
-            o.SET_WHEEL_CIRCUMFERENCE -> {
-                if (!hasExactLength(op, value)) return Outcome(response(op, r.INVALID_PARAMETER))
-                val raw = u16(value, 1)
-                if (raw == 0) return Outcome(response(op, r.INVALID_PARAMETER))
-                val millimetres = raw / 10.0
-                target(
-                    op, value, sink.targetCapabilities.wheelCircumference,
-                    null,
-                    FtmsSpec.Status.WHEEL_CIRCUMFERENCE_CHANGED,
-                    rawValue = null,
-                    statusOperand = null,
-                ) {
-                    if (!sink.setWheelCircumferenceMm(millimetres)) return@target false
-                    session.acceptedTargets.wheelCircumferenceMm = millimetres
-                    true
-                }
-            }
-
             else -> Outcome(response(op, r.OPCODE_NOT_SUPPORTED))
         }
+    }
+
+    private fun handleWheelCircumference(
+        value: ByteArray,
+        session: FtmsProcedureSession,
+    ): Outcome {
+        val op = FtmsSpec.Opcode.SET_WHEEL_CIRCUMFERENCE
+        if (!hasExactLength(op, value)) {
+            return Outcome(response(op, FtmsSpec.Result.INVALID_PARAMETER))
+        }
+        val raw = u16(value, 1)
+        if (raw == 0) return Outcome(response(op, FtmsSpec.Result.INVALID_PARAMETER))
+        if (!sink.targetCapabilities.wheelCircumference) {
+            return Outcome(response(op, FtmsSpec.Result.OPCODE_NOT_SUPPORTED))
+        }
+
+        val millimetres = raw / 10.0
+        if (!sink.setWheelCircumferenceMm(millimetres)) {
+            return Outcome(response(op, FtmsSpec.Result.OPERATION_FAILED))
+        }
+        session.acceptedTargets.wheelCircumferenceMm = millimetres
+        val status = if (sink.reportsTargetChangesAsynchronously) {
+            null
+        } else {
+            byteArrayOf(FtmsSpec.Status.WHEEL_CIRCUMFERENCE_CHANGED) +
+                value.copyOfRange(1, value.size)
+        }
+        return Outcome(response(op, FtmsSpec.Result.SUCCESS), status = status)
     }
 
     private fun target(

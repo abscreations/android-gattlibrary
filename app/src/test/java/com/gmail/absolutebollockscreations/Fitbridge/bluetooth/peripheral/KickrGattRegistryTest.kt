@@ -111,6 +111,32 @@ class KickrGattRegistryTest {
     }
 
     @Test
+    fun `FTMS circumference setup applies without claiming the KICKR control route`() {
+        val model = KickrSyntheticModel()
+        val session = KickrPeripheralSession(13L, model)
+        session.subscribe(
+            BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
+            PeripheralConnection.CccdMode.INDICATE,
+        )
+
+        val circumference = session.handleFtmsControl(
+            byteArrayOf(FtmsSpec.Opcode.SET_WHEEL_CIRCUMFERENCE, 0xDC.toByte(), 0x50),
+        )
+
+        assertEquals(FtmsSpec.Result.SUCCESS, circumference!!.response[2])
+        assertEquals(2070.0, model.snapshot().wheelCircumferenceMm, 0.0)
+        assertFalse(session.ftms.session.hasControl)
+        assertNull(session.route)
+        session.completeInFlight()
+
+        val power = session.handleFtmsControl(
+            byteArrayOf(FtmsSpec.Opcode.SET_TARGET_POWER, 0xA0.toByte(), 0x00),
+        )
+        assertEquals(FtmsSpec.Result.CONTROL_NOT_PERMITTED, power!!.response[2])
+        assertNull(session.route)
+    }
+
+    @Test
     fun `original Zwift route requires both CCCDs and excludes FTMS`() {
         val session = KickrPeripheralSession(
             11L,

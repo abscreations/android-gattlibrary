@@ -6,6 +6,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FtmsMoc
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -560,13 +561,14 @@ class FtmsControlPointTest {
     }
 
     @Test
-    fun `wheel circumference 0x12 validates exact framing and forwards tenths of a millimetre`() {
+    fun `wheel circumference 0x12 is setup available without acquiring control`() {
         val sink = RecordingSink(
+            canControl = false,
             targetCapabilities = TargetCapabilities(wheelCircumference = true),
             reportsTargetChangesAsynchronously = true,
         )
         val cp = FtmsControlPointHandler(sink)
-        val session = FtmsProcedureSession().apply { hasControl = true }
+        val session = FtmsProcedureSession()
 
         assertEquals(R.INVALID_PARAMETER, result(cp.handle(byteArrayOf(O.SET_WHEEL_CIRCUMFERENCE, 1), session)))
         assertEquals(R.INVALID_PARAMETER, result(cp.handle(byteArrayOf(O.SET_WHEEL_CIRCUMFERENCE, 0, 0), session)))
@@ -576,5 +578,24 @@ class FtmsControlPointTest {
         assertEquals(2107.4, sink.wheelCircumferenceMm!!, 0.0001)
         assertEquals(2107.4, session.acceptedTargets.wheelCircumferenceMm!!, 0.0001)
         assertNull(accepted.status)
+        assertFalse(session.hasControl)
+
+        val deniedPower = cp.handle(byteArrayOf(O.SET_TARGET_POWER, 0xA0.toByte(), 0x00), session)
+        assertEquals(R.CONTROL_NOT_PERMITTED, result(deniedPower))
+    }
+
+    @Test
+    fun `wheel circumference without control rejects an unsupported sink honestly`() {
+        val sink = RecordingSink(targetCapabilities = TargetCapabilities())
+        val session = FtmsProcedureSession()
+
+        val out = FtmsControlPointHandler(sink).handle(
+            byteArrayOf(O.SET_WHEEL_CIRCUMFERENCE, 0xDC.toByte(), 0x50),
+            session,
+        )
+
+        assertEquals(R.OPCODE_NOT_SUPPORTED, result(out))
+        assertFalse(session.hasControl)
+        assertNull(sink.wheelCircumferenceMm)
     }
 }
