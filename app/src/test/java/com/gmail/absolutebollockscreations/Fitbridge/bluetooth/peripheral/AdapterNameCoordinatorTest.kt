@@ -289,7 +289,7 @@ class AdapterNameCoordinatorTest {
 
     @Test
     fun `stranded KICKR simulator names are never recorded as the user's original`() {
-        listOf("Wahoo KICKR AEE4", "KICKR CORE C3FB", "KICKR CORE 2 SIM").forEach { name ->
+        listOf("Wahoo KICKR AEE4", "KICKR CORE C3FB", "KICKR CORE 2 1A2B").forEach { name ->
             val gateway = FakeGateway(name)
             val store = FakeStore()
 

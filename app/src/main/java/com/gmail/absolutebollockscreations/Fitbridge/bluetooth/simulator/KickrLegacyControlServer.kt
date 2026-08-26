@@ -3,7 +3,22 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.WahooKickrCommand
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.WahooKickrUuids
 
-/** Persona policy for post-unlock indications. Unlock itself is always strictly acknowledged. */
+/**
+ * Persona policy for control-response indications.
+ *
+ * Unlock (`0x20 EE FC`) is still decoded, still applied, and still strictly acknowledged when a
+ * client sends it - some clients (Incyclist's adapter, per
+ * `docs/KICKR_PROPRIETARY_GATT_PORT_DESIGN.md`) always send it first. It is no longer a
+ * *precondition* for every other opcode, though: a real-world interop capture (Kinomap against
+ * this simulator, 2026-08-26) showed a client driving Resistance/Erg/Simulation/Grade/Wheel
+ * Circumference for a full ~7-minute session without ever sending Unlock, which every one of
+ * those writes then failed - Android surfaces `GATT_FAILURE` on the wire as ATT `0x01 Invalid
+ * Handle` (see `docs/evidence/phase-9/2026-08-21-garmin-tacx-neo-interoperability.md`), which
+ * reads exactly like a broken GATT registration and is not. The working assumption, absent a
+ * documented case of a real KICKR rejecting an un-unlocked command, is that unlock-then-control
+ * is one observed client convention, not something every real KICKR enforces - so this server
+ * now accepts legacy control opcodes with or without a prior Unlock.
+ */
 internal enum class KickrLegacyAckMode(val evidence: KickrEvidenceLabel) {
     ACKNOWLEDGING_SYNTHETIC(KickrEvidenceLabel.SYN),
     SILENT_CORROBORATED(KickrEvidenceLabel.X),
@@ -105,7 +120,14 @@ internal data class KickrLegacyControlOutcome(
     val decoded: KickrLegacyDecodeResult,
 )
 
-/** Per-link legacy state. No unlock, route, or parameter survives disconnect. */
+/**
+ * Per-link legacy state. No unlock, route, or parameter survives disconnect.
+ *
+ * [unlocked] is diagnostic, not a gate: it starts `false`, flips `true` the moment any legacy
+ * opcode is actually applied (an explicit Unlock or the first real control command - see
+ * [handle]), and reports "has this link exercised legacy control since it connected/reset" for
+ * [KickrPeripheralAdvertiser.diagnostics]'s `LEGACY_LOCKED`/`LEGACY_UNLOCKED` stage label.
+ */
 internal class KickrLegacyControlServer(
     private val model: KickrSyntheticModel,
     val ackMode: KickrLegacyAckMode,
@@ -122,8 +144,12 @@ internal class KickrLegacyControlServer(
             unlocked = true
             return KickrLegacyControlOutcome(true, success(WahooKickrUuids.OPCODE_UNLOCK), decoded)
         }
-        if (!unlocked) return KickrLegacyControlOutcome(false, decoded = decoded)
+        // No unlock precondition here - see this class's KDoc. A client that skips Unlock and
+        // goes straight to control still reaches [apply] below; [unlocked] flips true as a
+        // side effect of that first successful command, same as it would after an explicit
+        // Unlock, so diagnostics still read "unlocked" once real control is actually happening.
         val applied = apply(command)
+        if (applied) unlocked = true
         val response = if (applied && ackMode == KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC) {
             success(value[0].toInt() and 0xFF)
         } else null
@@ -147,7 +173,11 @@ internal class KickrLegacyControlServer(
         is WahooKickrCommand.StandardLevel ->
             model.setResistance(command.level.toDouble(), KickrControlSource.LEGACY_KICKR)
         is WahooKickrCommand.Simulation -> {
-            simulation = simulation.copy(crr = command.crr, cw = command.cw)
+            simulation = simulation.copy(
+                crr = command.crr,
+                cw = command.cw,
+                totalMassKg = command.totalMassKg,
+            )
             model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
         is WahooKickrCommand.RollingResistance -> {

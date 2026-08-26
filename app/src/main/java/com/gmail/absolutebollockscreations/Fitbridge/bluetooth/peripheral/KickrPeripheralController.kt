@@ -242,7 +242,7 @@ internal class KickrPeripheralController(
     private fun evidenceBadge(persona: KickrSimulatorPersona): String = when (persona) {
         KickrSimulatorPersona.V5_STANDARD_LEGACY -> "log-corroborated"
         KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> "capture-backed (HCI)"
-        KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> "provisional (M/SYN)"
+        KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> "advertising HCI; GATT provisional"
     }
 
     private fun hasPermissions(): Boolean =

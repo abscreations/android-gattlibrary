@@ -32,6 +32,37 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
+/** Build only measurement frames that the selected persona actually exposes as notifiable. */
+internal fun kickrStandardMeasurementFrames(
+    manifest: KickrPersonaManifest,
+    snapshot: KickrMachineSnapshot,
+): List<KickrTxFrame> {
+    val notifiable = manifest.services
+        .flatMap { it.characteristics }
+        .filter { KickrGattProperty.NOTIFY in it.properties }
+        .mapTo(hashSetOf()) { it.uuid }
+    return buildList {
+        if (BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT in notifiable) {
+            add(
+                KickrTxFrame(
+                    BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                    KickrStandardEncoders.cyclingPowerMeasurement(snapshot),
+                    false,
+                ),
+            )
+        }
+        if (BluetoothIds.UUID_BIKING_DATA in notifiable) {
+            add(
+                KickrTxFrame(
+                    BluetoothIds.UUID_BIKING_DATA,
+                    KickrStandardEncoders.indoorBikeData(snapshot),
+                    false,
+                ),
+            )
+        }
+    }
+}
+
 /** Debug-only KICKR GATT server. Proprietary decoders are attached in KS-S4 through KS-S6. */
 internal class KickrPeripheralAdvertiser(
     private val context: Context,
@@ -103,19 +134,8 @@ internal class KickrPeripheralAdvertiser(
     }
 
     fun publish(snapshot: KickrMachineSnapshot) {
-        val selected = manifest?.persona ?: return
-        val frames = if (selected == KickrSimulatorPersona.CORE2_FC82_PROVISIONAL) emptyList() else listOf(
-            KickrTxFrame(
-                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
-                KickrStandardEncoders.cyclingPowerMeasurement(snapshot),
-                false,
-            ),
-            KickrTxFrame(
-                BluetoothIds.UUID_BIKING_DATA,
-                KickrStandardEncoders.indoorBikeData(snapshot),
-                false,
-            ),
-        )
+        val selectedManifest = manifest ?: return
+        val frames = kickrStandardMeasurementFrames(selectedManifest, snapshot)
         clients.values.forEach { client ->
             synchronized(client.session) {
                 frames.forEach { frame ->

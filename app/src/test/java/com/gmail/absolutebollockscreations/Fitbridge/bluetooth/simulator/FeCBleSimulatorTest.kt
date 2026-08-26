@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.roundToInt
 
 /**
  * Pure simulator tests against `docs/fe-c-ble_simulator_implementation.md` §21-§25.
@@ -400,6 +401,108 @@ class FeCBleSimulatorTest {
     }
 
     @Test
+    fun `simulation physics consumes FE-C rider mass wind and drafting`() {
+        fun settledPower(riderMassKg: Double, windKph: Int, drafting: Double): Int {
+            val state = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
+            FeCBleSyntheticModel.applyControlCommand(
+                state,
+                FeCBleControlCommand.UserConfiguration(riderMassKg, byteArrayOf()),
+                null,
+            )
+            FeCBleSyntheticModel.applyControlCommand(
+                state,
+                FeCBleControlCommand.TrackResistance(5.0, 0.004),
+                null,
+            )
+            FeCBleSyntheticModel.applyControlCommand(
+                state,
+                FeCBleControlCommand.WindResistance(0.51, windKph, drafting),
+                null,
+            )
+            FeCBleSyntheticModel.advanceTick(state)
+            return state.instantaneousPowerWatts!!
+        }
+
+        val baseline = settledPower(75.0, 0, 1.0)
+        assertTrue(settledPower(95.0, 0, 1.0) > baseline)
+        assertTrue(settledPower(75.0, 18, 1.0) > baseline)
+        assertTrue(settledPower(75.0, 0, 0.5) < baseline)
+    }
+
+    @Test
+    fun `decoded FE-C pages drive one physics power into page 25 page 26 and CPS`() {
+        val state = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
+        listOf(
+            "A4 09 4F 05 37 4C 1D FF 86 0C D1 53 76",
+            "A4 09 4F 05 32 FF FF FF FF 33 7F 64 FD",
+            "A4 09 4F 05 33 FF FF FF FF 20 4E 42 F8",
+        ).forEach { wire ->
+            FeCBleSyntheticModel.applyControlCommand(
+                state,
+                FeCBleControlDecoder.decode(bytes(wire)),
+                null,
+            )
+        }
+
+        FeCBleSyntheticModel.advanceTick(state)
+        val expected = CyclingSimulationPhysics.requiredRiderPowerWatts(
+            speedKph = state.speedMps * 3.6,
+            gradePercent = 0.0,
+            crr = 0.0033,
+            cwKgPerM = 0.51,
+            windMps = 0.0,
+            totalMassKg = 85.0,
+            draftingFactor = 1.0,
+        ).roundToInt()
+        assertEquals(expected, state.instantaneousPowerWatts)
+        assertEquals(expected, page25PowerWatts(FeCBleTelemetryEncoder.encodePage25(state)))
+        assertEquals(
+            expected,
+            cpsPowerWatts(
+                CyclingSensorEncoders.cyclingPowerMeasurement(
+                    state.instantaneousPowerWatts!!,
+                    CyclingRevolutionSnapshot(),
+                ),
+            ),
+        )
+
+        val first = FeCBleTelemetryEncoder.encodePage26(state)
+        val contributing = buildList {
+            repeat(2) {
+                FeCBleSyntheticModel.advanceTick(state)
+                add(state.instantaneousPowerWatts!!)
+            }
+        }
+        val second = FeCBleTelemetryEncoder.encodePage26(state)
+        val periodDelta = (u16(second, 3) - u16(first, 3)) and 0xFFFF
+        val torqueDelta = (u16(second, 5) - u16(first, 5)) and 0xFFFF
+        val torquePower = 128.0 * Math.PI * torqueDelta / periodDelta
+        assertEquals(contributing.average(), torquePower, 1.0)
+    }
+
+    @Test
+    fun `FE-C simulation clamps at 12-bit power and ERG resumes afterward`() {
+        val state = FeCBleMachineState(FeCEquipmentType.TRAINER).apply { enterInUseWithDefaults() }
+        FeCBleSyntheticModel.applyControlCommand(
+            state,
+            FeCBleControlCommand.TrackResistance(200.0, 0.0255),
+            null,
+        )
+        FeCBleSyntheticModel.applyControlCommand(
+            state,
+            FeCBleControlCommand.WindResistance(2.55, 127, 1.0),
+            null,
+        )
+        FeCBleSyntheticModel.advanceTick(state)
+        assertEquals(0xFFE, state.instantaneousPowerWatts)
+
+        FeCBleSyntheticModel.applyControlCommand(state, FeCBleControlCommand.TargetPower(300.0), null)
+        repeat(200) { FeCBleSyntheticModel.advanceTick(state) }
+        assertEquals(FeCBleControlMode.ERG, state.controlMode)
+        assertEquals(300, state.instantaneousPowerWatts)
+    }
+
+    @Test
     fun `25-4 reset clears control state and stale targets`() {
         val state = FeCBleMachineState(FeCEquipmentType.TRAINER)
         FeCBleSyntheticModel.applyControlCommand(state, FeCBleControlCommand.TargetPower(400.0), null)
@@ -495,7 +598,16 @@ class FeCBleSimulatorTest {
         )
         repeat(100) { FeCBleSyntheticModel.advanceTick(simulation) }
         assertEquals(6.25, simulation.inclinePercent, 0.0)
-        assertEquals(262, simulation.instantaneousPowerWatts)
+        assertEquals(
+            CyclingSimulationPhysics.requiredRiderPowerWatts(
+                speedKph = simulation.speedMps * 3.6,
+                gradePercent = 6.25,
+                crr = 0.004,
+                cwKgPerM = CyclingSimulationPhysics.DEFAULT_CW_KG_PER_M,
+                windMps = 0.0,
+            ).roundToInt(),
+            simulation.instantaneousPowerWatts,
+        )
     }
 
     @Test

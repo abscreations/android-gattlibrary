@@ -15,10 +15,10 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsSp
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
+import kotlin.math.roundToInt
 
 class KickrSyntheticModelTest {
     @Test
@@ -88,12 +88,51 @@ class KickrSyntheticModelTest {
     }
 
     @Test
-    fun `CORE 2 has no invented standard characteristic values`() {
-        assertNull(
+    fun `CORE 2 serves synthetic standard values for its approved compatibility GATT`() {
+        val value = requireNotNull(
             KickrStandardEncoders.readValue(
                 KickrSimulatorPersona.CORE2_FC82_PROVISIONAL,
                 BluetoothIds.UUID_FITNESS_MACHINE_FEATURE,
             ),
+        )
+        assertArrayEquals(KickrStandardEncoders.CORE_FTMS_FEATURE, value.bytes)
+        assertTrue(KickrEvidenceLabel.M in value.evidence)
+        assertTrue(KickrEvidenceLabel.SYN in value.evidence)
+    }
+
+    @Test
+    fun `simulation publishes shared road load through CPS and FTMS`() {
+        val model = KickrSyntheticModel()
+        model.startOrResume()
+        val sim = KickrSimulationTarget(
+            windMps = 2.0,
+            gradePercent = 4.0,
+            crr = 0.0045,
+            cw = 0.51,
+            totalMassKg = 92.0,
+        )
+        assertTrue(model.setSimulation(sim, KickrControlSource.RIDE_ON))
+        repeat(40) { model.advance(0.5) }
+        val snapshot = model.snapshot()
+        val expected = CyclingSimulationPhysics.requiredRiderPowerWatts(
+            speedKph = snapshot.speedKph,
+            gradePercent = sim.gradePercent,
+            crr = sim.crr,
+            cwKgPerM = sim.cw,
+            windMps = sim.windMps,
+            totalMassKg = sim.totalMassKg,
+        ).roundToInt()
+
+        assertEquals(expected, snapshot.powerWatts)
+        assertEquals(
+            expected,
+            requireNotNull(
+                CpsMeasurement.parse(KickrStandardEncoders.cyclingPowerMeasurement(snapshot)),
+            ).instantaneousPowerWatts,
+        )
+        assertEquals(
+            expected,
+            parseBike(KickrStandardEncoders.indoorBikeData(snapshot)).state.instantPower.value,
         )
     }
 
@@ -111,6 +150,17 @@ class KickrSyntheticModelTest {
         assertResult(FtmsSpec.Result.SUCCESS, processor.handle(bytes(0x11, 0, 0, 0xF4, 0x01, 40, 51)))
         assertEquals(KickrControlMode.SIMULATION, processor.model.snapshot().mode)
         assertEquals(5.0, processor.model.snapshot().simulation.gradePercent, 0.0)
+        val simulated = processor.model.advance(0.5)
+        assertEquals(
+            CyclingSimulationPhysics.requiredRiderPowerWatts(
+                speedKph = simulated.speedKph,
+                gradePercent = 5.0,
+                crr = 0.004,
+                cwKgPerM = 0.51,
+                windMps = 0.0,
+            ).roundToInt(),
+            simulated.powerWatts,
+        )
 
         assertResult(FtmsSpec.Result.SUCCESS, processor.handle(bytes(0x04, 100, 0)))
         assertEquals(KickrControlMode.RESISTANCE, processor.model.snapshot().mode)
@@ -118,6 +168,21 @@ class KickrSyntheticModelTest {
 
         assertResult(FtmsSpec.Result.SUCCESS, processor.handle(bytes(0x12, 0x52, 0x52)))
         assertEquals(2107.4, processor.model.snapshot().wheelCircumferenceMm, 0.0)
+    }
+
+    @Test
+    fun `simulation clamps to KICKR power range and ERG clears physics ownership`() {
+        val model = KickrSyntheticModel()
+        model.startOrResume()
+        assertTrue(model.setSimulation(KickrSimulationTarget(gradePercent = 200.0)))
+        repeat(40) { model.advance(0.5) }
+        assertEquals(KickrSyntheticModel.MAX_POWER_WATTS, model.snapshot().powerWatts)
+
+        assertTrue(model.setTargetPower(250, KickrControlSource.FTMS))
+        model.advance(3.0)
+        assertEquals(KickrControlMode.ERG, model.snapshot().mode)
+        assertEquals(250, model.snapshot().powerWatts)
+        assertEquals(SimulatorControlModeLabels.FTMS_ERG, model.snapshot().controlLabel)
     }
 
     @Test

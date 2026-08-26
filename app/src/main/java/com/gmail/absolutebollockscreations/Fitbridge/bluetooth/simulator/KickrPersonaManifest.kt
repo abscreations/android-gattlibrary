@@ -13,7 +13,7 @@ enum class KickrSimulatorPersona(
 ) {
     V5_STANDARD_LEGACY("KICKR v5 — standard/legacy only", false),
     CORE_ORIGINAL_ZWIFT("KICKR Core — original Zwift service", false),
-    CORE2_FC82_PROVISIONAL("KICKR CORE 2 — provisional FC82", true),
+    CORE2_FC82_PROVISIONAL("KICKR CORE 2 — CPS/FTMS + FC82", true),
 }
 
 internal enum class KickrGattProperty { READ, WRITE, WRITE_WITHOUT_RESPONSE, NOTIFY, INDICATE }
@@ -177,12 +177,18 @@ internal data class KickrPersonaManifest(
         private fun core2Probe(): KickrPersonaManifest = KickrPersonaManifest(
             persona = KickrSimulatorPersona.CORE2_FC82_PROVISIONAL,
             advertising = KickrAdvertisingPlan(
-                localName = "KICKR CORE 2 SIM",
-                advertisedServices = listOf(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE),
-                evidence = setOf(KickrEvidenceLabel.M, KickrEvidenceLabel.SYN),
+                // The capture says "KICKR CORE 1A2B". Retain its suffix and service list while
+                // inserting the user's requested CORE 2 model marker into the simulator name.
+                localName = "KICKR CORE 2 1A2B",
+                advertisedServices = listOf(
+                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                    BluetoothIds.UUID_FTMS_SERVICE,
+                ),
+                evidence = setOf(KickrEvidenceLabel.HCI, KickrEvidenceLabel.SYN),
+                exactLegacyPayload = CORE2_SIM_ADVERTISING.copyOf(),
             ),
             identity = KickrDeviceIdentity(null, null, null, setOf(KickrEvidenceLabel.SYN)),
-            services = listOf(
+            services = standardKickrServices(setOf(KickrEvidenceLabel.M)) + listOf(
                 zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE, KickrEvidenceLabel.M),
             ),
             legacyAckMode = null,
@@ -280,6 +286,22 @@ internal data class KickrPersonaManifest(
             0x05, 0x03, 0x18, 0x18, 0x26, 0x18,
             0x10, 0x09, 0x4B, 0x49, 0x43, 0x4B, 0x52, 0x20,
             0x43, 0x4F, 0x52, 0x45, 0x20, 0x43, 0x33, 0x46, 0x42,
+        )
+
+        /** User-supplied physical CORE 2 legacy advertisement, pinned without interpretation. */
+        val CAPTURED_CORE2_ADVERTISING: ByteArray = byteArrayOf(
+            0x02, 0x01, 0x06,
+            0x05, 0x03, 0x18, 0x18, 0x26, 0x18,
+            0x10, 0x09, 0x4B, 0x49, 0x43, 0x4B, 0x52, 0x20,
+            0x43, 0x4F, 0x52, 0x45, 0x20, 0x31, 0x41, 0x32, 0x42,
+        )
+
+        /** Captured packet adapted only by inserting "2 " before the four-character suffix. */
+        val CORE2_SIM_ADVERTISING: ByteArray = byteArrayOf(
+            0x02, 0x01, 0x06,
+            0x05, 0x03, 0x18, 0x18, 0x26, 0x18,
+            0x12, 0x09, 0x4B, 0x49, 0x43, 0x4B, 0x52, 0x20,
+            0x43, 0x4F, 0x52, 0x45, 0x20, 0x32, 0x20, 0x31, 0x41, 0x32, 0x42,
         )
     }
 }

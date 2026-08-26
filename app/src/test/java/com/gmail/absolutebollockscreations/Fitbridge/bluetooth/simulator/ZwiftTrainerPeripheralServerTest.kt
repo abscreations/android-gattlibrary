@@ -83,8 +83,66 @@ class ZwiftTrainerPeripheralServerTest {
         assertEquals(-4.0, snapshot.simulation.gradePercent, 0.001)
         assertEquals(0.004, snapshot.simulation.crr, 0.000001)
         assertEquals(0.51, snapshot.simulation.cw, 0.000001)
+        assertEquals(85.0, snapshot.simulation.totalMassKg, 0.001)
         assertEquals(12, snapshot.virtualGearIndex)
         assertEquals(2.4, snapshot.gearRatio, 0.000001)
+    }
+
+    @Test
+    fun `RideOn rider and bicycle masses change physics power at the same speed`() {
+        fun powerFor(riderMassKg: Double, bicycleMassKg: Double): Int {
+            val model = KickrSyntheticModel().also { it.startOrResume() }
+            val server = ready(model)
+            val target = RideOnControlTarget.Simulation(
+                windMps = 0.0,
+                gradePercent = 5.0,
+                crr = 0.004,
+                cw = 0.51,
+                gearRatio = 2.4,
+                bicycleMassKg = bicycleMassKg,
+                riderMassKg = riderMassKg,
+            )
+            check(server.handle(encodeRideOnTarget(target)!!, true).accepted)
+            repeat(80) { model.advance(0.5) }
+            assertEquals(riderMassKg + bicycleMassKg, model.snapshot().simulation.totalMassKg, 0.001)
+            assertEquals(28.0, model.snapshot().speedKph, 0.02)
+            return model.snapshot().powerWatts
+        }
+
+        assertTrue(powerFor(90.0, 12.0) > powerFor(60.0, 8.0))
+    }
+
+    @Test
+    fun `RideOn signed descent lowers live telemetry power after flat simulation`() {
+        val model = KickrSyntheticModel().also { it.startOrResume() }
+        val server = ready(model)
+        fun send(gradePercent: Double) = server.handle(
+            encodeRideOnTarget(
+                RideOnControlTarget.Simulation(
+                    windMps = 0.0,
+                    gradePercent = gradePercent,
+                    crr = 0.004,
+                    cw = 0.51,
+                    gearRatio = 2.4,
+                    bicycleMassKg = 10.0,
+                    riderMassKg = 75.0,
+                ),
+            )!!,
+            true,
+        )
+
+        assertTrue(send(0.0).accepted)
+        repeat(80) { model.advance(0.5) }
+        val flat = model.snapshot()
+        assertTrue(send(-5.0).accepted)
+        val descent = model.advance(0.5)
+        val telemetry = decodeRideOnTelemetry(server.telemetryFrame().value)!!
+
+        assertEquals(flat.speedKph, descent.speedKph, 0.01)
+        assertEquals(-5.0, descent.simulation.gradePercent, 0.001)
+        assertTrue(descent.powerWatts < flat.powerWatts)
+        assertEquals(0, descent.powerWatts)
+        assertEquals(descent.powerWatts, telemetry.powerWatts)
     }
 
     @Test

@@ -384,6 +384,7 @@ class FtmsMockEngine(
     fun setSimulationParams(params: FtmsMockSimulationParams): Boolean {
         if (!controlsEnabled || !controlCapabilities.indoorBikeSimulation) return false
         simulationParams = params
+        targets.remove(FtmsMockTarget.POWER)
         lastControlKind = FtmsControlKind.SIMULATION
         return true
     }
@@ -402,7 +403,17 @@ class FtmsMockEngine(
             speed = advanceMetric(speed, profile.speed, dtSeconds, timeConstant = 5.0, noise = 0.025)
         }
         cadence = advanceMetric(cadence, profile.cadence, dtSeconds, timeConstant = 4.0, noise = 0.02)
-        if (FtmsMockTarget.POWER !in targets) {
+        val activeSimulation = lastControlKind == FtmsControlKind.SIMULATION && profile.isBike
+        if (activeSimulation) {
+            val sim = requireNotNull(simulationParams)
+            power = CyclingSimulationPhysics.requiredRiderPowerWatts(
+                speedKph = speed ?: 0.0,
+                gradePercent = sim.gradePercent,
+                crr = sim.crr,
+                cwKgPerM = sim.cw,
+                windMps = sim.windMps,
+            ).coerceAtMost(Short.MAX_VALUE.toDouble())
+        } else if (FtmsMockTarget.POWER !in targets) {
             power = advanceMetric(power, profile.power, dtSeconds, timeConstant = 3.0, noise = 0.035)
                 ?: power
         }

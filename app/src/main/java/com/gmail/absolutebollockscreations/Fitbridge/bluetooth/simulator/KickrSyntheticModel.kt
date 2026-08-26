@@ -39,6 +39,7 @@ internal data class KickrSimulationTarget(
     val gradePercent: Double = 0.0,
     val crr: Double = 0.004,
     val cw: Double = 0.51,
+    val totalMassKg: Double = CyclingSimulationPhysics.DEFAULT_TOTAL_MASS_KG,
 )
 
 /** One immutable state read by every standard and proprietary encoder. */
@@ -181,6 +182,7 @@ internal class KickrSyntheticModel(
         if (!target.gradePercent.isFinite() || target.gradePercent !in -327.68..327.67) return false
         if (!target.crr.isFinite() || target.crr !in 0.0..0.0255) return false
         if (!target.cw.isFinite() || target.cw !in 0.0..2.55) return false
+        if (!target.totalMassKg.isFinite() || target.totalMassKg <= 0.0 || target.totalMassKg > 327.67) return false
         mode = KickrControlMode.SIMULATION
         simulation = target
         targetPowerWatts = null
@@ -228,22 +230,37 @@ internal class KickrSyntheticModel(
         elapsedSeconds += dtSeconds
         if (!running) return snapshot()
 
+        if (mode == KickrControlMode.SIMULATION) {
+            speedKph = approach(
+                speedKph,
+                SIMULATION_SPEED_KPH,
+                dtSeconds,
+                SPEED_TIME_CONSTANT_SECONDS,
+            )
+            powerWatts = CyclingSimulationPhysics.requiredRiderPowerWatts(
+                speedKph = speedKph,
+                gradePercent = simulation.gradePercent,
+                crr = simulation.crr,
+                cwKgPerM = simulation.cw,
+                windMps = simulation.windMps,
+                totalMassKg = simulation.totalMassKg,
+            ).coerceAtMost(MAX_POWER_WATTS.toDouble())
+        }
         val desiredPower = when (mode) {
             KickrControlMode.AUTONOMOUS -> 160.0
             KickrControlMode.ERG -> targetPowerWatts?.toDouble() ?: 160.0
             KickrControlMode.RESISTANCE -> 45.0 + resistanceLevel * 14.0
-            KickrControlMode.SIMULATION -> (
-                130.0 + simulation.gradePercent * 9.0 + simulation.windMps * 1.5 +
-                    simulation.crr * 4_000.0 + simulation.cw * 18.0 + (gearRatio - DEFAULT_GEAR_RATIO) * 20.0
-                ).coerceIn(0.0, MAX_POWER_WATTS.toDouble())
+            KickrControlMode.SIMULATION -> powerWatts
         }
-        powerWatts = approach(powerWatts, desiredPower, dtSeconds, POWER_TIME_CONSTANT_SECONDS)
+        if (mode != KickrControlMode.SIMULATION) {
+            powerWatts = approach(powerWatts, desiredPower, dtSeconds, POWER_TIME_CONSTANT_SECONDS)
+        }
         val desiredCadence = if (desiredPower <= 0.0) 0.0 else (78.0 + desiredPower / 35.0).coerceAtMost(105.0)
         cadenceRpm = approach(cadenceRpm, desiredCadence, dtSeconds, CADENCE_TIME_CONSTANT_SECONDS)
-        val desiredSpeed = (
-            20.0 + powerWatts / 18.0 - simulation.gradePercent * 0.25 - simulation.windMps * 0.08
-            ).coerceIn(0.0, MAX_SPEED_KPH)
-        speedKph = approach(speedKph, desiredSpeed, dtSeconds, SPEED_TIME_CONSTANT_SECONDS)
+        if (mode != KickrControlMode.SIMULATION) {
+            val desiredSpeed = (20.0 + powerWatts / 18.0).coerceIn(0.0, MAX_SPEED_KPH)
+            speedKph = approach(speedKph, desiredSpeed, dtSeconds, SPEED_TIME_CONSTANT_SECONDS)
+        }
         heartRateBpm = approach(
             heartRateBpm,
             (88.0 + powerWatts / 3.5).coerceIn(IDLE_HEART_RATE.toDouble(), MAX_HEART_RATE.toDouble()),
@@ -397,6 +414,7 @@ internal class KickrSyntheticModel(
         private const val IDLE_HEART_RATE = 80
         private const val MAX_HEART_RATE = 220
         private const val MAX_SPEED_KPH = 100.0
+        private const val SIMULATION_SPEED_KPH = 28.0
         private const val POWER_TIME_CONSTANT_SECONDS = 3.0
         private const val CADENCE_TIME_CONSTANT_SECONDS = 2.0
         private const val SPEED_TIME_CONSTANT_SECONDS = 4.0
@@ -441,16 +459,18 @@ internal object KickrStandardEncoders {
         uuid: UUID,
         trainingStatus: ByteArray = byteArrayOf(0x00, 0x01),
     ): KickrReadValue? {
-        if (persona == KickrSimulatorPersona.CORE2_FC82_PROVISIONAL) return null
         val identity = KickrPersonaManifest.forPersona(persona).identity
+        val standardEvidence = when (persona) {
+            KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> setOf(KickrEvidenceLabel.HCI)
+            KickrSimulatorPersona.CORE2_FC82_PROVISIONAL ->
+                setOf(KickrEvidenceLabel.M, KickrEvidenceLabel.SYN)
+            KickrSimulatorPersona.V5_STANDARD_LEGACY ->
+                setOf(KickrEvidenceLabel.LOG, KickrEvidenceLabel.SYN)
+        }
         return when (uuid) {
             BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> KickrReadValue(
                 CORE_FTMS_FEATURE.copyOf(),
-                if (persona == KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT) {
-                    setOf(KickrEvidenceLabel.HCI)
-                } else {
-                    setOf(KickrEvidenceLabel.LOG, KickrEvidenceLabel.SYN)
-                },
+                standardEvidence,
             )
             BluetoothIds.UUID_TRAINING_STATUS -> KickrReadValue(trainingStatus.copyOf(), setOf(KickrEvidenceLabel.P))
             BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE ->
@@ -461,7 +481,11 @@ internal object KickrStandardEncoders {
             BluetoothIds.UUID_SENSOR_LOCATION -> KickrReadValue(SENSOR_LOCATION.copyOf(), setOf(KickrEvidenceLabel.LOG))
             BluetoothIds.UUID_MANUFACTURER_NAME -> stringValue(identity.manufacturer ?: "Wahoo Fitness", identity.evidence)
             BluetoothIds.UUID_SERIAL_NUMBER -> stringValue(
-                if (persona == KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT) "SIM-C3FB" else "SIM-AEE4",
+                when (persona) {
+                    KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> "SIM-C3FB"
+                    KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> "SIM-1A2B"
+                    KickrSimulatorPersona.V5_STANDARD_LEGACY -> "SIM-AEE4"
+                },
                 setOf(KickrEvidenceLabel.SYN),
             )
             BluetoothIds.UUID_HARDWARE_REVISION -> stringValue(identity.hardwareRevision ?: "SIM", identity.evidence)

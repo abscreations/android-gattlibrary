@@ -122,6 +122,7 @@ internal class ZwiftTrainerPeripheralServer(
                 gradePercent = RideOnProtoCodec.zigZagDecode32(simValues.getValue(2)) / 100.0,
                 cw = simValues.getValue(3) / 10_000.0,
                 crr = simValues.getValue(4) / 100_000.0,
+                totalMassKg = (physicalValues.getValue(4) + physicalValues.getValue(5)) / 100.0,
             )
         }.getOrNull() ?: return rejected("invalid signed simulation value")
         val gear = physicalValues[2]?.let { rawRatio ->

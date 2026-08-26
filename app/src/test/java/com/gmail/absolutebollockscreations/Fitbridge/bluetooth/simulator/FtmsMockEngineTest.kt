@@ -9,6 +9,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class FtmsMockEngineTest {
@@ -285,6 +286,31 @@ class FtmsMockEngineTest {
         repeat(60) { e.tick(0.5) }
         assertEquals(240, e.snapshot().powerWatts)
         assertEquals(240.0, e.controlTargets()[FtmsMockTarget.POWER]!!, 0.001)
+    }
+
+    @Test
+    fun `bike simulation power is the shared road load at the published speed`() {
+        val e = engine(FtmsMachineProfile.INDOOR_BIKE, controls = true)
+        assertTrue(e.setTarget(FtmsMockTarget.POWER, 240.0))
+        val sim = FtmsMockSimulationParams(
+            windMps = 2.0,
+            gradePercent = 4.0,
+            crr = 0.0045,
+            cw = 0.51,
+        )
+        assertTrue(e.setSimulationParams(sim))
+        val sample = e.tick(0.5)
+        val expected = CyclingSimulationPhysics.requiredRiderPowerWatts(
+            speedKph = sample.speedKph!!,
+            gradePercent = sim.gradePercent,
+            crr = sim.crr,
+            cwKgPerM = sim.cw,
+            windMps = sim.windMps,
+        ).roundToInt()
+
+        assertEquals(expected, sample.powerWatts)
+        assertFalse(FtmsMockTarget.POWER in e.controlTargets())
+        assertEquals(SimulatorControlModeLabels.FTMS_SIM, e.controlModeLabel())
     }
 
     @Test

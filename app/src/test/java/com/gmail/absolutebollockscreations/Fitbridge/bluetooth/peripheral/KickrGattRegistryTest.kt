@@ -17,6 +17,27 @@ import org.junit.Test
 
 class KickrGattRegistryTest {
     @Test
+    fun `CORE 2 standard services produce live CPS and FTMS measurement frames`() {
+        val model = KickrSyntheticModel().also { it.startOrResume() }
+        val snapshot = model.advance(2.0)
+        val frames = kickrStandardMeasurementFrames(
+            KickrPersonaManifest.forPersona(KickrSimulatorPersona.CORE2_FC82_PROVISIONAL),
+            snapshot,
+        )
+
+        assertEquals(
+            setOf(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT, BluetoothIds.UUID_BIKING_DATA),
+            frames.mapTo(linkedSetOf()) { it.characteristicUuid },
+        )
+        assertEquals(snapshot.powerWatts, frames.single {
+            it.characteristicUuid == BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT
+        }.value.let { (it[2].toInt() and 0xFF) or (it[3].toInt() shl 8) })
+        assertEquals(snapshot.powerWatts, frames.single {
+            it.characteristicUuid == BluetoothIds.UUID_BIKING_DATA
+        }.value.let { (it[6].toInt() and 0xFF) or (it[7].toInt() shl 8) })
+    }
+
+    @Test
     fun `Android registry creates every service in each pure manifest`() {
         KickrSimulatorPersona.entries.forEach { persona ->
             val pure = KickrPersonaManifest.forPersona(persona)

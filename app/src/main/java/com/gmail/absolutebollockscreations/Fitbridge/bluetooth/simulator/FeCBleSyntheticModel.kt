@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 /**
- * Deterministic synthetic workout model (plan §12). Coherent and controllable, not physically
- * accurate — every formula here is a **simulator behaviour choice**, pinned for repeatable tests,
- * and none of it is a claim about a physical Tacx trainer's response curves (plan §1.5, §12.6).
+ * Deterministic synthetic workout model (plan §12). Simulation mode shares FitBridge's realistic
+ * steady-state cycling road-load calculation; transient behavior remains a **simulator behaviour
+ * choice**, and none of it claims a physical Tacx trainer's response curve (plan §1.5, §12.6).
  */
 internal object FeCBleSyntheticModel {
 
@@ -50,9 +50,16 @@ internal object FeCBleSyntheticModel {
         val interval = intervalAt(state.elapsedQuarterSeconds)
         applyAutonomousMetrics(state, interval)
 
-        val target = targetPowerForCurrentMode(state)
         val currentPower = state.instantaneousPowerWatts
-        if (target != null && currentPower != null) {
+        val simulationPower = if (state.controlMode == FeCBleControlMode.SIMULATION && currentPower != null) {
+            simulationPowerAtPublishedSpeed(state)
+        } else {
+            null
+        }
+        val target = targetPowerForCurrentMode(state)
+        if (simulationPower != null) {
+            state.instantaneousPowerWatts = simulationPower.roundToIntSafely()
+        } else if (target != null && currentPower != null) {
             val delta = (target - currentPower).coerceIn(-MAX_POWER_CHANGE_PER_TICK, MAX_POWER_CHANGE_PER_TICK)
             state.instantaneousPowerWatts = (currentPower + delta).roundToIntSafely()
         }
@@ -186,14 +193,16 @@ internal object FeCBleSyntheticModel {
                 }
                 val existing = state.wind
                 state.wind = FeCBleWindConfig(
-                    windCoefficient = command.windCoefficient ?: existing?.windCoefficient ?: 0.0,
+                    windCoefficient = command.windCoefficient ?: existing?.windCoefficient
+                        ?: CyclingSimulationPhysics.DEFAULT_CW_KG_PER_M,
                     windSpeedEncodedUnit = command.windSpeedEncodedUnit ?: existing?.windSpeedEncodedUnit ?: 0,
-                    draftingFactor = command.draftingFactor ?: existing?.draftingFactor ?: 0.0,
+                    draftingFactor = command.draftingFactor ?: existing?.draftingFactor ?: 1.0,
                 )
             }
             is FeCBleControlCommand.UserConfiguration -> {
                 state.userConfig = FeCBleUserConfig(command.userWeightKg, command.rawPage)
-                // Plan §12.8: user configuration is recorded but never changes telemetry.
+                // Simulation physics consumes an established rider mass; raw unresolved page-55
+                // fields remain retained only for diagnostics.
             }
             is FeCBleControlCommand.RequestDataPage -> Unit
             is FeCBleControlCommand.Unsupported, is FeCBleControlCommand.Rejected -> Unit
@@ -209,11 +218,21 @@ internal object FeCBleSyntheticModel {
             (80.0 + 4.0 * resistance).coerceIn(25.0, 800.0)
         }
         FeCBleControlMode.ERG -> state.targetPowerWatts?.coerceIn(25.0, 800.0)
-        FeCBleControlMode.SIMULATION -> {
-            val grade = state.track?.gradePercent ?: 0.0
-            val crr = state.track?.crr ?: 0.0033
-            (180.0 + 12.0 * grade + 10_000.0 * (crr - 0.0033)).coerceIn(25.0, 800.0)
-        }
+        FeCBleControlMode.SIMULATION -> null
+    }
+
+    private fun simulationPowerAtPublishedSpeed(state: FeCBleMachineState): Double {
+        val wind = state.wind
+        val riderMass = state.userConfig?.userWeightKg ?: CyclingSimulationPhysics.DEFAULT_RIDER_MASS_KG
+        return CyclingSimulationPhysics.requiredRiderPowerWatts(
+            speedKph = state.speedMps * 3.6,
+            gradePercent = state.track?.gradePercent ?: 0.0,
+            crr = state.track?.crr ?: CyclingSimulationPhysics.DEFAULT_CRR,
+            cwKgPerM = wind?.windCoefficient ?: CyclingSimulationPhysics.DEFAULT_CW_KG_PER_M,
+            windMps = (wind?.windSpeedEncodedUnit ?: 0) / 3.6,
+            totalMassKg = riderMass + CyclingSimulationPhysics.DEFAULT_BIKE_MASS_KG,
+            draftingFactor = wind?.draftingFactor ?: 1.0,
+        ).coerceAtMost(0xFFE.toDouble())
     }
 
     private fun Double.roundToIntSafely(): Int =

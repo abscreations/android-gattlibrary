@@ -69,11 +69,20 @@ class KickrLegacyControlServerTest {
     }
 
     @Test
-    fun `acknowledging server requires unlock and applies every model target`() {
+    fun `acknowledging server accepts control with or without a prior unlock and applies every model target`() {
         val model = KickrSyntheticModel()
         val server = KickrLegacyControlServer(model, KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC)
 
-        assertFalse(server.handle(bytes(WahooKickrCommand.Erg(250))).accepted)
+        // No Unlock sent yet - real-world clients (Kinomap, per the 2026-08-26 interop capture)
+        // go straight to control, and this must not be rejected the way it used to be.
+        assertFalse(server.unlocked)
+        assertTrue(server.handle(bytes(WahooKickrCommand.Erg(250))).accepted)
+        assertEquals(KickrControlMode.ERG, model.snapshot().mode)
+        assertEquals(250, model.snapshot().targetPowerWatts)
+        assertTrue("applying a command without Unlock still flips the diagnostic flag", server.unlocked)
+
+        // An explicit Unlock is still decoded, applied, and strictly acknowledged for clients
+        // (e.g. Incyclist's adapter) that always send it first.
         val unlock = server.handle(bytes(WahooKickrCommand.Unlock))
         assertTrue(unlock.accepted)
         assertArrayEquals(byteArrayOf(0x01, 0x20, 0x01, 0x00), unlock.response)
@@ -88,6 +97,7 @@ class KickrLegacyControlServerTest {
         val simulation = model.snapshot().simulation
         assertEquals(0.004, simulation.crr, 0.00001)
         assertEquals(0.51, simulation.cw, 0.00001)
+        assertEquals(75.9, simulation.totalMassKg, 0.001)
         assertEquals(8.0, simulation.gradePercent, 0.002)
         assertEquals(-1.0 / 3.6, simulation.windMps, 0.001)
 
@@ -101,16 +111,77 @@ class KickrLegacyControlServerTest {
     }
 
     @Test
-    fun `silent policy acknowledges unlock only and reset requires a new unlock`() {
+    fun `legacy simulation mass changes physics-derived power at the same generated speed`() {
+        fun powerFor(totalMassKg: Double): Int {
+            val model = KickrSyntheticModel().also { it.startOrResume() }
+            val server = KickrLegacyControlServer(model, KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC)
+            check(server.handle(bytes(WahooKickrCommand.Unlock)).accepted)
+            check(server.handle(bytes(WahooKickrCommand.Simulation(totalMassKg, 0.004, 0.51))).accepted)
+            check(server.handle(bytes(WahooKickrCommand.Grade(5.0))).accepted)
+            repeat(80) { model.advance(0.5) }
+            assertEquals(28.0, model.snapshot().speedKph, 0.02)
+            return model.snapshot().powerWatts
+        }
+
+        assertTrue(powerFor(100.0) > powerFor(70.0))
+    }
+
+    @Test
+    fun `legacy signed descent lowers live power after flat simulation`() {
+        val model = KickrSyntheticModel().also { it.startOrResume() }
+        val server = KickrLegacyControlServer(model, KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC)
+        check(server.handle(bytes(WahooKickrCommand.Unlock)).accepted)
+        check(server.handle(bytes(WahooKickrCommand.Simulation(85.0, 0.004, 0.51))).accepted)
+        check(server.handle(bytes(WahooKickrCommand.Grade(0.0))).accepted)
+        repeat(80) { model.advance(0.5) }
+        val flat = model.snapshot()
+
+        check(server.handle(bytes(WahooKickrCommand.Grade(-5.0))).accepted)
+        val descent = model.advance(0.5)
+
+        assertEquals(flat.speedKph, descent.speedKph, 0.01)
+        assertEquals(-5.0, descent.simulation.gradePercent, 0.002)
+        assertTrue(descent.powerWatts < flat.powerWatts)
+        assertEquals(0, descent.powerWatts)
+    }
+
+    @Test
+    fun `silent policy acknowledges unlock only and control survives reset without a new unlock`() {
         val model = KickrSyntheticModel()
         val server = KickrLegacyControlServer(model, KickrLegacyAckMode.SILENT_CORROBORATED)
         assertArrayEquals(byteArrayOf(0x01, 0x20, 0x01, 0x00), server.handle(bytes(WahooKickrCommand.Unlock)).response)
         val erg = server.handle(bytes(WahooKickrCommand.Erg(300)))
         assertTrue(erg.accepted)
         assertNull(erg.response)
+
         server.reset()
-        assertFalse(server.handle(bytes(WahooKickrCommand.Erg(350))).accepted)
-        assertEquals(300, model.snapshot().targetPowerWatts)
+        assertFalse("reset clears the diagnostic flag", server.unlocked)
+        // reset() drops per-link state, but it does not reinstate an unlock precondition - a
+        // reconnected client that skips Unlock must still be able to control.
+        val afterReset = server.handle(bytes(WahooKickrCommand.Erg(350)))
+        assertTrue(afterReset.accepted)
+        assertEquals(350, model.snapshot().targetPowerWatts)
+    }
+
+    @Test
+    fun `a full ramp-test style session with no unlock at all is accepted end to end`() {
+        // Regression for the 2026-08-26 Kinomap interop capture: a real client drove Resistance,
+        // Erg, Simulation, Grade, and WheelCircumference across a ~7-minute session and never sent
+        // Unlock once. Every one of those writes must be accepted, not just the first.
+        val model = KickrSyntheticModel()
+        val server = KickrLegacyControlServer(model, KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC)
+        assertFalse(server.unlocked)
+
+        assertTrue(server.handle(bytes(WahooKickrCommand.Resistance(0.60))).accepted)
+        assertTrue(server.handle(bytes(WahooKickrCommand.Erg(60))).accepted)
+        assertTrue(server.handle(bytes(WahooKickrCommand.Erg(190))).accepted)
+        assertTrue(server.handle(bytes(WahooKickrCommand.Simulation(80.0, 0.0033, 0.345))).accepted)
+        assertTrue(server.handle(bytes(WahooKickrCommand.Grade(0.0))).accepted)
+        assertTrue(server.handle(bytes(WahooKickrCommand.WheelCircumference(2096.0))).accepted)
+
+        assertTrue(server.unlocked)
+        assertEquals(KickrControlMode.SIMULATION, model.snapshot().mode)
+        assertEquals(2096.0, model.snapshot().wheelCircumferenceMm, 0.001)
     }
 
     @Test
