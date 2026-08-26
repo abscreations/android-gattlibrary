@@ -137,26 +137,34 @@ internal class KickrLegacyControlServer(
 
     private fun apply(command: WahooKickrCommand): Boolean = when (command) {
         WahooKickrCommand.Unlock -> true
-        is WahooKickrCommand.Erg -> model.setTargetPower(command.watts)
+        is WahooKickrCommand.Erg -> model.setTargetPower(command.watts, KickrControlSource.LEGACY_KICKR)
         is WahooKickrCommand.Resistance ->
-            model.setResistance(KickrSyntheticModel.MIN_RESISTANCE + command.fraction *
-                (KickrSyntheticModel.MAX_RESISTANCE - KickrSyntheticModel.MIN_RESISTANCE))
-        is WahooKickrCommand.StandardLevel -> model.setResistance(command.level.toDouble())
+            model.setResistance(
+                KickrSyntheticModel.MIN_RESISTANCE + command.fraction *
+                    (KickrSyntheticModel.MAX_RESISTANCE - KickrSyntheticModel.MIN_RESISTANCE),
+                KickrControlSource.LEGACY_KICKR,
+            )
+        is WahooKickrCommand.StandardLevel ->
+            model.setResistance(command.level.toDouble(), KickrControlSource.LEGACY_KICKR)
         is WahooKickrCommand.Simulation -> {
             simulation = simulation.copy(crr = command.crr, cw = command.cw)
-            model.setSimulation(simulation)
+            model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
         is WahooKickrCommand.RollingResistance -> {
-            simulation = simulation.copy(crr = command.crr); model.setSimulation(simulation)
+            simulation = simulation.copy(crr = command.crr)
+            model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
         is WahooKickrCommand.WindResistance -> {
-            simulation = simulation.copy(cw = command.cw); model.setSimulation(simulation)
+            simulation = simulation.copy(cw = command.cw)
+            model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
         is WahooKickrCommand.Grade -> {
-            simulation = simulation.copy(gradePercent = command.percent); model.setSimulation(simulation)
+            simulation = simulation.copy(gradePercent = command.percent)
+            model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
         is WahooKickrCommand.WindSpeed -> {
-            simulation = simulation.copy(windMps = command.metresPerSecond); model.setSimulation(simulation)
+            simulation = simulation.copy(windMps = command.metresPerSecond)
+            model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
         is WahooKickrCommand.WheelCircumference -> model.setWheelCircumference(command.millimetres)
     }

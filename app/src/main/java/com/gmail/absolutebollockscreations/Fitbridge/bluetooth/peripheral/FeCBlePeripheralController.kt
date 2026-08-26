@@ -43,6 +43,10 @@ internal class FeCBlePeripheralController(
         val basicResistancePercent: Int? = null,
         val gradePercent: Double? = null,
         val crr: Double? = null,
+        /** Page 50 fields, `null` until a Wind Resistance write has been decoded this session. */
+        val windSpeedMps: Double? = null,
+        val windCoefficient: Double? = null,
+        val windDraftingFactor: Double? = null,
         val speedKph: Double? = null,
         val cadenceRpm: Int? = null,
         val powerWatts: Int? = null,
@@ -278,6 +282,12 @@ internal class FeCBlePeripheralController(
                 basicResistancePercent = state.basicResistancePercent?.toInt(),
                 gradePercent = state.track?.gradePercent,
                 crr = state.track?.crr,
+                // Page 50's speed byte is ANT+ FE-C km/h (offset-decoded, `raw - 127`); converted
+                // to m/s here to match FTMS's own simulation units. Coefficient/drafting are
+                // already unit-less/fractional off the wire, see FeCBleControlDecoder.
+                windSpeedMps = state.wind?.windSpeedEncodedUnit?.let { it / 3.6 },
+                windCoefficient = state.wind?.windCoefficient,
+                windDraftingFactor = state.wind?.draftingFactor,
                 speedKph = state.speedMps * 3.6,
                 cadenceRpm = state.cadenceRpm,
                 powerWatts = state.instantaneousPowerWatts,

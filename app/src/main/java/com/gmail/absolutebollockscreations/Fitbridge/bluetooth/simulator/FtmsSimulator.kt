@@ -115,6 +115,10 @@ class FtmsSimulator(
         val elapsedSeconds: Int = 0,
         /** Targets a downstream client has set and the simulator has applied. */
         val acceptedTargets: Map<FtmsMockTarget, Double> = emptyMap(),
+        /** Last accepted Set Indoor Bike Simulation Parameters payload, or null. */
+        val acceptedSimulation: FtmsMockSimulationParams? = null,
+        /** "Control mode" debug label; see [SimulatorControlModeLabels]. */
+        val controlModeLabel: String = SimulatorControlModeLabels.AUTOMATIC,
         val lastSample: FtmsMockSample? = null,
         val lastError: String? = null,
     )
@@ -184,7 +188,23 @@ class FtmsSimulator(
             gradePercent: Double,
             crr: Double,
             cw: Double,
-        ): Boolean = false
+        ): Boolean {
+            val e = engine ?: return false
+            val params = FtmsMockSimulationParams(windMps, gradePercent, crr, cw)
+            if (!e.setSimulationParams(params)) return false
+            Timber.tag(TAG).i(
+                "control simulation applied wind=%.3f grade=%.2f crr=%.4f cw=%.2f",
+                windMps,
+                gradePercent,
+                crr,
+                cw,
+            )
+            // Same immediate-reflection rationale as apply(): a watch should see the accepted
+            // simulation parameters within its own procedure timeout, not on the next tick.
+            publish(e.snapshot())
+            publishTargets()
+            return true
+        }
 
         private fun apply(type: FtmsMockTarget, value: Double): Boolean {
             val e = engine ?: return false
@@ -676,7 +696,11 @@ class FtmsSimulator(
 
     private fun publishTargets() {
         val e = engine ?: return
-        _state.value = _state.value.copy(acceptedTargets = e.controlTargets())
+        _state.value = _state.value.copy(
+            acceptedTargets = e.controlTargets(),
+            acceptedSimulation = e.simulationParams(),
+            controlModeLabel = e.controlModeLabel(),
+        )
     }
 
     /** The last outcome, so the fallback is logged on its transitions and not once a second. */

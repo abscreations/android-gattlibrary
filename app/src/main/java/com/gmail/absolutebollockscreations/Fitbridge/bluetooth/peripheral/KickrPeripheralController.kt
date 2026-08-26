@@ -12,6 +12,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrPe
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLegacyAckMode
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrControlMode
 import java.util.concurrent.atomic.AtomicLong
 
 /** Transactional adapter-name, foreground-service and telemetry lifecycle for KICKR simulation. */
@@ -37,6 +38,11 @@ internal class KickrPeripheralController(
         val heartRateBpm: Int? = null,
         val virtualGearIndex: Int? = null,
         val gearRatio: Double? = null,
+        /** Set only while [controlMode] reflects an active simulation write; null otherwise. */
+        val simWindMps: Double? = null,
+        val simGradePercent: Double? = null,
+        val simCrr: Double? = null,
+        val simCw: Double? = null,
         val pendingFrames: Int = 0,
         val droppedFrames: Long = 0,
         val rejectedWrites: Long = 0,
@@ -212,13 +218,21 @@ internal class KickrPeripheralController(
             evidence = activePersona?.let(::evidenceBadge),
             routes = diagnostics.routes.mapTo(linkedSetOf()) { it.name },
             protocolStages = diagnostics.protocolStages,
-            controlMode = snapshot.mode.name,
+            controlMode = snapshot.controlLabel,
             speedKph = snapshot.speedKph,
             cadenceRpm = snapshot.cadenceRpm,
             powerWatts = snapshot.powerWatts,
             heartRateBpm = snapshot.heartRateBpm,
             virtualGearIndex = snapshot.virtualGearIndex,
             gearRatio = snapshot.gearRatio,
+            // Only meaningful while a simulation write is the active control mode; a stale
+            // simulation payload from an earlier ERG/Direct switch must not display as live.
+            simWindMps = snapshot.simulation.windMps.takeIf { snapshot.mode == KickrControlMode.SIMULATION },
+            simGradePercent = snapshot.simulation.gradePercent.takeIf {
+                snapshot.mode == KickrControlMode.SIMULATION
+            },
+            simCrr = snapshot.simulation.crr.takeIf { snapshot.mode == KickrControlMode.SIMULATION },
+            simCw = snapshot.simulation.cw.takeIf { snapshot.mode == KickrControlMode.SIMULATION },
             pendingFrames = diagnostics.pendingFrames,
             droppedFrames = diagnostics.droppedFrames,
             rejectedWrites = diagnostics.rejectedWrites,

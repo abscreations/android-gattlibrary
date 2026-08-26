@@ -155,6 +155,10 @@ object FtmsMockControlProfile {
         speed = true,
         resistance = true,
         power = true,
+        // Only the Indoor Bike machine type has an FTMS Set Indoor Bike Simulation Parameters
+        // procedure at all (spec 4.16); advertising it on the other machine types would claim a
+        // Control Point opcode none of them implement.
+        indoorBikeSimulation = true,
         speedRange = speedRange,
         resistanceRange = resistanceRange,
         powerRange = powerRange,
@@ -204,6 +208,30 @@ object FtmsMockControlProfile {
 
 /** Which simulated metric an accepted Control Point target drives. */
 enum class FtmsMockTarget { SPEED, INCLINATION, RESISTANCE, POWER }
+
+/**
+ * Which family of Control Point write last steered this machine, for the debug UI's "Control
+ * mode" line (see [SimulatorControlModeLabels]). Independent of [FtmsMockTarget]: DIRECT covers
+ * speed/inclination/resistance, ERG is power-only, and SIMULATION is the 0x11 Set Indoor Bike
+ * Simulation Parameters procedure, which carries its own four-value payload rather than a single
+ * [FtmsMockTarget].
+ */
+enum class FtmsControlKind { DIRECT, ERG, SIMULATION }
+
+/**
+ * Decoded FTMS 0x11 Set Indoor Bike Simulation Parameters payload, in public units.
+ *
+ * Stored verbatim so the simulator can both display what a client last requested and answer
+ * honestly that simulation mode is active - this is the "register and store received parameters"
+ * half of end-to-end Set Indoor Bike Simulation Parameters support; see
+ * [FtmsMockEngine.setSimulationParams].
+ */
+data class FtmsMockSimulationParams(
+    val windMps: Double,
+    val gradePercent: Double,
+    val crr: Double,
+    val cw: Double,
+)
 
 /** One coherent sample of the simulated machine, in FitBridge engine units. */
 data class FtmsMockSample(
@@ -265,6 +293,12 @@ class FtmsMockEngine(
     private var resistance: Double? = null
     private var inclination: Double? = null
 
+    /** Last accepted Set Indoor Bike Simulation Parameters payload, or null before one arrives. */
+    private var simulationParams: FtmsMockSimulationParams? = null
+
+    /** Last control-write family, for the "Control mode" debug line; null means Automatic. */
+    private var lastControlKind: FtmsControlKind? = null
+
     init {
         reset()
     }
@@ -272,6 +306,19 @@ class FtmsMockEngine(
     /** Accepted targets, normalized to the advertised range and increment. */
     @Synchronized
     fun controlTargets(): Map<FtmsMockTarget, Double> = targets.toMap()
+
+    /** Last accepted Set Indoor Bike Simulation Parameters payload, or null. */
+    @Synchronized
+    fun simulationParams(): FtmsMockSimulationParams? = simulationParams
+
+    /** "Control mode" label for the debug UI; see [SimulatorControlModeLabels]. */
+    @Synchronized
+    fun controlModeLabel(): String = when (lastControlKind) {
+        null -> SimulatorControlModeLabels.AUTOMATIC
+        FtmsControlKind.DIRECT -> SimulatorControlModeLabels.FTMS_DIRECT
+        FtmsControlKind.ERG -> SimulatorControlModeLabels.FTMS_ERG
+        FtmsControlKind.SIMULATION -> SimulatorControlModeLabels.FTMS_SIM
+    }
 
     @Synchronized
     fun reset() {
@@ -292,6 +339,8 @@ class FtmsMockEngine(
         heartRate = profile.heartRate.at(INITIAL_EFFORT)
         resistance = profile.resistance?.at(INITIAL_EFFORT)
         inclination = profile.inclination?.at(INITIAL_EFFORT)
+        simulationParams = null
+        lastControlKind = null
     }
 
     /**
@@ -313,6 +362,29 @@ class FtmsMockEngine(
             FtmsMockTarget.RESISTANCE -> resistance = normalized
             FtmsMockTarget.POWER -> power = normalized
         }
+        lastControlKind = if (type == FtmsMockTarget.POWER) {
+            FtmsControlKind.ERG
+        } else {
+            FtmsControlKind.DIRECT
+        }
+        return true
+    }
+
+    /**
+     * Apply one downstream Set Indoor Bike Simulation Parameters procedure.
+     *
+     * Registers and stores the payload so it can be displayed and, per [controlModeLabel],
+     * reported as the active control mode - the end-to-end half of FTMS Indoor Bike Simulation
+     * support that previously stopped at the peripheral's Control Point decoder and never reached
+     * a downstream that could honestly accept it.
+     *
+     * @return false when this persona/session does not advertise indoor bike simulation support.
+     */
+    @Synchronized
+    fun setSimulationParams(params: FtmsMockSimulationParams): Boolean {
+        if (!controlsEnabled || !controlCapabilities.indoorBikeSimulation) return false
+        simulationParams = params
+        lastControlKind = FtmsControlKind.SIMULATION
         return true
     }
 

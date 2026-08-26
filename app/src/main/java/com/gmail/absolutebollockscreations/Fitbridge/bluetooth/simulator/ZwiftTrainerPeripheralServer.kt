@@ -103,7 +103,9 @@ internal class ZwiftTrainerPeripheralServer(
         val physical = known.singleOrNull { it.number == 5 } as? RideOnProtoField.Bytes
         if (power != null && simulation != null) return rejected("mixed ERG and simulation command")
         if (power != null) {
-            if (power.value !in 0L..2_000L || !model.setTargetPower(power.value.toInt())) {
+            if (power.value !in 0L..2_000L ||
+                !model.setTargetPower(power.value.toInt(), KickrControlSource.RIDE_ON)
+            ) {
                 return rejected("target power out of range")
             }
             return ZwiftTrainerServerOutcome(true)
@@ -127,7 +129,12 @@ internal class ZwiftTrainerPeripheralServer(
             if (index <= 0) return rejected("gear ratio is not in the 24-gear table")
             index to (rawRatio / 10_000.0)
         }
-        if (!model.setSimulation(target)) return rejected("simulation target out of range")
+        if (!model.setSimulation(target, KickrControlSource.RIDE_ON)) {
+            return rejected("simulation target out of range")
+        }
+        // A gear ratio riding along with a simulation command stays part of that simulation
+        // write (see KickrSyntheticModel.markDirectControl's KDoc) - it must not flip the
+        // control-mode label to RideOn-Direct.
         gear?.let { (index, ratio) -> check(model.setVirtualGear(index, ratio)) }
         return ZwiftTrainerServerOutcome(true)
     }
@@ -144,6 +151,9 @@ internal class ZwiftTrainerPeripheralServer(
         if (index <= 0 || !model.setVirtualGear(index, rawRatio / 10_000.0)) {
             return rejected("gear ratio is not in the 24-gear table")
         }
+        // A bare virtual-shift command - no power or simulation target alongside it - is the
+        // "gear shift" half of RideOn-Direct (plan: simulator control-mode display).
+        model.markDirectControl(KickrControlSource.RIDE_ON)
         return ZwiftTrainerServerOutcome(
             true,
             frames = listOf(

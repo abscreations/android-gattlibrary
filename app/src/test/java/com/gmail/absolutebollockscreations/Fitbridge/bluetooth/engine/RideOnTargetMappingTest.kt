@@ -72,8 +72,13 @@ class RideOnTargetMappingTest {
         assertTrue(endpoint.requestControl())
         assertFalse(endpoint.setTargetResistance(50f))
         assertTrue(endpoint.setTargetPowerWatts(250))
-        repeat(100) { if (transport.writes.any { it.contentEquals(hex("04 18 FA 01")) }) return@repeat else delay(5) }
-        assertTrue(transport.writes.any { it.contentEquals(hex("04 18 FA 01")) })
+        // `writes` is a Collections.synchronizedList: individual add()/get() calls are thread-safe,
+        // but iteration (which `.any {}` performs via iterator()) is not - it must be wrapped in a
+        // `synchronized(writes) { ... }` block itself, per the JDK's own synchronizedList contract,
+        // or a concurrent write() append while this polls can throw ConcurrentModificationException.
+        fun sawErgWrite() = synchronized(transport.writes) { transport.writes.any { it.contentEquals(hex("04 18 FA 01")) } }
+        repeat(100) { if (sawErgWrite()) return@repeat else delay(5) }
+        assertTrue(sawErgWrite())
         val caps = rideOnProviderCapabilities()
         assertTrue(caps.supportsPower && caps.supportsIndoorBikeSimulation)
         assertFalse(caps.supportsResistance || caps.supportsSpeed || caps.supportsInclination)

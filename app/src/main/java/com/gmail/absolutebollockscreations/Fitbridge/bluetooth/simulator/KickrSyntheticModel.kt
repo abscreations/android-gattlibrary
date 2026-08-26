@@ -16,6 +16,24 @@ import kotlin.math.roundToInt
 
 internal enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
 
+/**
+ * Which protocol surface last wrote a control target on this shared model.
+ *
+ * [KickrSyntheticModel] is deliberately one physics engine behind three independent protocol
+ * servers (standard FTMS via [KickrSyntheticFtmsControlSink], legacy Wahoo BLE via
+ * [KickrLegacyControlServer], Zwift RideOn via `ZwiftTrainerPeripheralServer`), because a real
+ * KICKR is one machine no matter which app is steering it. Previously nothing recorded *which*
+ * of the three last wrote, so the debug UI's "Control mode" line only ever showed the physics
+ * mode ("ERG"/"SIMULATION"/"RESISTANCE") with no protocol attribution - indistinguishable from a
+ * legacy app driving ERG and a RideOn app driving simulation. [KickrControlKind] carries the
+ * companion "was this a direct/gear target, an ERG power target, or a full simulation payload"
+ * axis; the two together select one [SimulatorControlModeLabels] string.
+ */
+internal enum class KickrControlSource { NONE, FTMS, LEGACY_KICKR, RIDE_ON }
+
+/** See [KickrControlSource]. DIRECT covers resistance/standard-level and virtual-gear writes. */
+internal enum class KickrControlKind { DIRECT, ERG, SIMULATION }
+
 internal data class KickrSimulationTarget(
     val windMps: Double = 0.0,
     val gradePercent: Double = 0.0,
@@ -45,6 +63,8 @@ internal data class KickrMachineSnapshot(
     val accumulatedTorqueRaw: Int,
     val virtualGearIndex: Int,
     val gearRatio: Double,
+    /** "Control mode" debug label; see [SimulatorControlModeLabels]. */
+    val controlLabel: String,
 )
 
 /**
@@ -59,6 +79,8 @@ internal class KickrSyntheticModel(
     private var elapsedSeconds = 0.0
     private var running = false
     private var mode = KickrControlMode.AUTONOMOUS
+    private var controlSource = KickrControlSource.NONE
+    private var controlKind: KickrControlKind? = null
     private var speedKph = 0.0
     private var cadenceRpm = 0.0
     private var powerWatts = 0.0
@@ -94,6 +116,8 @@ internal class KickrSyntheticModel(
         powerWatts = 0.0
         if (stop) {
             mode = KickrControlMode.AUTONOMOUS
+            controlSource = KickrControlSource.NONE
+            controlKind = null
             targetPowerWatts = null
         }
         return true
@@ -104,6 +128,8 @@ internal class KickrSyntheticModel(
         elapsedSeconds = 0.0
         running = false
         mode = KickrControlMode.AUTONOMOUS
+        controlSource = KickrControlSource.NONE
+        controlKind = null
         speedKph = 0.0
         cadenceRpm = 0.0
         powerWatts = 0.0
@@ -126,24 +152,31 @@ internal class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun setTargetPower(watts: Int): Boolean {
+    fun setTargetPower(watts: Int, source: KickrControlSource = KickrControlSource.NONE): Boolean {
         if (watts !in MIN_POWER_WATTS..MAX_POWER_WATTS) return false
         mode = KickrControlMode.ERG
         targetPowerWatts = watts
+        controlSource = source
+        controlKind = KickrControlKind.ERG
         return true
     }
 
     @Synchronized
-    fun setResistance(level: Double): Boolean {
+    fun setResistance(level: Double, source: KickrControlSource = KickrControlSource.NONE): Boolean {
         if (!level.isFinite() || level !in MIN_RESISTANCE..MAX_RESISTANCE) return false
         mode = KickrControlMode.RESISTANCE
         resistanceLevel = level
         targetPowerWatts = null
+        controlSource = source
+        controlKind = KickrControlKind.DIRECT
         return true
     }
 
     @Synchronized
-    fun setSimulation(target: KickrSimulationTarget): Boolean {
+    fun setSimulation(
+        target: KickrSimulationTarget,
+        source: KickrControlSource = KickrControlSource.NONE,
+    ): Boolean {
         if (!target.windMps.isFinite() || target.windMps !in -32.768..32.767) return false
         if (!target.gradePercent.isFinite() || target.gradePercent !in -327.68..327.67) return false
         if (!target.crr.isFinite() || target.crr !in 0.0..0.0255) return false
@@ -151,6 +184,8 @@ internal class KickrSyntheticModel(
         mode = KickrControlMode.SIMULATION
         simulation = target
         targetPowerWatts = null
+        controlSource = source
+        controlKind = KickrControlKind.SIMULATION
         return true
     }
 
@@ -169,6 +204,22 @@ internal class KickrSyntheticModel(
         virtualGearIndex = index
         gearRatio = ratio
         return true
+    }
+
+    /**
+     * Record a standalone gear-shift command as the active "Direct" control for [source].
+     *
+     * Deliberately separate from [setVirtualGear]: a RideOn HubCommand can carry a gear ratio
+     * *alongside* a simulation payload (plan/RideOn protocol - see
+     * `ZwiftTrainerPeripheralServer.handleHubCommand`), and that combined write must keep
+     * reporting [KickrControlKind.SIMULATION], not get silently downgraded to Direct because a
+     * gear ratio happened to ride along. Only a bare virtual-shift command - gear change with no
+     * power or simulation target - calls this.
+     */
+    @Synchronized
+    fun markDirectControl(source: KickrControlSource) {
+        controlSource = source
+        controlKind = KickrControlKind.DIRECT
     }
 
     @Synchronized
@@ -228,7 +279,32 @@ internal class KickrSyntheticModel(
         accumulatedTorqueRaw = accumulatedTorque.roundToInt() and 0xFFFF,
         virtualGearIndex = virtualGearIndex,
         gearRatio = gearRatio,
+        controlLabel = labelFor(controlSource, controlKind),
     )
+
+    /** Maps (protocol source, target kind) to one [SimulatorControlModeLabels] string. */
+    private fun labelFor(source: KickrControlSource, kind: KickrControlKind?): String {
+        if (source == KickrControlSource.NONE || kind == null) return SimulatorControlModeLabels.AUTOMATIC
+        return when (source) {
+            KickrControlSource.NONE -> SimulatorControlModeLabels.AUTOMATIC
+            KickrControlSource.FTMS -> when (kind) {
+                KickrControlKind.DIRECT -> SimulatorControlModeLabels.FTMS_DIRECT
+                KickrControlKind.ERG -> SimulatorControlModeLabels.FTMS_ERG
+                KickrControlKind.SIMULATION -> SimulatorControlModeLabels.FTMS_SIM
+            }
+            // The legacy Wahoo and RideOn wire protocols have no distinct ERG bucket in the debug
+            // UI's vocabulary (plan: simulator control-mode display) - an ERG target set through
+            // either reads as that protocol's Direct label, same as a resistance or gear write.
+            KickrControlSource.LEGACY_KICKR -> when (kind) {
+                KickrControlKind.SIMULATION -> SimulatorControlModeLabels.KICKR_SIM
+                KickrControlKind.DIRECT, KickrControlKind.ERG -> SimulatorControlModeLabels.KICKR_DIRECT
+            }
+            KickrControlSource.RIDE_ON -> when (kind) {
+                KickrControlKind.SIMULATION -> SimulatorControlModeLabels.RIDEON_SIM
+                KickrControlKind.DIRECT, KickrControlKind.ERG -> SimulatorControlModeLabels.RIDEON_DIRECT
+            }
+        }
+    }
 
     private fun advanceEvents(dtSeconds: Double) {
         val intervalStartSeconds = elapsedSeconds - dtSeconds
@@ -429,8 +505,10 @@ internal class KickrSyntheticFtmsControlSink(
     override fun stopOrPause(stop: Boolean): Boolean = model.stopOrPause(stop)
     override fun setTargetSpeedKph(kph: Double): Boolean = false
     override fun setTargetInclinationPercent(percent: Double): Boolean = false
-    override fun setTargetResistance(level: Double): Boolean = model.setResistance(level)
-    override fun setTargetPowerWatts(watts: Int): Boolean = model.setTargetPower(watts)
+    override fun setTargetResistance(level: Double): Boolean =
+        model.setResistance(level, KickrControlSource.FTMS)
+    override fun setTargetPowerWatts(watts: Int): Boolean =
+        model.setTargetPower(watts, KickrControlSource.FTMS)
     override fun setTargetHeartRate(bpm: Int): Boolean = false
     override fun setWheelCircumferenceMm(millimetres: Double): Boolean =
         model.setWheelCircumference(millimetres)
@@ -440,7 +518,10 @@ internal class KickrSyntheticFtmsControlSink(
         gradePercent: Double,
         crr: Double,
         cw: Double,
-    ): Boolean = model.setSimulation(KickrSimulationTarget(windMps, gradePercent, crr, cw))
+    ): Boolean = model.setSimulation(
+        KickrSimulationTarget(windMps, gradePercent, crr, cw),
+        KickrControlSource.FTMS,
+    )
 }
 
 /** One pure FTMS procedure session; Android indication ordering is added in KS-S3. */

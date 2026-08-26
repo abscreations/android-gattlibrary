@@ -150,6 +150,11 @@ class FtmsPeripheralController(
         val kickrPendingFrames: Int = 0,
         val kickrDroppedFrames: Long = 0,
         val kickrRejectedWrites: Long = 0,
+        /** Set only while [kickrControlMode] reflects an active simulation write; null otherwise. */
+        val kickrSimWindMps: Double? = null,
+        val kickrSimGradePercent: Double? = null,
+        val kickrSimCrr: Double? = null,
+        val kickrSimCw: Double? = null,
         /**
          * FE-C-over-BLE simulator telemetry (plan `docs/fe-c-ble_simulator_implementation.md`).
          * Null for every other persona/controller — this is the one place `FeCBlePeripheralController`
@@ -181,6 +186,9 @@ class FtmsPeripheralController(
         val fecBasicResistancePercent: Int? = null,
         val fecGradePercent: Double? = null,
         val fecCrr: Double? = null,
+        val fecWindSpeedMps: Double? = null,
+        val fecWindCoefficient: Double? = null,
+        val fecWindDraftingFactor: Double? = null,
     )
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
