@@ -250,6 +250,10 @@ class FtmsSimulator(
                 startFeCBle(persona.copy(controlEnabled = enableControls))
                 return
             }
+            is SimulatorPersona.Kickr -> {
+                startKickr(persona)
+                return
+            }
             is SimulatorPersona.Ftms -> Unit
         }
         val machine = persona.profile
@@ -479,6 +483,43 @@ class FtmsSimulator(
             persona.equipmentType,
             persona.controlEnabled,
         )
+    }
+
+    /** KICKR owns its deterministic model and 500 ms publisher inside its controller. */
+    private fun startKickr(persona: SimulatorPersona.Kickr) {
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        // Control is negotiated independently on each downstream route; starting the simulator
+        // itself does not mean a client owns any of those routes yet.
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            controlsEnabled = true,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        Timber.tag(TAG).i("KICKR simulator started persona=%s", persona.device)
     }
 
     private fun startSchwinnX70(persona: SimulatorPersona.SchwinnX70) {

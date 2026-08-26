@@ -27,6 +27,19 @@ internal class KickrPeripheralController(
         val advertisedName: String? = null,
         val packetsSent: Long = 0,
         val legacyAckMode: KickrLegacyAckMode? = null,
+        val evidence: String? = null,
+        val routes: Set<String> = emptySet(),
+        val protocolStages: Set<String> = emptySet(),
+        val controlMode: String? = null,
+        val speedKph: Double? = null,
+        val cadenceRpm: Double? = null,
+        val powerWatts: Int? = null,
+        val heartRateBpm: Int? = null,
+        val virtualGearIndex: Int? = null,
+        val gearRatio: Double? = null,
+        val pendingFrames: Int = 0,
+        val droppedFrames: Long = 0,
+        val rejectedWrites: Long = 0,
         val lastError: String? = null,
     )
 
@@ -144,7 +157,7 @@ internal class KickrPeripheralController(
 
     override fun onState(advertising: Boolean, connected: Boolean, subscribed: Boolean, error: String?) {
         val persona = activePersona
-        publishStatus(
+        publishStatus(withDiagnostics(
             status.copy(
                 persona = persona,
                 advertising = advertising,
@@ -153,12 +166,12 @@ internal class KickrPeripheralController(
                 advertisedName = persona?.let { KickrPersonaManifest.forPersona(it).advertising.localName },
                 lastError = error,
             ),
-        )
+        ))
     }
 
     override fun onPacketSent() {
         packets++
-        publishStatus(status.copy(packetsSent = packets))
+        publishStatus(withDiagnostics(status.copy(packetsSent = packets)))
     }
 
     private fun startTicker() {
@@ -190,6 +203,32 @@ internal class KickrPeripheralController(
     private fun publishStatus(next: Status) {
         status = next
         onStatus(next)
+    }
+
+    private fun withDiagnostics(base: Status): Status {
+        val diagnostics = advertiser.diagnostics()
+        val snapshot = diagnostics.snapshot
+        return base.copy(
+            evidence = activePersona?.let(::evidenceBadge),
+            routes = diagnostics.routes.mapTo(linkedSetOf()) { it.name },
+            protocolStages = diagnostics.protocolStages,
+            controlMode = snapshot.mode.name,
+            speedKph = snapshot.speedKph,
+            cadenceRpm = snapshot.cadenceRpm,
+            powerWatts = snapshot.powerWatts,
+            heartRateBpm = snapshot.heartRateBpm,
+            virtualGearIndex = snapshot.virtualGearIndex,
+            gearRatio = snapshot.gearRatio,
+            pendingFrames = diagnostics.pendingFrames,
+            droppedFrames = diagnostics.droppedFrames,
+            rejectedWrites = diagnostics.rejectedWrites,
+        )
+    }
+
+    private fun evidenceBadge(persona: KickrSimulatorPersona): String = when (persona) {
+        KickrSimulatorPersona.V5_STANDARD_LEGACY -> "log-corroborated"
+        KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> "capture-backed (HCI)"
+        KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> "provisional (M/SYN)"
     }
 
     private fun hasPermissions(): Boolean =

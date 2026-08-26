@@ -85,6 +85,11 @@ sealed interface SimulatorPersona {
     ) : SimulatorPersona {
         override val advertisedName: String = identity.localName ?: feCBleAdvertisedName(equipmentType)
     }
+
+    /** Debug-only KICKR interoperability simulator; never offered by a release selector. */
+    data class Kickr(val device: KickrSimulatorPersona) : SimulatorPersona {
+        override val advertisedName: String = KickrPersonaManifest.forPersona(device).advertising.localName
+    }
 }
 
 /** Capture-grounded BLE identities layered over the same deterministic FE-C trainer model. */

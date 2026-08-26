@@ -69,7 +69,27 @@ class SimulatorPersonaTest {
         )
         assertEquals(7, FeCEquipmentType.entries.size)
         assertEquals(listOf(FeCBleSimulatorIdentity.TACX_NEO), fec.takeLast(1).map { it.identity })
-        assertEquals(options.lastIndex, options.indexOfLast { it is SimulatorPersona.FeCBle })
+        assertEquals(
+            options.indexOfFirst { it is SimulatorPersona.Kickr } - 1,
+            options.indexOfLast { it is SimulatorPersona.FeCBle },
+        )
+    }
+
+    @Test
+    fun `debug selector adds exactly the three KICKR personas in evidence order`() {
+        val kickr = simulatorPersonaOptions(includeKickr = true)
+            .filterIsInstance<SimulatorPersona.Kickr>()
+
+        assertEquals(KickrSimulatorPersona.entries, kickr.map { it.device })
+        assertEquals(
+            KickrSimulatorPersona.entries.map { KickrPersonaManifest.forPersona(it).advertising.localName },
+            kickr.map { it.advertisedName },
+        )
+    }
+
+    @Test
+    fun `release selector contains no KICKR persona`() {
+        assertTrue(simulatorPersonaOptions(includeKickr = false).none { it is SimulatorPersona.Kickr })
     }
 
     @Test

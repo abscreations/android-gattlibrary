@@ -38,6 +38,17 @@ internal class KickrPeripheralAdvertiser(
     private val model: KickrSyntheticModel,
     private val listener: Listener,
 ) {
+    data class Diagnostics(
+        val connectedClients: Int,
+        val subscribedClients: Int,
+        val routes: Set<KickrControlRoute>,
+        val protocolStages: Set<String>,
+        val pendingFrames: Int,
+        val droppedFrames: Long,
+        val rejectedWrites: Long,
+        val snapshot: KickrMachineSnapshot,
+    )
+
     interface Listener {
         fun onState(advertising: Boolean, connected: Boolean, subscribed: Boolean, error: String?)
         fun onPacketSent()
@@ -64,9 +75,32 @@ internal class KickrPeripheralAdvertiser(
         KickrSimulatorPersona.V5_STANDARD_LEGACY,
         BluetoothIds.UUID_USER_WEIGHT,
     )!!.bytes
+    @Volatile private var rejectedWrites = 0L
 
     @Volatile var isAdvertising = false
         private set
+
+    fun diagnostics(): Diagnostics {
+        val active = clients.values.toList()
+        return Diagnostics(
+            connectedClients = active.size,
+            subscribedClients = active.count { client ->
+                manifest?.services?.flatMap { it.characteristics }?.any {
+                    client.session.subscription(it.uuid) != PeripheralConnection.CccdMode.DISABLED
+                } == true
+            },
+            routes = active.mapNotNull { it.session.route }.toSet(),
+            protocolStages = active.mapNotNull { client ->
+                client.session.zwift?.stage?.name ?: client.session.legacy?.let {
+                    if (it.unlocked) "LEGACY_UNLOCKED" else "LEGACY_LOCKED"
+                }
+            }.toSet(),
+            pendingFrames = active.sumOf { it.session.pendingCount },
+            droppedFrames = active.sumOf { it.session.droppedFrames },
+            rejectedWrites = rejectedWrites,
+            snapshot = model.snapshot(),
+        )
+    }
 
     fun publish(snapshot: KickrMachineSnapshot) {
         val selected = manifest?.persona ?: return
@@ -105,6 +139,7 @@ internal class KickrPeripheralAdvertiser(
         val selected = KickrPersonaManifest.forPersona(persona)
         manifest = selected
         legacyAckMode = legacyAckModeOverride ?: selected.legacyAckMode
+        rejectedWrites = 0
         characteristicServices = selected.services.flatMap { service ->
             service.characteristics.map { it.uuid to service.uuid }
         }.toMap()
@@ -167,7 +202,7 @@ internal class KickrPeripheralAdvertiser(
             if (epoch.get() != callbackEpoch) return
             val key = device.address.lowercase()
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                clients[key] = Client(
+                val client = Client(
                     device,
                     KickrPeripheralSession(
                         generation.incrementAndGet(),
@@ -176,10 +211,19 @@ internal class KickrPeripheralAdvertiser(
                         manifest?.zwiftServiceForm,
                     ),
                 )
+                clients[key] = client
+                PeripheralCaptureHooks.clientConnected(device.address, client.session.generation, 23)
                 connectionRetention.retainOnce(key) { server?.connect(device, false) == true }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 connectionRetention.release(key)
-                clients.remove(key)?.session?.clear()
+                clients.remove(key)?.let { client ->
+                    PeripheralCaptureHooks.clientDisconnected(
+                        device.address,
+                        client.session.generation,
+                        "gatt_status=$status",
+                    )
+                    client.session.clear()
+                }
             }
             publishState()
         }
@@ -202,6 +246,9 @@ internal class KickrPeripheralAdvertiser(
                     )?.bytes
                 }
             }
+            if (value != null && PeripheralCaptureHooks.shouldCaptureRead(offset)) {
+                PeripheralCaptureHooks.clientRead(device.address, characteristic.uuid, value)
+            }
             respondRead(device, requestId, offset, value)
         }
 
@@ -215,6 +262,12 @@ internal class KickrPeripheralAdvertiser(
             value: ByteArray,
         ) {
             val client = clients[device.address.lowercase()]
+            PeripheralCaptureHooks.clientWrote(
+                device.address,
+                characteristic.uuid,
+                value,
+                withoutResponse = !responseNeeded,
+            )
             val structurallyValid = client != null && !preparedWrite && offset == 0
             val status = when (characteristic.uuid) {
                 BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT ->
@@ -233,6 +286,7 @@ internal class KickrPeripheralAdvertiser(
                 else -> BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
             }
             if (responseNeeded) server?.sendResponse(device, requestId, status, 0, null)
+            if (status != BluetoothGatt.GATT_SUCCESS) rejectedWrites++
             if (status == BluetoothGatt.GATT_SUCCESS) drain(client!!)
             publishState()
         }
@@ -280,6 +334,14 @@ internal class KickrPeripheralAdvertiser(
             val ok = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
                 !preparedWrite && offset == 0 && mode != null && propertyAllowed
             if (ok) synchronized(client.session) { client.session.subscribe(target, mode) }
+            if (ok) {
+                PeripheralCaptureHooks.clientCccd(
+                    device.address,
+                    target,
+                    mode != PeripheralConnection.CccdMode.DISABLED,
+                    mode.name.lowercase(),
+                )
+            }
             if (responseNeeded) server?.sendResponse(
                 device,
                 requestId,
@@ -408,7 +470,7 @@ internal class KickrPeripheralAdvertiser(
     @SuppressLint("MissingPermission")
     private fun notify(device: BluetoothDevice, characteristic: BluetoothGattCharacteristic, frame: KickrTxFrame): Boolean {
         val activeServer = server ?: return false
-        return if (Build.VERSION.SDK_INT >= 33) {
+        val accepted = if (Build.VERSION.SDK_INT >= 33) {
             activeServer.notifyCharacteristicChanged(device, characteristic, frame.indicate, frame.value) == BluetoothGatt.GATT_SUCCESS
         } else {
             @Suppress("DEPRECATION")
@@ -416,6 +478,8 @@ internal class KickrPeripheralAdvertiser(
             @Suppress("DEPRECATION")
             activeServer.notifyCharacteristicChanged(device, characteristic, frame.indicate)
         }
+        if (accepted) PeripheralCaptureHooks.notified(device.address, characteristic.uuid, frame.value)
+        return accepted
     }
 
     private fun anySubscribed(): Boolean = clients.values.any { client ->

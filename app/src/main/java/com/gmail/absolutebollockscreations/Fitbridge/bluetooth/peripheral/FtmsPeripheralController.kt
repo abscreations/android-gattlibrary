@@ -136,6 +136,20 @@ class FtmsPeripheralController(
         val lastDisconnectStatus: Int? = null,
         val lastDisconnectReason: String? = null,
         val lastError: String? = null,
+        /** Debug-only KICKR simulator diagnostics. No client identity is exposed here. */
+        val kickrEvidence: String? = null,
+        val kickrRoutes: Set<String> = emptySet(),
+        val kickrProtocolStages: Set<String> = emptySet(),
+        val kickrControlMode: String? = null,
+        val kickrSpeedKph: Double? = null,
+        val kickrCadenceRpm: Double? = null,
+        val kickrPowerWatts: Int? = null,
+        val kickrHeartRateBpm: Int? = null,
+        val kickrVirtualGearIndex: Int? = null,
+        val kickrGearRatio: Double? = null,
+        val kickrPendingFrames: Int = 0,
+        val kickrDroppedFrames: Long = 0,
+        val kickrRejectedWrites: Long = 0,
         /**
          * FE-C-over-BLE simulator telemetry (plan `docs/fe-c-ble_simulator_implementation.md`).
          * Null for every other persona/controller — this is the one place `FeCBlePeripheralController`
