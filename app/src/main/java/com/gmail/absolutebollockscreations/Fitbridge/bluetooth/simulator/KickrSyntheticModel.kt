@@ -231,34 +231,72 @@ internal class KickrSyntheticModel(
     )
 
     private fun advanceEvents(dtSeconds: Double) {
+        val intervalStartSeconds = elapsedSeconds - dtSeconds
         val wheelRate = if (wheelCircumferenceMm > 0.0) {
             (speedKph / 3.6) / (wheelCircumferenceMm / 1000.0)
         } else {
             0.0
         }
-        val totalWheel = wheelPhase + wheelRate * dtSeconds
+        val wheelPhaseAtStart = wheelPhase
+        val totalWheel = wheelPhaseAtStart + wheelRate * dtSeconds
         val completedWheel = floor(totalWheel).toLong()
         wheelPhase = totalWheel - completedWheel
         if (completedWheel > 0L) {
             cumulativeWheelRevolutions =
                 (cumulativeWheelRevolutions + completedWheel) and UINT32_MASK
-            lastWheelEventTicks = eventTicks(WHEEL_EVENT_HZ)
+            lastWheelEventTicks = eventTicks(
+                lastEventSeconds(
+                    intervalStartSeconds,
+                    wheelPhaseAtStart,
+                    wheelRate,
+                    completedWheel.toDouble(),
+                ),
+                WHEEL_EVENT_HZ,
+            )
+            // CPS flags 0x0034 declare accumulated torque as wheel-based. Each completed wheel
+            // revolution contributes the current wheel torque once; using crank torque here made
+            // standards-aware clients derive alternating 0/233 W from a steady 160 W stream.
+            val wheelAngularVelocity = wheelRate * 2.0 * PI
+            val wheelTorqueNm = if (wheelAngularVelocity > 0.0) {
+                powerWatts / wheelAngularVelocity
+            } else {
+                0.0
+            }
+            accumulatedTorque = (
+                accumulatedTorque + wheelTorqueNm * completedWheel * TORQUE_UNITS_PER_NEWTON_METRE
+                ) % UINT16_MODULUS
         }
 
         val crankRate = cadenceRpm / 60.0
-        val totalCrank = crankPhase + crankRate * dtSeconds
+        val crankPhaseAtStart = crankPhase
+        val totalCrank = crankPhaseAtStart + crankRate * dtSeconds
         val completedCrank = floor(totalCrank).toInt()
         crankPhase = totalCrank - completedCrank
         if (completedCrank > 0) {
             cumulativeCrankRevolutions = (cumulativeCrankRevolutions + completedCrank) and 0xFFFF
-            lastCrankEventTicks = eventTicks(CRANK_EVENT_HZ)
-            val angularVelocity = cadenceRpm * 2.0 * PI / 60.0
-            val torqueNm = if (angularVelocity > 0.0) powerWatts / angularVelocity else 0.0
-            accumulatedTorque = (accumulatedTorque + torqueNm * completedCrank * 32.0) % 65_536.0
+            lastCrankEventTicks = eventTicks(
+                lastEventSeconds(
+                    intervalStartSeconds,
+                    crankPhaseAtStart,
+                    crankRate,
+                    completedCrank.toDouble(),
+                ),
+                CRANK_EVENT_HZ,
+            )
         }
     }
 
-    private fun eventTicks(hz: Double): Int = floor(elapsedSeconds * hz).toInt() and 0xFFFF
+    /** Time of the last complete revolution within a constant-rate model interval. */
+    private fun lastEventSeconds(
+        intervalStartSeconds: Double,
+        phaseAtStart: Double,
+        revolutionsPerSecond: Double,
+        completedRevolutions: Double,
+    ): Double = intervalStartSeconds +
+        (completedRevolutions - phaseAtStart) / revolutionsPerSecond
+
+    private fun eventTicks(eventSeconds: Double, hz: Double): Int =
+        floor(eventSeconds * hz).toLong().toInt() and 0xFFFF
 
     private fun approach(current: Double, target: Double, dt: Double, timeConstant: Double): Double =
         current + (target - current) * (dt / timeConstant).coerceIn(0.0, 1.0)
@@ -289,6 +327,8 @@ internal class KickrSyntheticModel(
         private const val HEART_RATE_TIME_CONSTANT_SECONDS = 12.0
         private const val WHEEL_EVENT_HZ = 2048.0
         private const val CRANK_EVENT_HZ = 1024.0
+        private const val TORQUE_UNITS_PER_NEWTON_METRE = 32.0
+        private const val UINT16_MODULUS = 65_536.0
         private const val UINT32_MASK = 0xFFFF_FFFFL
         private const val JOULES_PER_KCAL = 4_184.0
         private const val METABOLIC_EFFICIENCY = 0.24

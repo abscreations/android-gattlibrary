@@ -18,6 +18,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.PI
 
 class KickrSyntheticModelTest {
     @Test
@@ -56,6 +57,21 @@ class KickrSyntheticModelTest {
         assertEquals(snapshot.speedKph, parsed.state.speedKph.value!!, 0.01)
         assertEquals(snapshot.cadenceRpm, parsed.state.instantCadence.value!!, 0.5)
         assertEquals(snapshot.powerWatts, parsed.state.instantPower.value)
+    }
+
+    @Test
+    fun `consecutive CPS events derive the shared cadence and wheel based power`() {
+        val model = KickrSyntheticModel()
+        model.startOrResume()
+
+        // Let both first-order targets settle, then validate long enough to cross the uint16
+        // accumulated-torque and event-time rollovers seen in the Wahoo-client capture.
+        repeat(80) { model.advance(0.5) }
+        assertCpsDeltasTrackModel(model, expectedPowerWatts = 160, packets = 300)
+
+        assertTrue(model.setTargetPower(250))
+        repeat(80) { model.advance(0.5) }
+        assertCpsDeltasTrackModel(model, expectedPowerWatts = 250, packets = 300)
     }
 
     @Test
@@ -153,6 +169,67 @@ class KickrSyntheticModelTest {
 
     private fun assertResult(expected: Byte, outcome: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlPointHandler.Outcome) {
         assertEquals(expected, outcome.response[2])
+    }
+
+    private fun assertCpsDeltasTrackModel(
+        model: KickrSyntheticModel,
+        expectedPowerWatts: Int,
+        packets: Int,
+    ) {
+        var previous = requireNotNull(
+            CpsMeasurement.parse(KickrStandardEncoders.cyclingPowerMeasurement(model.snapshot())),
+        )
+        var cadenceEvents = 0
+        var torqueEvents = 0
+        repeat(packets) {
+            val snapshot = model.advance(0.5)
+            val current = requireNotNull(
+                CpsMeasurement.parse(KickrStandardEncoders.cyclingPowerMeasurement(snapshot)),
+            )
+            val previousCrank = requireNotNull(previous.crank)
+            val currentCrank = requireNotNull(current.crank)
+            val crankRevolutions = delta16(
+                currentCrank.cumulativeRevolutions,
+                previousCrank.cumulativeRevolutions,
+            )
+            val crankTicks = delta16(currentCrank.lastEventTimeTicks, previousCrank.lastEventTimeTicks)
+            if (crankRevolutions > 0 && crankTicks > 0) {
+                val derivedCadence = crankRevolutions * 60.0 * 1024.0 / crankTicks
+                assertEquals(snapshot.cadenceRpm, derivedCadence, 0.25)
+                cadenceEvents++
+            }
+
+            val previousWheel = requireNotNull(previous.wheel)
+            val currentWheel = requireNotNull(current.wheel)
+            val wheelRevolutions = delta32(
+                currentWheel.cumulativeRevolutions,
+                previousWheel.cumulativeRevolutions,
+            )
+            val wheelTicks = delta16(currentWheel.lastEventTimeTicks, previousWheel.lastEventTimeTicks)
+            if (wheelRevolutions > 0 && wheelTicks > 0) {
+                assertFalse(current.accumulatedTorqueCrankSource)
+                val torqueDeltaNm = deltaTorque(
+                    requireNotNull(current.accumulatedTorqueNewtonMetres),
+                    requireNotNull(previous.accumulatedTorqueNewtonMetres),
+                )
+                val derivedPower = torqueDeltaNm * 2.0 * PI * 2048.0 / wheelTicks
+                assertEquals(expectedPowerWatts.toDouble(), derivedPower, 1.5)
+                torqueEvents++
+            }
+            previous = current
+        }
+        assertTrue("expected many crank events", cadenceEvents > packets / 2)
+        assertTrue("expected a wheel event in every packet", torqueEvents == packets)
+    }
+
+    private fun delta16(current: Int, previous: Int): Int = (current - previous) and 0xFFFF
+
+    private fun delta32(current: Long, previous: Long): Long =
+        (current - previous) and 0xFFFF_FFFFL
+
+    private fun deltaTorque(currentNm: Double, previousNm: Double): Double {
+        val modulusNm = 65_536.0 / 32.0
+        return (currentNm - previousNm + modulusNm) % modulusNm
     }
 
     private fun bytes(vararg values: Int): ByteArray = ByteArray(values.size) { values[it].toByte() }
