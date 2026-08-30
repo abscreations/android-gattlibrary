@@ -183,8 +183,32 @@ object BluetoothIds {
         UUID.fromString("a026e00a-0a7d-4ab3-97fa-f1500f9feb8b")
     val UUID_WAHOO_KICKR_E023: UUID =
         UUID.fromString("a026e023-0a7d-4ab3-97fa-f1500f9feb8b")
+    val UUID_WAHOO_KICKR_E018: UUID =
+        UUID.fromString("a026e018-0a7d-4ab3-97fa-f1500f9feb8b")
     val UUID_WAHOO_KICKR_E037: UUID =
         UUID.fromString("a026e037-0a7d-4ab3-97fa-f1500f9feb8b")
+
+    // Physical CORE 2 QZ discovery, 2025-12-04. Inventory only: FitBridge never performs DFU.
+    val UUID_SECURE_DFU_SERVICE: UUID = shortUuid(0xFE59)
+    val UUID_SECURE_DFU_CONTROL: UUID =
+        UUID.fromString("8ec90003-f315-4f60-9fb8-838830daea50")
+
+    // Physical Zwift Hub QZ discovery, repeated 2025-10-22. Inventory only: the captures do not
+    // establish either proprietary service's application protocol.
+    val UUID_ZWIFT_HUB_SUPPORT_SERVICE: UUID =
+        UUID.fromString("c4630001-003f-4cec-8994-e489b04d857f")
+    val UUID_ZWIFT_HUB_SUPPORT_READ: UUID =
+        UUID.fromString("c4632b03-003f-4cec-8994-e489b04d857f")
+    val UUID_ZWIFT_HUB_SUPPORT_NOTIFY: UUID =
+        UUID.fromString("c4632b05-003f-4cec-8994-e489b04d857f")
+    val UUID_ZWIFT_HUB_SUPPORT_CONTROL: UUID =
+        UUID.fromString("c4632b04-003f-4cec-8994-e489b04d857f")
+    val UUID_NORDIC_UART_SERVICE: UUID =
+        UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
+    val UUID_NORDIC_UART_RX: UUID =
+        UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
+    val UUID_NORDIC_UART_TX: UUID =
+        UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e")
 
     // Recorded now for inventory/diagnostics only. RideOn activation and writes are a separate
     // future backend and must not be inferred from these constants existing.

@@ -242,7 +242,8 @@ internal class KickrPeripheralController(
     private fun evidenceBadge(persona: KickrSimulatorPersona): String = when (persona) {
         KickrSimulatorPersona.V5_STANDARD_LEGACY -> "log-corroborated"
         KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> "capture-backed (HCI)"
-        KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> "advertising HCI; GATT provisional"
+        KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> "advertising HCI; GATT capture-log aligned"
+        KickrSimulatorPersona.ZWIFT_HUB_CAPTURED -> "Zwift Hub GATT capture-log aligned"
     }
 
     private fun hasPermissions(): Boolean =

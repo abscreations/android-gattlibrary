@@ -60,6 +60,15 @@ internal fun kickrStandardMeasurementFrames(
                 ),
             )
         }
+        if (BluetoothIds.UUID_HEART_RATE_MEASUREMENT in notifiable) {
+            add(
+                KickrTxFrame(
+                    BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+                    byteArrayOf(0x00, snapshot.heartRateBpm.coerceIn(1, 255).toByte()),
+                    false,
+                ),
+            )
+        }
     }
 }
 
@@ -437,6 +446,12 @@ internal class KickrPeripheralAdvertiser(
         val dataBuilder = AdvertiseData.Builder().setIncludeDeviceName(true)
         plan.advertisedServices.forEach { dataBuilder.addServiceUuid(ParcelUuid(it)) }
         plan.serviceData.forEach { (uuid, value) -> dataBuilder.addServiceData(ParcelUuid(uuid), value) }
+        plan.manufacturerId?.let { id -> dataBuilder.addManufacturerData(id, requireNotNull(plan.manufacturerData)) }
+        val scanResponse = plan.scanResponseServices.takeIf { it.isNotEmpty() }?.let { services ->
+            AdvertiseData.Builder().apply {
+                services.forEach { addServiceUuid(ParcelUuid(it)) }
+            }.build()
+        }
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
                 if (epoch.get() != currentEpoch) return
@@ -453,16 +468,17 @@ internal class KickrPeripheralAdvertiser(
             }
         }
         advertiseCallback = callback
-        advertiser.startAdvertising(
-            AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-                .setConnectable(true)
-                .setTimeout(0)
-                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
-                .build(),
-            dataBuilder.build(),
-            callback,
-        )
+        val settings = AdvertiseSettings.Builder()
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+            .setConnectable(true)
+            .setTimeout(0)
+            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+            .build()
+        if (scanResponse == null) {
+            advertiser.startAdvertising(settings, dataBuilder.build(), callback)
+        } else {
+            advertiser.startAdvertising(settings, dataBuilder.build(), scanResponse, callback)
+        }
     }
 
     @SuppressLint("MissingPermission")

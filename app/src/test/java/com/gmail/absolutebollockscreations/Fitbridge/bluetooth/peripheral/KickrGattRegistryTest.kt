@@ -26,7 +26,11 @@ class KickrGattRegistryTest {
         )
 
         assertEquals(
-            setOf(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT, BluetoothIds.UUID_BIKING_DATA),
+            setOf(
+                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                BluetoothIds.UUID_BIKING_DATA,
+                BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+            ),
             frames.mapTo(linkedSetOf()) { it.characteristicUuid },
         )
         assertEquals(snapshot.powerWatts, frames.single {
@@ -35,6 +39,11 @@ class KickrGattRegistryTest {
         assertEquals(snapshot.powerWatts, frames.single {
             it.characteristicUuid == BluetoothIds.UUID_BIKING_DATA
         }.value.let { (it[6].toInt() and 0xFF) or (it[7].toInt() shl 8) })
+        assertEquals(
+            snapshot.heartRateBpm,
+            (frames.single { it.characteristicUuid == BluetoothIds.UUID_HEART_RATE_MEASUREMENT }
+                .value[1].toInt() and 0xFF),
+        )
     }
 
     @Test
@@ -48,7 +57,8 @@ class KickrGattRegistryTest {
 
     @Test
     fun `Android flags preserve manifest properties and permissions`() {
-        KickrPersonaManifest.forPersona(KickrSimulatorPersona.V5_STANDARD_LEGACY).services
+        KickrSimulatorPersona.entries
+            .flatMap { KickrPersonaManifest.forPersona(it).services }
             .flatMap { it.characteristics }
             .forEach { characteristic ->
                 val (actualProperties, actualPermissions) = KickrGattRegistry.flags(characteristic.properties)
@@ -190,6 +200,26 @@ class KickrGattRegistryTest {
         assertFalse(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
         assertNull(session.route)
         assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
+        assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
+    }
+
+    @Test
+    fun `captured Zwift Hub exposes standard measurements and negotiates original service`() {
+        val manifest = KickrPersonaManifest.forPersona(KickrSimulatorPersona.ZWIFT_HUB_CAPTURED)
+        val session = KickrPeripheralSession(
+            14L,
+            KickrSyntheticModel(),
+            legacyAckMode = manifest.legacyAckMode,
+            zwiftServiceForm = manifest.zwiftServiceForm,
+        )
+
+        assertNull(session.legacy)
+        assertTrue(kickrStandardMeasurementFrames(manifest, session.model.snapshot()).isNotEmpty())
+        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        assertFalse(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
+        assertNull(session.route)
+        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
         assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
     }
 

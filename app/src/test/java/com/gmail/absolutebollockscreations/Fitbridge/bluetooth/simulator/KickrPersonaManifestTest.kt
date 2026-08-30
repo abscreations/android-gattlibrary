@@ -141,6 +141,197 @@ class KickrPersonaManifestTest {
     }
 
     @Test
+    fun `CORE 2 connected GATT matches the captured service and characteristic surface`() {
+        val core2 = manifest(KickrSimulatorPersona.CORE2_FC82_PROVISIONAL)
+
+        val expected = linkedMapOf(
+            BluetoothIds.UUID_HRM_SERVICE to setOf(
+                BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+                BluetoothIds.UUID_BODY_SENSOR_LOCATION,
+            ),
+            BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE to setOf(
+                BluetoothIds.UUID_MANUFACTURER_NAME,
+                BluetoothIds.UUID_SERIAL_NUMBER,
+                BluetoothIds.UUID_HARDWARE_REVISION,
+                BluetoothIds.UUID_FIRMWARE_REVISION,
+            ),
+            BluetoothIds.UUID_USER_DATA_SERVICE to setOf(BluetoothIds.UUID_USER_WEIGHT),
+            BluetoothIds.UUID_CYCLING_POWER_SERVICE to setOf(
+                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                BluetoothIds.UUID_CYCLING_POWER_FEATURE,
+                BluetoothIds.UUID_SENSOR_LOCATION,
+                BluetoothIds.UUID_WAHOO_KICKR_CONTROL,
+                BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT,
+            ),
+            BluetoothIds.UUID_SECURE_DFU_SERVICE to setOf(BluetoothIds.UUID_SECURE_DFU_CONTROL),
+            BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE to setOf(
+                BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX,
+                BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX,
+                BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX,
+            ),
+            BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01 to setOf(
+                BluetoothIds.UUID_WAHOO_KICKR_E002,
+                BluetoothIds.UUID_WAHOO_KICKR_E004,
+            ),
+            BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE06 to setOf(
+                BluetoothIds.UUID_WAHOO_KICKR_E023,
+                BluetoothIds.UUID_WAHOO_KICKR_E018,
+            ),
+            BluetoothIds.UUID_FTMS_SERVICE to setOf(
+                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE,
+                BluetoothIds.UUID_TRAINING_STATUS,
+                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
+                BluetoothIds.UUID_FITNESS_MACHINE_STATUS,
+                BluetoothIds.UUID_BIKING_DATA,
+                BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE,
+                BluetoothIds.UUID_SUPPORTED_POWER_RANGE,
+            ),
+            BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE0B to setOf(BluetoothIds.UUID_WAHOO_KICKR_E037),
+        )
+        assertEquals(
+            expected,
+            core2.services.associate { service ->
+                service.uuid to service.characteristics.mapTo(linkedSetOf()) { it.uuid }
+            },
+        )
+        assertCharacteristic(
+            core2,
+            BluetoothIds.UUID_HRM_SERVICE,
+            BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+            setOf(KickrGattProperty.NOTIFY),
+            cccd = true,
+        )
+        assertCharacteristic(
+            core2,
+            BluetoothIds.UUID_HRM_SERVICE,
+            BluetoothIds.UUID_BODY_SENSOR_LOCATION,
+            setOf(KickrGattProperty.READ),
+            cccd = false,
+        )
+        assertCharacteristic(
+            core2,
+            BluetoothIds.UUID_SECURE_DFU_SERVICE,
+            BluetoothIds.UUID_SECURE_DFU_CONTROL,
+            setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
+            cccd = true,
+        )
+        assertCharacteristic(
+            core2,
+            BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE06,
+            BluetoothIds.UUID_WAHOO_KICKR_E018,
+            setOf(KickrGattProperty.WRITE_WITHOUT_RESPONSE, KickrGattProperty.NOTIFY),
+            cccd = true,
+        )
+        assertTrue(core2.services.all { KickrEvidenceLabel.LOG in it.evidence })
+    }
+
+    @Test
+    fun `Zwift Hub matches repeated captured advertising and connected GATT`() {
+        val hub = manifest(KickrSimulatorPersona.ZWIFT_HUB_CAPTURED)
+
+        assertTrue(hub.persona.provisional)
+        assertEquals("Zwift Hub", hub.advertising.localName)
+        assertEquals(
+            listOf(
+                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                BluetoothIds.UUID_FTMS_SERVICE,
+                BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+            ),
+            hub.advertising.advertisedServices,
+        )
+        assertEquals(listOf(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE), hub.advertising.scanResponseServices)
+        assertEquals(0x094A, hub.advertising.manufacturerId)
+        assertArrayEquals(byteArrayOf(0x06, 0x2E, 0xBE.toByte()), hub.advertising.manufacturerData)
+        assertEquals(setOf(KickrEvidenceLabel.LOG, KickrEvidenceLabel.SYN), hub.advertising.evidence)
+        assertTrue(hub.advertising.semanticLegacyBytes <= KickrAdvertisingPlan.MAX_LEGACY_BYTES)
+        assertTrue(hub.advertising.semanticScanResponseBytes <= KickrAdvertisingPlan.MAX_LEGACY_BYTES)
+        assertNull(hub.advertising.exactLegacyPayload)
+        assertEquals(
+            listOf(
+                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                BluetoothIds.UUID_FTMS_SERVICE,
+                BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_SERVICE,
+                BluetoothIds.UUID_HRM_SERVICE,
+                BluetoothIds.UUID_NORDIC_UART_SERVICE,
+                BluetoothIds.UUID_SECURE_DFU_SERVICE,
+                BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+                BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
+            ),
+            hub.services.map { it.uuid },
+        )
+        assertFalse(hub.services.any { it.uuid == BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE })
+        assertEquals(RideOnServiceForm.ORIGINAL, hub.zwiftServiceForm)
+        assertNull(hub.legacyAckMode)
+        assertEquals(
+            mapOf(
+                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT to setOf(KickrGattProperty.NOTIFY),
+                BluetoothIds.UUID_CYCLING_POWER_FEATURE to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_SENSOR_LOCATION to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
+                BluetoothIds.UUID_BIKING_DATA to setOf(KickrGattProperty.NOTIFY),
+                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_FITNESS_MACHINE_STATUS to setOf(KickrGattProperty.NOTIFY),
+                BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_SUPPORTED_POWER_RANGE to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
+                BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_READ to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_NOTIFY to setOf(KickrGattProperty.READ, KickrGattProperty.NOTIFY),
+                BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_CONTROL to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
+                BluetoothIds.UUID_HEART_RATE_MEASUREMENT to setOf(KickrGattProperty.NOTIFY),
+                BluetoothIds.UUID_BODY_SENSOR_LOCATION to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_NORDIC_UART_RX to setOf(KickrGattProperty.WRITE, KickrGattProperty.WRITE_WITHOUT_RESPONSE),
+                BluetoothIds.UUID_NORDIC_UART_TX to setOf(KickrGattProperty.NOTIFY),
+                BluetoothIds.UUID_SECURE_DFU_CONTROL to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
+                BluetoothIds.UUID_MANUFACTURER_NAME to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_MODEL_NUMBER to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_SERIAL_NUMBER to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_HARDWARE_REVISION to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_FIRMWARE_REVISION to setOf(KickrGattProperty.READ),
+                BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX to setOf(KickrGattProperty.NOTIFY),
+                BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX to setOf(KickrGattProperty.WRITE_WITHOUT_RESPONSE),
+                BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX to setOf(KickrGattProperty.READ, KickrGattProperty.INDICATE),
+            ),
+            hub.services.flatMap { it.characteristics }.associate { it.uuid to it.properties },
+        )
+        assertCharacteristic(
+            hub,
+            BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
+            BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX,
+            setOf(KickrGattProperty.NOTIFY),
+            cccd = true,
+        )
+        assertCharacteristic(
+            hub,
+            BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
+            BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX,
+            setOf(KickrGattProperty.WRITE_WITHOUT_RESPONSE),
+            cccd = false,
+        )
+        assertCharacteristic(
+            hub,
+            BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
+            BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX,
+            setOf(KickrGattProperty.READ, KickrGattProperty.INDICATE),
+            cccd = true,
+        )
+        assertCharacteristic(
+            hub,
+            BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_SERVICE,
+            BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_CONTROL,
+            setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
+            cccd = true,
+        )
+        assertCharacteristic(
+            hub,
+            BluetoothIds.UUID_NORDIC_UART_SERVICE,
+            BluetoothIds.UUID_NORDIC_UART_RX,
+            setOf(KickrGattProperty.WRITE, KickrGattProperty.WRITE_WITHOUT_RESPONSE),
+            cccd = false,
+        )
+        assertTrue(hub.services.all { KickrEvidenceLabel.LOG in it.evidence })
+    }
+
+    @Test
     fun `CORE 2 physical advertising evidence remains pinned separately from name adaptation`() {
         assertArrayEquals(
             byteArrayOf(
@@ -202,6 +393,7 @@ class KickrPersonaManifestTest {
             assertEquals(KickrEvidenceLabel.SYN, mode!!.evidence)
         }
         assertNull(manifest(KickrSimulatorPersona.CORE2_FC82_PROVISIONAL).legacyAckMode)
+        assertNull(manifest(KickrSimulatorPersona.ZWIFT_HUB_CAPTURED).legacyAckMode)
         assertEquals(KickrEvidenceLabel.X, KickrLegacyAckMode.SILENT_CORROBORATED.evidence)
     }
 

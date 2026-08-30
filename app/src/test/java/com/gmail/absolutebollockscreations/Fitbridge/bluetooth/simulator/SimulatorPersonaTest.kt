@@ -76,7 +76,7 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `debug selector adds exactly the three KICKR personas in evidence order`() {
+    fun `debug selector adds all KICKR and captured Hub personas in evidence order`() {
         val kickr = simulatorPersonaOptions(includeKickr = true)
             .filterIsInstance<SimulatorPersona.Kickr>()
 

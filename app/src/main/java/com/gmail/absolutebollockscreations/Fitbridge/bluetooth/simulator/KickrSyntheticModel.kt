@@ -464,6 +464,8 @@ internal object KickrStandardEncoders {
             KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> setOf(KickrEvidenceLabel.HCI)
             KickrSimulatorPersona.CORE2_FC82_PROVISIONAL ->
                 setOf(KickrEvidenceLabel.M, KickrEvidenceLabel.SYN)
+            KickrSimulatorPersona.ZWIFT_HUB_CAPTURED ->
+                setOf(KickrEvidenceLabel.LOG, KickrEvidenceLabel.SYN)
             KickrSimulatorPersona.V5_STANDARD_LEGACY ->
                 setOf(KickrEvidenceLabel.LOG, KickrEvidenceLabel.SYN)
         }
@@ -479,11 +481,32 @@ internal object KickrStandardEncoders {
                 KickrReadValue(SUPPORTED_POWER_RANGE.copyOf(), setOf(KickrEvidenceLabel.SYN))
             BluetoothIds.UUID_CYCLING_POWER_FEATURE -> KickrReadValue(CPS_FEATURE.copyOf(), setOf(KickrEvidenceLabel.LOG))
             BluetoothIds.UUID_SENSOR_LOCATION -> KickrReadValue(SENSOR_LOCATION.copyOf(), setOf(KickrEvidenceLabel.LOG))
-            BluetoothIds.UUID_MANUFACTURER_NAME -> stringValue(identity.manufacturer ?: "Wahoo Fitness", identity.evidence)
+            BluetoothIds.UUID_BODY_SENSOR_LOCATION -> KickrReadValue(
+                byteArrayOf(0x00),
+                setOf(KickrEvidenceLabel.SYN),
+            )
+            BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_READ,
+            BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_NOTIFY
+            -> KickrReadValue(byteArrayOf(0x00), setOf(KickrEvidenceLabel.SYN))
+            BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX ->
+                KickrReadValue(byteArrayOf(), setOf(KickrEvidenceLabel.SYN))
+            BluetoothIds.UUID_MANUFACTURER_NAME -> stringValue(
+                identity.manufacturer ?: if (persona == KickrSimulatorPersona.ZWIFT_HUB_CAPTURED) {
+                    "FitBridge Simulator"
+                } else {
+                    "Wahoo Fitness"
+                },
+                identity.evidence,
+            )
+            BluetoothIds.UUID_MODEL_NUMBER -> stringValue(
+                if (persona == KickrSimulatorPersona.ZWIFT_HUB_CAPTURED) "Zwift Hub Simulator" else "Simulator",
+                setOf(KickrEvidenceLabel.SYN),
+            )
             BluetoothIds.UUID_SERIAL_NUMBER -> stringValue(
                 when (persona) {
                     KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> "SIM-C3FB"
                     KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> "SIM-1A2B"
+                    KickrSimulatorPersona.ZWIFT_HUB_CAPTURED -> "SIM-HUB"
                     KickrSimulatorPersona.V5_STANDARD_LEGACY -> "SIM-AEE4"
                 },
                 setOf(KickrEvidenceLabel.SYN),
