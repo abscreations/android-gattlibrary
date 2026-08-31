@@ -1,0 +1,264 @@
+{
+  "schema_version": 1,
+  "family": "keiser-m-series",
+  "canonical_packet": "complete manufacturer field including little-endian company ID 02 01",
+  "created": "2026-08-31",
+  "evidence_tier": "vendor-documented plus permissive-source corroboration; authored adversarial cases are not observations",
+  "sources": [
+    {
+      "id": "keiser-m-series-direct",
+      "kind": "vendor-documentation",
+      "url": "https://dev.keiser.com/mseries/direct/",
+      "section": "data parse example",
+      "accessed": "2026-08-31"
+    },
+    {
+      "id": "gymnasticon-v1.4.1",
+      "kind": "permissive-reference-implementation",
+      "repository": "https://github.com/ptx2/gymnasticon",
+      "version": "1.4.1",
+      "commit": "e142f539c518d6d4ced3abdd587a825b918a9367",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2020 ptx2",
+      "paths": [
+        "src/bikes/keiser.js",
+        "src/test/bikes/keiser.js",
+        "src/util/dropout-filter.js",
+        "LICENSE.txt",
+        "package.json"
+      ]
+    },
+    {
+      "id": "fitbridge-authored",
+      "kind": "authored-adversarial",
+      "note": "Boundary, malformed, and strict packet-shape policy cases are FitBridge-authored from the recorded vendor layout. They are not captures."
+    }
+  ],
+  "wire_contract": {
+    "company_id": 258,
+    "company_id_wire_hex": "0201",
+    "current_packet_bytes": 19,
+    "old_packet_bytes_without_resistance": 18,
+    "resistance_present_from_minor_hex": "21",
+    "new_firmware_major": 6,
+    "new_firmware_minor_hex": "30",
+    "new_stats_timeout_ms": 1000,
+    "old_or_unknown_stats_timeout_ms": 7000,
+    "bike_gone_timeout_ms": 60000,
+    "realtime_predicate": "data_type == 0x00 or data_type in 0x81..0xfe",
+    "trailing_byte_policy": "reject until vendor or capture evidence establishes an extension"
+  },
+  "official_cases": [
+    {
+      "id": "vendor-official-6.30-parse-example",
+      "origin": "keiser-m-series-direct",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": {
+        "structurally_valid": true,
+        "firmware": "6.30",
+        "stats_timeout_ms": 1000,
+        "data_type": 0,
+        "is_realtime": true,
+        "system_id": 56,
+        "cadence_rpm": 82.4,
+        "heart_rate_bpm": 135.0,
+        "power_watts": 115,
+        "energy_kcal": 13,
+        "elapsed_seconds": 279,
+        "distance_unit": "miles",
+        "distance_raw_tenths": 1,
+        "distance_metres": 160.934,
+        "resistance_present": true,
+        "resistance": 10
+      },
+      "reference_actual": {
+        "gymnasticon_cadence_rpm": 82.0
+      },
+      "divergence_reason": "V24: gymnasticon rounds the documented one-tenth-rpm field; FitBridge preserves the wire precision, corroborated by captured fractional cadence values."
+    }
+  ],
+  "version_cases": [
+    {
+      "id": "gymnasticon-version-6.40",
+      "origin": "gymnasticon-v1.4.1",
+      "scope": "version-only; not packet-shape evidence",
+      "packet": [2, 1, 6, 64, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "firmware": "6.40", "stats_timeout_ms": 1000 }
+    },
+    {
+      "id": "gymnasticon-version-6.30",
+      "origin": "gymnasticon-v1.4.1",
+      "scope": "version-only; not packet-shape evidence",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "firmware": "6.30", "stats_timeout_ms": 1000 }
+    },
+    {
+      "id": "gymnasticon-version-6.22",
+      "origin": "gymnasticon-v1.4.1",
+      "scope": "version-only; not packet-shape evidence",
+      "packet": [2, 1, 6, 34, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "firmware": "6.22", "stats_timeout_ms": 7000 }
+    },
+    {
+      "id": "gymnasticon-version-5.12",
+      "origin": "gymnasticon-v1.4.1",
+      "scope": "version-only; gymnasticon changes only version bytes and does not parse packet shape",
+      "packet": [2, 1, 5, 18, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "firmware": "5.12", "stats_timeout_ms": 7000 }
+    }
+  ],
+  "realtime_cases": [
+    {
+      "id": "realtime-00",
+      "origin": "keiser-m-series-direct",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "data_type": 0, "is_realtime": true }
+    },
+    {
+      "id": "review-01",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 1, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "data_type": 1, "is_realtime": false }
+    },
+    {
+      "id": "review-80-boundary",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 128, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "data_type": 128, "is_realtime": false }
+    },
+    {
+      "id": "realtime-81-boundary",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 129, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "data_type": 129, "is_realtime": true }
+    },
+    {
+      "id": "realtime-fe-boundary",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 254, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "data_type": 254, "is_realtime": true }
+    },
+    {
+      "id": "review-ff-boundary",
+      "origin": "keiser-m-series-direct",
+      "packet": [2, 1, 6, 48, 255, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "data_type": 255, "is_realtime": false },
+      "reference_actual": { "historic_qz_derived_plan_would_accept": true },
+      "divergence_reason": "The corrected vendor/gymnasticon predicate rejects review-mode 0xff; the earlier QZ-derived predicate was vacuous."
+    }
+  ],
+  "distance_cases": [
+    {
+      "id": "distance-7fff-largest-imperial",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 255, 127, 10],
+      "expect": { "encoded_word": 32767, "distance_unit": "miles", "distance_raw_tenths": 32767, "distance_metres": 5273324.378 }
+    },
+    {
+      "id": "distance-8000-zero-metric",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 0, 128, 10],
+      "expect": { "encoded_word": 32768, "distance_unit": "kilometres", "distance_raw_tenths": 0, "distance_metres": 0.0 }
+    },
+    {
+      "id": "distance-8001-first-metric-tenth",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 128, 10],
+      "expect": { "encoded_word": 32769, "distance_unit": "kilometres", "distance_raw_tenths": 1, "distance_metres": 100.0 }
+    }
+  ],
+  "packet_shape_cases": [
+    {
+      "id": "old-5.12-minimal-without-resistance",
+      "origin": "fitbridge-authored",
+      "basis": "vendor layout records resistance only from firmware minor 0x21",
+      "packet": [2, 1, 5, 18, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0],
+      "expect": { "structurally_valid": true, "resistance_present": false }
+    },
+    {
+      "id": "current-6.30-exact-length",
+      "origin": "keiser-m-series-direct",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "structurally_valid": true, "resistance_present": true }
+    },
+    {
+      "id": "current-6.30-missing-resistance",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0],
+      "expect": { "structurally_valid": false, "reason": "firmware minor 0x30 requires byte 18" }
+    },
+    {
+      "id": "old-5.12-unestablished-trailing-resistance",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 5, 18, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "structurally_valid": false, "reason": "strict policy rejects an unestablished old-firmware extension" }
+    },
+    {
+      "id": "current-6.30-trailing-byte",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10, 170],
+      "expect": { "structurally_valid": false, "reason": "strict policy rejects trailing bytes until an extension is evidenced" }
+    }
+  ],
+  "adversarial_cases": [
+    {
+      "id": "bad-magic-first-byte",
+      "origin": "fitbridge-authored",
+      "packet": [3, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "structurally_valid": false }
+    },
+    {
+      "id": "wrong-company-second-byte",
+      "origin": "fitbridge-authored",
+      "packet": [2, 2, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
+      "expect": { "structurally_valid": false }
+    },
+    {
+      "id": "high-bit-every-uint16-field",
+      "origin": "fitbridge-authored",
+      "packet": [2, 1, 6, 48, 0, 56, 1, 128, 220, 254, 52, 146, 205, 171, 4, 39, 1, 128, 254],
+      "expect": {
+        "structurally_valid": true,
+        "cadence_rpm": 3276.9,
+        "heart_rate_bpm": 6524.4,
+        "power_watts": 37428,
+        "energy_kcal": 43981,
+        "distance_unit": "kilometres",
+        "distance_raw_tenths": 1,
+        "distance_metres": 100.0,
+        "resistance": 254,
+        "runtime_plausibility": "cadence, heart rate, and power must be rejected by existing bounds after truthful decode"
+      }
+    }
+  ],
+  "truncation_matrix": {
+    "origin": "fitbridge-authored",
+    "base_case_id": "vendor-official-6.30-parse-example",
+    "truncate_to_lengths": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+    "expect_structurally_valid": false
+  },
+  "documented_divergences": [
+    {
+      "id": "V24",
+      "field": "cadence precision",
+      "expect": 82.4,
+      "reference_actual": 82.0,
+      "reference": "gymnasticon Math.round(readUInt16LE(6) / 10)",
+      "divergence_reason": "The documented field is in tenths of an rpm and the capture corpus contains fractional values; rounding loses evidenced wire precision."
+    },
+    {
+      "id": "keiser-scale-correction",
+      "fields": ["cadence", "heart rate"],
+      "expect": "uint16 little-endian divided by 10",
+      "reference_actual": "the earlier QZ-derived plan listed both as unscaled",
+      "divergence_reason": "Vendor documentation, gymnasticon cadence decoding, and capture values establish the one-tenth scale."
+    },
+    {
+      "id": "keiser-realtime-correction",
+      "field": "data type",
+      "expect": "0x00 or 0x81..0xfe",
+      "reference_actual": "the earlier QZ-derived predicate accepted every uint8",
+      "divergence_reason": "Vendor documentation and gymnasticon distinguish realtime telemetry from review-mode replay."
+    }
+  ]
+}
