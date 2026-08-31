@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import kotlin.math.roundToLong
+
 internal sealed interface RideOnProtoField {
     val number: Int
     data class Varint(override val number: Int, val value: Long) : RideOnProtoField
@@ -115,17 +117,169 @@ internal object RideOnProtoCodec {
         uint32Field(2, sequence),
     )
 
+    /**
+     * Reply to a HubRequest, opcode [RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE] (0x3C) - not
+     * [RideOnUuids.OPCODE_HUB_REQUEST] (0x00) itself, despite the shared "HubRequest" name.
+     * Confirmed against a real Wahoo KICKR Core reply for dataId 520 (gear ratio) in
+     * zwiftplay/zaplibrary's zwift-play-kickr-core.csv HCI-snoop export, packet 5838:
+     * `3c 08 88 04 12 06 0a 04 40 c0 bb 01` decodes as { 1: dataId(520), 2: Bytes{ 1: Bytes{
+     * 8: value(24000) } } } - the dataId echoed back at the top level, then the answer wrapped
+     * two levels deep with the leaf field number depending on which dataId was asked about (8
+     * for gear ratio). Only dataId 520's leaf field number is confirmed; see
+     * [hubRequestGearRatio].
+     */
+    fun hubRequestResponse(dataId: Long, leafFieldNumber: Int, value: Long): ByteArray {
+        val leaf = uint32Field(leafFieldNumber, value)
+        val wrapped = bytesField(1, leaf)
+        return packet(
+            RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE,
+            uint32Field(1, dataId) + bytesField(2, wrapped),
+        )
+    }
+
+    /** [hubRequestResponse] for [RideOnUuids.HUB_REQUEST_DATA_ID_GEAR_RATIO] - see its KDoc. */
+    fun hubRequestGearRatio(gearRatioX10000: Long): ByteArray =
+        hubRequestResponse(RideOnUuids.HUB_REQUEST_DATA_ID_GEAR_RATIO, GEAR_RATIO_LEAF_FIELD, gearRatioX10000)
+
+    /**
+     * Status/diagnostic message broadcast, opcode [RideOnUuids.OPCODE_STATUS_MESSAGE] (0x2A).
+     * Reverse engineered from qdomyos-zwift's CharacteristicWriteProcessor0003::writeProcess(),
+     * which sends two of these - `statusMessage(3, "ATX 04, STX 04")` then
+     * `statusMessage(3, "RIDE_ON(2)")` - immediately after accepting the RideOn handshake, both
+     * over notify. Bytes verified field-for-field against QZ's literal hex constants
+     * (`2a08031211220f4154582030342c2053545820303400` and
+     * `2a0803120d220b524944455f4f4e28322900`): `{1: code, 2: {4: text + trailing NUL}}`. field1's
+     * meaning is unconfirmed (constant 3 in both QZ messages); field2.field4 is a
+     * null-terminated ASCII string.
+     */
+    fun statusMessage(code: Long, text: String): ByteArray {
+        val nested = bytesField(4, text.toByteArray(Charsets.US_ASCII) + byteArrayOf(0))
+        return packet(RideOnUuids.OPCODE_STATUS_MESSAGE, uint32Field(1, code) + bytesField(2, nested))
+    }
+
+    /**
+     * Shared field layout for both hub-info replies below - reverse engineered from QZ's
+     * `general_info_reply` (dataId=0 HubRequest) and `device_info_reply` (opcode 0x41 request)
+     * hex constants. field1 is the constant [RideOnUuids.HUB_INFO_MARKER]; field2 is 4 opaque
+     * bytes (QZ used `00 04 00 0c` for general info, `05 00 05 01` for device info - meaning
+     * unconfirmed); field3 is a device-name string (present but empty in QZ's general-info
+     * reply, "KICKR CORE\u0000" in its device-info reply); field6 is a serial-like string
+     * (always present, non-empty in both); field7 is a short string (empty in general info, "1"
+     * in device info); field8 is a {major, minor}-shaped version pair.
+     */
+    private fun hubInfoFields(
+        opaque: ByteArray,
+        deviceName: String,
+        serial: String,
+        shortField: String,
+        versionMajor: Long,
+        versionMinor: Long,
+    ): ByteArray {
+        require(opaque.size == 4) { "opaque field must be exactly 4 bytes" }
+        // field3 follows QZ's C-string convention (a trailing NUL) when a name is present;
+        // an empty name stays a genuine zero-length field, matching QZ's general-info reply.
+        val nameBytes = if (deviceName.isEmpty()) {
+            ByteArray(0)
+        } else {
+            deviceName.toByteArray(Charsets.US_ASCII) + byteArrayOf(0)
+        }
+        return uint32Field(1, RideOnUuids.HUB_INFO_MARKER) +
+            bytesField(2, opaque) +
+            bytesField(3, nameBytes) +
+            bytesField(6, serial.toByteArray(Charsets.US_ASCII)) +
+            bytesField(7, shortField.toByteArray(Charsets.US_ASCII)) +
+            bytesField(8, uint32Field(1, versionMajor) + uint32Field(2, versionMinor))
+    }
+
+    /**
+     * Reply to the dataId=0 "general information" HubRequest, opcode
+     * [RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE] (0x3C). Real Zwift never advances a session past
+     * negotiation on FitBridge's previous reply here (a bare RidingData/telemetry frame) even
+     * though the RidingData shape and byte content were independently confirmed correct -
+     * qdomyos-zwift (QZ), a mature open-source RideOn peripheral real Zwift does accept, replies
+     * to this same request with a structured 0x3C frame instead. Verified field-for-field
+     * against QZ's `general_info_reply` hex constant
+     * (`3c0800122408800412040004000c1a00320f42412d4534333732443932374244453a00420408011053`):
+     * `{1: 0, 2: {1:512, 2:<4 bytes>, 3:"", 6:<serial>, 7:"", 8:{1:1, 2:83}}}` - a single level of
+     * nesting under field2, unlike [hubDeviceInfoReply]'s extra wrapper.
+     *
+     * [dataId] defaults to 0 (general info) but is otherwise echoed back verbatim in field 1: a
+     * 2026-08-30 real-Zwift capture showed it retry an undocumented HubRequest dataId (16, not
+     * general-info's 0 or the gear-ratio dataId's 520) three times, ~1s apart, then abandon the
+     * RideOn negotiation entirely - it never got anything back over indicate for that dataId, only
+     * FitBridge's ordinary periodic RidingData notify ticks landing nearby in time by coincidence.
+     * Every other HubRequest dataId this server doesn't have a specific reply for now gets this
+     * same structured 0x3C frame, with its own dataId echoed, sent over indicate rather than a
+     * bare notify - the content is unconfirmed for a dataId other than 0, but acknowledging on
+     * the channel and in the frame shape Zwift is actually waiting on matters more than getting
+     * every field byte-exact for an ID nobody has documented.
+     */
+    fun hubGeneralInfoReply(
+        serial: String,
+        opaque: ByteArray = byteArrayOf(0x00, 0x04, 0x00, 0x0c),
+        versionMajor: Long = 1L,
+        versionMinor: Long = 83L,
+        dataId: Long = 0L,
+    ): ByteArray {
+        val inner = hubInfoFields(opaque, deviceName = "", serial = serial, shortField = "", versionMajor, versionMinor)
+        return packet(RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE, uint32Field(1, dataId) + bytesField(2, inner))
+    }
+
+    /**
+     * Reply to the opcode [RideOnUuids.OPCODE_DEVICE_INFO_REQUEST] (0x41) device-info request -
+     * also opcode [RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE] (0x3C). FitBridge previously did not
+     * reply to this request at all (it only advanced the negotiation state machine). Verified
+     * field-for-field against QZ's `device_info_reply` hex constant
+     * (`3c080012320a3008800412040500050` + `11a0b4b49434b5220434f524500320f` +
+     * `3430323431383030393834000000003a01314204080110140`, decoded after trimming an odd
+     * trailing hex nibble): `{1: 0, 2: {1: {1:512, 2:<4 bytes>, 3:"KICKR CORE\u0000",
+     * 6:<serial>, 7:"1", 8:{1:1, 2:20}}}}` - one extra level of nesting under field2 compared to
+     * [hubGeneralInfoReply].
+     */
+    fun hubDeviceInfoReply(
+        deviceName: String,
+        serial: String,
+        shortField: String,
+        opaque: ByteArray = byteArrayOf(0x05, 0x00, 0x05, 0x01),
+        versionMajor: Long = 1L,
+        versionMinor: Long = 20L,
+    ): ByteArray {
+        val inner = hubInfoFields(opaque, deviceName, serial, shortField, versionMajor, versionMinor)
+        val wrapped = bytesField(1, inner)
+        return packet(RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE, uint32Field(1, 0) + bytesField(2, wrapped))
+    }
+
+    /**
+     * Zwift Click button-state broadcast, opcode [RideOnUuids.OPCODE_CLICK_BUTTON_STATUS]
+     * (0x37). Reverse engineered from qdomyos-zwift's `zwift_hub.proto`
+     * (`ClickKeyPadStatus{ optional PlayButtonStatus Button_Plus = 1; Button_Minus = 2; }`,
+     * `enum PlayButtonStatus { ON = 0; OFF = 1; }`) and independently confirmed against
+     * zwiftplay/zaplibrary's `ClickNotification.kt` - a real-hardware decoder with its own
+     * passing unit test, which reads `value == 0` as pressed for both fields. So each field is
+     * `0` while held and `1` while released, not a plain boolean.
+     */
+    fun clickKeyPadStatus(upPressed: Boolean, downPressed: Boolean): ByteArray = packet(
+        RideOnUuids.OPCODE_CLICK_BUTTON_STATUS,
+        uint32Field(1, if (upPressed) 0L else 1L) + uint32Field(2, if (downPressed) 0L else 1L),
+    )
+
     fun ridingData(
         powerWatts: Long,
         cadenceRpm: Long,
         speedX100: Long,
         heartRateBpm: Long,
+        // See RideOnUuids.RIDING_DATA_FIELD5_SPEED_MULTIPLIER/FIELD6_OBSERVED_CONSTANT's KDoc:
+        // reproduced from a real KICKR Core capture for wire fidelity, not confirmed as required.
+        legacySpeedMetric: Long = (speedX100 * RideOnUuids.RIDING_DATA_FIELD5_SPEED_MULTIPLIER).roundToLong(),
+        deviceParameter: Long = RideOnUuids.RIDING_DATA_FIELD6_OBSERVED_CONSTANT,
     ): ByteArray = packet(
         RideOnUuids.OPCODE_RIDING_DATA,
         uint32Field(1, powerWatts) +
             uint32Field(2, cadenceRpm) +
             uint32Field(3, speedX100) +
-            uint32Field(4, heartRateBpm),
+            uint32Field(4, heartRateBpm) +
+            uint32Field(5, legacySpeedMetric) +
+            uint32Field(6, deviceParameter),
     )
 
     fun zigZagEncode32(value: Int): Long =
@@ -211,4 +365,7 @@ internal object RideOnProtoCodec {
 
     private const val MAX_VARINT_BYTES = 10
     private const val UINT32_MAX = 0xFFFF_FFFFL
+
+    // Leaf field number for a gear-ratio HubRequest reply - see hubRequestResponse()'s KDoc.
+    private const val GEAR_RATIO_LEAF_FIELD = 8
 }

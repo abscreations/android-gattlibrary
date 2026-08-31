@@ -89,6 +89,9 @@ internal class KickrPeripheralController(
 
     val isAdvertising: Boolean get() = advertiser.isAdvertising
 
+    /** UI entry point for the simulator's Zwift Click section - see KickrPeripheralAdvertiser.sendZwiftClickShift()'s KDoc. */
+    fun sendZwiftClickShift(direction: ZwiftClickDirection): Boolean = advertiser.sendZwiftClickShift(direction)
+
     @SuppressLint("MissingPermission")
     fun start(
         persona: KickrSimulatorPersona,

@@ -15,6 +15,9 @@ import java.util.UUID
 
 internal enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
 
+/** Which Zwift Click button a simulator UI tap represents - see KickrPeripheralSession.sendZwiftClickShift()'s KDoc. */
+enum class ZwiftClickDirection { UP, DOWN }
+
 internal data class KickrTxFrame(
     val characteristicUuid: UUID,
     val value: ByteArray,
@@ -123,6 +126,34 @@ internal class KickrPeripheralSession(
             subscription(RideOnUuids.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
         ) return
         enqueueZwiftFrame(server.telemetryFrame())
+    }
+
+    /**
+     * Emit one Zwift Click button tap: a pressed frame immediately followed by a released frame,
+     * both over notify (ASYNC_TX) - see ZwiftTrainerPeripheralServer.clickButtonFrame()'s KDoc.
+     * zwiftplay/zaplibrary's real-hardware `ClickNotification.diff()` only reports a "key
+     * pressed" event to the app on the transition back to released, so a single UI tap has to be
+     * these two frames, not one.
+     *
+     * Gated on the same bothTxSubscribed/controlReady conditions as [enqueueZwiftTelemetry] - a
+     * real Zwift Click is technically its own BLE peripheral, but FitBridge models it as extra
+     * opcodes on the KICKR/Zwift Hub persona's already-negotiated RideOn connection rather than
+     * standing up a second simulated peripheral (see RideOnUuids.OPCODE_CLICK_BUTTON_STATUS's
+     * KDoc for why the shared service/characteristic UUIDs make that a faithful shortcut, not a
+     * protocol violation).
+     */
+    @Synchronized
+    fun sendZwiftClickShift(direction: ZwiftClickDirection): Boolean {
+        val server = zwift ?: return false
+        if (!server.controlReady ||
+            subscription(RideOnUuids.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
+            subscription(RideOnUuids.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
+        ) return false
+        val up = direction == ZwiftClickDirection.UP
+        val down = direction == ZwiftClickDirection.DOWN
+        enqueueZwiftFrame(server.clickButtonFrame(upPressed = up, downPressed = down))
+        enqueueZwiftFrame(server.clickButtonFrame(upPressed = false, downPressed = false))
+        return true
     }
 
     private fun enqueueZwiftFrames(outcome: ZwiftTrainerServerOutcome) =

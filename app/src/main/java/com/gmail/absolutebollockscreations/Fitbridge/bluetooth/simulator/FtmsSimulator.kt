@@ -89,6 +89,17 @@ class FtmsSimulator(
          */
         fun publishSchwinnX70(frames: List<Pair<java.util.UUID, ByteArray>>) {}
 
+        /**
+         * Emit a Zwift Click button tap on the active Kickr/Zwift Hub persona's already-open
+         * RideOn connection. Returns false (and does nothing) for every other persona - the
+         * default here, rather than an abstract method, keeps every other host implementation
+         * unchanged (same rationale as publishPrecor()/publishLifeFitness()'s empty defaults
+         * above).
+         */
+        fun sendZwiftClickShift(
+            direction: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.ZwiftClickDirection,
+        ): Boolean = false
+
         val isAdvertising: Boolean
     }
 
@@ -226,6 +237,11 @@ class FtmsSimulator(
 
     fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
         FtmsMockControlProfile.forMachine(machine).any
+
+    /** UI entry point for the simulator's Zwift Click section. */
+    fun sendZwiftClickShift(
+        direction: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.ZwiftClickDirection,
+    ): Boolean = peripheral.sendZwiftClickShift(direction)
 
     /**
      * Start generating data for [machine] and advertise as that machine.

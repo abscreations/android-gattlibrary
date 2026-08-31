@@ -137,11 +137,15 @@ class KickrLegacyControlServerTest {
         val flat = model.snapshot()
 
         check(server.handle(bytes(WahooKickrCommand.Grade(-5.0))).accepted)
-        val descent = model.advance(0.5)
-
-        assertEquals(flat.speedKph, descent.speedKph, 0.01)
-        assertEquals(-5.0, descent.simulation.gradePercent, 0.002)
-        assertTrue(descent.powerWatts < flat.powerWatts)
+        val firstDescentTick = model.advance(0.5)
+        assertEquals(flat.speedKph, firstDescentTick.speedKph, 0.01)
+        assertEquals(-5.0, firstDescentTick.simulation.gradePercent, 0.002)
+        // Power is smoothed toward the new target rather than snapping instantly (see
+        // KickrSyntheticModel.advance()'s shared approach() step), so give it time to fully
+        // converge before asserting the descent's steady-state power.
+        assertTrue(firstDescentTick.powerWatts < flat.powerWatts)
+        var descent = firstDescentTick
+        repeat(80) { descent = model.advance(0.5) }
         assertEquals(0, descent.powerWatts)
     }
 

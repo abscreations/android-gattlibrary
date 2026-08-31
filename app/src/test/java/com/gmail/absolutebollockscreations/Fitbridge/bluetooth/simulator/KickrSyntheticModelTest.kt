@@ -112,7 +112,11 @@ class KickrSyntheticModelTest {
             totalMassKg = 92.0,
         )
         assertTrue(model.setSimulation(sim, KickrControlSource.RIDE_ON))
-        repeat(40) { model.advance(0.5) }
+        // Power is smoothed toward the physics solve (see the Kinomap grade-spike fix in
+        // advance()) rather than snapping to it every tick, so a long, steady-grade run is
+        // needed for both speed and power to reach their fixed points; a 1W tolerance absorbs
+        // the residual asymptotic gap that smoothing never fully closes.
+        repeat(200) { model.advance(0.5) }
         val snapshot = model.snapshot()
         val expected = CyclingSimulationPhysics.requiredRiderPowerWatts(
             speedKph = snapshot.speedKph,
@@ -123,15 +127,15 @@ class KickrSyntheticModelTest {
             totalMassKg = sim.totalMassKg,
         ).roundToInt()
 
-        assertEquals(expected, snapshot.powerWatts)
+        assertEquals(expected.toDouble(), snapshot.powerWatts.toDouble(), 1.0)
         assertEquals(
-            expected,
+            snapshot.powerWatts,
             requireNotNull(
                 CpsMeasurement.parse(KickrStandardEncoders.cyclingPowerMeasurement(snapshot)),
             ).instantaneousPowerWatts,
         )
         assertEquals(
-            expected,
+            snapshot.powerWatts,
             parseBike(KickrStandardEncoders.indoorBikeData(snapshot)).state.instantPower.value,
         )
     }
@@ -150,7 +154,12 @@ class KickrSyntheticModelTest {
         assertResult(FtmsSpec.Result.SUCCESS, processor.handle(bytes(0x11, 0, 0, 0xF4, 0x01, 40, 51)))
         assertEquals(KickrControlMode.SIMULATION, processor.model.snapshot().mode)
         assertEquals(5.0, processor.model.snapshot().simulation.gradePercent, 0.0)
-        val simulated = processor.model.advance(0.5)
+        // The first tick after entering SIMULATION smooths power toward the physics solve
+        // instead of snapping to it (see the Kinomap grade-spike fix in advance()), so let the
+        // model run long enough at this fixed grade for both speed and power to converge before
+        // comparing against the closed-form steady-state result.
+        var simulated = processor.model.advance(0.5)
+        repeat(200) { simulated = processor.model.advance(0.5) }
         assertEquals(
             CyclingSimulationPhysics.requiredRiderPowerWatts(
                 speedKph = simulated.speedKph,
@@ -158,8 +167,9 @@ class KickrSyntheticModelTest {
                 crr = 0.004,
                 cwKgPerM = 0.51,
                 windMps = 0.0,
-            ).roundToInt(),
-            simulated.powerWatts,
+            ).roundToInt().toDouble(),
+            simulated.powerWatts.toDouble(),
+            1.0,
         )
 
         assertResult(FtmsSpec.Result.SUCCESS, processor.handle(bytes(0x04, 100, 0)))
@@ -175,7 +185,10 @@ class KickrSyntheticModelTest {
         val model = KickrSyntheticModel()
         model.startOrResume()
         assertTrue(model.setSimulation(KickrSimulationTarget(gradePercent = 200.0)))
-        repeat(40) { model.advance(0.5) }
+        // 200 ticks (100s) gives both speed and power time to fully converge under the shared
+        // approach() smoothing (see KickrSyntheticModel.advance()) rather than settling a couple
+        // of watts short of the clamp.
+        repeat(200) { model.advance(0.5) }
         assertEquals(KickrSyntheticModel.MAX_POWER_WATTS, model.snapshot().powerWatts)
 
         assertTrue(model.setTargetPower(250, KickrControlSource.FTMS))
@@ -183,6 +196,54 @@ class KickrSyntheticModelTest {
         assertEquals(KickrControlMode.ERG, model.snapshot().mode)
         assertEquals(250, model.snapshot().powerWatts)
         assertEquals(SimulatorControlModeLabels.FTMS_ERG, model.snapshot().controlLabel)
+    }
+
+    @Test
+    fun `a stray simulation write during ERG does not spike power on the very next tick`() {
+        // Regression test for the 2026-08-30 Kinomap Zwift Hub capture: Kinomap re-sent an FTMS
+        // Set Target Power keepalive roughly once a second while ERG was active, but also sent
+        // one Set Indoor Bike Simulation Parameters write per route segment. When that grade
+        // write landed between two ERG keepalives, the model briefly flipped into SIMULATION
+        // and, before this fix, computed the physics-correct power to hold the STALE ERG speed
+        // at the NEW steep grade in a single unsmoothed tick - a 654-670W spike off a 75W
+        // steady state (docs/evidence/phase-10, 2026-08-30 Kinomap/Zwift Hub btsnoop capture).
+        val model = KickrSyntheticModel()
+        model.startOrResume()
+        assertTrue(model.setTargetPower(70))
+        repeat(200) { model.advance(0.5) }
+        val ergSteadyState = model.snapshot()
+        assertEquals(70, ergSteadyState.powerWatts)
+
+        // The naive, unsmoothed physics result for the new grade at the stale ERG speed - this
+        // is the value the old code snapped straight to.
+        val steepGrade = KickrSimulationTarget(gradePercent = 9.12)
+        val naiveSpikeWatts = CyclingSimulationPhysics.requiredRiderPowerWatts(
+            speedKph = ergSteadyState.speedKph,
+            gradePercent = steepGrade.gradePercent,
+            crr = steepGrade.crr,
+            cwKgPerM = steepGrade.cw,
+            windMps = steepGrade.windMps,
+            totalMassKg = steepGrade.totalMassKg,
+        )
+        assertTrue("fixture should reproduce a large naive spike", naiveSpikeWatts > 400.0)
+
+        // One stray Set Indoor Bike Simulation Parameters write lands, exactly like the capture.
+        assertTrue(model.setSimulation(steepGrade, KickrControlSource.FTMS))
+        val firstSimulationTick = model.advance(0.5)
+
+        assertEquals(KickrControlMode.SIMULATION, model.snapshot().mode)
+        assertTrue(
+            "power should be smoothed toward the spike, not snapped to it: " +
+                "was ${firstSimulationTick.powerWatts}W, naive spike was ${naiveSpikeWatts.roundToInt()}W",
+            firstSimulationTick.powerWatts < naiveSpikeWatts.roundToInt() / 2,
+        )
+
+        // The next ERG keepalive (as Kinomap sends about a second later) flips mode back, and
+        // power settles smoothly to the original target rather than staying pinned to the spike.
+        assertTrue(model.setTargetPower(70, KickrControlSource.FTMS))
+        repeat(200) { model.advance(0.5) }
+        assertEquals(KickrControlMode.ERG, model.snapshot().mode)
+        assertEquals(70, model.snapshot().powerWatts)
     }
 
     @Test

@@ -189,7 +189,11 @@ class KickrGattRegistryTest {
     }
 
     @Test
-    fun `CORE2 session never falls back to original marker`() {
+    fun `CORE2 session accepts real Zwift handshake regardless of the 02 02 or 02 03 marker`() {
+        // A 2026-08-30 three-persona btsnoop capture showed real Zwift always writes the 02 03
+        // form byte, never 02 02, no matter which RideOn service UUID it discovered - so
+        // acceptance no longer depends on the session's configured RideOnServiceForm. See the
+        // KDoc on ZwiftTrainerPeripheralServer.handle().
         val session = KickrPeripheralSession(
             12L,
             KickrSyntheticModel(),
@@ -197,8 +201,6 @@ class KickrGattRegistryTest {
         )
         session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
         session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
-        assertFalse(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
-        assertNull(session.route)
         assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
         assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
     }
@@ -217,9 +219,10 @@ class KickrGattRegistryTest {
         assertTrue(kickrStandardMeasurementFrames(manifest, session.model.snapshot()).isNotEmpty())
         session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
         session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
-        assertFalse(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
-        assertNull(session.route)
-        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
+        // Real Zwift wrote "RideOn" 02 03 to this persona's 128-bit ORIGINAL service in the
+        // 2026-08-30 capture, not 02 02 - both must be accepted (see the CORE2-session test
+        // above and the KDoc on ZwiftTrainerPeripheralServer.handle()).
+        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
         assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
     }
 

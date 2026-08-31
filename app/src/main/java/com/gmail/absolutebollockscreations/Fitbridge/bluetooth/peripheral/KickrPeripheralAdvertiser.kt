@@ -142,6 +142,24 @@ internal class KickrPeripheralAdvertiser(
         )
     }
 
+    /**
+     * UI entry point for the simulator's Zwift Click section - see
+     * KickrPeripheralSession.sendZwiftClickShift()'s KDoc for what this actually sends. Fans out
+     * to every connected client (there is normally exactly one - Zwift) rather than picking a
+     * single one, matching [publish]'s own fan-out for regular telemetry.
+     */
+    fun sendZwiftClickShift(direction: ZwiftClickDirection): Boolean {
+        var sent = false
+        clients.values.forEach { client ->
+            val accepted = synchronized(client.session) { client.session.sendZwiftClickShift(direction) }
+            if (accepted) {
+                sent = true
+                drain(client)
+            }
+        }
+        return sent
+    }
+
     fun publish(snapshot: KickrMachineSnapshot) {
         val selectedManifest = manifest ?: return
         val frames = kickrStandardMeasurementFrames(selectedManifest, snapshot)

@@ -215,8 +215,10 @@ internal class KickrSyntheticModel(
      * *alongside* a simulation payload (plan/RideOn protocol - see
      * `ZwiftTrainerPeripheralServer.handleHubCommand`), and that combined write must keep
      * reporting [KickrControlKind.SIMULATION], not get silently downgraded to Direct because a
-     * gear ratio happened to ride along. Only a bare virtual-shift command - gear change with no
-     * power or simulation target - calls this.
+     * gear ratio happened to ride along. Only a bare gear-shift command - a `VirtualShift`, or a
+     * `HubCommand{Physical{gearRatio}}` with no Simulation alongside it (the form a real KICKR
+     * Core sends on every actual gear shift - see the KDoc on
+     * `ZwiftTrainerPeripheralServer.handleHubCommand`) - calls this.
      */
     @Synchronized
     fun markDirectControl(source: KickrControlSource) {
@@ -230,14 +232,14 @@ internal class KickrSyntheticModel(
         elapsedSeconds += dtSeconds
         if (!running) return snapshot()
 
-        if (mode == KickrControlMode.SIMULATION) {
+        val simulationPhysicsPowerWatts = if (mode == KickrControlMode.SIMULATION) {
             speedKph = approach(
                 speedKph,
                 SIMULATION_SPEED_KPH,
                 dtSeconds,
                 SPEED_TIME_CONSTANT_SECONDS,
             )
-            powerWatts = CyclingSimulationPhysics.requiredRiderPowerWatts(
+            CyclingSimulationPhysics.requiredRiderPowerWatts(
                 speedKph = speedKph,
                 gradePercent = simulation.gradePercent,
                 crr = simulation.crr,
@@ -245,16 +247,25 @@ internal class KickrSyntheticModel(
                 windMps = simulation.windMps,
                 totalMassKg = simulation.totalMassKg,
             ).coerceAtMost(MAX_POWER_WATTS.toDouble())
+        } else {
+            null
         }
         val desiredPower = when (mode) {
             KickrControlMode.AUTONOMOUS -> 160.0
             KickrControlMode.ERG -> targetPowerWatts?.toDouble() ?: 160.0
             KickrControlMode.RESISTANCE -> 45.0 + resistanceLevel * 14.0
-            KickrControlMode.SIMULATION -> powerWatts
+            KickrControlMode.SIMULATION -> simulationPhysicsPowerWatts!!
         }
-        if (mode != KickrControlMode.SIMULATION) {
-            powerWatts = approach(powerWatts, desiredPower, dtSeconds, POWER_TIME_CONSTANT_SECONDS)
-        }
+        // Every mode's power - including a fresh SIMULATION-mode physics solve - is smoothed
+        // through the same approach() step. Without this, entering SIMULATION on a stray
+        // Set Indoor Bike Simulation Parameters write (e.g. Kinomap interleaving grade updates
+        // with its periodic ERG keepalive) computes the physically "correct" power for the new
+        // grade against whatever speed the PREVIOUS mode had settled at, producing an
+        // instantaneous, discontinuous power spike before the model ever gets a chance to
+        // converge speed toward that grade. See docs/evidence/phase-10 Zwift Hub Kinomap
+        // capture 2026-08-30: a grade write landing ~1s after an ERG 75W target produced a
+        // 654-670W spike that then exponentially decayed back to 75W as mode flipped back to ERG.
+        powerWatts = approach(powerWatts, desiredPower, dtSeconds, POWER_TIME_CONSTANT_SECONDS)
         val desiredCadence = if (desiredPower <= 0.0) 0.0 else (78.0 + desiredPower / 35.0).coerceAtMost(105.0)
         cadenceRpm = approach(cadenceRpm, desiredCadence, dtSeconds, CADENCE_TIME_CONSTANT_SECONDS)
         if (mode != KickrControlMode.SIMULATION) {
