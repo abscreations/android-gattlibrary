@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FtmsResistanceScale
+
 /**
  * Pure FTMS Control Point decoder and per-connection procedure state machine.
  * Transport and indication ordering live in [FtmsPeripheralAdvertiser].
@@ -160,32 +162,71 @@ class FtmsControlPointHandler(
                 true
             }
 
-            o.SET_TARGET_RESISTANCE -> target(
-                op, value, sink.targetCapabilities.supportsResistance,
-                sink.targetCapabilities.resistanceRange,
-                FtmsSpec.Status.TARGET_RESISTANCE_CHANGED,
-                rawValue = {
-                    if (value.size == LEGACY_RESISTANCE_PROCEDURE_LENGTH) {
-                        value[1].toInt() and 0xFF
+            o.SET_TARGET_RESISTANCE -> {
+                val range = sink.targetCapabilities.resistanceRange
+                // FTMS permits the legacy UINT8 form and the newer SINT16 form, and clients
+                // disagree about what the byte means. Observed on the wire 2026-08-31: the Wahoo
+                // app writes the legacy form with the level as a WHOLE number (04 05 / 04 0F /
+                // 04 19 / 04 23 for levels 5/15/25/35), ignoring the spec's 0.1 resolution; other
+                // clients send spec tenths. Guessing one convention globally breaks the other -
+                // and in the bridge role it corrupts by 10x what we forward to a real machine.
+                //
+                // So decide per write from the range this machine actually advertises, using the
+                // same rule [FtmsResistanceScale] already applies in the upstream direction: if
+                // only one reading lands inside the declared range it wins; then if only one lands
+                // on a declared step it wins; anything still ambiguous defers to the spec. The
+                // SINT16 form is never guessed - it is always spec tenths.
+                val legacyEncoding =
+                    if (value.size == LEGACY_RESISTANCE_PROCEDURE_LENGTH && range != null) {
+                        FtmsResistanceScale.decide(
+                            raw = value[1].toInt() and 0xFF,
+                            min = range.minimum / 10f,
+                            max = range.maximum / 10f,
+                            incr = range.increment / 10f,
+                            known = true,
+                        )
                     } else {
-                        s16(value, 1)
+                        null
                     }
-                },
-                // FTMS permits the legacy UINT8 form and the newer SINT16 form.
-                // Preserve legacy status framing when the normalized value fits;
-                // SINT16 is required for the simulator's advertised 30.0 maximum.
-                statusOperand = {
-                    if (value.size == LEGACY_RESISTANCE_PROCEDURE_LENGTH && it <= 0xFF) {
-                        u8(it)
-                    } else {
-                        s16le(it)
-                    }
-                },
-            ) { raw ->
-                val t = raw!! / 10.0
-                if (!sink.setTargetResistance(t)) return@target false
-                session.acceptedTargets.resistance = t
-                true
+
+                target(
+                    op, value, sink.targetCapabilities.supportsResistance,
+                    range,
+                    FtmsSpec.Status.TARGET_RESISTANCE_CHANGED,
+                    // Normalized to 0.1-level wire units either way, so the range check and the
+                    // sink see one scale whichever form and convention the client used.
+                    rawValue = {
+                        val raw = value[1].toInt() and 0xFF
+                        when (legacyEncoding) {
+                            FtmsResistanceScale.Encoding.RAW_LEVELS -> raw * LEGACY_RESISTANCE_SCALE
+                            FtmsResistanceScale.Encoding.TENTHS -> raw
+                            null -> s16(value, 1)
+                        }
+                    },
+                    // Mirror the framing AND the convention the client used, so a legacy writer
+                    // that cannot parse a SINT16 status still recognizes its own number coming
+                    // back. Falls back to SINT16 when the accepted value cannot be expressed in
+                    // the client's encoding: a snapped value that is no longer a whole level, or
+                    // one past 255.
+                    statusOperand = { normalized ->
+                        val echo = when (legacyEncoding) {
+                            FtmsResistanceScale.Encoding.RAW_LEVELS ->
+                                if (normalized % LEGACY_RESISTANCE_SCALE == 0) {
+                                    normalized / LEGACY_RESISTANCE_SCALE
+                                } else {
+                                    null
+                                }
+                            FtmsResistanceScale.Encoding.TENTHS -> normalized
+                            null -> null
+                        }
+                        if (echo != null && echo in 0..0xFF) u8(echo) else s16le(normalized)
+                    },
+                ) { raw ->
+                    val t = raw!! / 10.0
+                    if (!sink.setTargetResistance(t)) return@target false
+                    session.acceptedTargets.resistance = t
+                    true
+                }
             }
 
             o.SET_TARGET_POWER -> target(
@@ -336,6 +377,9 @@ class FtmsControlPointHandler(
     companion object {
         private const val LEGACY_RESISTANCE_PROCEDURE_LENGTH = 2
         private const val SINT16_RESISTANCE_PROCEDURE_LENGTH = 3
+
+        /** 0x2AD6/0x2AD9 wire units are 0.1 level, so a whole-level reading scales by this. */
+        private const val LEGACY_RESISTANCE_SCALE = 10
 
         fun opcodeName(op: Int): String = when (op.toByte()) {
             FtmsSpec.Opcode.REQUEST_CONTROL -> "REQUEST_CONTROL"

@@ -86,8 +86,21 @@ sealed interface SimulatorPersona {
         override val advertisedName: String = identity.localName ?: feCBleAdvertisedName(equipmentType)
     }
 
-    /** Debug-only KICKR interoperability simulator; never offered by a release selector. */
-    data class Kickr(val device: KickrSimulatorPersona) : SimulatorPersona {
+    /**
+     * Debug-only KICKR interoperability simulator; never offered by a release selector.
+     *
+     * @param controlEnabled whether this run answers FTMS target-setting procedures. All four
+     * KICKR/Zwift personas implement FTMS control for real - Kinomap and MyWhoosh captures show
+     * third-party apps driving them through 0x2AD9 - so this defaults on and the simulator's
+     * "Accept target commands" switch exists to take it away for a data-only test, not to grant a
+     * capability the persona would otherwise lack. Control is still negotiated per route
+     * (`KickrControlRoute`), so this gates the FTMS route only; the legacy Wahoo and RideOn
+     * control points are unaffected.
+     */
+    data class Kickr(
+        val device: KickrSimulatorPersona,
+        val controlEnabled: Boolean = true,
+    ) : SimulatorPersona {
         override val advertisedName: String = KickrPersonaManifest.forPersona(device).advertising.localName
     }
 }

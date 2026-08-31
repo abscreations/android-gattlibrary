@@ -103,7 +103,14 @@ class KickrLegacyControlServerTest {
 
         server.handle(bytes(WahooKickrCommand.Resistance(0.5)))
         assertEquals(KickrControlMode.RESISTANCE, model.snapshot().mode)
-        assertEquals(8.0, model.snapshot().resistanceLevel, 0.001)
+        // Expressed against the model's own bounds rather than a baked-in number, so a change to
+        // the resistance scale does not silently turn this into an assertion about nothing. The
+        // tolerance absorbs the legacy command's 14-bit quantization: a half-scale fraction
+        // encodes to 8192/16383, which comes back as 0.49997 rather than exactly 0.5, and that
+        // error scales with the span.
+        val midScale = KickrSyntheticModel.MIN_RESISTANCE +
+            0.5 * (KickrSyntheticModel.MAX_RESISTANCE - KickrSyntheticModel.MIN_RESISTANCE)
+        assertEquals(midScale, model.snapshot().resistanceLevel, 0.01)
         server.handle(bytes(WahooKickrCommand.StandardLevel(7)))
         assertEquals(7.0, model.snapshot().resistanceLevel, 0.001)
         server.handle(bytes(WahooKickrCommand.WheelCircumference(2100.0)))

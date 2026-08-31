@@ -147,6 +147,8 @@ class FtmsPeripheralController(
         val kickrHeartRateBpm: Int? = null,
         val kickrVirtualGearIndex: Int? = null,
         val kickrGearRatio: Double? = null,
+        /** Set only while a resistance write is the active control mode; null otherwise. */
+        val kickrResistanceLevel: Double? = null,
         val kickrPendingFrames: Int = 0,
         val kickrDroppedFrames: Long = 0,
         val kickrRejectedWrites: Long = 0,

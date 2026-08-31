@@ -31,8 +31,13 @@ internal enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
  */
 internal enum class KickrControlSource { NONE, FTMS, LEGACY_KICKR, RIDE_ON }
 
-/** See [KickrControlSource]. DIRECT covers resistance/standard-level and virtual-gear writes. */
-internal enum class KickrControlKind { DIRECT, ERG, SIMULATION }
+/**
+ * See [KickrControlSource]. RESISTANCE is a direct resistance-level write (FTMS 0x04, the legacy
+ * Wahoo fraction and standard-level commands, or a RideOn equivalent); DIRECT covers the remaining
+ * direct writes, principally a bare virtual-gear shift. Only the FTMS label vocabulary
+ * distinguishes the two - see [SimulatorControlModeLabels].
+ */
+internal enum class KickrControlKind { DIRECT, RESISTANCE, ERG, SIMULATION }
 
 internal data class KickrSimulationTarget(
     val windMps: Double = 0.0,
@@ -77,6 +82,20 @@ internal data class KickrMachineSnapshot(
 internal class KickrSyntheticModel(
     initialWheelCircumferenceMm: Double = DEFAULT_WHEEL_CIRCUMFERENCE_MM,
 ) {
+    /**
+     * Whether this run answers FTMS target-setting procedures at all - the simulator's
+     * "Accept target commands" switch, resolved once per start and read live by
+     * [KickrSyntheticFtmsControlSink.canControl].
+     *
+     * Deliberately NOT cleared by [reset]: reset models the machine returning to an idle ride,
+     * not the operator changing what the persona is willing to be asked. Turning this off leaves
+     * the persona's captured 0x2ACC feature word and Supported-* ranges untouched - those are
+     * device identity replicated from a capture - so target writes are refused with
+     * OPCODE_NOT_SUPPORTED while the advertised surface still describes the real trainer.
+     */
+    @Volatile
+    var ftmsControlEnabled: Boolean = true
+
     private var elapsedSeconds = 0.0
     private var running = false
     private var mode = KickrControlMode.AUTONOMOUS
@@ -169,7 +188,7 @@ internal class KickrSyntheticModel(
         resistanceLevel = level
         targetPowerWatts = null
         controlSource = source
-        controlKind = KickrControlKind.DIRECT
+        controlKind = KickrControlKind.RESISTANCE
         return true
     }
 
@@ -253,7 +272,7 @@ internal class KickrSyntheticModel(
         val desiredPower = when (mode) {
             KickrControlMode.AUTONOMOUS -> 160.0
             KickrControlMode.ERG -> targetPowerWatts?.toDouble() ?: 160.0
-            KickrControlMode.RESISTANCE -> 45.0 + resistanceLevel * 14.0
+            KickrControlMode.RESISTANCE -> 45.0 + resistanceLevel * 2.1
             KickrControlMode.SIMULATION -> simulationPhysicsPowerWatts!!
         }
         // Every mode's power - including a fresh SIMULATION-mode physics solve - is smoothed
@@ -317,6 +336,7 @@ internal class KickrSyntheticModel(
             KickrControlSource.NONE -> SimulatorControlModeLabels.AUTOMATIC
             KickrControlSource.FTMS -> when (kind) {
                 KickrControlKind.DIRECT -> SimulatorControlModeLabels.FTMS_DIRECT
+                KickrControlKind.RESISTANCE -> SimulatorControlModeLabels.FTMS_RESISTANCE
                 KickrControlKind.ERG -> SimulatorControlModeLabels.FTMS_ERG
                 KickrControlKind.SIMULATION -> SimulatorControlModeLabels.FTMS_SIM
             }
@@ -325,11 +345,13 @@ internal class KickrSyntheticModel(
             // either reads as that protocol's Direct label, same as a resistance or gear write.
             KickrControlSource.LEGACY_KICKR -> when (kind) {
                 KickrControlKind.SIMULATION -> SimulatorControlModeLabels.KICKR_SIM
-                KickrControlKind.DIRECT, KickrControlKind.ERG -> SimulatorControlModeLabels.KICKR_DIRECT
+                KickrControlKind.DIRECT, KickrControlKind.RESISTANCE, KickrControlKind.ERG ->
+                    SimulatorControlModeLabels.KICKR_DIRECT
             }
             KickrControlSource.RIDE_ON -> when (kind) {
                 KickrControlKind.SIMULATION -> SimulatorControlModeLabels.RIDEON_SIM
-                KickrControlKind.DIRECT, KickrControlKind.ERG -> SimulatorControlModeLabels.RIDEON_DIRECT
+                KickrControlKind.DIRECT, KickrControlKind.RESISTANCE, KickrControlKind.ERG ->
+                    SimulatorControlModeLabels.RIDEON_DIRECT
             }
         }
     }
@@ -414,14 +436,14 @@ internal class KickrSyntheticModel(
         const val MIN_POWER_WATTS = 0
         const val MAX_POWER_WATTS = 2_000
         const val MIN_RESISTANCE = 1.0
-        const val MAX_RESISTANCE = 15.0
+        const val MAX_RESISTANCE = 100.0
         const val MIN_WHEEL_CIRCUMFERENCE_MM = 0.1
         const val MAX_WHEEL_CIRCUMFERENCE_MM = 6_553.5
         const val DEFAULT_WHEEL_CIRCUMFERENCE_MM = 2_096.0
         const val MAX_TICK_SECONDS = 10.0
         const val DEFAULT_VIRTUAL_GEAR_INDEX = 12
         const val DEFAULT_GEAR_RATIO = 2.4
-        private const val DEFAULT_RESISTANCE = 5.0
+        private const val DEFAULT_RESISTANCE = 35.0
         private const val IDLE_HEART_RATE = 80
         private const val MAX_HEART_RATE = 220
         private const val MAX_SPEED_KPH = 100.0
@@ -447,7 +469,15 @@ internal object KickrStandardEncoders {
     val CORE_FTMS_FEATURE: ByteArray = byteArrayOf(0x03, 0x40, 0x00, 0x00, 0x0C, 0x60, 0x00, 0x00)
     val CPS_FEATURE: ByteArray = byteArrayOf(0x08, 0x00, 0x00, 0x00)
     val SENSOR_LOCATION: ByteArray = byteArrayOf(0x0D)
-    val SUPPORTED_RESISTANCE_RANGE: ByteArray = u16le(10) + u16le(150) + u16le(10)
+    /**
+     * Derived from [KickrFtmsCapabilities] rather than restated, so the range a client reads from
+     * 0x2AD6 and the range [FtmsControlPointHandler] validates against can never drift apart.
+     * This deliberately diverges from the captured `0a0096000a00`: that value came from QZ's
+     * hardcoded Dircon table, not from a read of a physical trainer, and its 1.0-15.0 ceiling with
+     * a 1.0 step rejected every whole-level resistance the Wahoo app writes.
+     */
+    val SUPPORTED_RESISTANCE_RANGE: ByteArray =
+        requireNotNull(KickrFtmsCapabilities.VALUE.resistanceRange).encodeS16()
     val SUPPORTED_POWER_RANGE: ByteArray = s16le(0) + s16le(2_000) + u16le(1)
 
     fun cyclingPowerMeasurement(snapshot: KickrMachineSnapshot): ByteArray =
@@ -545,7 +575,11 @@ internal object KickrFtmsCapabilities {
         power = true,
         indoorBikeSimulation = true,
         wheelCircumference = true,
-        resistanceRange = FtmsTargetRange(10, 150, 10),
+        // 0x2AD6 wire units are 0.1 level, so this advertises 1.0-100.0 in whole-level
+        // steps. Wahoo's app writes the legacy UINT8 form with the level as a whole number
+        // (5 / 15 / 25 / 35 observed on the wire), which the control point normalizes into
+        // these units before the range check.
+        resistanceRange = FtmsTargetRange(10, 1_000, 10),
         powerRange = FtmsTargetRange(0, 2_000, 1),
     )
 }
@@ -553,7 +587,10 @@ internal object KickrFtmsCapabilities {
 internal class KickrSyntheticFtmsControlSink(
     private val model: KickrSyntheticModel,
 ) : FtmsControlSink {
-    override val canControl: Boolean = true
+    // Read per call, not captured: the simulator's "Accept target commands" switch is settled
+    // before the run starts but the sink outlives any single write, and the GATT callback thread
+    // is not the thread that set it.
+    override val canControl: Boolean get() = model.ftmsControlEnabled
     override val targetCapabilities: TargetCapabilities = KickrFtmsCapabilities.VALUE
     override val clampsTargetsToAdvertisedRange: Boolean = false
 

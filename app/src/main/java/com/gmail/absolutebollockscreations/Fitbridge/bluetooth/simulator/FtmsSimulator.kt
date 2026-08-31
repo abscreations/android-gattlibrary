@@ -287,7 +287,10 @@ class FtmsSimulator(
                 return
             }
             is SimulatorPersona.Kickr -> {
-                startKickr(persona)
+                // Same shape as the FE-C branch above: what the "Accept target commands" switch
+                // asked for wins over the persona's own default, instead of being dropped on the
+                // floor the way it was when this branch passed `persona` through unchanged.
+                startKickr(persona.copy(controlEnabled = enableControls))
                 return
             }
             is SimulatorPersona.Ftms -> Unit
@@ -551,8 +554,13 @@ class FtmsSimulator(
         _state.value = State(
             running = true,
             persona = persona,
-            controlsEnabled = true,
-            controlsAvailable = false,
+            controlsEnabled = persona.controlEnabled,
+            // All four KICKR/Zwift personas implement FTMS target setting (Kinomap and MyWhoosh
+            // captures show third-party apps driving them through 0x2AD9), so the switch is
+            // genuinely interactive here. It used to be false, which rendered the card as
+            // "This machine type has no FTMS target-setting procedure" - untrue of every one
+            // of them.
+            controlsAvailable = true,
             advertising = peripheral.isAdvertising,
         )
         Timber.tag(TAG).i("KICKR simulator started persona=%s", persona.device)

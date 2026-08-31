@@ -38,6 +38,11 @@ internal class KickrPeripheralController(
         val heartRateBpm: Int? = null,
         val virtualGearIndex: Int? = null,
         val gearRatio: Double? = null,
+        /**
+         * Set only while a resistance write is the active control mode; null otherwise, so a
+         * stale level left over from an earlier ERG or simulation switch never displays as live.
+         */
+        val resistanceLevel: Double? = null,
         /** Set only while [controlMode] reflects an active simulation write; null otherwise. */
         val simWindMps: Double? = null,
         val simGradePercent: Double? = null,
@@ -96,6 +101,7 @@ internal class KickrPeripheralController(
     fun start(
         persona: KickrSimulatorPersona,
         legacyAckModeOverride: KickrLegacyAckMode? = null,
+        ftmsControlEnabled: Boolean = true,
         onResult: (Result<Unit>) -> Unit,
     ) {
         val epoch = operationEpoch.incrementAndGet()
@@ -110,6 +116,7 @@ internal class KickrPeripheralController(
         activePersona = persona
         packets = 0
         model.reset()
+        model.ftmsControlEnabled = ftmsControlEnabled
         model.startOrResume()
         adapterNames.apply(plan.localName) nameCallback@{ nameResult ->
             if (operationEpoch.get() != epoch) return@nameCallback
@@ -228,6 +235,9 @@ internal class KickrPeripheralController(
             heartRateBpm = snapshot.heartRateBpm,
             virtualGearIndex = snapshot.virtualGearIndex,
             gearRatio = snapshot.gearRatio,
+            resistanceLevel = snapshot.resistanceLevel.takeIf {
+                snapshot.mode == KickrControlMode.RESISTANCE
+            },
             // Only meaningful while a simulation write is the active control mode; a stale
             // simulation payload from an earlier ERG/Direct switch must not display as live.
             simWindMps = snapshot.simulation.windMps.takeIf { snapshot.mode == KickrControlMode.SIMULATION },

@@ -80,8 +80,13 @@ class KickrSyntheticModelTest {
             byteArrayOf(0x03, 0x40, 0x00, 0x00, 0x0C, 0x60, 0x00, 0x00),
             KickrStandardEncoders.CORE_FTMS_FEATURE,
         )
+        // 0x2AD6 deliberately diverges from the captured `0a0096000a00`: that byte string came
+        // from QZ's hardcoded Dircon table rather than a read of a physical trainer, and its
+        // 1.0-15.0 ceiling rejected every whole-level resistance the Wahoo app writes. 1.0-100.0
+        // step 1.0, derived from KickrFtmsCapabilities so the advertised and validated ranges
+        // cannot drift.
         assertArrayEquals(
-            byteArrayOf(0x0A, 0x00, 0x96.toByte(), 0x00, 0x0A, 0x00),
+            byteArrayOf(0x0A, 0x00, 0xE8.toByte(), 0x03, 0x0A, 0x00),
             KickrStandardEncoders.SUPPORTED_RESISTANCE_RANGE,
         )
         assertEquals(0x600C, KickrFtmsCapabilities.VALUE.toTargetFeatureBits())
@@ -255,7 +260,13 @@ class KickrSyntheticModelTest {
         assertResult(FtmsSpec.Result.INVALID_PARAMETER, processor.handle(bytes(0x12, 1)))
         assertResult(FtmsSpec.Result.INVALID_PARAMETER, processor.handle(bytes(0x12, 0, 0)))
         assertResult(FtmsSpec.Result.INVALID_PARAMETER, processor.handle(bytes(0x05, 0x01, 0x08)))
-        assertResult(FtmsSpec.Result.INVALID_PARAMETER, processor.handle(bytes(0x04, 0xA0, 0x00)))
+        // SINT16 resistance past the persona's advertised 1.0-100.0 ceiling. Was 0x00A0 (160,
+        // i.e. 16.0) back when the persona claimed a 15.0 maximum; that value is now legal, so
+        // the case is restated against the range actually published on 0x2AD6 instead of being
+        // left as an assertion that no longer tests anything.
+        assertResult(FtmsSpec.Result.INVALID_PARAMETER, processor.handle(bytes(0x04, 0xF2, 0x03)))
+        // Inside the range but off the advertised 1.0 step.
+        assertResult(FtmsSpec.Result.INVALID_PARAMETER, processor.handle(bytes(0x04, 0x9D, 0x00)))
         assertEquals(before, processor.model.snapshot())
         assertEquals(before, processor.model.advance(Double.NaN))
         assertEquals(before, processor.model.advance(11.0))

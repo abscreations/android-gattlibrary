@@ -199,6 +199,50 @@ class FtmsControlPointTest {
     }
 
     @Test
+    fun `the legacy resistance byte is read against the range the machine advertises`() {
+        // The Wahoo app writes whole levels in the legacy UINT8 form (04 05 / 04 0F / 04 19 /
+        // 04 23 for 5/15/25/35, wahoobtsnoop_hci1.log 2026-08-31); spec-conformant clients write
+        // tenths. Neither convention can be assumed globally: assuming whole levels corrupts what
+        // the bridge forwards to a real machine by 10x, and assuming tenths rejects Wahoo. The
+        // advertised range decides, by the same rule FtmsResistanceScale applies upstream.
+        val kickr = RecordingSink(
+            targetCapabilities = TargetCapabilities(
+                resistance = true,
+                // The KICKR/Zwift simulator personas: 1.0 - 100.0 in whole-level steps.
+                resistanceRange = FtmsTargetRange(10, 1_000, 10),
+            ),
+        )
+        val kickrCp = FtmsControlPointHandler(kickr)
+        listOf(5 to 5.0, 15 to 15.0, 25 to 25.0, 35 to 35.0).forEach { (wire, level) ->
+            val out = kickrCp.handle(byteArrayOf(O.SET_TARGET_RESISTANCE, wire.toByte()), hasControl = true)
+            assertEquals("wire $wire", R.SUCCESS, result(out))
+            assertEquals("wire $wire", level, kickr.resistance!!, 0.001)
+            // Echoed in the client's own framing and convention, not re-encoded as SINT16.
+            assertArrayEquals(
+                byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED, wire.toByte()),
+                out.status,
+            )
+        }
+
+        // A machine whose declared ceiling is 20.0 cannot mean level 35, so the same byte is
+        // read as tenths and forwarded as 3.5 - the bridge behaviour, unchanged.
+        val spec = RecordingSink(
+            targetCapabilities = TargetCapabilities(
+                resistance = true,
+                resistanceRange = FtmsTargetRange(0, 200, 5),
+            ),
+        )
+        val out = FtmsControlPointHandler(spec)
+            .handle(byteArrayOf(O.SET_TARGET_RESISTANCE, 35), hasControl = true)
+        assertEquals(R.SUCCESS, result(out))
+        assertEquals(3.5, spec.resistance!!, 0.001)
+        assertArrayEquals(
+            byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED, 35),
+            out.status,
+        )
+    }
+
+    @Test
     fun `set target resistance rejects a one octet write`() {
         val cp = FtmsControlPointHandler(RecordingSink())
         val out = cp.handle(byteArrayOf(O.SET_TARGET_RESISTANCE), hasControl = true)

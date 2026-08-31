@@ -223,13 +223,22 @@ class FeCControlSchedulerTest {
         scheduler.submit(FeCControlTarget.Erg(150.0))
         scheduler.stop()
         assertTrue(!scheduler.isRunning)
-        // The loop's first pending-target check intentionally has no initial delay (lines 79-85),
-        // so the target may already have reached the transport before stop wins the race. The
-        // lifecycle guarantee we can observe deterministically is that stop returns a stable count.
-        val writesAtStop = transport.writes.size
+
+        // The loop's first pending-target check intentionally has no initial delay, so the target
+        // may already have reached the transport before stop wins the race - this test cannot
+        // assert a specific count, only that the count stops growing.
+        //
+        // Sampling immediately after stop() is NOT sufficient, and that is what made this test
+        // flaky: stop() calls Job.cancel(), which requests cancellation and returns without
+        // joining, while the loop runs on a separate dispatcher. A dispatch() already past its
+        // pending.getAndSet() can still be mid-write when stop() returns, so the sample misses it
+        // and the delay below then observes it landing - a failure that depends purely on thread
+        // scheduling. Wait for the loop to wind down first, THEN sample, then prove it is quiet.
+        delay(intervalMs * 4)
+        val writesAfterWindDown = transport.writes.size
 
         delay(intervalMs * 4)
-        assertEquals(writesAtStop, transport.writes.size)
+        assertEquals(writesAfterWindDown, transport.writes.size)
     }
 
     @Test

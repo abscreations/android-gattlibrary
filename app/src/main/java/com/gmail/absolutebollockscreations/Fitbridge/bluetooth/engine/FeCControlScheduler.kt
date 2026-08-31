@@ -5,7 +5,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -153,6 +155,12 @@ internal class FeCControlScheduler(
             return
         }
         for (frame in frames) {
+            // stop() cancels this coroutine but does not join it, so without this check a frame
+            // can still be handed to the transport after stop() has returned - and for a Sim
+            // target, which writes two frames, a demotion between them would leave the trainer
+            // holding half an update. Cancellation is only observed at suspension points, and
+            // transport.write() enqueues before it suspends, so the check has to happen here.
+            currentCoroutineContext().ensureActive()
             transport.write(
                 uuid = BluetoothIds.UUID_FEC_CONTROL,
                 payload = frame,
