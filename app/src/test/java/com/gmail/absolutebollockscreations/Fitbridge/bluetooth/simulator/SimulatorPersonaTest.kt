@@ -68,7 +68,10 @@ class SimulatorPersonaTest {
             fec.take(FeCEquipmentType.entries.size).map { it.equipmentType },
         )
         assertEquals(7, FeCEquipmentType.entries.size)
-        assertEquals(listOf(FeCBleSimulatorIdentity.TACX_NEO), fec.takeLast(1).map { it.identity })
+        assertEquals(
+            listOf(FeCBleSimulatorIdentity.TACX_NEO, FeCBleSimulatorIdentity.TACX_FLUX_2),
+            fec.takeLast(2).map { it.identity },
+        )
         assertEquals(
             options.indexOfFirst { it is SimulatorPersona.Kickr } - 1,
             options.indexOfLast { it is SimulatorPersona.FeCBle },
@@ -98,6 +101,18 @@ class SimulatorPersonaTest {
         assertEquals("Tacx Neo 90002", neo.advertisedName)
         assertEquals(0, neo.identity.supplementalRevision)
         assertEquals(7, neo.identity.mainRevision)
+    }
+
+    @Test
+    fun `Tacx Flux 2 follows Neo and uses a synthetic physical-name suffix`() {
+        val tacx = simulatorPersonaOptions(includeKickr = false)
+            .filterIsInstance<SimulatorPersona.FeCBle>()
+            .filter { it.identity != FeCBleSimulatorIdentity.GENERIC }
+        assertEquals(
+            listOf(FeCBleSimulatorIdentity.TACX_NEO, FeCBleSimulatorIdentity.TACX_FLUX_2),
+            tacx.map { it.identity },
+        )
+        assertEquals("Tacx Flux-2 90001", tacx.last().advertisedName)
     }
 
     @Test

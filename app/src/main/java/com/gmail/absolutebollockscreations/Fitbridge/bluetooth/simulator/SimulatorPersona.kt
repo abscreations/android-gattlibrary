@@ -114,6 +114,20 @@ enum class FeCBleSimulatorIdentity(
         antManufacturerId = 89,
         antModelNumber = 2800,
     ),
+    TACX_FLUX_2(
+        displayName = "Tacx Flux 2",
+        // Capture name grammar is "Tacx Flux-2 <suffix>". The captured unit's suffix is not
+        // copied: 90001 is an unmistakably synthetic simulator identity.
+        localName = "Tacx Flux-2 90001",
+        syntheticSerial = "90001",
+        supplementalRevision = 3,
+        mainRevision = 45,
+        antHardwareRevision = 1,
+        antManufacturerId = 89,
+        // Common Page 80 reports decimal model 2980; this is distinct from the advertisement's
+        // opaque manufacturer bytes `29 80` and must not be hex-reinterpreted.
+        antModelNumber = 2980,
+    ),
 }
 
 /** Every console in the captures discovers under this name. */

@@ -252,13 +252,23 @@ internal class FeCBlePeripheralController(
                                 currentState.cadenceRpm?.toDouble(),
                                 System.currentTimeMillis(),
                             )
-                            CyclingSensorEncoders.cyclingPowerMeasurement(
-                                currentState.instantaneousPowerWatts ?: 0,
-                                revolutions,
-                            )
+                            if (activeIdentity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
+                                TacxFlux2StandardEncoders.cyclingPowerMeasurement(currentState, revolutions)
+                            } else {
+                                CyclingSensorEncoders.cyclingPowerMeasurement(
+                                    currentState.instantaneousPowerWatts ?: 0,
+                                    revolutions,
+                                )
+                            }
                                 .also { currentAdvertiser.publishCsc(CyclingSensorEncoders.cscMeasurement(revolutions)) }
                         }
                         currentAdvertiser.publishCps(cpsFrame)
+                    }
+                    if (activeIdentity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
+                        val ftmsFrame = synchronized(currentState) {
+                            TacxFlux2StandardEncoders.indoorBikeData(currentState)
+                        }
+                        currentAdvertiser.publishFtms(ftmsFrame)
                     }
                     publishDiagnostics(currentState)
                 }
