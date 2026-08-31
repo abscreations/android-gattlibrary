@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "family": "keiser-m-series",
+  "acquisition": "sanitized-qz-application-debug-log-raw-advertisement-extraction",
+  "extracted": "2026-08-31",
+  "capture_kind": "application debug logs, not raw Bluetooth HCI/btsnoop",
+  "canonical_packet": "complete 19-byte manufacturer field including little-endian company ID 02 01",
+  "privacy": "Bluetooth addresses, platform identifiers, absolute timestamps, application settings, and workout identities are excluded.",
+  "evidence_limit": "These raw scan observations seed fixtures and simulator scenarios but do not constitute physical-hardware verification or earn tier S. No QZ-derived metric or implementation behavior is used.",
+  "protocol_authority": {
+    "vendor_documentation": "https://dev.keiser.com/mseries/direct/",
+    "local_evidence_record": "docs/evidence/phase-11/2026-08-31-keiser-qz-debug-log-review.md",
+    "company_id": 258,
+    "company_id_wire_hex": "0201"
+  },
+  "sources": [
+    {
+      "id": "qz-2021-fw-6.46",
+      "source_file": "debug-Mon_Nov_29_08_10_46_2021.log.zip",
+      "source_sha256": "7975333de013e264ff1f6c4619475ded24398b33df67ca4e6ea3292ba8b6a427",
+      "firmware": "6.46",
+      "system_id": 0,
+      "distance_unit": "miles",
+      "normalized_packets": 2294,
+      "unique_payloads": 2016,
+      "live_packets": 2232,
+      "review_packets": 62
+    },
+    {
+      "id": "qz-2024-fw-6.54-android",
+      "source_file": "debug-Tue_Oct_29_18_18_52_2024.log",
+      "source_sha256": "daf4e1d89ab597592b1a644a11c78a573aa0eb0bb0b5403cde99c9be9f231708",
+      "firmware": "6.54",
+      "system_id": 1,
+      "distance_unit": "miles",
+      "android_value_bytes": 17,
+      "normalization": "prepend company ID 02 01, which Android ScanRecord separated from the manufacturer value",
+      "normalized_packets": 249,
+      "unique_payloads": 220,
+      "live_packets": 244,
+      "review_packets": 5
+    },
+    {
+      "id": "qz-2026-fw-6.38",
+      "source_file": "debug-ven__janv__23_12_56_29_2026.log.zip",
+      "source_sha256": "2bfe90452b5300aadc5355fd48a8c416a99223b58833518448ffbec31446bfce",
+      "firmware": "6.38",
+      "system_id": 1,
+      "distance_unit": "kilometres",
+      "normalized_packets": 3242,
+      "unique_payloads": 2563,
+      "live_packets": 3172,
+      "review_packets": 70
+    }
+  ],
+  "summary": {
+    "normalized_packets": 5785,
+    "wrong_length_packets": 0,
+    "unique_payloads": 4799,
+    "live_packets": 5648,
+    "review_packets": 137
+  },
+  "cases": [
+    {
+      "id": "imperial-live-fw-6.54-android-normalized",
+      "source": "qz-2024-fw-6.54-android",
+      "packet": [2, 1, 6, 84, 0, 1, 12, 3, 61, 6, 60, 0, 2, 0, 0, 39, 1, 0, 9],
+      "expect": {
+        "firmware": "6.54",
+        "data_type": 0,
+        "is_realtime": true,
+        "system_id": 1,
+        "cadence_rpm": 78.0,
+        "heart_rate_bpm": 159.7,
+        "power_watts": 60,
+        "energy_kcal": 2,
+        "elapsed_seconds": 39,
+        "distance_unit": "miles",
+        "distance_raw_tenths": 1,
+        "distance_metres": 160.934,
+        "resistance": 9
+      }
+    },
+    {
+      "id": "metric-live-fw-6.38-no-heart-rate",
+      "source": "qz-2026-fw-6.38",
+      "packet": [2, 1, 6, 56, 0, 1, 67, 3, 0, 0, 249, 0, 65, 1, 23, 52, 143, 128, 17],
+      "expect": {
+        "firmware": "6.38",
+        "data_type": 0,
+        "is_realtime": true,
+        "system_id": 1,
+        "cadence_rpm": 83.5,
+        "heart_rate_bpm": 0.0,
+        "power_watts": 249,
+        "energy_kcal": 321,
+        "elapsed_seconds": 1432,
+        "distance_unit": "kilometres",
+        "distance_raw_tenths": 143,
+        "distance_metres": 14300.0,
+        "resistance": 17
+      }
+    },
+    {
+      "id": "coast-both-cadence-and-power-zero",
+      "source": "qz-2024-fw-6.54-android",
+      "packet": [2, 1, 6, 84, 0, 1, 0, 0, 86, 7, 0, 0, 10, 0, 2, 15, 4, 0, 24],
+      "filter_seed": { "cadence_rpm": 78.0, "power_watts": 60 },
+      "expect": {
+        "firmware": "6.54",
+        "data_type": 0,
+        "is_realtime": true,
+        "system_id": 1,
+        "cadence_rpm": 0.0,
+        "heart_rate_bpm": 187.8,
+        "power_watts": 0,
+        "energy_kcal": 10,
+        "elapsed_seconds": 135,
+        "distance_unit": "miles",
+        "distance_raw_tenths": 4,
+        "distance_metres": 643.736,
+        "resistance": 24,
+        "filtered_cadence_rpm": 0.0,
+        "filtered_power_watts": 0
+      }
+    },
+    {
+      "id": "imperial-review-rejected",
+      "source": "qz-2024-fw-6.54-android",
+      "observed_repeats": 5,
+      "packet": [2, 1, 6, 84, 255, 1, 229, 2, 219, 5, 63, 0, 10, 0, 2, 15, 4, 0, 99],
+      "expect": {
+        "firmware": "6.54",
+        "data_type": 255,
+        "is_realtime": false,
+        "system_id": 1,
+        "cadence_rpm": 74.1,
+        "heart_rate_bpm": 149.9,
+        "power_watts": 63,
+        "energy_kcal": 10,
+        "elapsed_seconds": 135,
+        "distance_unit": "miles",
+        "distance_raw_tenths": 4,
+        "distance_metres": 643.736,
+        "resistance": 99
+      }
+    },
+    {
+      "id": "metric-review-rejected",
+      "source": "qz-2026-fw-6.38",
+      "observed_repeats": 70,
+      "packet": [2, 1, 6, 56, 255, 1, 27, 3, 0, 0, 241, 0, 159, 2, 47, 4, 34, 129, 16],
+      "expect": {
+        "firmware": "6.38",
+        "data_type": 255,
+        "is_realtime": false,
+        "system_id": 1,
+        "cadence_rpm": 79.5,
+        "heart_rate_bpm": 0.0,
+        "power_watts": 241,
+        "energy_kcal": 671,
+        "elapsed_seconds": 2824,
+        "distance_unit": "kilometres",
+        "distance_raw_tenths": 290,
+        "distance_metres": 29000.0,
+        "resistance": 16
+      }
+    }
+  ],
+  "dropout_sequences": [
+    {
+      "id": "single-frame-power-dropout-and-recovery",
+      "source": "qz-2021-fw-6.46",
+      "frames": [
+        {
+          "packet": [2, 1, 6, 70, 0, 0, 8, 1, 60, 5, 26, 0, 208, 0, 38, 59, 92, 0, 14],
+          "expect": { "cadence_rpm": 26.4, "power_watts": 26, "filtered_cadence_rpm": 26.4, "filtered_power_watts": 26 }
+        },
+        {
+          "packet": [2, 1, 6, 70, 0, 0, 216, 0, 60, 5, 0, 0, 208, 0, 39, 0, 92, 0, 14],
+          "expect": { "cadence_rpm": 21.6, "power_watts": 0, "filtered_cadence_rpm": 21.6, "filtered_power_watts": 26 }
+        },
+        {
+          "packet": [2, 1, 6, 70, 0, 0, 216, 0, 50, 5, 22, 0, 208, 0, 39, 0, 92, 0, 14],
+          "expect": { "cadence_rpm": 21.6, "power_watts": 22, "filtered_cadence_rpm": 21.6, "filtered_power_watts": 22 }
+        }
+      ]
+    },
+    {
+      "id": "single-frame-cadence-dropout-and-recovery",
+      "source": "qz-2021-fw-6.46",
+      "frames": [
+        {
+          "packet": [2, 1, 6, 70, 0, 0, 17, 1, 0, 5, 27, 0, 210, 0, 39, 46, 93, 0, 14],
+          "expect": { "cadence_rpm": 27.3, "power_watts": 27, "filtered_cadence_rpm": 27.3, "filtered_power_watts": 27 }
+        },
+        {
+          "packet": [2, 1, 6, 70, 0, 0, 0, 0, 0, 5, 27, 0, 211, 0, 39, 47, 93, 0, 14],
+          "expect": { "cadence_rpm": 0.0, "power_watts": 27, "filtered_cadence_rpm": 27.3, "filtered_power_watts": 27 }
+        },
+        {
+          "packet": [2, 1, 6, 70, 0, 0, 194, 0, 0, 5, 27, 0, 211, 0, 39, 47, 93, 0, 14],
+          "expect": { "cadence_rpm": 19.4, "power_watts": 27, "filtered_cadence_rpm": 19.4, "filtered_power_watts": 27 }
+        }
+      ]
+    }
+  ],
+  "capture_gaps": [
+    "official vendor parse vector",
+    "firmware 5.12 and 6.22 timing cases",
+    "accepted realtime data types 0x81 through 0xfe",
+    "realtime boundary values 0x01 and 0x80",
+    "distance boundaries 0x7fff, 0x8000, and 0x8001",
+    "resistance-absent old-firmware packet",
+    "simultaneous two-bike system-ID selection",
+    "truncation and malformed packets",
+    "raw HCI capture"
+  ]
+}
