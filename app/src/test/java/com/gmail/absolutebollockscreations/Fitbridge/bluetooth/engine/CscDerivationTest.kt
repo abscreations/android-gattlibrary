@@ -190,7 +190,9 @@ class CscDerivationTest {
             MetricProtocol.CSC,
             BluetoothIds.UUID_CSC_MEASUREMENT,
         )
-        val secondSource = firstSource.copy(connectionId = ConnectionId("CSC", 2))
+        val secondSource = firstSource.copy(
+            originId = MetricOriginId.Gatt(ConnectionId("CSC", 2)),
+        )
 
         MetricEmitter(fusion, firstSource, MetricSourceClass.CSC_WHEEL, 101).emit(
             MetricKind.DISTANCE,

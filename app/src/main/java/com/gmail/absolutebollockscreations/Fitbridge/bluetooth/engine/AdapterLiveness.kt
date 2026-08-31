@@ -82,7 +82,8 @@ internal class AdapterLivenessCoordinator(
      * whether the machine adapter is working.
      */
     fun onSample(sample: MetricSample) {
-        val policy = synchronized(lock) { policies[sample.connectionId] } ?: return
+        val connectionId = (sample.originId as? MetricOriginId.Gatt)?.connectionId ?: return
+        val policy = synchronized(lock) { policies[connectionId] } ?: return
         val selectedAdapter = policy.snapshot().selected?.adapterId
         val creditedAdapter = if (
             selectedAdapter == WAHOO_KICKR_ADAPTER_ID && sample.protocol == MetricProtocol.CPS
@@ -93,7 +94,7 @@ internal class AdapterLivenessCoordinator(
         } else {
             FTMS_ADAPTER_ID
         }
-        policy.metricSampleArrived(sample.connectionId, creditedAdapter, sample.arrivalMs)
+        policy.metricSampleArrived(connectionId, creditedAdapter, sample.arrivalMs)
     }
 
     /** Periodic evaluation. Cheap and allocation-free when nothing has expired. */

@@ -91,24 +91,76 @@ internal enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = f
     LAP_CADENCE_SAMPLE(MetricUnit.STEPS_PER_MINUTE),
 }
 
-/** Stable identity of one metric-producing characteristic for one physical link generation. */
+/** Lifetime that owns metric state. It is never synthesized across transport kinds. */
+internal sealed interface MetricOriginId {
+    data class Gatt(val connectionId: ConnectionId) : MetricOriginId
+
+    data class Advertisement(
+        val sourceKey: String,
+        val generation: Long,
+    ) : MetricOriginId {
+        init {
+            require(sourceKey.isNotBlank()) { "Advertisement source key must not be blank" }
+            require(generation >= 0L) { "Advertisement generation must be non-negative" }
+        }
+    }
+}
+
+/** Wire endpoint that produced a metric within an origin lifetime. */
+internal sealed interface MetricEndpointId {
+    data class GattCharacteristic(val uuid: UUID) : MetricEndpointId
+
+    data class ManufacturerData(val companyId: Int) : MetricEndpointId {
+        init {
+            require(companyId in 0..0xffff) { "Manufacturer company ID must fit uint16" }
+        }
+    }
+}
+
+/** Stable identity of one metric-producing endpoint within one origin generation. */
 internal data class MetricSourceId(
-    val connectionId: ConnectionId,
+    val originId: MetricOriginId,
     val protocol: MetricProtocol,
-    val characteristicUuid: UUID,
-)
+    val endpointId: MetricEndpointId,
+) {
+    /** Compatibility constructor for existing GATT handlers and characterization fixtures. */
+    constructor(
+        connectionId: ConnectionId,
+        protocol: MetricProtocol,
+        characteristicUuid: UUID,
+    ) : this(
+        originId = MetricOriginId.Gatt(connectionId),
+        protocol = protocol,
+        endpointId = MetricEndpointId.GattCharacteristic(characteristicUuid),
+    )
+
+    val gattConnectionId: ConnectionId?
+        get() = (originId as? MetricOriginId.Gatt)?.connectionId
+
+    val gattCharacteristicUuid: UUID?
+        get() = (endpointId as? MetricEndpointId.GattCharacteristic)?.uuid
+
+    /** GATT-only compatibility accessor. Advertisement code must use [originId]. */
+    val connectionId: ConnectionId
+        get() = requireNotNull(gattConnectionId) { "Metric source is not GATT-backed" }
+
+    /** GATT-only compatibility accessor. Advertisement code must use [endpointId]. */
+    val characteristicUuid: UUID
+        get() = requireNotNull(gattCharacteristicUuid) { "Metric endpoint is not a characteristic" }
+}
 
 /**
  * Source-tagged handler output. [arrivalMs] is monotonic host receipt time and is the only
  * freshness clock. [eventMs] is protocol time and is retained only for protocol math.
  */
 internal data class MetricSample(
-    val connectionId: ConnectionId,
+    val originId: MetricOriginId,
     val sourceId: MetricSourceId,
     val protocol: MetricProtocol,
     val sourceClass: MetricSourceClass,
     val metric: MetricKind,
     val arrivalMs: Long,
+    val freshnessMs: Long? = null,
     val eventMs: Long? = null,
     val value: Double,
     val unit: MetricUnit = metric.unit,
@@ -116,10 +168,42 @@ internal data class MetricSample(
     val quality: MetricQuality = MetricQuality.NATIVE,
     val confidence: Double = 1.0,
 ) {
+    /** Compatibility constructor for existing GATT parser tests and direct sample producers. */
+    constructor(
+        connectionId: ConnectionId,
+        sourceId: MetricSourceId,
+        protocol: MetricProtocol,
+        sourceClass: MetricSourceClass,
+        metric: MetricKind,
+        arrivalMs: Long,
+        eventMs: Long? = null,
+        value: Double,
+        unit: MetricUnit = metric.unit,
+        nativeCumulative: Double? = null,
+        quality: MetricQuality = MetricQuality.NATIVE,
+        confidence: Double = 1.0,
+        freshnessMs: Long? = null,
+    ) : this(
+        originId = MetricOriginId.Gatt(connectionId),
+        sourceId = sourceId,
+        protocol = protocol,
+        sourceClass = sourceClass,
+        metric = metric,
+        arrivalMs = arrivalMs,
+        freshnessMs = freshnessMs,
+        eventMs = eventMs,
+        value = value,
+        unit = unit,
+        nativeCumulative = nativeCumulative,
+        quality = quality,
+        confidence = confidence,
+    )
+
     init {
-        require(sourceId.connectionId == connectionId) { "Source and sample connection differ" }
+        require(sourceId.originId == originId) { "Source and sample origins differ" }
         require(sourceId.protocol == protocol) { "Source and sample protocol differ" }
         require(arrivalMs >= 0L) { "Arrival time must be monotonic and non-negative" }
+        require(freshnessMs == null || freshnessMs > 0L) { "Freshness override must be positive" }
         require(value.isFinite()) { "Metric value must be finite" }
         require(unit == metric.unit) { "${metric.name} requires ${metric.unit}" }
         require(confidence.isFinite() && confidence in 0.0..1.0) {
@@ -132,6 +216,12 @@ internal data class MetricSample(
             "${metric.name} requires its native cumulative counter"
         }
     }
+
+    /** GATT-only compatibility accessor. Transport-neutral code must use [originId]. */
+    val connectionId: ConnectionId
+        get() = requireNotNull((originId as? MetricOriginId.Gatt)?.connectionId) {
+            "Metric sample is not GATT-backed"
+        }
 }
 
 internal fun interface MonotonicMetricClock {
@@ -176,6 +266,7 @@ internal class MetricEmitter(
     val sourceId: MetricSourceId,
     val sourceClass: MetricSourceClass,
     val arrivalMs: Long,
+    val freshnessMs: Long? = null,
 ) {
     fun emit(
         metric: MetricKind,
@@ -186,12 +277,13 @@ internal class MetricEmitter(
         confidence: Double = 1.0,
     ): FusionSubmission = fusion.submit(
         MetricSample(
-            connectionId = sourceId.connectionId,
+            originId = sourceId.originId,
             sourceId = sourceId,
             protocol = sourceId.protocol,
             sourceClass = sourceClass,
             metric = metric,
             arrivalMs = arrivalMs,
+            freshnessMs = freshnessMs,
             eventMs = eventMs,
             value = value.toDouble(),
             nativeCumulative = nativeCumulative,
@@ -224,7 +316,7 @@ internal class MetricFusion(
     private val heartRateFilters = mutableMapOf<MetricSourceId, HeartRateJumpEmaFilter>()
     private val distancePaceBuffer = ArrayDeque<Pair<Long, Double>>()
     private var persona: FusionPersona = FusionPersona.RIDE
-    private var machineConnectionId: ConnectionId? = null
+    private var machineOriginId: MetricOriginId? = null
 
     /** Whether the current strap dropout has already been marked in the series. */
     private var heartRateStaleMarked: Boolean = false
@@ -317,10 +409,10 @@ internal class MetricFusion(
         if (sample.metric == MetricKind.HEART_RATE &&
             sample.sourceClass == MetricSourceClass.HRM
         ) {
-            heartRateStrapLinks += sample.sourceId.connectionId
+            sample.sourceId.gattConnectionId?.let(heartRateStrapLinks::add)
         }
         if (sample.sourceClass == MetricSourceClass.RSC) {
-            rscLinks += sample.sourceId.connectionId
+            sample.sourceId.gattConnectionId?.let(rscLinks::add)
         }
         val filtered = filter(sample)
         bySource[candidateKey] = filtered
@@ -368,31 +460,44 @@ internal class MetricFusion(
     fun currentPersona(): FusionPersona = synchronized(lock) { persona }
 
     fun selectMachine(connectionId: ConnectionId?) = synchronized(lock) {
-        machineConnectionId = connectionId
+        machineOriginId = connectionId?.let(MetricOriginId::Gatt)
     }
 
-    fun selectedMachine(): ConnectionId? = synchronized(lock) { machineConnectionId }
+    fun selectMachineOrigin(originId: MetricOriginId?) = synchronized(lock) {
+        machineOriginId = originId
+    }
+
+    fun selectedMachine(): ConnectionId? = synchronized(lock) {
+        (machineOriginId as? MetricOriginId.Gatt)?.connectionId
+    }
+
+    fun selectedMachineOrigin(): MetricOriginId? = synchronized(lock) { machineOriginId }
 
     fun refresh(nowMs: Long = clock.nowMs()) = synchronized(lock) {
         candidates.keys.toList().forEach { reselect(it, nowMs) }
     }
 
-    fun onDisconnected(connectionId: ConnectionId, nowMs: Long = clock.nowMs()) = synchronized(lock) {
+    fun onDisconnected(connectionId: ConnectionId, nowMs: Long = clock.nowMs()) =
+        onOriginEnded(MetricOriginId.Gatt(connectionId), nowMs)
+
+    fun onOriginEnded(originId: MetricOriginId, nowMs: Long = clock.nowMs()) = synchronized(lock) {
         val affected = mutableSetOf<MetricKind>()
         candidates.forEach { (metric, bySource) ->
-            if (bySource.keys.removeAll { it.sourceId.connectionId == connectionId }) affected += metric
+            if (bySource.keys.removeAll { it.sourceId.originId == originId }) affected += metric
         }
         manualAssignments.entries.removeAll { (metric, source) ->
-            val clear = source.connectionId == connectionId
+            val clear = source.originId == originId
             if (clear) affected += metric
             clear
         }
-        if (machineConnectionId == connectionId) machineConnectionId = null
-        heartRateFilters.keys.removeAll { it.connectionId == connectionId }
-        // The one event that actually means the strap and the pod have gone.
-        heartRateStrapLinks -= connectionId
-        rscFootMounted -= connectionId
-        rscLinks -= connectionId
+        if (machineOriginId == originId) machineOriginId = null
+        heartRateFilters.keys.removeAll { it.originId == originId }
+        (originId as? MetricOriginId.Gatt)?.connectionId?.let { connectionId ->
+            // The one event that actually means the strap and the pod have gone.
+            heartRateStrapLinks -= connectionId
+            rscFootMounted -= connectionId
+            rscLinks -= connectionId
+        }
         affected.forEach { reselect(it, nowMs) }
     }
 
@@ -419,7 +524,7 @@ internal class MetricFusion(
     private fun updateSessionElapsedLocked(totalSeconds: Int, arrivalMs: Long) {
         val source = SESSION_SOURCE
         val sample = MetricSample(
-            connectionId = source.connectionId,
+            originId = source.originId,
             sourceId = source,
             protocol = MetricProtocol.SESSION,
             sourceClass = MetricSourceClass.SESSION,
@@ -442,7 +547,7 @@ internal class MetricFusion(
         cumulativeLastNative.clear()
         heartRateFilters.clear()
         distancePaceBuffer.clear()
-        if (clearMachine) machineConnectionId = null
+        if (clearMachine) machineOriginId = null
     }
 
     fun recalculateHeartRateZones() = synchronized(lock) {
@@ -564,7 +669,8 @@ internal class MetricFusion(
         }
 
         val kept = all.filterValues { sample ->
-            sample.sourceClass != MetricSourceClass.RSC || wornOnFoot(sample.sourceId.connectionId)
+            sample.sourceClass != MetricSourceClass.RSC ||
+                sample.sourceId.gattConnectionId?.let(::wornOnFoot) == true
         }
         // Never strand the metric: if setting the strap aside would leave nothing,
         // its estimate is still better than no speed at all.
@@ -700,7 +806,11 @@ internal class MetricFusion(
     private fun isFresh(sample: MetricSample, nowMs: Long): Boolean {
         if (sample.sourceClass == MetricSourceClass.SESSION) return true
         val age = nowMs - sample.arrivalMs
-        return age >= 0L && age <= freshnessMs(sample.metric, sample.sourceClass)
+        // A source may state its own window when the class default cannot describe it: an
+        // advertisement-only machine's stale point is set by its broadcast period, not by a
+        // notification cadence. Unset keeps every existing class default untouched.
+        val window = sample.freshnessMs ?: freshnessMs(sample.metric, sample.sourceClass)
+        return age >= 0L && age <= window
     }
 
     /**
@@ -728,8 +838,9 @@ internal class MetricFusion(
             .thenBy { priorityRank(metric, it.sourceClass) }
             .thenByDescending { it.confidence }
             .thenByDescending { it.arrivalMs }
-            .thenBy { it.sourceId.connectionId.address }
-            .thenBy { it.sourceId.connectionId.linkGeneration }
+            .thenBy { it.sourceId.originId.tieBreakKey() }
+            .thenBy { it.sourceId.originId.generation() }
+            .thenBy { it.sourceId.endpointId.tieBreakKey() }
 
     private fun qualityRank(quality: MetricQuality): Int = when (quality) {
         MetricQuality.NATIVE -> 0
@@ -896,7 +1007,7 @@ internal class MetricFusion(
                 )
                 state.appendDistanceMetersSample(meters, seriesAt)
                 updateLapDistance(meters)
-                if (sample.sourceId.characteristicUuid == BluetoothIds.UUID_ROWING_MACHINE_DATA) {
+                if (sample.sourceId.gattCharacteristicUuid == BluetoothIds.UUID_ROWING_MACHINE_DATA) {
                     state.updateLapRowingSpeed(seriesAt)
                     state.updateRowingSpeed(seriesAt)
                 }
@@ -941,12 +1052,13 @@ internal class MetricFusion(
         if (minutesPerKilometer <= 0.0 || !minutesPerKilometer.isFinite()) return
         submit(
             MetricSample(
-                connectionId = base.connectionId,
+                originId = base.originId,
                 sourceId = base.sourceId,
                 protocol = base.protocol,
                 sourceClass = MetricSourceClass.DERIVED,
                 metric = metric,
                 arrivalMs = base.arrivalMs,
+                freshnessMs = base.freshnessMs,
                 eventMs = base.eventMs,
                 value = minutesPerKilometer,
                 quality = MetricQuality.DERIVED,
@@ -1095,12 +1207,13 @@ internal class MetricFusion(
         metric: MetricKind,
         value: Double,
     ): MetricSample = MetricSample(
-        connectionId = emitter.sourceId.connectionId,
+        originId = emitter.sourceId.originId,
         sourceId = emitter.sourceId,
         protocol = emitter.sourceId.protocol,
         sourceClass = emitter.sourceClass,
         metric = metric,
         arrivalMs = emitter.arrivalMs,
+        freshnessMs = emitter.freshnessMs,
         value = value,
     )
 
@@ -1119,4 +1232,19 @@ internal class MetricFusion(
             characteristicUuid = UUID(0L, 0L),
         )
     }
+}
+
+private fun MetricOriginId.tieBreakKey(): String = when (this) {
+    is MetricOriginId.Gatt -> "gatt:${connectionId.address}"
+    is MetricOriginId.Advertisement -> "advertisement:$sourceKey"
+}
+
+private fun MetricOriginId.generation(): Long = when (this) {
+    is MetricOriginId.Gatt -> connectionId.linkGeneration
+    is MetricOriginId.Advertisement -> generation
+}
+
+private fun MetricEndpointId.tieBreakKey(): String = when (this) {
+    is MetricEndpointId.GattCharacteristic -> "gatt:$uuid"
+    is MetricEndpointId.ManufacturerData -> "manufacturer:${companyId.toString(16).padStart(4, '0')}"
 }

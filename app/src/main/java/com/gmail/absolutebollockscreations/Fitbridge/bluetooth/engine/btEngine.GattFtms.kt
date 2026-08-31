@@ -376,7 +376,7 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
                     // Preserved raw so the downstream encoder re-emits this machine's own
                     // quantisation instead of synthesising a 6 km/h-resolution field.
                     engine.state.treadmillNativePace.publish(
-                        emitter.sourceId.connectionId,
+                        requireNotNull(emitter.sourceId.gattConnectionId),
                         instantaneousRaw,
                         averageRaw,
                     )

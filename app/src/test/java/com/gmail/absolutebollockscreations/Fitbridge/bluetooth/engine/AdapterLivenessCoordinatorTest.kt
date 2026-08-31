@@ -78,6 +78,34 @@ class AdapterLivenessCoordinatorTest {
     }
 
     @Test
+    fun `an advertisement sample cannot satisfy a GATT adapter liveness policy`() {
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context()
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+        val source = MetricSourceId(
+            originId = MetricOriginId.Advertisement("keiser", 1L),
+            protocol = MetricProtocol.VENDOR,
+            endpointId = MetricEndpointId.ManufacturerData(0x0102),
+        )
+
+        coordinator.onSample(
+            MetricSample(
+                originId = source.originId,
+                sourceId = source,
+                protocol = MetricProtocol.VENDOR,
+                sourceClass = MetricSourceClass.VENDOR_NATIVE,
+                metric = MetricKind.POWER,
+                arrivalMs = 500L,
+                freshnessMs = 1_000L,
+                value = 200.0,
+            ),
+        )
+        coordinator.tick(1_000L)
+
+        assertEquals(AdapterPolicyState.CONNECTED_NO_DATA, coordinator.stateOf(ctx.connectionId))
+    }
+
+    @Test
     fun `the timeout expiring arms a capture`() {
         // This is the whole point: the moment FitBridge knows it was wrong is the
         // moment the evidence needs to reach disk.

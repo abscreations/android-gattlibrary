@@ -189,10 +189,20 @@ internal object CaptureHooks {
      * convertible into a §5 fixture rather than merely readable.
      */
     fun sample(sample: MetricSample) {
+        val originLabel = when (val origin = sample.originId) {
+            is MetricOriginId.Gatt -> BleCapture.labelFor(origin.connectionId.address)
+            is MetricOriginId.Advertisement ->
+                BleCapture.labelFor("advertisement:${origin.sourceKey}")
+        }
+        val endpointLabel = when (val endpoint = sample.sourceId.endpointId) {
+            is MetricEndpointId.GattCharacteristic -> endpoint.uuid.toString()
+            is MetricEndpointId.ManufacturerData ->
+                "manufacturer:${endpoint.companyId.toString(16).padStart(4, '0')}"
+        }
         BleCapture.emit(
             SampleEvent(
-                conn = BleCapture.labelFor(sample.connectionId.address),
-                sourceId = "${sample.protocol}:${sample.sourceId.characteristicUuid}",
+                conn = originLabel,
+                sourceId = "${sample.protocol}:$endpointLabel",
                 metric = sample.metric.name,
                 value = sample.value,
                 unit = sample.unit.name,

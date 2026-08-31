@@ -24,7 +24,11 @@ internal fun BtEngine.metricEmitterFor(
     }
     return MetricEmitter(
         fusion = metricFusion,
-        sourceId = MetricSourceId(connection.connectionId, protocol, characteristicUuid),
+        sourceId = MetricSourceId(
+            originId = MetricOriginId.Gatt(connection.connectionId),
+            protocol = protocol,
+            endpointId = MetricEndpointId.GattCharacteristic(characteristicUuid),
+        ),
         sourceClass = sourceClass,
         arrivalMs = arrivalMs,
     )
