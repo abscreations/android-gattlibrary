@@ -1,0 +1,306 @@
+package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
+
+import timber.log.Timber
+
+/**
+ * The bike the user picked, for this session only (plan §6.6).
+ *
+ * Both halves are required. The address selects one broadcaster; the system ID is the number
+ * printed on the bike's console, and it is what the rider actually used to choose between the
+ * twenty machines in a studio. Matching on address alone would be enough in a room with one bike
+ * and silently wrong in the room this feature exists for.
+ *
+ * **Never persisted.** §11 forbids writing the address or system ID to `AppSettings` or
+ * `SharedPreferences`: the bike a person rode on Tuesday is not a preference, and a remembered
+ * address would silently re-attach a returning user to a machine somebody else is now riding.
+ */
+internal data class KeiserSelection(
+    val address: String,
+    val systemId: Int,
+) {
+    init {
+        require(address.isNotBlank()) { "A Keiser selection needs the broadcaster's address" }
+        require(systemId in 0..0xff) { "System ID is a uint8" }
+    }
+
+    /**
+     * Stable in-session identity for [MetricOriginId.Advertisement].
+     *
+     * Carries the address because two bikes in one room must not share a fusion origin. It never
+     * reaches a capture file in this form: `CaptureHooks.sample` runs advertisement origins through
+     * the same redaction table that maps GATT addresses to `c1`, `c2`, so a trace records which
+     * source produced a sample without recording which machine it was.
+     */
+    val sourceKey: String get() = "keiser:$address#$systemId"
+}
+
+/** What the source did with one advertisement. Every value is a decision, not a failure. */
+internal enum class KeiserAdvertisementOutcome {
+    /** Realtime telemetry from the selected bike. Freshness refreshed, metrics emitted. */
+    ACCEPTED,
+
+    /** Nothing is selected, or this generation has already ended. A late callback lands here. */
+    IGNORED_NOT_ACTIVE,
+
+    /** Another broadcaster. The room is full of them. */
+    IGNORED_OTHER_ADDRESS,
+
+    /** The selected address, but not the selected bike's system ID. */
+    IGNORED_OTHER_SYSTEM_ID,
+
+    /** Not a decodable Keiser field. */
+    IGNORED_MALFORMED,
+
+    /** A decodable field replaying a finished ride. */
+    IGNORED_REVIEW,
+}
+
+/**
+ * Whether the selected bike is currently telling us anything.
+ *
+ * Deliberately not called "connected" at any point, because nothing ever connects.
+ */
+internal enum class KeiserSourceState {
+    /** No bike selected. */
+    IDLE,
+
+    /** An accepted advertisement arrived within this firmware's statistics window. */
+    LIVE,
+
+    /** The window has passed. Values have left fusion; the bike may simply be between packets. */
+    STALE,
+
+    /** Sixty seconds of silence. The origin has ended and the UI returns to machine selection. */
+    GONE,
+}
+
+/** Why a generation ended. Recorded so a diagnostic can tell a user action from a disappearance. */
+internal enum class KeiserEndReason { DESELECTED, BIKE_GONE, SESSION_ENDED, BLUETOOTH_LOST }
+
+/** One advertisement as the source sees it: who sent it, and the canonical field it carried. */
+internal data class KeiserAdvertisement(
+    val address: String,
+    val payload: ManufacturerPayload,
+)
+
+/**
+ * The selected Keiser bike, as a metric source (plan §6.5).
+ *
+ * ## This is not a connection, and the shape of the class says so
+ *
+ * There is no `ConnectionContext`, no `BluetoothGatt`, no operation queue, no CCCD, no handler
+ * list, no recovery target and no control endpoint here, and the §11.5 gate is precisely that none
+ * of them appear. What exists instead is a selection, a generation number, a last-seen time, one
+ * dropout filter, and a lease on the platform scan. A bike that stops advertising has not
+ * "disconnected"; it has stopped talking, and the difference is the whole point of the phase.
+ *
+ * ## Driven entirely by its caller's clock
+ *
+ * [onAdvertisement] takes the arrival time and [tick] takes the current time; the source reads no
+ * clock of its own. That makes the entire state machine — statistics expiry, the sixty-second
+ * disappearance, late-callback rejection — testable with plain numbers, which matters because the
+ * behavior being asserted is *timing* and a test that waits a real second to prove a one-second
+ * window is both slow and flaky.
+ *
+ * ## Generations
+ *
+ * Every [select] mints a new generation. Fusion keys its candidates, manual assignment, cumulative
+ * rebasing and machine pin on `MetricOriginId.Advertisement(sourceKey, generation)`, so a bike that
+ * goes away and comes back is a new origin whose cumulative counters rebase, exactly as a
+ * reconnected GATT link does. It is also what makes a late callback harmless: an advertisement
+ * arriving after a generation ended finds no active generation to attribute it to.
+ *
+ * ## What does not refresh liveness
+ *
+ * Only an accepted realtime packet from the selected bike updates last-seen. A malformed field, a
+ * review-mode replay, another broadcaster, or the same address under a different system ID all
+ * leave the statistics clock exactly where it was. Otherwise a bike sitting on its summary screen
+ * — which the capture corpus shows sending seventy consecutive review frames — would hold the
+ * source alive forever while publishing nothing.
+ */
+internal class KeiserAdvertisementSource(
+    private val fusion: MetricFusion,
+    private val leases: ScanLeaseRegistry,
+    private val onScanLeaseAcquired: () -> Unit = {},
+    private val onScanLeaseReleased: () -> Unit = {},
+) {
+
+    private val lock = Any()
+    private val dropoutFilter = KeiserDropoutFilter()
+
+    private var selection: KeiserSelection? = null
+    private var generation: Long = 0L
+    private var confidence: Double = 1.0
+    private var lastAcceptedArrivalMs: Long = 0L
+    private var statsTimeoutMs: Long = KeiserMSeriesMeasurement.SLOW_STATS_TIMEOUT_MS
+    private var state: KeiserSourceState = KeiserSourceState.IDLE
+    private var firmware: String? = null
+
+    /** Current state. The UI reads this; it never reads a connection state, because there is none. */
+    fun state(): KeiserSourceState = synchronized(lock) { state }
+
+    fun selection(): KeiserSelection? = synchronized(lock) { selection }
+
+    /** Firmware of the last accepted advertisement, for the row and for diagnostics. */
+    fun firmware(): String? = synchronized(lock) { firmware }
+
+    /** The origin fusion knows this generation by, or null when nothing is selected. */
+    fun originId(): MetricOriginId.Advertisement? = synchronized(lock) {
+        selection?.let { MetricOriginId.Advertisement(it.sourceKey, generation) }
+    }
+
+    /**
+     * Select a bike, ending any previous selection first.
+     *
+     * Takes the matcher's confidence rather than inventing one: how much this family's evidence is
+     * worth was decided when the advertisement was admitted, and fusion should arbitrate on that
+     * number rather than on a constant chosen here.
+     *
+     * @param nowMs seeds the statistics clock, so a freshly selected bike is [KeiserSourceState.LIVE]
+     * until its first window elapses rather than starting stale and flickering.
+     */
+    fun select(
+        selection: KeiserSelection,
+        nowMs: Long,
+        confidence: Double = 1.0,
+    ): MetricOriginId.Advertisement = synchronized(lock) {
+        require(confidence.isFinite() && confidence in 0.0..1.0) { "Confidence must be a probability" }
+        // Ends the previous generation without giving up the lease: the scan must not stop and
+        // restart between two selections, which is what releasing and re-acquiring would do to the
+        // radio for no reason at all.
+        if (this.selection != null) endLocked(KeiserEndReason.DESELECTED, nowMs, releaseLease = false)
+
+        this.selection = selection
+        this.confidence = confidence
+        generation += 1L
+        lastAcceptedArrivalMs = nowMs
+        statsTimeoutMs = KeiserMSeriesMeasurement.SLOW_STATS_TIMEOUT_MS
+        firmware = null
+        state = KeiserSourceState.LIVE
+        dropoutFilter.reset()
+
+        val origin = MetricOriginId.Advertisement(selection.sourceKey, generation)
+        // Exactly one machine origin at a time. Selecting a bike displaces a GATT machine here
+        // rather than in the UI, so the two selection paths cannot both believe they won.
+        fusion.selectMachineOrigin(origin)
+        if (leases.acquire(ScanLeaseOwner.ADVERTISEMENT_MACHINE)) {
+            Timber.tag(BtEngineState.TAG).i("Keiser selection started the platform scan")
+            onScanLeaseAcquired()
+        }
+        origin
+    }
+
+    /**
+     * Offer one advertisement to the selected source.
+     *
+     * @return what was done with it. Callers do not need the answer; it exists so the state machine
+     * can be asserted directly instead of through its side effects.
+     */
+    fun onAdvertisement(
+        advertisement: KeiserAdvertisement,
+        arrivalMs: Long,
+    ): KeiserAdvertisementOutcome = synchronized(lock) {
+        val selected = selection ?: return@synchronized KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE
+        if (state == KeiserSourceState.GONE) {
+            return@synchronized KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE
+        }
+        if (advertisement.address != selected.address) {
+            return@synchronized KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS
+        }
+
+        val reading = KeiserMSeriesMeasurement.parse(advertisement.payload.copyBytes())
+            ?: return@synchronized KeiserAdvertisementOutcome.IGNORED_MALFORMED
+        if (reading.systemId != selected.systemId) {
+            return@synchronized KeiserAdvertisementOutcome.IGNORED_OTHER_SYSTEM_ID
+        }
+        if (!reading.isRealtime) return@synchronized KeiserAdvertisementOutcome.IGNORED_REVIEW
+
+        // Out-of-order delivery is possible and is not evidence of anything going wrong, but it
+        // must not drag the statistics clock backwards into an accidental stale state.
+        lastAcceptedArrivalMs = maxOf(lastAcceptedArrivalMs, arrivalMs)
+        statsTimeoutMs = reading.statsTimeoutMs
+        firmware = reading.firmware
+        state = KeiserSourceState.LIVE
+
+        val filtered = dropoutFilter.filter(reading)
+        val emitter = MetricEmitter(
+            fusion = fusion,
+            sourceId = MetricSourceId(
+                originId = MetricOriginId.Advertisement(selected.sourceKey, generation),
+                protocol = MetricProtocol.VENDOR,
+                endpointId = MetricEndpointId.ManufacturerData(KeiserMSeriesMeasurement.COMPANY_ID),
+            ),
+            sourceClass = MetricSourceClass.VENDOR_NATIVE,
+            arrivalMs = arrivalMs,
+            freshnessMs = reading.statsTimeoutMs,
+        )
+        for (sample in keiserSamples(filtered)) {
+            emitter.emit(
+                metric = sample.metric,
+                value = sample.value,
+                nativeCumulative = sample.nativeCumulative,
+                confidence = confidence,
+            )
+        }
+        KeiserAdvertisementOutcome.ACCEPTED
+    }
+
+    /**
+     * Advance the clock.
+     *
+     * Two thresholds, and they mean different things. Past the firmware's statistics window the
+     * values are no longer current, so fusion is refreshed and they fall out of selection — but the
+     * bike is probably still there, between packets or briefly out of range, and the source keeps
+     * its generation. Past sixty seconds it is gone: the origin ends, its fusion candidates and any
+     * manual assignment are cleared, and the scan lease is released.
+     */
+    fun tick(nowMs: Long) = synchronized(lock) {
+        if (selection == null || state == KeiserSourceState.GONE) return@synchronized
+        val silenceMs = nowMs - lastAcceptedArrivalMs
+        if (silenceMs >= KeiserMSeriesMeasurement.BIKE_GONE_TIMEOUT_MS) {
+            endLocked(KeiserEndReason.BIKE_GONE, nowMs, releaseLease = true)
+            return@synchronized
+        }
+        if (silenceMs > statsTimeoutMs) {
+            // Only on the transition. Fusion decides staleness from each sample's own window, so
+            // one refresh drops them and they stay dropped until a new advertisement arrives;
+            // refreshing on every tick would re-walk every candidate for no further effect.
+            if (state != KeiserSourceState.STALE) {
+                Timber.tag(BtEngineState.TAG).i(
+                    "Keiser statistics stale after %d ms of silence (window %d ms)",
+                    silenceMs,
+                    statsTimeoutMs,
+                )
+                state = KeiserSourceState.STALE
+                fusion.refresh(nowMs)
+            }
+        } else {
+            state = KeiserSourceState.LIVE
+        }
+    }
+
+    /** End the current generation. Idempotent: ending an already-ended source does nothing. */
+    fun end(reason: KeiserEndReason, nowMs: Long) = synchronized(lock) {
+        if (selection == null) return@synchronized
+        endLocked(reason, nowMs, releaseLease = true)
+    }
+
+    private fun endLocked(reason: KeiserEndReason, nowMs: Long, releaseLease: Boolean) {
+        val selected = selection ?: return
+        val origin = MetricOriginId.Advertisement(selected.sourceKey, generation)
+        // Clears this origin's candidates, its manual assignment, and the machine pin if it held it.
+        fusion.onOriginEnded(origin, nowMs)
+        dropoutFilter.reset()
+        selection = null
+        firmware = null
+        state = if (reason == KeiserEndReason.BIKE_GONE) {
+            KeiserSourceState.GONE
+        } else {
+            KeiserSourceState.IDLE
+        }
+        if (releaseLease && leases.release(ScanLeaseOwner.ADVERTISEMENT_MACHINE)) {
+            onScanLeaseReleased()
+        }
+        Timber.tag(BtEngineState.TAG).i("Keiser source generation %d ended: %s", generation, reason)
+    }
+}
