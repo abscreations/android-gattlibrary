@@ -159,6 +159,7 @@ internal class KeiserAdvertisementSource(
 
     private val lock = Any()
     private val dropoutFilter = KeiserDropoutFilter()
+    private val speedEstimator = KeiserSpeedEstimator()
 
     private var selection: KeiserSelection? = null
     private var generation: Long = 0L
@@ -210,6 +211,7 @@ internal class KeiserAdvertisementSource(
         firmware = null
         state = KeiserSourceState.LIVE
         dropoutFilter.reset()
+        speedEstimator.reset()
 
         val origin = MetricOriginId.Advertisement(selection.sourceKey, generation)
         // Exactly one machine origin at a time. Selecting a bike displaces a GATT machine here
@@ -286,6 +288,7 @@ internal class KeiserAdvertisementSource(
         publishStateLocked()
 
         val filtered = dropoutFilter.filter(reading)
+        val estimatedSpeedKph = speedEstimator.estimateKph(filtered)
         val emitter = MetricEmitter(
             fusion = fusion,
             sourceId = MetricSourceId(
@@ -297,11 +300,12 @@ internal class KeiserAdvertisementSource(
             arrivalMs = arrivalMs,
             freshnessMs = reading.statsTimeoutMs,
         )
-        for (sample in keiserSamples(filtered)) {
+        for (sample in keiserSamples(filtered, estimatedSpeedKph)) {
             emitter.emit(
                 metric = sample.metric,
                 value = sample.value,
                 nativeCumulative = sample.nativeCumulative,
+                quality = sample.quality,
                 confidence = confidence,
             )
         }
@@ -375,6 +379,7 @@ internal class KeiserAdvertisementSource(
         // Clears this origin's candidates, its manual assignment, and the machine pin if it held it.
         fusion.onOriginEnded(origin, nowMs)
         dropoutFilter.reset()
+        speedEstimator.reset()
         selection = null
         firmware = null
         state = if (reason == KeiserEndReason.BIKE_GONE) {

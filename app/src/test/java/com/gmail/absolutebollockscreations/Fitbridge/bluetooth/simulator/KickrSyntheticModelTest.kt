@@ -180,6 +180,7 @@ class KickrSyntheticModelTest {
         assertResult(FtmsSpec.Result.SUCCESS, processor.handle(bytes(0x04, 100, 0)))
         assertEquals(KickrControlMode.RESISTANCE, processor.model.snapshot().mode)
         assertEquals(10.0, processor.model.snapshot().resistanceLevel, 0.0)
+        assertEquals(SimulatorControlModeLabels.FTMS_DIRECT, processor.model.snapshot().controlLabel)
 
         assertResult(FtmsSpec.Result.SUCCESS, processor.handle(bytes(0x12, 0x52, 0x52)))
         assertEquals(2107.4, processor.model.snapshot().wheelCircumferenceMm, 0.0)

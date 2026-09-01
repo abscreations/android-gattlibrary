@@ -26,18 +26,13 @@ internal enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
  * of the three last wrote, so the debug UI's "Control mode" line only ever showed the physics
  * mode ("ERG"/"SIMULATION"/"RESISTANCE") with no protocol attribution - indistinguishable from a
  * legacy app driving ERG and a RideOn app driving simulation. [KickrControlKind] carries the
- * companion "was this a direct/gear target, an ERG power target, or a full simulation payload"
+ * companion "was this a direct target, an ERG power target, or a full simulation payload"
  * axis; the two together select one [SimulatorControlModeLabels] string.
  */
 internal enum class KickrControlSource { NONE, FTMS, LEGACY_KICKR, RIDE_ON }
 
-/**
- * See [KickrControlSource]. RESISTANCE is a direct resistance-level write (FTMS 0x04, the legacy
- * Wahoo fraction and standard-level commands, or a RideOn equivalent); DIRECT covers the remaining
- * direct writes, principally a bare virtual-gear shift. Only the FTMS label vocabulary
- * distinguishes the two - see [SimulatorControlModeLabels].
- */
-internal enum class KickrControlKind { DIRECT, RESISTANCE, ERG, SIMULATION }
+/** DIRECT covers resistance-level and virtual-gear writes; see [KickrControlSource]. */
+internal enum class KickrControlKind { DIRECT, ERG, SIMULATION }
 
 internal data class KickrSimulationTarget(
     val windMps: Double = 0.0,
@@ -188,7 +183,7 @@ internal class KickrSyntheticModel(
         resistanceLevel = level
         targetPowerWatts = null
         controlSource = source
-        controlKind = KickrControlKind.RESISTANCE
+        controlKind = KickrControlKind.DIRECT
         return true
     }
 
@@ -336,7 +331,6 @@ internal class KickrSyntheticModel(
             KickrControlSource.NONE -> SimulatorControlModeLabels.AUTOMATIC
             KickrControlSource.FTMS -> when (kind) {
                 KickrControlKind.DIRECT -> SimulatorControlModeLabels.FTMS_DIRECT
-                KickrControlKind.RESISTANCE -> SimulatorControlModeLabels.FTMS_RESISTANCE
                 KickrControlKind.ERG -> SimulatorControlModeLabels.FTMS_ERG
                 KickrControlKind.SIMULATION -> SimulatorControlModeLabels.FTMS_SIM
             }
@@ -345,13 +339,11 @@ internal class KickrSyntheticModel(
             // either reads as that protocol's Direct label, same as a resistance or gear write.
             KickrControlSource.LEGACY_KICKR -> when (kind) {
                 KickrControlKind.SIMULATION -> SimulatorControlModeLabels.KICKR_SIM
-                KickrControlKind.DIRECT, KickrControlKind.RESISTANCE, KickrControlKind.ERG ->
-                    SimulatorControlModeLabels.KICKR_DIRECT
+                KickrControlKind.DIRECT, KickrControlKind.ERG -> SimulatorControlModeLabels.KICKR_DIRECT
             }
             KickrControlSource.RIDE_ON -> when (kind) {
                 KickrControlKind.SIMULATION -> SimulatorControlModeLabels.RIDEON_SIM
-                KickrControlKind.DIRECT, KickrControlKind.RESISTANCE, KickrControlKind.ERG ->
-                    SimulatorControlModeLabels.RIDEON_DIRECT
+                KickrControlKind.DIRECT, KickrControlKind.ERG -> SimulatorControlModeLabels.RIDEON_DIRECT
             }
         }
     }

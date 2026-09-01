@@ -58,6 +58,14 @@ class KeiserAdvertisementSourceTest {
         bytes: ByteArray = packet(),
     ) = KeiserAdvertisement(from, ManufacturerPayload(bytes))
 
+    private fun speedPacket(distanceTenthsKm: Int, elapsedSeconds: Int): ByteArray = packet().also {
+        it[14] = (elapsedSeconds / 60).toByte()
+        it[15] = (elapsedSeconds % 60).toByte()
+        val distanceWord = 0x8000 or distanceTenthsKm
+        it[16] = (distanceWord and 0xFF).toByte()
+        it[17] = ((distanceWord shr 8) and 0xFF).toByte()
+    }
+
     // ── selection and generations ────────────────────────────────────────────────────────
 
     @Test
@@ -114,6 +122,28 @@ class KeiserAdvertisementSourceTest {
     }
 
     @Test
+    fun `reselection resets the speed window before the new generation emits`() {
+        source.select(selection, nowMs = 0L)
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 1, elapsedSeconds = 10)),
+            arrivalMs = 10L,
+        )
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 2, elapsedSeconds = 30)),
+            arrivalMs = 30L,
+        )
+        assertEquals(18.0, state.speedKph.value!!, 1e-9)
+
+        source.select(selection, nowMs = 40L)
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 10, elapsedSeconds = 50)),
+            arrivalMs = 50L,
+        )
+
+        assertEquals(72.0, state.speedKph.value!!, 1e-9)
+    }
+
+    @Test
     fun `the source key carries the system ID so two bikes never share a fusion origin`() {
         val bikeOne = KeiserSelection(address, systemId = 0)
         val bikeTwo = KeiserSelection(address, systemId = 1)
@@ -141,7 +171,8 @@ class KeiserAdvertisementSourceTest {
             MetricEndpointId.ManufacturerData(KeiserMSeriesMeasurement.COMPANY_ID),
             powerSource.endpointId,
         )
-        assertNull("the protocol has no speed field", fusion.selectedSource(MetricKind.SPEED))
+        assertEquals(origin, requireNotNull(fusion.selectedSource(MetricKind.SPEED)).originId)
+        assertEquals(origin, requireNotNull(fusion.selectedSource(MetricKind.AVERAGE_SPEED)).originId)
         assertEquals("6.30", source.firmware())
     }
 

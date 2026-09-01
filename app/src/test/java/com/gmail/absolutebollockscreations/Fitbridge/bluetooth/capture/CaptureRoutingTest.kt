@@ -18,6 +18,12 @@ import org.junit.rules.TemporaryFolder
  */
 class CaptureRoutingTest {
 
+    private companion object {
+        // The sink owns a real writer thread. A forced full suite can starve it beyond the
+        // production two-second export timeout even though no capture operation is stuck.
+        const val TEST_IO_TIMEOUT_MS = 10_000L
+    }
+
     @get:Rule
     val temp = TemporaryFolder()
 
@@ -77,7 +83,7 @@ class CaptureRoutingTest {
         try {
             subject.log(4, BleCapture.TAG, """{"t":1,"seq":1,"ev":"dropped","n":1}""", null)
             subject.log(4, BleCapture.TAG, """{"t":2,"seq":2,"ev":"dropped","n":2}""", null)
-            assertTrue(subject.flush())
+            assertTrue(subject.flush(TEST_IO_TIMEOUT_MS))
 
             val lines = captureLines()
             assertEquals(3, lines.size)
@@ -95,14 +101,14 @@ class CaptureRoutingTest {
         val subject = tree()
         try {
             subject.log(4, BleCapture.TAG, """{"t":1,"seq":1,"ev":"dropped","n":1}""", null)
-            assertTrue(subject.flush())
+            assertTrue(subject.flush(TEST_IO_TIMEOUT_MS))
             val captureFile = File(temp.root, CaptureTree.CAPTURES_DIR_NAME)
                 .listFiles()!!
                 .single()
-            assertTrue("capture writer reset timed out", subject.resetAfterClear())
+            assertTrue("capture writer reset timed out", subject.resetAfterClear(TEST_IO_TIMEOUT_MS))
             assertTrue("reset must release the capture for deletion", captureFile.delete())
             subject.log(4, BleCapture.TAG, """{"t":2,"seq":2,"ev":"dropped","n":2}""", null)
-            assertTrue(subject.flush())
+            assertTrue(subject.flush(TEST_IO_TIMEOUT_MS))
 
             val lines = captureLines()
             assertEquals(2, lines.size)
@@ -118,7 +124,7 @@ class CaptureRoutingTest {
     fun `a tree that records nothing leaves no orphan file`() {
         val subject = tree()
         try {
-            subject.flush()
+            subject.flush(TEST_IO_TIMEOUT_MS)
             assertTrue("no events, so no capture file", captureLines().isEmpty())
         } finally {
             subject.close()
@@ -130,7 +136,7 @@ class CaptureRoutingTest {
         val subject = tree()
         try {
             subject.log(4, "BtEngine", "ordinary human log line", null)
-            subject.flush()
+            subject.flush(TEST_IO_TIMEOUT_MS)
             assertTrue("human log leaked into the capture", captureLines().isEmpty())
         } finally {
             subject.close()
@@ -142,7 +148,7 @@ class CaptureRoutingTest {
         val subject = tree()
         try {
             subject.log(4, BleCapture.TAG, """{"ev":"dropped","n":1}""", null)
-            assertTrue(subject.flush())
+            assertTrue(subject.flush(TEST_IO_TIMEOUT_MS))
 
             val dir = File(temp.root, CaptureTree.CAPTURES_DIR_NAME)
             val names = dir.listFiles()?.map { it.name }.orEmpty()
@@ -164,7 +170,7 @@ class CaptureRoutingTest {
             repeat(50) { i ->
                 subject.log(4, BleCapture.TAG, """{"seq":$i,"ev":"dropped","n":$i}""", null)
             }
-            assertTrue(subject.flush())
+            assertTrue(subject.flush(TEST_IO_TIMEOUT_MS))
 
             val dir = File(temp.root, CaptureTree.CAPTURES_DIR_NAME)
             assertEquals("one capture session, one file", 1, dir.listFiles()?.size ?: 0)

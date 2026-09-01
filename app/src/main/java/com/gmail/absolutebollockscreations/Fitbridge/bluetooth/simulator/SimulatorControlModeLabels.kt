@@ -26,7 +26,6 @@ object SimulatorControlModeLabels {
      */
     object Kind {
         const val DIRECT = "Direct"
-        const val RESISTANCE = "Resistance"
         const val ERG = "Erg"
         const val SIM = "Sim"
 
@@ -37,13 +36,6 @@ object SimulatorControlModeLabels {
     const val AUTOMATIC = "Automatic"
 
     const val FTMS_DIRECT = "FTMS - ${Kind.DIRECT}"
-
-    /**
-     * Set Target Resistance Level (0x04) specifically, split out of [FTMS_DIRECT] so the panel
-     * names the procedure the client actually ran. [FTMS_DIRECT] now covers the remaining direct
-     * targets - speed, inclination, and a bare gear shift on the protocols that carry one.
-     */
-    const val FTMS_RESISTANCE = "FTMS - ${Kind.RESISTANCE}"
     const val FTMS_ERG = "FTMS - ${Kind.ERG}"
     const val FTMS_SIM = "FTMS - ${Kind.SIM}"
 

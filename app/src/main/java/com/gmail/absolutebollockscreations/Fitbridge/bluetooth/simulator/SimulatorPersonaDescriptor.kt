@@ -263,7 +263,6 @@ private fun describeKickr(device: KickrSimulatorPersona) = SimulatorPersonaDescr
     },
     controlModes = listOf(
         SimulatorControlModeLabels.Kind.DIRECT,
-        SimulatorControlModeLabels.Kind.RESISTANCE,
         SimulatorControlModeLabels.Kind.ERG,
         SimulatorControlModeLabels.Kind.SIM,
     ),
@@ -309,8 +308,13 @@ internal fun feCSpecificPages(equipmentType: FeCEquipmentType): String = when (e
 /** Control kinds implied by an FTMS [TargetCapabilities], in the shared vocabulary. */
 internal fun ftmsControlModes(capabilities: TargetCapabilities): List<String> = buildList {
     val kind = SimulatorControlModeLabels.Kind
-    if (capabilities.supportsSpeed || capabilities.supportsInclination) add(kind.DIRECT)
-    if (capabilities.supportsResistance) add(kind.RESISTANCE)
+    if (
+        capabilities.supportsSpeed ||
+        capabilities.supportsInclination ||
+        capabilities.supportsResistance
+    ) {
+        add(kind.DIRECT)
+    }
     if (capabilities.supportsPower) add(kind.ERG)
     if (capabilities.indoorBikeSimulation) add(kind.SIM)
 }

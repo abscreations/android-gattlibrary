@@ -176,6 +176,7 @@ class KeiserMSeriesDecoderTest {
         assertEquals(
             setOf(
                 MetricKind.CADENCE,
+                MetricKind.AVERAGE_SPEED,
                 MetricKind.POWER,
                 MetricKind.ENERGY,
                 MetricKind.DISTANCE,
@@ -192,12 +193,116 @@ class KeiserMSeriesDecoderTest {
         assertEquals(279.0, requireNotNull(samples[MetricKind.ELAPSED]).value, 1e-9)
         assertEquals(10.0, requireNotNull(samples[MetricKind.RESISTANCE]).value, 1e-9)
         assertEquals(135.0, requireNotNull(samples[MetricKind.HEART_RATE]).value, 1e-9)
+        assertEquals(
+            160.934 * 3.6 / 279.0,
+            requireNotNull(samples[MetricKind.AVERAGE_SPEED]).value,
+            1e-9,
+        )
+        assertEquals(MetricQuality.ESTIMATED, samples[MetricKind.AVERAGE_SPEED]?.quality)
 
-        // Speed is absent from the protocol and phase 11 does not derive it.
+        // Instantaneous speed needs the stateful source estimator; the pure mapper cannot invent it.
         assertNull(samples[MetricKind.SPEED])
-        assertNull(samples[MetricKind.AVERAGE_SPEED])
         assertNull(samples[MetricKind.INSTANT_PACE])
     }
+
+    @Test
+    fun `speed estimator smooths three coarse metric distance increments`() {
+        val estimator = KeiserSpeedEstimator()
+
+        assertEquals(36.0, estimate(estimator, speedReading(100.0, 10)), 1e-9)
+        assertEquals(36.0, estimate(estimator, speedReading(100.0, 12)), 1e-9)
+        assertEquals(36.0, estimate(estimator, speedReading(200.0, 20)), 1e-9)
+        assertEquals(300.0 * 3.6 / 30.0, estimate(estimator, speedReading(400.0, 40)), 1e-9)
+        assertEquals(300.0 * 3.6 / 30.0, estimate(estimator, speedReading(500.0, 50)), 1e-9)
+    }
+
+    @Test
+    fun `stateful speed and pure average samples carry estimated provenance`() {
+        val reading = parse(official)
+        val speed = estimate(KeiserSpeedEstimator(), reading)
+        val samples = keiserSamples(reading, speed).associateBy { it.metric }
+
+        assertEquals(MetricQuality.ESTIMATED, samples[MetricKind.SPEED]?.quality)
+        assertEquals(MetricQuality.ESTIMATED, samples[MetricKind.AVERAGE_SPEED]?.quality)
+        assertEquals(MetricQuality.NATIVE, samples[MetricKind.DISTANCE]?.quality)
+        assertEquals(MetricQuality.NATIVE, samples[MetricKind.ELAPSED]?.quality)
+    }
+
+    @Test
+    fun `speed estimator uses converted imperial distance and stops immediately`() {
+        val estimator = KeiserSpeedEstimator()
+        val first = speedReading(
+            distanceMetres = 160.934,
+            elapsedSeconds = 20,
+            unit = KeiserMSeriesMeasurement.DistanceUnit.MILES,
+        )
+        val second = speedReading(
+            distanceMetres = 321.868,
+            elapsedSeconds = 40,
+            unit = KeiserMSeriesMeasurement.DistanceUnit.MILES,
+        )
+        assertEquals(28.96812, estimate(estimator, first), 1e-9)
+        assertEquals(28.96812, estimate(estimator, second), 1e-9)
+        assertEquals(
+            0.0,
+            estimate(estimator, second.copy(elapsedSeconds = 41, cadenceRpm = 0.0, powerWatts = 0)),
+            0.0,
+        )
+    }
+
+    @Test
+    fun `speed estimator rebases on unit counter and time changes and rejects a spike`() {
+        val estimator = KeiserSpeedEstimator()
+        assertEquals(3.6, estimate(estimator, speedReading(100.0, 100)), 1e-9)
+        assertEquals(
+            "a one-second 100 m quantization edge is rejected",
+            3.6,
+            estimate(estimator, speedReading(200.0, 101)),
+            1e-9,
+        )
+        assertEquals(
+            3.0,
+            estimate(
+                estimator,
+                speedReading(
+                    distanceMetres = 50.0,
+                    elapsedSeconds = 60,
+                    unit = KeiserMSeriesMeasurement.DistanceUnit.MILES,
+                ),
+            ),
+            1e-9,
+        )
+        assertEquals(18.0, estimate(estimator, speedReading(25.0, 5)), 1e-9)
+    }
+
+    @Test
+    fun `speed estimator reset forgets the prior generation slope`() {
+        val estimator = KeiserSpeedEstimator()
+        estimate(estimator, speedReading(100.0, 10))
+        estimate(estimator, speedReading(200.0, 20))
+
+        estimator.reset()
+
+        assertEquals(72.0, estimate(estimator, speedReading(2_000.0, 100)), 1e-9)
+    }
+
+    private fun speedReading(
+        distanceMetres: Double,
+        elapsedSeconds: Int,
+        unit: KeiserMSeriesMeasurement.DistanceUnit =
+            KeiserMSeriesMeasurement.DistanceUnit.KILOMETRES,
+    ): KeiserMSeriesMeasurement.Reading = parse(official).copy(
+        distanceMetres = distanceMetres,
+        distanceUnit = unit,
+        elapsedSeconds = elapsedSeconds,
+        cadenceRpm = 80.0,
+        powerWatts = 150,
+    )
+
+    private fun estimate(
+        estimator: KeiserSpeedEstimator,
+        reading: KeiserMSeriesMeasurement.Reading,
+    ): Double = requireNotNull(estimator.estimateKph(reading))
 
     @Test
     fun `only distance and energy carry a native cumulative counter`() {

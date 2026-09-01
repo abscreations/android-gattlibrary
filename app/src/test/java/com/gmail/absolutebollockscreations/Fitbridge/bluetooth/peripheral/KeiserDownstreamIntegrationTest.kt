@@ -5,6 +5,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceP
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FusionPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KEISER_M_SERIES_CANDIDATE_ID
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KeiserMSeriesMeasurement
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KeiserSpeedEstimator
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricEmitter
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricEndpointId
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricFusion
@@ -16,14 +17,14 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MetricSour
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.keiserSamples
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.roundToInt
 
 class KeiserDownstreamIntegrationTest {
 
     @Test
-    fun `Keiser metrics become an optional-only Indoor Bike record without speed`() {
+    fun `Keiser metrics populate mandatory and average Indoor Bike speed`() {
         val state = BtEngineState()
         val fusion = MetricFusion(state)
         fusion.startSession(FusionPersona.RIDE, 0L)
@@ -47,25 +48,34 @@ class KeiserDownstreamIntegrationTest {
             distanceMetres = 12_300.0,
             resistance = 17,
         )
-        keiserSamples(reading).forEach {
-            emitter.emit(it.metric, it.value, nativeCumulative = it.nativeCumulative)
+        val estimatedSpeed = requireNotNull(KeiserSpeedEstimator().estimateKph(reading))
+        keiserSamples(reading, estimatedSpeed).forEach {
+            emitter.emit(
+                it.metric,
+                it.value,
+                nativeCumulative = it.nativeCumulative,
+                quality = it.quality,
+            )
         }
 
-        assertNull(state.speedKph.value)
+        assertEquals(estimatedSpeed, state.speedKph.value!!, 1e-9)
+        assertEquals(estimatedSpeed, state.avgSpeedKph.value!!, 1e-9)
         val store = FtmsMetricStore()
         EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_BIKE }.sampleOnce()
         val packet = FtmsDataEncoders.encode(
             FtmsMachineProfile.INDOOR_BIKE,
             store.snapshot,
-            speedKph = null,
+            speedKph = store.snapshot.speedKph,
             maxPayload = 509,
         ).single()
         val flags = u16(packet)
-        assertTrue("More Data marks Instantaneous Speed absent", flags.bit(0))
+        assertFalse("mandatory Instantaneous Speed is present", flags.bit(0))
+        assertTrue("derived Average Speed is present", flags.bit(1))
+        assertEquals((estimatedSpeed * 100.0).roundToInt(), u16(packet, 2))
+        assertEquals((estimatedSpeed * 100.0).roundToInt(), u16(packet, 4))
         for (bit in listOf(2, 4, 5, 6, 8, 9, 11)) {
             assertTrue("Keiser Indoor Bike flag $bit must be present", flags.bit(bit))
         }
-        assertFalse("average speed is never synthesized", flags.bit(1))
     }
 
     @Test
@@ -75,7 +85,7 @@ class KeiserDownstreamIntegrationTest {
             emptySet(),
             KEISER_M_SERIES_CANDIDATE_ID,
         )
-        assertFalse(measurements.averageSpeed)
+        assertTrue(measurements.averageSpeed)
         assertTrue(measurements.cadence)
         assertTrue(measurements.totalDistance)
         assertTrue(measurements.resistance)
@@ -87,11 +97,17 @@ class KeiserDownstreamIntegrationTest {
         val targets = TargetCapabilities.fromEngineCapabilities(
             BtEngineState.FtmsCapabilities(featuresRead = true),
         )
-        assertEquals(0, targets.toTargetFeatureBits())
-        assertEquals(
-            0L,
-            u32(buildFtmsFeaturePayload(FtmsMachineProfile.INDOOR_BIKE, targets), 4),
+        val featurePayload = buildFtmsFeaturePayload(
+            profile = FtmsMachineProfile.INDOOR_BIKE,
+            targets = targets,
+            measurementCapabilities = measurements,
         )
+        assertTrue(
+            "Average Speed measurement feature is advertised",
+            u32(featurePayload, 0) and (1L shl FtmsSpec.Feature.AVERAGE_SPEED) != 0L,
+        )
+        assertEquals(0, targets.toTargetFeatureBits())
+        assertEquals(0L, u32(featurePayload, 4))
     }
 
     @Test

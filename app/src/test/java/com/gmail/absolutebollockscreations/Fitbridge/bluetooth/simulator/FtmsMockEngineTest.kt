@@ -331,6 +331,7 @@ class FtmsMockEngineTest {
             assertTrue(e.setTarget(FtmsMockTarget.RESISTANCE, level))
             assertEquals(level.toInt(), e.snapshot().resistance)
             assertEquals(level, e.controlTargets()[FtmsMockTarget.RESISTANCE]!!, 0.001)
+            assertEquals(SimulatorControlModeLabels.FTMS_DIRECT, e.controlModeLabel())
         }
 
         assertTrue(e.setTarget(FtmsMockTarget.POWER, 237.0))

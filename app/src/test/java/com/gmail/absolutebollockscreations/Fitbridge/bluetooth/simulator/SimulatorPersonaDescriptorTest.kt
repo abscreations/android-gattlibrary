@@ -69,7 +69,7 @@ class SimulatorPersonaDescriptorTest {
     fun `FTMS control modes and target spans come from the engine's own control profile`() {
         val bike = SimulatorPersona.Ftms(FtmsMachineProfile.INDOOR_BIKE).describe()
         val kind = SimulatorControlModeLabels.Kind
-        assertEquals(listOf(kind.DIRECT, kind.RESISTANCE, kind.ERG, kind.SIM), bike.controlModes)
+        assertEquals(listOf(kind.DIRECT, kind.ERG, kind.SIM), bike.controlModes)
         assertEquals("FTMS 0x2AD2 + 0x2AD9 control point", bike.protocol)
         assertEquals(
             listOf("speed", "resistance", "power"),
@@ -139,7 +139,7 @@ class SimulatorPersonaDescriptorTest {
         kickr.forEach { persona ->
             val descriptor = persona.describe()
             assertEquals(
-                listOf(kind.DIRECT, kind.RESISTANCE, kind.ERG, kind.SIM),
+                listOf(kind.DIRECT, kind.ERG, kind.SIM),
                 descriptor.controlModes,
             )
             assertEquals(
@@ -167,7 +167,6 @@ class SimulatorPersonaDescriptorTest {
         assertTrue(SimulatorControlModeLabels.ANT_DIRECT.endsWith(kind.DIRECT))
         assertTrue(SimulatorControlModeLabels.KICKR_SIM.endsWith(kind.SIM))
         assertTrue(SimulatorControlModeLabels.RIDEON_DIRECT.endsWith(kind.DIRECT))
-        assertTrue(SimulatorControlModeLabels.FTMS_RESISTANCE.endsWith(kind.RESISTANCE))
     }
 
     @Test

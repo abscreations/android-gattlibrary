@@ -212,12 +212,11 @@ enum class FtmsMockTarget { SPEED, INCLINATION, RESISTANCE, POWER }
 /**
  * Which family of Control Point write last steered this machine, for the debug UI's "Control
  * mode" line (see [SimulatorControlModeLabels]). Independent of [FtmsMockTarget]: DIRECT covers
- * speed/inclination, RESISTANCE is the 0x04 Set Target Resistance Level procedure on its own,
- * ERG is power-only, and SIMULATION is the 0x11 Set Indoor Bike
- * Simulation Parameters procedure, which carries its own four-value payload rather than a single
- * [FtmsMockTarget].
+ * speed, inclination, and resistance; ERG is power-only; and SIMULATION is the 0x11 Set Indoor
+ * Bike Simulation Parameters procedure, which carries its own four-value payload rather than a
+ * single [FtmsMockTarget].
  */
-enum class FtmsControlKind { DIRECT, RESISTANCE, ERG, SIMULATION }
+enum class FtmsControlKind { DIRECT, ERG, SIMULATION }
 
 /**
  * Decoded FTMS 0x11 Set Indoor Bike Simulation Parameters payload, in public units.
@@ -317,7 +316,6 @@ class FtmsMockEngine(
     fun controlModeLabel(): String = when (lastControlKind) {
         null -> SimulatorControlModeLabels.AUTOMATIC
         FtmsControlKind.DIRECT -> SimulatorControlModeLabels.FTMS_DIRECT
-        FtmsControlKind.RESISTANCE -> SimulatorControlModeLabels.FTMS_RESISTANCE
         FtmsControlKind.ERG -> SimulatorControlModeLabels.FTMS_ERG
         FtmsControlKind.SIMULATION -> SimulatorControlModeLabels.FTMS_SIM
     }
@@ -366,8 +364,8 @@ class FtmsMockEngine(
         }
         lastControlKind = when (type) {
             FtmsMockTarget.POWER -> FtmsControlKind.ERG
-            FtmsMockTarget.RESISTANCE -> FtmsControlKind.RESISTANCE
-            FtmsMockTarget.SPEED, FtmsMockTarget.INCLINATION -> FtmsControlKind.DIRECT
+            FtmsMockTarget.SPEED, FtmsMockTarget.INCLINATION, FtmsMockTarget.RESISTANCE ->
+                FtmsControlKind.DIRECT
         }
         return true
     }

@@ -174,6 +174,7 @@ internal val precorChronoMeasurementCapabilities = FtmsMeasurementCapabilities(
 
 /** Measurement-only contract for Keiser M-series manufacturer advertisements (plan §6.7). */
 internal val keiserMSeriesMeasurementCapabilities = FtmsMeasurementCapabilities(
+    averageSpeed = true,
     cadence = true,
     totalDistance = true,
     resistance = true,

@@ -12,7 +12,108 @@ internal data class KeiserSample(
     val value: Double,
     val nativeCumulative: Double? = null,
     val freshnessMs: Long,
+    val quality: MetricQuality = MetricQuality.NATIVE,
 )
+
+/** Total-distance average, using protocol elapsed only for protocol math (plan §3.5). */
+internal fun keiserAverageSpeedKph(reading: KeiserMSeriesMeasurement.Reading): Double? {
+    if (!reading.isRealtime || reading.elapsedSeconds <= 0) return null
+    val speed = reading.distanceMetres * 3.6 / reading.elapsedSeconds.toDouble()
+    return speed.takeIf { value ->
+        value.isFinite() && value in requireNotNull(
+            PlausibilityBounds.rangeFor(MetricKind.AVERAGE_SPEED, FusionPersona.RIDE),
+        )
+    }
+}
+
+/**
+ * Stateful speed estimate for the Keiser's coarse cumulative distance counter.
+ *
+ * The wire advances in tenths of a kilometre or mile, so a short fixed-time window produces zeros
+ * followed by spikes. This estimator instead spans up to three distinct distance increments. The
+ * protocol's total-distance average is the startup fallback; a confirmed cadence-and-power stop is
+ * zero immediately. Counter/time rollback and unit changes rebase the estimator.
+ */
+internal class KeiserSpeedEstimator {
+    private data class Observation(val elapsedSeconds: Int, val distanceMetres: Double)
+
+    private val distanceChanges = ArrayDeque<Observation>()
+    private var previousElapsedSeconds: Int? = null
+    private var previousDistanceMetres: Double? = null
+    private var previousUnit: KeiserMSeriesMeasurement.DistanceUnit? = null
+    private var lastInstantaneousKph: Double? = null
+    private var wasStopped = false
+
+    fun estimateKph(reading: KeiserMSeriesMeasurement.Reading): Double? {
+        if (!reading.isRealtime) return null
+
+        val elapsedRollback = previousElapsedSeconds?.let { reading.elapsedSeconds < it } == true
+        val distanceRollback = previousDistanceMetres?.let { reading.distanceMetres < it } == true
+        val unitChanged = previousUnit?.let { reading.distanceUnit != it } == true
+        if (elapsedRollback || distanceRollback || unitChanged) reset()
+
+        val priorDistance = previousDistanceMetres
+        val distanceChanged = priorDistance == null || reading.distanceMetres > priorDistance
+        val stoppedNow = reading.cadenceRpm == 0.0 && reading.powerWatts == 0
+        if (!stoppedNow && wasStopped) {
+            lastInstantaneousKph = null
+            wasStopped = false
+        }
+        if (distanceChanged && reading.distanceMetres > 0.0) {
+            val observation = Observation(reading.elapsedSeconds, reading.distanceMetres)
+            if (distanceChanges.lastOrNull()?.elapsedSeconds == observation.elapsedSeconds) {
+                distanceChanges.removeLast()
+            }
+            distanceChanges.addLast(observation)
+            while (distanceChanges.size > MAX_DISTANCE_OBSERVATIONS) distanceChanges.removeFirst()
+
+            val first = distanceChanges.first()
+            val last = distanceChanges.last()
+            val elapsedDelta = last.elapsedSeconds - first.elapsedSeconds
+            val distanceDelta = last.distanceMetres - first.distanceMetres
+            if (elapsedDelta > 0 && distanceDelta > 0.0) {
+                val candidate = distanceDelta * 3.6 / elapsedDelta.toDouble()
+                val bounds = requireNotNull(
+                    PlausibilityBounds.rangeFor(MetricKind.SPEED, FusionPersona.RIDE),
+                )
+                if (candidate.isFinite() && candidate in bounds) {
+                    lastInstantaneousKph = candidate
+                }
+            }
+        }
+
+        previousElapsedSeconds = reading.elapsedSeconds
+        previousDistanceMetres = reading.distanceMetres
+        previousUnit = reading.distanceUnit
+
+        if (stoppedNow) {
+            distanceChanges.clear()
+            if (reading.distanceMetres > 0.0) {
+                distanceChanges.addLast(Observation(reading.elapsedSeconds, reading.distanceMetres))
+            }
+            lastInstantaneousKph = 0.0
+            wasStopped = true
+            return 0.0
+        }
+        if (lastInstantaneousKph == null && reading.distanceMetres > 0.0) {
+            lastInstantaneousKph = keiserAverageSpeedKph(reading)
+        }
+        return lastInstantaneousKph
+    }
+
+    fun reset() {
+        distanceChanges.clear()
+        previousElapsedSeconds = null
+        previousDistanceMetres = null
+        previousUnit = null
+        lastInstantaneousKph = null
+        wasStopped = false
+    }
+
+    private companion object {
+        const val MAX_DISTANCE_OBSERVATIONS = 4
+    }
+}
 
 /**
  * Map one filtered Keiser reading to canonical metrics (plan §6.3).
@@ -54,26 +155,46 @@ internal data class KeiserSample(
  * as an event timestamp, because §3.5 forbids protocol time from touching freshness and giving it
  * a second channel is how it would eventually get there.
  *
- * ## What is deliberately not emitted
+ * ## Derived speed provenance
  *
- * **Speed.** The protocol has no speed field. Phase 11 does not derive one from distance, and a
- * downstream consumer that wants speed will find the field absent rather than estimated.
+ * The protocol has no speed field. [MetricKind.AVERAGE_SPEED] is derived directly from cumulative
+ * distance and elapsed time. [MetricKind.SPEED] is supplied only when the caller provides the
+ * stateful [estimatedSpeedKph] from [KeiserSpeedEstimator]. Both are explicitly `ESTIMATED`.
  *
  * **Resistance when the firmware does not carry it.** [KeiserMSeriesMeasurement.Reading.resistance]
  * is null on pre-`0x21` firmware, which means "the protocol said nothing", not "level zero".
  *
- * **Confidence.** Every sample here is `NATIVE` quality, but the numeric confidence belongs to the
- * accepted match rather than to the packet, and no matcher exists until phase 11.4. Rather than
- * invent a constant now, the source passes the matcher's confidence to `MetricEmitter.emit`, which
- * already takes one.
+ * **Confidence.** Native and estimated samples share the accepted match's numeric confidence; it
+ * belongs to the source identity rather than to the packet. The source passes it to
+ * `MetricEmitter.emit` alongside each sample's explicit quality.
  *
  * **Anything writable.** No target, no capability, no control signal. The bike cannot receive.
  */
-internal fun keiserSamples(reading: KeiserMSeriesMeasurement.Reading): List<KeiserSample> {
+internal fun keiserSamples(
+    reading: KeiserMSeriesMeasurement.Reading,
+    estimatedSpeedKph: Double? = null,
+): List<KeiserSample> {
     if (!reading.isRealtime) return emptyList()
 
     val freshnessMs = reading.statsTimeoutMs
     val samples = mutableListOf<KeiserSample>()
+
+    estimatedSpeedKph?.let {
+        samples += KeiserSample(
+            MetricKind.SPEED,
+            it,
+            freshnessMs = freshnessMs,
+            quality = MetricQuality.ESTIMATED,
+        )
+    }
+    keiserAverageSpeedKph(reading)?.let {
+        samples += KeiserSample(
+            MetricKind.AVERAGE_SPEED,
+            it,
+            freshnessMs = freshnessMs,
+            quality = MetricQuality.ESTIMATED,
+        )
+    }
 
     samples += KeiserSample(MetricKind.CADENCE, reading.cadenceRpm, freshnessMs = freshnessMs)
     samples += KeiserSample(MetricKind.POWER, reading.powerWatts.toDouble(), freshnessMs = freshnessMs)
