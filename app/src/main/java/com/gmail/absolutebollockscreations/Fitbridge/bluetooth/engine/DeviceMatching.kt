@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import java.util.Locale
 import java.util.UUID
 
@@ -40,6 +41,107 @@ internal enum class MatchEvidenceKind {
     GATT_SERVICE,
     GATT_CHARACTERISTIC,
     PACKET_SHAPE,
+
+    /**
+     * The manufacturer-data payload itself satisfied a family's structural rule.
+     *
+     * Deliberately distinct from [PACKET_SHAPE], which describes a GATT notification's length and
+     * flag bits. A conjunction that named only "shape" could be satisfied by either, and an
+     * advertisement-only family has no notification to shape-check — its whole identity is the
+     * payload, so the requirement has to be able to say exactly that.
+     */
+    MANUFACTURER_PAYLOAD,
+}
+
+/**
+ * How a family delivers its telemetry once selected.
+ *
+ * [GATT] is every family that existed before phase 11: FitBridge connects, discovers services and
+ * subscribes. [ADVERTISEMENT_ONLY] never accepts a connection at all — its metrics arrive in
+ * repeated advertisements — so nothing downstream may build a `ConnectionContext`, offer a
+ * disconnect affordance, or present it as connected. Stated on the definition rather than inferred
+ * from a missing service UUID, because "we have not identified a service yet" and "there is no
+ * service" are different claims and only the second is a protocol fact.
+ */
+internal enum class MatchTransport { GATT, ADVERTISEMENT_ONLY }
+
+/**
+ * One advertisement's manufacturer-data payload, in canonical form.
+ *
+ * ## The company ID belongs in the buffer
+ *
+ * Android's `ScanRecord` splits manufacturer data into a company ID key and a value, so its
+ * callback hands over a payload whose first two documented octets are missing. Vendor documents,
+ * permissive reference implementations and captured corpora all describe the buffer *including*
+ * the little-endian company ID. [fromAndroidScanRecord] performs that normalization, and it is the
+ * only constructor the scan layer uses, so a rule written against the documented layout cannot be
+ * handed a payload two bytes short of it.
+ *
+ * ## Privacy
+ *
+ * A manufacturer payload can carry a serial number, a session identifier, or a rider's live
+ * telemetry. [toString] therefore renders the length and never the bytes, so a payload cannot
+ * reach a log line, a crash report or a diagnostic dump by being interpolated into a string. The
+ * bytes are copied in and out so no caller can retain a reference into a scan buffer, and nothing
+ * here is persisted: an observation lives for the duration of one match.
+ */
+internal class ManufacturerPayload(bytes: ByteArray) {
+
+    private val bytes: ByteArray = bytes.copyOf()
+
+    val size: Int get() = bytes.size
+
+    /** A defensive copy. The matcher never hands out the array it holds. */
+    fun copyBytes(): ByteArray = bytes.copyOf()
+
+    override fun equals(other: Any?): Boolean =
+        this === other || (other is ManufacturerPayload && bytes.contentEquals(other.bytes))
+
+    override fun hashCode(): Int = bytes.contentHashCode()
+
+    /** Length only, never content. See the privacy note on the class. */
+    override fun toString(): String = "ManufacturerPayload(${bytes.size} bytes)"
+
+    companion object {
+        /** Canonicalize Android's split representation into the documented buffer. */
+        fun fromAndroidScanRecord(companyId: Int, value: ByteArray): ManufacturerPayload {
+            require(companyId in 0..0xffff) { "Company identifier must fit uint16" }
+            val canonical = ByteArray(value.size + 2)
+            canonical[0] = (companyId and 0xff).toByte()
+            canonical[1] = ((companyId shr 8) and 0xff).toByte()
+            value.copyInto(canonical, destinationOffset = 2)
+            return ManufacturerPayload(canonical)
+        }
+    }
+}
+
+/**
+ * A family's structural test for a canonical manufacturer payload.
+ *
+ * Named rather than inlined as a lambda so the rule a definition applies is a referenceable
+ * function with its own tests, and so the definition reads as a claim about the protocol instead
+ * of as an anonymous predicate.
+ */
+internal fun interface ManufacturerPayloadRule {
+    fun matches(companyId: Int, payload: ManufacturerPayload): Boolean
+}
+
+/**
+ * A filter FitBridge asks the OS radio to apply, before any advertisement reaches the app.
+ *
+ * Was a bare list of service UUIDs until phase 11.4, which is a shape an advertisement-only
+ * family cannot express: a Keiser M3 puts no service UUID on the air at all, so a UUID-derived
+ * filter discards it in hardware and no amount of correct software matching can recover it.
+ * Typed so a definition contributes the filter its own transport needs.
+ */
+internal sealed interface HardwareScanFilterSpec {
+    data class ServiceUuid(val uuid: CanonicalUuid) : HardwareScanFilterSpec
+
+    data class ManufacturerId(val companyId: Int) : HardwareScanFilterSpec {
+        init {
+            require(companyId in 0..0xffff) { "Company identifier must fit uint16" }
+        }
+    }
 }
 
 internal enum class CollisionRisk { LOW, MEDIUM, HIGH }
@@ -101,12 +203,27 @@ internal data class MatchObservation(
     val discoveredCharacteristicUuids: Set<CanonicalUuid> = emptySet(),
     val packetLength: Int? = null,
     val packetFlags: Long? = null,
+    /**
+     * Canonical manufacturer payloads keyed by company identifier.
+     *
+     * Populated only where a registered family actually inspects payloads; see the privacy note
+     * on [ManufacturerPayload]. Empty for every observation predating phase 11.4, which is why
+     * no existing family's ranking can move.
+     */
+    val manufacturerPayloads: Map<Int, ManufacturerPayload> = emptyMap(),
 )
 
 internal data class MatchDefinition(
     val candidateId: String,
-    /** The service UUID present in the GATT database **after connecting**. */
-    val serviceUuid: CanonicalUuid,
+    /**
+     * The service UUID present in the GATT database **after connecting**, or null for an
+     * advertisement-only family that never exposes one.
+     *
+     * Null means "this protocol has no service", not "not identified yet". Phase 11 forbids
+     * inventing a Keiser UUID precisely because a reserved placeholder here would propagate into
+     * scan filters, the discovery catalog and diagnostic capture as if it were a real identity.
+     */
+    val serviceUuid: CanonicalUuid?,
     val knownService: KnownBleService? = null,
     val preference: Int = 0,
     val localNamePatterns: List<Regex> = emptyList(),
@@ -142,20 +259,73 @@ internal data class MatchDefinition(
      * without allowing either weak fact alone to create a proprietary machine candidate.
      */
     val requiredEvidenceAlternatives: List<Set<MatchEvidenceKind>> = emptyList(),
+    /** How this family delivers telemetry once selected. See [MatchTransport]. */
+    val transport: MatchTransport = MatchTransport.GATT,
+    /**
+     * Structural test for a canonical manufacturer payload, when this family has one.
+     *
+     * Supplying a rule is what lets a definition treat the payload as identity rather than as an
+     * opaque blob behind a company identifier. A company ID names a company, not a product.
+     */
+    val manufacturerPayloadRule: ManufacturerPayloadRule? = null,
+    /**
+     * The activity this family is, when that is knowable from the advertisement alone.
+     *
+     * FTMS machines carry it in service data and it is decoded per advertisement. A Keiser M3 is
+     * an indoor bike by construction, so the row can say so before anything is selected. Optimistic
+     * in the same sense as the FTMS service-data value: a claim from the air, superseded by
+     * whatever a connection later proves — except that here nothing ever connects, so it stands.
+     */
+    val advertisedActivityType: ActivityType? = null,
 ) {
+    init {
+        require(serviceUuid != null || transport == MatchTransport.ADVERTISEMENT_ONLY) {
+            "A GATT family must name the service UUID it serves"
+        }
+        require(serviceUuid != null || advertisedServiceUuids.isEmpty()) {
+            "An advertisement-only family must not claim a service UUID by the back door"
+        }
+        require(transport == MatchTransport.GATT || manufacturerPayloadRule != null) {
+            "An advertisement-only family must identify itself by payload structure"
+        }
+    }
+
     /** The UUIDs to match an advertisement against, and to build a scan filter from. */
     val effectiveAdvertisedUuids: Set<CanonicalUuid> =
-        advertisedServiceUuids.ifEmpty { setOf(serviceUuid) }
+        advertisedServiceUuids.ifEmpty { setOfNotNull(serviceUuid) }
+
+    /**
+     * The OS-level filters this family needs in order to be discoverable at all.
+     *
+     * A manufacturer-ID filter is contributed only by an advertisement-only family. A GATT family
+     * is already reachable through its service UUID, and adding its company identifier would widen
+     * the radio filter to every product that company ships — a hardware filter exists to stop the
+     * radio discarding what FitBridge needs, not to decide identity.
+     *
+     * An empty list here means the family can never be discovered however correct its adapter is,
+     * which is why [DeviceMatcherRegistry.of] refuses to register one.
+     */
+    val hardwareScanFilterSpecs: List<HardwareScanFilterSpec> = buildList {
+        effectiveAdvertisedUuids.forEach { add(HardwareScanFilterSpec.ServiceUuid(it)) }
+        if (transport == MatchTransport.ADVERTISEMENT_ONLY) {
+            manufacturerCompanyIds.forEach { add(HardwareScanFilterSpec.ManufacturerId(it)) }
+        }
+    }
 }
 
 internal data class RankedMatchCandidate(
     val candidateId: String,
-    val serviceUuid: CanonicalUuid,
+    /** Null for an advertisement-only family, which serves no GATT service. */
+    val serviceUuid: CanonicalUuid?,
     val knownService: KnownBleService?,
     val evidence: MatchEvidence,
     val preference: Int,
     /** True for FTMS and for every proprietary machine family; false for sensors. */
     val machineRole: Boolean = false,
+    /** How this candidate would deliver telemetry. See [MatchTransport]. */
+    val transport: MatchTransport = MatchTransport.GATT,
+    /** The activity claimed by the advertisement, when the family declares one. */
+    val advertisedActivityType: ActivityType? = null,
 ) {
     val rank: Int = evidence.rankingWeight
 }
@@ -176,6 +346,8 @@ internal class DeviceMatcherRegistry private constructor(
                 evidence = MatchEvidence(facts),
                 preference = definition.preference,
                 machineRole = definition.machineRole,
+                transport = definition.transport,
+                advertisedActivityType = definition.advertisedActivityType,
             )
         }.sortedWith(
             // `machineRole` is placed ahead of `preference` deliberately (bug fix,
@@ -205,7 +377,8 @@ internal class DeviceMatcherRegistry private constructor(
                 .thenBy { it.candidateId },
         )
 
-    fun registeredServices(): List<CanonicalUuid> = definitions.map { it.serviceUuid }.distinct()
+    fun registeredServices(): List<CanonicalUuid> =
+        definitions.mapNotNull { it.serviceUuid }.distinct()
 
     /**
      * Every UUID any registered family puts on the air, for building the OS scan filter.
@@ -219,8 +392,22 @@ internal class DeviceMatcherRegistry private constructor(
     fun scanFilterServiceUuids(): List<CanonicalUuid> =
         definitions.flatMap { it.effectiveAdvertisedUuids }.distinct()
 
+    /**
+     * Every hardware filter the registered families need, typed by what the radio must match on.
+     *
+     * Service UUIDs come from every family that puts one on the air. Manufacturer-ID filters come
+     * **only** from advertisement-only families: a GATT family is already reachable through its
+     * service UUID, and adding its company identifier would widen the radio filter to every
+     * product that company ships, which is the opposite of what a hardware filter is for.
+     *
+     * Derived, never hand-listed, for the same reason [scanFilterServiceUuids] is: a family that
+     * is registered but absent here is invisible no matter how correct its adapter is.
+     */
+    fun hardwareScanFilterSpecs(): List<HardwareScanFilterSpec> =
+        definitions.flatMap { it.hardwareScanFilterSpecs }.distinct()
+
     fun knownService(uuid: CanonicalUuid): KnownBleService? =
-        definitions.firstOrNull { it.serviceUuid == uuid }?.knownService
+        definitions.firstOrNull { it.serviceUuid != null && it.serviceUuid == uuid }?.knownService
 
     private fun evidenceFor(
         definition: MatchDefinition,
@@ -247,7 +434,7 @@ internal class DeviceMatcherRegistry private constructor(
                         CollisionRisk.LOW, "Full service-data UUID match"),
                 )
             }
-        if (service in observation.discoveredServiceUuids) add(
+        if (service != null && service in observation.discoveredServiceUuids) add(
             fact(MatchEvidenceKind.GATT_SERVICE, service.value, 75, CollisionRisk.LOW,
                 "Post-discovery full service UUID match"),
         )
@@ -267,6 +454,28 @@ internal class DeviceMatcherRegistry private constructor(
                         CollisionRisk.MEDIUM, "Company identifier may cover several product families"),
                 )
             }
+        // Weighted above a company identifier and below a full UUID. A payload that satisfies a
+        // documented layout is far stronger evidence than the company that sent it, and weaker
+        // than a 128-bit service UUID, which is unique by construction rather than by structure.
+        // The structural value records the length only; see the privacy note on ManufacturerPayload.
+        definition.manufacturerPayloadRule?.let { rule ->
+            definition.manufacturerCompanyIds
+                .mapNotNull { companyId ->
+                    observation.manufacturerPayloads[companyId]?.let { companyId to it }
+                }
+                .filter { (companyId, payload) -> rule.matches(companyId, payload) }
+                .forEach { (companyId, payload) ->
+                    add(
+                        fact(
+                            MatchEvidenceKind.MANUFACTURER_PAYLOAD,
+                            "company:$companyId;payloadBytes:${payload.size}",
+                            55,
+                            CollisionRisk.LOW,
+                            "Payload satisfies this family's documented structural layout",
+                        ),
+                    )
+                }
+        }
         val localName = observation.localName.orEmpty()
         definition.localNamePatterns.firstOrNull { it.containsMatchIn(localName) }?.let { pattern ->
             add(
@@ -303,6 +512,12 @@ internal class DeviceMatcherRegistry private constructor(
             require(definitions.map { it.candidateId }.distinct().size == definitions.size) {
                 "Matcher candidate IDs must be unique"
             }
+            // The 2026-08-12 discovery defect, now a construction-time invariant rather than a
+            // test: a family absent from the OS scan filter is invisible however complete its
+            // adapter is, and the failure is silent because nothing ever reaches the callback.
+            definitions.firstOrNull { it.hardwareScanFilterSpecs.isEmpty() }?.let {
+                error("${it.candidateId} contributes no hardware scan filter and can never be discovered")
+            }
             return DeviceMatcherRegistry(definitions)
         }
 
@@ -330,7 +545,68 @@ internal class DeviceMatcherRegistry private constructor(
                 precorDefinition(),
                 schwinnX70Definition(),
                 fecDefinition(),
+                keiserMSeriesDefinition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
+            ),
+        )
+
+        /**
+         * The first advertisement-only family: a Keiser M-series bike, which never connects.
+         *
+         * ## Three facts, and none of them is sufficient alone
+         *
+         * The local name begins `M3`, which is short, mutable, and shared with anything else
+         * whose owner typed "M3" into a name field. The company identifier is `0x0102`, which
+         * names Keiser and every product Keiser ships. The manufacturer payload satisfies the
+         * documented M-series layout — magic prefix, and a total length the firmware minor byte
+         * itself predicts — which is structural but is still only nineteen bytes and could in
+         * principle be coincidence.
+         *
+         * The conjunction is the match, and it is declared as a single required alternative so
+         * no pair of them can admit a device. That matters more here than for a GATT family: a
+         * wrong GATT match is discovered on connect, when service discovery finds nothing it
+         * expects. Nothing ever connects to this one, so a false admission has no later
+         * correction — it would sit in the machine list and produce decoded nonsense.
+         *
+         * ## No service UUID, and no placeholder for one
+         *
+         * There is no Keiser service, so [serviceUuid] is null and the family contributes nothing
+         * to the service-UUID scan filter. Its radio reachability comes from a manufacturer-ID
+         * filter instead; see [DeviceMatcherRegistry.hardwareScanFilterSpecs]. A reserved UUID
+         * here would have been easier and would have made every downstream diagnostic lie about
+         * the transport.
+         *
+         * ## Preference
+         *
+         * Placed below FTMS and the SIG sensor profiles. A device that genuinely advertises FTMS
+         * *and* satisfies this whole conjunction is not something the captures show existing, and
+         * if one appears the connectable profile is the better machine — it can be controlled and
+         * verified on connect. Ranking already decides that: the required conjunction here scores
+         * name plus company plus payload, so preference only ever breaks a tie.
+         */
+        private fun keiserMSeriesDefinition() = MatchDefinition(
+            candidateId = "vendor.keiser.m",
+            serviceUuid = null,
+            knownService = null,
+            preference = 150,
+            localNamePatterns = listOf(Regex("^M3", RegexOption.IGNORE_CASE)),
+            manufacturerCompanyIds = setOf(KeiserMSeriesMeasurement.COMPANY_ID),
+            machineRole = true,
+            transport = MatchTransport.ADVERTISEMENT_ONLY,
+            // The decoder's own predicate, not a second copy of it. A structural rule that could
+            // drift from the parser would admit devices the parser then rejects, which reads to a
+            // user as a machine that appears in the list and never produces a number.
+            manufacturerPayloadRule = ManufacturerPayloadRule { companyId, payload ->
+                companyId == KeiserMSeriesMeasurement.COMPANY_ID &&
+                    KeiserMSeriesMeasurement.isKeiserField(payload.copyBytes())
+            },
+            advertisedActivityType = ActivityType.BIKING,
+            requiredEvidenceAlternatives = listOf(
+                setOf(
+                    MatchEvidenceKind.LOCAL_NAME_PATTERN,
+                    MatchEvidenceKind.MANUFACTURER_COMPANY_ID,
+                    MatchEvidenceKind.MANUFACTURER_PAYLOAD,
+                ),
             ),
         )
 

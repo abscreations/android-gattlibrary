@@ -70,6 +70,7 @@ import android.bluetooth.le.ScanSettings
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import timber.log.Timber
 import java.util.Locale
@@ -104,14 +105,20 @@ internal fun BtEngine.startScanImpl(
     }
 
     // Build OR filters at the Android boundary from the canonical matcher registry.
-    val filters: List<ScanFilter>? = if (useFtmsHardwareFilter) {
-        hardwareScanServiceUuids().map { uuid ->
-            ScanFilter.Builder().setServiceUuid(ParcelUuidCompat(uuid)).build()
-        }
-    } else null
+    val filters: List<ScanFilter>? = if (useFtmsHardwareFilter) hardwareScanFilters() else null
 
     val settings = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+        // Both stated explicitly as of phase 11.4, because an advertisement-only machine depends
+        // on them and the platform defaults are not guaranteed to be these. A Keiser M3's entire
+        // telemetry stream is repeated advertisements from one address: under
+        // CALLBACK_TYPE_FIRST_MATCH the app would receive exactly one of them and then silence,
+        // which looks identical to a bike that stopped transmitting. A non-zero report delay
+        // batches results, which trades away the arrival-time resolution the 1-second statistics
+        // window is measured against. Neither setting changes anything for a GATT family, whose
+        // telemetry arrives on a connection rather than on the air.
+        .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+        .setReportDelay(0L)
         .build()
 
     val phase05EvidenceKeys = mutableSetOf<String>()
@@ -143,10 +150,17 @@ internal fun BtEngine.startScanImpl(
             val primary = candidates.firstOrNull() ?: return
 
             upsertDiscoveredDevice(
-                key, name, address, result, primary.serviceUuid.toUuid(),
+                key, name, address, result,
+                // Null for an advertisement-only family. Phase 11 forbids a placeholder UUID:
+                // one would flow straight into the catalog's service set and the diagnostic
+                // capture as if this bike served something.
+                serviceUuid = primary.serviceUuid?.toUuid(),
                 // Declared per definition rather than inferred from `knownService == FTMS`,
                 // which no proprietary machine could ever satisfy.
                 machineCandidate = primary.machineRole,
+                transport = primary.transport,
+                matchCandidateId = primary.candidateId,
+                advertisedActivityType = primary.advertisedActivityType,
             )
 
             onDevice(name, address, result)
@@ -356,19 +370,53 @@ internal fun rankedServiceCandidates(observation: MatchObservation): List<Ranked
 internal fun hardwareScanServiceUuids(): List<UUID> =
     deviceMatcherRegistry.scanFilterServiceUuids().map(CanonicalUuid::toUuid)
 
+/** Every hardware filter spec the registry needs, typed by what the radio matches on. */
+internal fun hardwareScanFilterSpecs(): List<HardwareScanFilterSpec> =
+    deviceMatcherRegistry.hardwareScanFilterSpecs()
+
+/**
+ * The OS filter list, one `ScanFilter` per spec, OR-ed by the platform.
+ *
+ * A manufacturer-ID filter passes every advertisement from that company; the name and payload
+ * halves of the conjunction are still enforced in software by the matcher. That asymmetry is
+ * deliberate — a hardware filter exists to stop the radio discarding what FitBridge needs, not to
+ * decide identity. `ScanFilter` can also match manufacturer data with a mask, but a mask over the
+ * documented layout would duplicate the decoder's structural rule at the Android boundary where
+ * no unit test can reach it, and the two would drift.
+ */
+private fun hardwareScanFilters(): List<ScanFilter> =
+    hardwareScanFilterSpecs().map { spec ->
+        when (spec) {
+            is HardwareScanFilterSpec.ServiceUuid ->
+                ScanFilter.Builder().setServiceUuid(ParcelUuidCompat(spec.uuid.toUuid())).build()
+            is HardwareScanFilterSpec.ManufacturerId ->
+                ScanFilter.Builder()
+                    .setManufacturerData(spec.companyId, ByteArray(0))
+                    .build()
+        }
+    }
+
 private fun detectServiceCandidates(result: ScanResult): List<RankedMatchCandidate> {
     val record = result.scanRecord ?: return emptyList()
     // Advertised UUIDs, not served ones: service data is carried on the air, so it is keyed by
     // whatever the family advertises.
     val registeredServices = deviceMatcherRegistry.scanFilterServiceUuids()
-    val manufacturerIds = buildSet {
+    // Canonicalized once, here, at the only place that sees Android's split representation.
+    // Everything downstream — matcher rule, decoder, fixtures, simulator — speaks the documented
+    // buffer that begins with the little-endian company ID.
+    val manufacturerPayloads = buildMap {
         val data = record.manufacturerSpecificData
-        for (index in 0 until data.size()) add(data.keyAt(index))
+        for (index in 0 until data.size()) {
+            val companyId = data.keyAt(index)
+            val value = data.valueAt(index) ?: continue
+            put(companyId, ManufacturerPayload.fromAndroidScanRecord(companyId, value))
+        }
     }
     return rankedServiceCandidates(
         MatchObservation(
             localName = record.deviceName,
-            manufacturerCompanyIds = manufacturerIds,
+            manufacturerCompanyIds = manufacturerPayloads.keys,
+            manufacturerPayloads = manufacturerPayloads,
             advertisedServiceUuids = record.serviceUuids.orEmpty()
                 .mapTo(linkedSetOf()) { CanonicalUuid.fromUuid(it.uuid) },
             serviceDataUuids = registeredServices.filterTo(linkedSetOf()) { uuid ->
@@ -414,6 +462,17 @@ private fun logPhase05AdvertisementEvidence(result: ScanResult) {
 private fun toServiceType(u: UUID): BtEngineState.BtServiceType? =
     deviceMatcherRegistry.knownService(CanonicalUuid.fromUuid(u))?.toServiceType()
 
+/**
+ * Project the matcher's transport into the state model's own enum.
+ *
+ * The same boundary [KnownBleService.toServiceType] crosses, and for the same reason: the matcher's
+ * types are internal to the engine, while `DiscoveredDevice` is observed by the UI.
+ */
+private fun MatchTransport.toDeviceTransport(): BtEngineState.DeviceTransport = when (this) {
+    MatchTransport.GATT -> BtEngineState.DeviceTransport.GATT
+    MatchTransport.ADVERTISEMENT_ONLY -> BtEngineState.DeviceTransport.ADVERTISEMENT_ONLY
+}
+
 private fun KnownBleService.toServiceType(): BtEngineState.BtServiceType = when (this) {
     KnownBleService.FTMS -> BtEngineState.BtServiceType.FTMS
     KnownBleService.HRM -> BtEngineState.BtServiceType.HeartRate
@@ -453,15 +512,21 @@ private fun BtEngine.upsertDiscoveredDevice(
     name: String,
     address: String,
     result: ScanResult,
-    serviceUuid: UUID,
+    serviceUuid: UUID?,
     machineCandidate: Boolean,
+    transport: MatchTransport = MatchTransport.GATT,
+    matchCandidateId: String? = null,
+    advertisedActivityType: ActivityType? = null,
 ) {
     synchronized(state) {
         val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
         val advertisedMachineFeature = if (machineCandidate) {
+            // FTMS service data first, because it is a per-advertisement claim from the device;
+            // the definition's declared activity is the fallback for a family that has no service
+            // data to carry one. For Keiser only the second can ever apply.
             BtServiceProfiles.activityTypeFromFtmsServiceData(
                 result.scanRecord?.getServiceData(BluetoothIds.FTMS_SERVICE_PARCEL)
-            )?.ordinal
+            )?.ordinal ?: advertisedActivityType?.ordinal
         } else {
             null
         }
@@ -488,8 +553,17 @@ private fun BtEngine.upsertDiscoveredDevice(
             scanResult = result,
             services = retainedServices +
                 advertisedServiceTypes(result) +
-                setOfNotNull(toServiceType(serviceUuid)),
+                setOfNotNull(serviceUuid?.let(::toServiceType)),
             machineCandidate = current?.machineCandidate == true || machineCandidate,
+            // An advertisement-only transport is never downgraded to GATT by a later, weaker
+            // observation of the same address: a bike that cannot be connected to does not become
+            // connectable because one advertisement matched something else first.
+            transport = if (transport == MatchTransport.ADVERTISEMENT_ONLY) {
+                transport.toDeviceTransport()
+            } else {
+                current?.transport ?: transport.toDeviceTransport()
+            },
+            matchCandidateId = matchCandidateId ?: current?.matchCandidateId,
             machineFeature = current?.machineFeature,
             advertisedMachineFeature =
                 advertisedMachineFeature ?: current?.advertisedMachineFeature,

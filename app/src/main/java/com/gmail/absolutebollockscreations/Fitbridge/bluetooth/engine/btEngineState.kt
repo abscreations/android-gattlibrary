@@ -79,6 +79,19 @@ class BtEngineState : HrmStateSink {
     enum class CscRoleSource { APPEARANCE, FEATURE }
 
     /** Vendor/protocol identity established from the connected link's GATT inventory. */
+    /**
+     * How a discovered device would deliver telemetry if selected.
+     *
+     * The state model's own projection of the matcher's transport, mapped at the scan boundary in
+     * the same way [BtServiceType] is mapped from `KnownBleService`. The matcher's types are
+     * internal to the engine and have no business in a state class the UI observes.
+     *
+     * An [ADVERTISEMENT_ONLY] row must never be offered a connect or disconnect affordance: there
+     * is nothing to connect to, and presenting one would be a claim about the device rather than
+     * about the UI.
+     */
+    enum class DeviceTransport { GATT, ADVERTISEMENT_ONLY }
+
     enum class MachineIdentityFamily {
         FTMS,
         LIFE_FITNESS,
@@ -114,6 +127,15 @@ class BtEngineState : HrmStateSink {
         val services: Set<BtServiceType> = emptySet(),
         // Discovery/matcher decision; future proprietary fingerprints may set this without FTMS.
         val machineCandidate: Boolean = BtServiceType.FTMS in services,
+        /**
+         * How this device would deliver telemetry if selected (phase 11.4).
+         *
+         * Defaults to [DeviceTransport.GATT], which is what every device discovered before
+         * phase 11 is.
+         */
+        val transport: DeviceTransport = DeviceTransport.GATT,
+        /** Matcher candidate that admitted this device, for diagnostics and selection routing. */
+        val matchCandidateId: String? = null,
         // Authoritative type inferred from GATT characteristics after connecting.
         val machineFeature: Int? = null,
         // Optimistic ActivityType ordinal decoded from advertised FTMS Service Data.
