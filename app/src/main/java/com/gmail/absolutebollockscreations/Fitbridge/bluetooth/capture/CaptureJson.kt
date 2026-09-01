@@ -164,6 +164,20 @@ internal object CaptureJson {
                 appendStringField("quality", event.quality)
             }
 
+            is AdvertisementSourceEvent -> {
+                appendStringField("family", event.family)
+                appendStringField("candidate", event.candidate)
+                append(",\"systemId\":")
+                if (event.systemId == null) append("null") else append(event.systemId)
+                append(",\"firmware\":")
+                if (event.firmware == null) append("null") else appendJsonString(event.firmware)
+                appendNumberField("generation", event.generation)
+                appendStringField("state", event.state)
+                appendStringField("decision", event.decision)
+                append(",\"freshnessMs\":")
+                if (event.freshnessMs == null) append("null") else append(event.freshnessMs)
+            }
+
             is ErrorEvent -> {
                 appendStringField("where", event.where)
                 appendStringField("message", event.message)

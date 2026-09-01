@@ -4,6 +4,8 @@ import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
 import java.util.Locale
 import java.util.UUID
 
+internal const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
+
 /** Matcher-layer UUID storage. Values are always lowercase canonical 128-bit UUID strings. */
 @JvmInline
 internal value class CanonicalUuid private constructor(val value: String) {
@@ -585,7 +587,7 @@ internal class DeviceMatcherRegistry private constructor(
          * name plus company plus payload, so preference only ever breaks a tie.
          */
         private fun keiserMSeriesDefinition() = MatchDefinition(
-            candidateId = "vendor.keiser.m",
+            candidateId = KEISER_M_SERIES_CANDIDATE_ID,
             serviceUuid = null,
             knownService = null,
             preference = 150,

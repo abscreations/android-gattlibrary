@@ -368,6 +368,21 @@ internal data class SampleEvent(
     override val ev: String get() = "sample"
 }
 
+/** Structural lifecycle/decision record for an advertisement-only metric source. */
+internal data class AdvertisementSourceEvent(
+    override val conn: String?,
+    val family: String,
+    val candidate: String,
+    val systemId: Int?,
+    val firmware: String?,
+    val generation: Long,
+    val state: String,
+    val decision: String,
+    val freshnessMs: Long?,
+) : CaptureEvent {
+    override val ev: String get() = "advertisement_source"
+}
+
 internal data class ErrorEvent(
     override val conn: String?,
     val where: String,

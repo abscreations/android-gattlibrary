@@ -866,11 +866,11 @@ internal class MetricFusion(
             FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE)
         }
         MetricKind.DISTANCE -> when (persona) {
-            FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.CSC_WHEEL, MetricSourceClass.CPS_WHEEL, MetricSourceClass.INTEGRATED)
+            FusionPersona.RIDE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.CSC_WHEEL, MetricSourceClass.CPS_WHEEL, MetricSourceClass.INTEGRATED)
             FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.INTEGRATED)
             FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.INTEGRATED)
         }
-        MetricKind.ENERGY -> rank(source, MetricSourceClass.HRM, MetricSourceClass.FTMS, MetricSourceClass.CPS)
+        MetricKind.ENERGY -> rank(source, MetricSourceClass.HRM, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.CPS)
         MetricKind.INSTANT_PACE, MetricKind.AVERAGE_PACE -> when (persona) {
             FusionPersona.RUN -> rank(source, MetricSourceClass.RSC, MetricSourceClass.FTMS, MetricSourceClass.GPS, MetricSourceClass.DERIVED)
             FusionPersona.ROW_PADDLE -> rank(source, MetricSourceClass.FTMS, MetricSourceClass.VENDOR_NATIVE, MetricSourceClass.DERIVED)

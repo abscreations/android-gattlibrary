@@ -145,6 +145,32 @@ class CaptureJsonTest {
     }
 
     @Test
+    fun `advertisement source state is structural and contains no address or payload`() {
+        val line = CaptureJson.encode(
+            record(
+                AdvertisementSourceEvent(
+                    conn = "c3",
+                    family = "keiser_m_series",
+                    candidate = "vendor.keiser.m",
+                    systemId = 56,
+                    firmware = "6.40",
+                    generation = 2L,
+                    state = "stale",
+                    decision = "freshness_expired",
+                    freshnessMs = 1_000L,
+                ),
+            ),
+        )
+
+        assertTrue(line.contains("\"ev\":\"advertisement_source\""))
+        assertTrue(line.contains("\"candidate\":\"vendor.keiser.m\""))
+        assertTrue(line.contains("\"decision\":\"freshness_expired\""))
+        assertFalse(line.contains("AA:BB:CC:DD:EE:FF"))
+        assertFalse(line.contains("\"hex\""))
+        assertFalse(line.contains("\"payload\""))
+    }
+
+    @Test
     fun `the demote event carries the evidence needed to fix a fingerprint`() {
         val line = CaptureJson.encode(
             record(

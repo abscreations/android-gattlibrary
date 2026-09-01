@@ -76,6 +76,27 @@ class KeiserAdvertisementSourceTest {
     }
 
     @Test
+    fun `source publishes live stale and removal presentation states`() {
+        val snapshots = mutableListOf<KeiserSourceSnapshot?>()
+        val observed = KeiserAdvertisementSource(
+            fusion = MetricFusion(BtEngineState()),
+            leases = ScanLeaseRegistry(),
+            onSourceStateChanged = snapshots::add,
+        )
+
+        observed.select(selection, nowMs = 0L)
+        observed.onAdvertisement(advertisement(), arrivalMs = 0L)
+        observed.tick(1_001L)
+        observed.tick(KeiserMSeriesMeasurement.BIKE_GONE_TIMEOUT_MS)
+
+        assertEquals(KeiserSourceState.LIVE, snapshots[0]?.state)
+        assertEquals("6.30", snapshots[1]?.firmware)
+        assertEquals(KeiserSourceState.STALE, snapshots[2]?.state)
+        assertEquals(KeiserSourceState.GONE, snapshots[3]?.state)
+        assertNull(snapshots.last())
+    }
+
+    @Test
     fun `reselecting the same bike is a new generation, not a continuation`() {
         val first = source.select(selection, nowMs = 0L)
         source.onAdvertisement(advertisement(), arrivalMs = 10L)

@@ -198,8 +198,6 @@ object FtmsDataEncoders {
         mode: FtmsPayloadMode,
         onOutcome: (FtmsPackOutcome) -> Unit,
     ): List<ByteArray> {
-        if (speedKph == null) return emptyList()
-
         val optionals = mutableListOf<FtmsField>()
         s.averageSpeedKph?.let { optionals += FtmsField(1, speedField(it)) }
         // Instantaneous Cadence: uint16 in 0.5 rpm, i.e. rpm * 2.
@@ -218,9 +216,11 @@ object FtmsDataEncoders {
         val elapsed = s.elapsedSeconds?.let { FtmsField(11, elapsedField(it)) }
         elapsed?.let { optionals += it }
 
-        return FtmsPacker.pack(
+        if (speedKph == null && optionals.isEmpty()) return emptyList()
+
+        val packets = FtmsPacker.pack(
             flagsWidth = 2,
-            mandatory = speedField(speedKph),
+            mandatory = speedKph?.let(::speedField) ?: byteArrayOf(),
             optionals = optionals,
             elapsedField = elapsed,
             maxPayload = maxPayload,
@@ -228,6 +228,12 @@ object FtmsDataEncoders {
             priorityBits = listOf(1, 2, 6, 9, 5, 4, 11, 3, 7, 8),
             onOutcome = onOutcome,
         )
+        if (speedKph != null) return packets
+
+        // Indoor Bike's bit 0 is inverted: set means the mandatory Instantaneous Speed field is
+        // absent. Advertisement-only Keiser bikes do not report speed, so their valid records are
+        // optional-only continuation records rather than a fabricated zero-speed measurement.
+        return packets.map { packet -> packet.copyOf().also { it[0] = (it[0].toInt() or 1).toByte() } }
     }
 
     // ── Treadmill Data, 0x2ACD (FTMS Table 4.5) ──────────────────────────────

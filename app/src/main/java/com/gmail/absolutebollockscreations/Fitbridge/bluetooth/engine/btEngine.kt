@@ -161,7 +161,10 @@ class BtEngine internal constructor(
         private const val SESSION_ELAPSED_TICK_MS = 250L
 
         /** §0.7a liveness poll. Far finer than the 30 s timeout it evaluates. */
-        private const val LIVENESS_TICK_MS = 1_000L
+        // Fast Keiser firmware has a one-second freshness window. Four checks per second keep the
+        // visible stale transition close to that protocol boundary without reading a wall clock in
+        // the source itself; the existing GATT supervisor is idempotent at this cadence.
+        private const val LIVENESS_TICK_MS = 250L
         @Volatile private var isStarted = false
         @Volatile private var stopped = false
         private val startLock = Any()
@@ -196,6 +199,31 @@ class BtEngine internal constructor(
         // radio, and a claim the OS will refuse must fail the same way here as anywhere else.
         onScanLeaseAcquired = { guardScanPerm("advertisement lease acquired") { startScanImpl() } },
         onScanLeaseReleased = { guardScanPerm("advertisement lease released") { stopScanImpl() } },
+        onSourceStateChanged = { snapshot ->
+            state.setActiveAdvertisementMachine(
+                snapshot
+                    ?.takeUnless { it.state == KeiserSourceState.GONE }
+                    ?.let {
+                        BtEngineState.ActiveAdvertisementMachine(
+                            address = it.selection.address,
+                            candidateId = KEISER_M_SERIES_CANDIDATE_ID,
+                            systemId = it.selection.systemId,
+                            firmware = it.firmware,
+                            generation = it.generation,
+                            sourceState = when (it.state) {
+                                KeiserSourceState.LIVE ->
+                                    BtEngineState.AdvertisementSourceState.RECEIVING
+                                KeiserSourceState.STALE ->
+                                    BtEngineState.AdvertisementSourceState.STALE
+                                KeiserSourceState.GONE ->
+                                    BtEngineState.AdvertisementSourceState.OUT_OF_RANGE
+                                KeiserSourceState.IDLE ->
+                                    BtEngineState.AdvertisementSourceState.STALE
+                            },
+                        )
+                    },
+            )
+        },
     )
     private val linkRecovery = InSessionLinkRecovery()
     private val recoveryJobs = mutableMapOf<String, Job>()
@@ -591,6 +619,8 @@ class BtEngine internal constructor(
         get() = state.discoveredDevices
     val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>>
         get() = state.connectedDevices
+    val activeAdvertisementMachine: StateFlow<BtEngineState.ActiveAdvertisementMachine?>
+        get() = state.activeAdvertisementMachine
 
     /**
      * Whether the radio is actually scanning.
@@ -864,6 +894,8 @@ class BtEngine internal constructor(
             .filter { it.machineConnection }
             .forEach { runCatching { disconnectDevice(it.connectionKey) } }
 
+        state.resetFtmsCapabilities()
+        metricFusion.setPersona(FusionPersona.RIDE, elapsedRealtimeMs())
         keiserSource.select(
             selection = KeiserSelection(address = address, systemId = systemId),
             nowMs = elapsedRealtimeMs(),

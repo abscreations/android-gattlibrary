@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.BleCapture
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.AdvertisementSourceEvent
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CapturedCharacteristic
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CapturedService
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CaptureTrigger
@@ -45,6 +46,30 @@ import java.util.UUID
  * own [RedactionReason] instead.
  */
 internal object CaptureHooks {
+
+    fun advertisementSource(
+        sourceKey: String?,
+        systemId: Int?,
+        firmware: String?,
+        generation: Long,
+        state: KeiserSourceState,
+        decision: String,
+        freshnessMs: Long?,
+    ) {
+        BleCapture.emit(
+            AdvertisementSourceEvent(
+                conn = sourceKey?.let { BleCapture.labelFor("advertisement:$it") },
+                family = "keiser_m_series",
+                candidate = KEISER_M_SERIES_CANDIDATE_ID,
+                systemId = systemId,
+                firmware = firmware,
+                generation = generation,
+                state = state.name.lowercase(),
+                decision = decision.lowercase(),
+                freshnessMs = freshnessMs,
+            ),
+        )
+    }
 
     /** Arms the retroactive ring when a protocol parser rejects a structurally invalid frame. */
     fun parserRejection() {

@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KEISER_M_SERIES_CANDIDATE_ID
 import java.util.UUID
 
 /** Stable measurement capabilities for one GATT database lifetime. */
@@ -171,6 +172,14 @@ internal val precorChronoMeasurementCapabilities = FtmsMeasurementCapabilities(
     power = true,
 )
 
+/** Measurement-only contract for Keiser M-series manufacturer advertisements (plan §6.7). */
+internal val keiserMSeriesMeasurementCapabilities = FtmsMeasurementCapabilities(
+    cadence = true,
+    totalDistance = true,
+    resistance = true,
+    power = true,
+)
+
 /** FE-C Page 19 has no FTMS Force on Belt/Power Output field despite using Treadmill persona. */
 internal val feCTreadmillMeasurementCapabilities =
     FtmsMachineProfile.TREADMILL.measurementCapabilities.copy(forceOnBeltAndPowerOutput = false)
@@ -185,7 +194,12 @@ internal val feCTreadmillMeasurementCapabilities =
 internal fun providerMeasurementCapabilities(
     profile: FtmsMachineProfile,
     upstreamServiceUuids: Set<UUID>,
+    advertisementCandidateId: String? = null,
 ): FtmsMeasurementCapabilities = when {
+    profile == FtmsMachineProfile.INDOOR_BIKE &&
+        advertisementCandidateId == KEISER_M_SERIES_CANDIDATE_ID ->
+        keiserMSeriesMeasurementCapabilities
+
     profile == FtmsMachineProfile.TREADMILL &&
         BluetoothIds.UUID_FEC_SERVICE in upstreamServiceUuids &&
         BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->

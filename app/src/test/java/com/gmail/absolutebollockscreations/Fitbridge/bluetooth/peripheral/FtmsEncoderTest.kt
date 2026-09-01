@@ -260,18 +260,22 @@ class FtmsEncoderTest {
     }
 
     @Test
-    fun `speed-based personas emit nothing without speed`() {
-        for (profile in listOf(
-            FtmsMachineProfile.INDOOR_BIKE,
-            FtmsMachineProfile.TREADMILL,
-            FtmsMachineProfile.ELLIPTICAL,
-        )) {
+    fun `speed-based personas never fabricate speed`() {
+        for (profile in listOf(FtmsMachineProfile.TREADMILL, FtmsMachineProfile.ELLIPTICAL)) {
             assertTrue(
                 "$profile must not fabricate a speed",
                 FtmsDataEncoders.encode(profile, full, null).isEmpty(),
             )
             assertTrue("$profile requiresSpeed", requiresSpeed(profile))
         }
+        val bike = FtmsDataEncoders.encode(
+            FtmsMachineProfile.INDOOR_BIKE,
+            full,
+            null,
+            maxPayload = 509,
+        ).single()
+        assertTrue("Indoor Bike uses More Data to omit speed", flags(bike).bitSet(0))
+        assertTrue("Indoor Bike still declares speed as its mandatory field", requiresSpeed(FtmsMachineProfile.INDOOR_BIKE))
     }
 
     // ── signed fields ────────────────────────────────────────────────────────

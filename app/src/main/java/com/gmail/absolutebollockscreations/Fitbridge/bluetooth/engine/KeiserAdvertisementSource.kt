@@ -107,6 +107,13 @@ internal data class KeiserAdvertisement(
     val payload: ManufacturerPayload,
 )
 
+internal data class KeiserSourceSnapshot(
+    val selection: KeiserSelection,
+    val generation: Long,
+    val firmware: String?,
+    val state: KeiserSourceState,
+)
+
 /**
  * The selected Keiser bike, as a metric source (plan §6.5).
  *
@@ -147,6 +154,7 @@ internal class KeiserAdvertisementSource(
     private val leases: ScanLeaseRegistry,
     private val onScanLeaseAcquired: () -> Unit = {},
     private val onScanLeaseReleased: () -> Unit = {},
+    private val onSourceStateChanged: (KeiserSourceSnapshot?) -> Unit = {},
 ) {
 
     private val lock = Any()
@@ -207,10 +215,20 @@ internal class KeiserAdvertisementSource(
         // Exactly one machine origin at a time. Selecting a bike displaces a GATT machine here
         // rather than in the UI, so the two selection paths cannot both believe they won.
         fusion.selectMachineOrigin(origin)
+        CaptureHooks.advertisementSource(
+            sourceKey = selection.sourceKey,
+            systemId = selection.systemId,
+            firmware = null,
+            generation = generation,
+            state = state,
+            decision = "selected",
+            freshnessMs = statsTimeoutMs,
+        )
         if (leases.acquire(ScanLeaseOwner.ADVERTISEMENT_MACHINE)) {
             Timber.tag(BtEngineState.TAG).i("Keiser selection started the platform scan")
             onScanLeaseAcquired()
         }
+        publishStateLocked()
         origin
     }
 
@@ -224,20 +242,40 @@ internal class KeiserAdvertisementSource(
         advertisement: KeiserAdvertisement,
         arrivalMs: Long,
     ): KeiserAdvertisementOutcome = synchronized(lock) {
-        val selected = selection ?: return@synchronized KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE
+        val selected = selection ?: return@synchronized recordDecisionLocked(
+            null,
+            KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE,
+        )
         if (state == KeiserSourceState.GONE) {
-            return@synchronized KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE
+            return@synchronized recordDecisionLocked(
+                selected,
+                KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE,
+            )
         }
         if (advertisement.address != selected.address) {
-            return@synchronized KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS
+            return@synchronized recordDecisionLocked(
+                selected,
+                KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS,
+            )
         }
 
         val reading = KeiserMSeriesMeasurement.parse(advertisement.payload.copyBytes())
-            ?: return@synchronized KeiserAdvertisementOutcome.IGNORED_MALFORMED
+            ?: return@synchronized recordDecisionLocked(
+                selected,
+                KeiserAdvertisementOutcome.IGNORED_MALFORMED,
+            )
         if (reading.systemId != selected.systemId) {
-            return@synchronized KeiserAdvertisementOutcome.IGNORED_OTHER_SYSTEM_ID
+            return@synchronized recordDecisionLocked(
+                selected,
+                KeiserAdvertisementOutcome.IGNORED_OTHER_SYSTEM_ID,
+            )
         }
-        if (!reading.isRealtime) return@synchronized KeiserAdvertisementOutcome.IGNORED_REVIEW
+        if (!reading.isRealtime) {
+            return@synchronized recordDecisionLocked(
+                selected,
+                KeiserAdvertisementOutcome.IGNORED_REVIEW,
+            )
+        }
 
         // Out-of-order delivery is possible and is not evidence of anything going wrong, but it
         // must not drag the statistics clock backwards into an accidental stale state.
@@ -245,6 +283,7 @@ internal class KeiserAdvertisementSource(
         statsTimeoutMs = reading.statsTimeoutMs
         firmware = reading.firmware
         state = KeiserSourceState.LIVE
+        publishStateLocked()
 
         val filtered = dropoutFilter.filter(reading)
         val emitter = MetricEmitter(
@@ -266,7 +305,7 @@ internal class KeiserAdvertisementSource(
                 confidence = confidence,
             )
         }
-        KeiserAdvertisementOutcome.ACCEPTED
+        recordDecisionLocked(selected, KeiserAdvertisementOutcome.ACCEPTED)
     }
 
     /**
@@ -279,7 +318,8 @@ internal class KeiserAdvertisementSource(
      * manual assignment are cleared, and the scan lease is released.
      */
     fun tick(nowMs: Long) = synchronized(lock) {
-        if (selection == null || state == KeiserSourceState.GONE) return@synchronized
+        val selected = selection ?: return@synchronized
+        if (state == KeiserSourceState.GONE) return@synchronized
         val silenceMs = nowMs - lastAcceptedArrivalMs
         if (silenceMs >= KeiserMSeriesMeasurement.BIKE_GONE_TIMEOUT_MS) {
             endLocked(KeiserEndReason.BIKE_GONE, nowMs, releaseLease = true)
@@ -297,6 +337,16 @@ internal class KeiserAdvertisementSource(
                 )
                 state = KeiserSourceState.STALE
                 fusion.refresh(nowMs)
+                publishStateLocked()
+                CaptureHooks.advertisementSource(
+                    selected.sourceKey,
+                    selected.systemId,
+                    firmware,
+                    generation,
+                    state,
+                    "freshness_expired",
+                    statsTimeoutMs,
+                )
             }
         } else {
             state = KeiserSourceState.LIVE
@@ -311,7 +361,17 @@ internal class KeiserAdvertisementSource(
 
     private fun endLocked(reason: KeiserEndReason, nowMs: Long, releaseLease: Boolean) {
         val selected = selection ?: return
+        val endedFirmware = firmware
         val origin = MetricOriginId.Advertisement(selected.sourceKey, generation)
+        CaptureHooks.advertisementSource(
+            selected.sourceKey,
+            selected.systemId,
+            endedFirmware,
+            generation,
+            if (reason == KeiserEndReason.BIKE_GONE) KeiserSourceState.GONE else state,
+            reason.name,
+            statsTimeoutMs,
+        )
         // Clears this origin's candidates, its manual assignment, and the machine pin if it held it.
         fusion.onOriginEnded(origin, nowMs)
         dropoutFilter.reset()
@@ -322,9 +382,36 @@ internal class KeiserAdvertisementSource(
         } else {
             KeiserSourceState.IDLE
         }
+        if (reason == KeiserEndReason.BIKE_GONE) {
+            onSourceStateChanged(
+                KeiserSourceSnapshot(selected, generation, endedFirmware, KeiserSourceState.GONE),
+            )
+        }
         if (releaseLease && leases.release(ScanLeaseOwner.ADVERTISEMENT_MACHINE)) {
             onScanLeaseReleased()
         }
+        onSourceStateChanged(null)
         Timber.tag(BtEngineState.TAG).i("Keiser source generation %d ended: %s", generation, reason)
+    }
+
+    private fun publishStateLocked() {
+        val selected = selection ?: return
+        onSourceStateChanged(KeiserSourceSnapshot(selected, generation, firmware, state))
+    }
+
+    private fun recordDecisionLocked(
+        selected: KeiserSelection?,
+        outcome: KeiserAdvertisementOutcome,
+    ): KeiserAdvertisementOutcome {
+        CaptureHooks.advertisementSource(
+            sourceKey = selected?.sourceKey,
+            systemId = selected?.systemId,
+            firmware = firmware,
+            generation = generation,
+            state = state,
+            decision = outcome.name,
+            freshnessMs = statsTimeoutMs.takeIf { outcome == KeiserAdvertisementOutcome.ACCEPTED },
+        )
+        return outcome
     }
 }

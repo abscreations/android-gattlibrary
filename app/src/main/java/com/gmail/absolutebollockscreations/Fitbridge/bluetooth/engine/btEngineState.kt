@@ -92,6 +92,8 @@ class BtEngineState : HrmStateSink {
      */
     enum class DeviceTransport { GATT, ADVERTISEMENT_ONLY }
 
+    enum class AdvertisementSourceState { RECEIVING, STALE, OUT_OF_RANGE }
+
     enum class MachineIdentityFamily {
         FTMS,
         LIFE_FITNESS,
@@ -152,6 +154,18 @@ class BtEngineState : HrmStateSink {
         // GAP Appearance AD type 0x19, when present in the advertisement.
         val appearance: Int? = null,
     )
+
+    /** Selected advertisement-only machine; deliberately separate from GATT connected links. */
+    data class ActiveAdvertisementMachine(
+        val address: String,
+        val candidateId: String,
+        val systemId: Int,
+        val firmware: String?,
+        val generation: Long,
+        val sourceState: AdvertisementSourceState,
+    ) {
+        val displayName: String get() = "M3 #$systemId"
+    }
 
     /** Registry projection for one physical-link generation; independent of scan visibility. */
     data class ConnectedDeviceLink(
@@ -379,6 +393,11 @@ class BtEngineState : HrmStateSink {
 
     private val _discoveredDevices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
     val discoveredDevices: StateFlow<Map<String, DiscoveredDevice>> = _discoveredDevices
+
+    private val _activeAdvertisementMachine =
+        MutableStateFlow<ActiveAdvertisementMachine?>(null)
+    val activeAdvertisementMachine: StateFlow<ActiveAdvertisementMachine?> =
+        _activeAdvertisementMachine
 
     // Internal parser/capability compatibility only; scanner/UI callers use discoveredDevices.
     internal val devices: StateFlow<Map<String, DiscoveredDevice>> = discoveredDevices
@@ -883,6 +902,10 @@ class BtEngineState : HrmStateSink {
     fun putDiscoveredDevices(map: Map<String, DiscoveredDevice>) {
         _discoveredDevices.value = map
         Timber.tag(TAG).d("putDiscoveredDevices(size=%d)", map.size)
+    }
+
+    internal fun setActiveAdvertisementMachine(machine: ActiveAdvertisementMachine?) {
+        _activeAdvertisementMachine.value = machine
     }
 
     // Connections
