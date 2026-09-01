@@ -16,6 +16,16 @@ class SimulatorPersonaDescriptorTest {
     private val everyPersona = simulatorPersonaOptions(includeKickr = true)
 
     @Test
+    fun `speed and power persona describes CSC and CPS without target control`() {
+        val descriptor = SimulatorPersona.IndoorBikeSpeedAndPower.describe()
+        assertEquals("Indoor Bike Speed and Power", descriptor.title)
+        assertTrue(descriptor.protocol.contains("CSC 0x1816/0x2A5B"))
+        assertTrue(descriptor.protocol.contains("CPS 0x1818/0x2A63"))
+        assertEquals(emptyList<String>(), descriptor.controlModes)
+        assertEquals("speed, cadence, power", descriptor.metrics)
+    }
+
+    @Test
     fun `every persona names a protocol, a control answer and its metrics`() {
         everyPersona.forEach { persona ->
             val descriptor = persona.describe()

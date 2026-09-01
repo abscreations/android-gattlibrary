@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.advertisedName
 import java.util.UUID
@@ -8,6 +9,11 @@ import java.util.UUID
 /** Protocol-level identity selected by the debug peripheral simulator. */
 sealed interface SimulatorPersona {
     val advertisedName: String
+
+    /** Indoor-bike ride published through the native CSC and Cycling Power sensor services. */
+    data object IndoorBikeSpeedAndPower : SimulatorPersona {
+        override val advertisedName: String = BtServiceProfiles.DEVICE_NAME_CSC_CPS
+    }
 
     data class Ftms(val profile: FtmsMachineProfile) : SimulatorPersona {
         override val advertisedName: String = profile.advertisedName
@@ -103,6 +109,24 @@ sealed interface SimulatorPersona {
     ) : SimulatorPersona {
         override val advertisedName: String = KickrPersonaManifest.forPersona(device).advertising.localName
     }
+}
+
+/** Shared routing facts for personas hosted by the standard FTMS/CSC/CPS provider. */
+internal data class StandardSimulatorSurface(
+    val profile: FtmsMachineProfile,
+    val nativeBikeSensors: Boolean,
+)
+
+internal fun SimulatorPersona.standardSurface(): StandardSimulatorSurface? = when (this) {
+    SimulatorPersona.IndoorBikeSpeedAndPower -> StandardSimulatorSurface(
+        profile = FtmsMachineProfile.INDOOR_BIKE,
+        nativeBikeSensors = true,
+    )
+    is SimulatorPersona.Ftms -> StandardSimulatorSurface(
+        profile = profile,
+        nativeBikeSensors = false,
+    )
+    else -> null
 }
 
 /** Capture-grounded BLE identities layered over the same deterministic FE-C trainer model. */

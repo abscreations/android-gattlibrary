@@ -293,9 +293,10 @@ class FtmsSimulator(
                 startKickr(persona.copy(controlEnabled = enableControls))
                 return
             }
+            SimulatorPersona.IndoorBikeSpeedAndPower -> Unit
             is SimulatorPersona.Ftms -> Unit
         }
-        val machine = persona.profile
+        val machine = requireNotNull(persona.standardSurface()).profile
         if (realMachineAttached()) {
             _state.value = _state.value.copy(
                 lastError = "Disconnect the physical machine before simulating data",
@@ -303,9 +304,11 @@ class FtmsSimulator(
             return
         }
 
-        val effectiveControls = enableControls && controlsAvailableFor(machine)
+        val effectiveControls = persona is SimulatorPersona.Ftms &&
+            enableControls && controlsAvailableFor(machine)
         val current = _state.value
         if (current.running &&
+            current.persona == persona &&
             current.machine == machine &&
             current.controlsEnabled == effectiveControls
         ) {

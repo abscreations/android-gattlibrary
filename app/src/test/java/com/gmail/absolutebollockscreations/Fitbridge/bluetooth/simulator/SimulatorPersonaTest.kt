@@ -11,6 +11,39 @@ import org.junit.Test
 
 class SimulatorPersonaTest {
     @Test
+    fun `speed and power persona is first immediately before every standard FTMS persona`() {
+        val options = simulatorPersonaOptions(includeKickr = false)
+        assertEquals(SimulatorPersona.IndoorBikeSpeedAndPower, options.first())
+        assertEquals(
+            FtmsMockEngine.supportedMachines,
+            options.drop(1)
+                .take(FtmsMockEngine.supportedMachines.size)
+                .filterIsInstance<SimulatorPersona.Ftms>()
+                .map { it.profile },
+        )
+    }
+
+    @Test
+    fun `speed and power persona uses the combined bike sensor identity`() {
+        assertEquals(
+            "FBRG-Bike",
+            SimulatorPersona.IndoorBikeSpeedAndPower.advertisedName,
+        )
+    }
+
+    @Test
+    fun `speed and power persona routes to indoor bike with native sensors forced`() {
+        val surface = requireNotNull(SimulatorPersona.IndoorBikeSpeedAndPower.standardSurface())
+        assertEquals(FtmsMachineProfile.INDOOR_BIKE, surface.profile)
+        assertTrue(surface.nativeBikeSensors)
+
+        val ordinaryBike = requireNotNull(
+            SimulatorPersona.Ftms(FtmsMachineProfile.INDOOR_BIKE).standardSurface(),
+        )
+        assertFalse(ordinaryBike.nativeBikeSensors)
+    }
+
+    @Test
     fun `FTMS persona preserves its existing advertised name`() {
         FtmsMachineProfile.entries.forEach { profile ->
             assertEquals(profile.advertisedName, SimulatorPersona.Ftms(profile).advertisedName)
