@@ -42,6 +42,14 @@ internal object FeCBleSyntheticModel {
     /** Plan §12.3: first-order power convergence, 25 W per 250 ms tick. */
     const val MAX_POWER_CHANGE_PER_TICK = 25.0
 
+    /**
+     * Bounds the model converges a controlled target into, for both basic resistance (page 48)
+     * and ERG (page 49). Named rather than inlined so the persona selector can state the span a
+     * client may usefully request instead of re-typing the numbers beside it.
+     */
+    const val MIN_CONTROLLED_POWER_WATTS = 25.0
+    const val MAX_CONTROLLED_POWER_WATTS = 800.0
+
     /** Advance one persona-aware interval tick. No-op outside [FeCEquipmentState.IN_USE]. */
     fun advanceTick(state: FeCBleMachineState) {
         if (state.feState != FeCEquipmentState.IN_USE) return
@@ -215,9 +223,11 @@ internal object FeCBleSyntheticModel {
         FeCBleControlMode.FREE -> null
         FeCBleControlMode.BASIC_RESISTANCE -> {
             val resistance = state.basicResistancePercent ?: 0.0
-            (80.0 + 4.0 * resistance).coerceIn(25.0, 800.0)
+            (80.0 + 4.0 * resistance)
+                .coerceIn(MIN_CONTROLLED_POWER_WATTS, MAX_CONTROLLED_POWER_WATTS)
         }
-        FeCBleControlMode.ERG -> state.targetPowerWatts?.coerceIn(25.0, 800.0)
+        FeCBleControlMode.ERG -> state.targetPowerWatts
+            ?.coerceIn(MIN_CONTROLLED_POWER_WATTS, MAX_CONTROLLED_POWER_WATTS)
         FeCBleControlMode.SIMULATION -> null
     }
 

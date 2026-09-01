@@ -15,25 +15,44 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
  * (wind/grade/rolling-resistance/wind-resistance) parameter set.
  */
 object SimulatorControlModeLabels {
+    /**
+     * Protocol-independent control-kind words.
+     *
+     * The runtime labels below are "<protocol> <kind>" pairs, and the persona selector's
+     * capability descriptors ([SimulatorPersonaDescriptor]) name the same kinds without a
+     * protocol prefix, because the protocol already occupies its own slot there. Both read the
+     * kind from here, so a persona described as accepting "Erg" and a status line reading
+     * "FTMS - Erg" cannot drift apart.
+     */
+    object Kind {
+        const val DIRECT = "Direct"
+        const val RESISTANCE = "Resistance"
+        const val ERG = "Erg"
+        const val SIM = "Sim"
+
+        /** What a persona that accepts no control writes reports. Lower-case: it is not a mode. */
+        const val NONE = "none"
+    }
+
     const val AUTOMATIC = "Automatic"
 
-    const val FTMS_DIRECT = "FTMS - Direct"
+    const val FTMS_DIRECT = "FTMS - ${Kind.DIRECT}"
 
     /**
      * Set Target Resistance Level (0x04) specifically, split out of [FTMS_DIRECT] so the panel
      * names the procedure the client actually ran. [FTMS_DIRECT] now covers the remaining direct
      * targets - speed, inclination, and a bare gear shift on the protocols that carry one.
      */
-    const val FTMS_RESISTANCE = "FTMS - Resistance"
-    const val FTMS_ERG = "FTMS - Erg"
-    const val FTMS_SIM = "FTMS - Sim"
+    const val FTMS_RESISTANCE = "FTMS - ${Kind.RESISTANCE}"
+    const val FTMS_ERG = "FTMS - ${Kind.ERG}"
+    const val FTMS_SIM = "FTMS - ${Kind.SIM}"
 
-    const val ANT_DIRECT = "ANT+ Direct"
-    const val ANT_SIM = "ANT+ Sim"
+    const val ANT_DIRECT = "ANT+ ${Kind.DIRECT}"
+    const val ANT_SIM = "ANT+ ${Kind.SIM}"
 
-    const val KICKR_DIRECT = "KICKR-Direct"
-    const val KICKR_SIM = "KICKR-Sim"
+    const val KICKR_DIRECT = "KICKR-${Kind.DIRECT}"
+    const val KICKR_SIM = "KICKR-${Kind.SIM}"
 
-    const val RIDEON_DIRECT = "RideOn-Direct"
-    const val RIDEON_SIM = "RideOn-Sim"
+    const val RIDEON_DIRECT = "RideOn-${Kind.DIRECT}"
+    const val RIDEON_SIM = "RideOn-${Kind.SIM}"
 }
