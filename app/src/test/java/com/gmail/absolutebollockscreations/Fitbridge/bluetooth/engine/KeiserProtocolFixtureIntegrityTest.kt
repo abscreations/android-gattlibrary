@@ -39,7 +39,7 @@ class KeiserProtocolFixtureIntegrityTest {
         val decoded = decode(packet(case))
 
         assertEquals("6.30", decoded.firmware)
-        assertEquals(1_000, decoded.statsTimeoutMs)
+        assertEquals(1_000L, decoded.statsTimeoutMs)
         assertEquals(0, decoded.dataType)
         assertTrue(decoded.isRealtime)
         assertEquals(56, decoded.systemId)
@@ -48,10 +48,10 @@ class KeiserProtocolFixtureIntegrityTest {
         assertEquals(115, decoded.powerWatts)
         assertEquals(13, decoded.energyKcal)
         assertEquals(279, decoded.elapsedSeconds)
-        assertEquals("miles", decoded.distanceUnit)
+        assertEquals("miles", decoded.distanceUnit.wireName)
         assertEquals(1, decoded.distanceRawTenths)
         assertEquals(160.934, decoded.distanceMetres, 1e-9)
-        assertEquals(10, decoded.resistance)
+        assertEquals(10, requireNotNull(decoded.resistance))
         assertEquals(FixtureJson.double(expected["cadence_rpm"]), decoded.cadenceRpm, 1e-9)
         assertEquals(
             82.0,
@@ -71,7 +71,7 @@ class KeiserProtocolFixtureIntegrityTest {
             val bytes = packet(case)
             val expected = FixtureJson.obj(case["expect"])
             assertEquals(FixtureJson.string(expected["firmware"]), firmware(bytes))
-            assertEquals(FixtureJson.int(expected["stats_timeout_ms"]), statsTimeoutMs(bytes))
+            assertEquals(FixtureJson.int(expected["stats_timeout_ms"]).toLong(), statsTimeoutMs(bytes))
             assertTrue(FixtureJson.string(case["scope"]).contains("version-only"))
         }
     }
@@ -99,7 +99,7 @@ class KeiserProtocolFixtureIntegrityTest {
             val expected = FixtureJson.obj(case["expect"])
             val decoded = decode(packet(case))
             assertEquals(FixtureJson.int(expected["encoded_word"]), packet(case).u16(16))
-            assertEquals(FixtureJson.string(expected["distance_unit"]), decoded.distanceUnit)
+            assertEquals(FixtureJson.string(expected["distance_unit"]), decoded.distanceUnit.wireName)
             assertEquals(FixtureJson.int(expected["distance_raw_tenths"]), decoded.distanceRawTenths)
             assertEquals(FixtureJson.double(expected["distance_metres"]), decoded.distanceMetres, 1e-9)
         }
@@ -142,7 +142,7 @@ class KeiserProtocolFixtureIntegrityTest {
         assertEquals(37428, decoded.powerWatts)
         assertEquals(43981, decoded.energyKcal)
         assertEquals(100.0, decoded.distanceMetres, 1e-9)
-        assertEquals(254, decoded.resistance)
+        assertEquals(254, requireNotNull(decoded.resistance))
         assertTrue(FixtureJson.string(expected["runtime_plausibility"]).contains("rejected"))
     }
 
@@ -158,42 +158,37 @@ class KeiserProtocolFixtureIntegrityTest {
         }
     }
 
-    private fun decode(packet: ByteArray): Decoded {
-        require(validShape(packet))
-        val distanceWord = packet.u16(16)
-        val metric = distanceWord and 0x8000 != 0
-        val distanceRaw = distanceWord and 0x7fff
-        return Decoded(
-            firmware = firmware(packet),
-            statsTimeoutMs = statsTimeoutMs(packet),
-            dataType = packet[4].u8(),
-            isRealtime = isRealtime(packet[4].u8()),
-            systemId = packet[5].u8(),
-            cadenceRpm = packet.u16(6) / 10.0,
-            heartRateBpm = packet.u16(8) / 10.0,
-            powerWatts = packet.u16(10),
-            energyKcal = packet.u16(12),
-            elapsedSeconds = packet[14].u8() * 60 + packet[15].u8(),
-            distanceUnit = if (metric) "kilometres" else "miles",
-            distanceRawTenths = distanceRaw,
-            distanceMetres = distanceRaw * if (metric) 100.0 else 160.934,
-            resistance = packet.getOrNull(18)?.u8(),
-        )
-    }
+    /**
+     * Phase 11.3: this fixture consumer now exercises the production decoder.
+     *
+     * It previously held its own reference implementation of the layout, which meant the corpus
+     * was pinned against a second decoder that could drift away from the one FitBridge ships.
+     * Every expectation below is unchanged; only what computes them moved.
+     */
+    private fun decode(packet: ByteArray): KeiserMSeriesMeasurement.Reading =
+        requireNotNull(KeiserMSeriesMeasurement.parse(packet)) {
+            "production decoder rejected a fixture packet the corpus records as valid"
+        }
 
-    private fun validShape(packet: ByteArray): Boolean {
-        if (packet.size < 4 || packet[0].u8() != 0x02 || packet[1].u8() != 0x01) return false
-        val expectedLength = if (packet[3].u8() >= 0x21) 19 else 18
-        return packet.size == expectedLength
-    }
+    private fun validShape(packet: ByteArray): Boolean =
+        KeiserMSeriesMeasurement.isKeiserField(packet)
 
-    private fun firmware(packet: ByteArray): String =
-        "${packet[2].u8().toString(16)}.${packet[3].u8().toString(16).padStart(2, '0')}"
+    /**
+     * Version-only, on purpose. The `version_cases` vectors vary bytes 2 and 3 of a single
+     * 19-octet buffer and are labelled `not packet-shape evidence`, so firmware 5.12 appears there
+     * in a record its own resistance rule says should be 18 octets. Asking the full decoder about
+     * them would assert something the corpus explicitly declines to claim.
+     */
+    private fun version(packet: ByteArray): KeiserMSeriesMeasurement.FirmwareVersion =
+        requireNotNull(KeiserMSeriesMeasurement.firmwareVersion(packet)) {
+            "production decoder found no Keiser header in a version fixture"
+        }
 
-    private fun statsTimeoutMs(packet: ByteArray): Int =
-        if (packet[2].u8() == 6 && packet[3].u8() >= 0x30) 1_000 else 7_000
+    private fun firmware(packet: ByteArray): String = version(packet).display
 
-    private fun isRealtime(dataType: Int): Boolean = dataType == 0 || dataType in 0x81..0xfe
+    private fun statsTimeoutMs(packet: ByteArray): Long = version(packet).statsTimeoutMs
+
+    private fun isRealtime(dataType: Int): Boolean = KeiserMSeriesMeasurement.isRealtime(dataType)
 
     private fun packet(case: Map<String, Any?>): ByteArray = FixtureJson.array(case["packet"])
         .map { FixtureJson.int(it).toByte() }
@@ -210,21 +205,4 @@ class KeiserProtocolFixtureIntegrityTest {
     private fun Byte.u8(): Int = toInt() and 0xff
 
     private fun ByteArray.u16(offset: Int): Int = this[offset].u8() or (this[offset + 1].u8() shl 8)
-
-    private data class Decoded(
-        val firmware: String,
-        val statsTimeoutMs: Int,
-        val dataType: Int,
-        val isRealtime: Boolean,
-        val systemId: Int,
-        val cadenceRpm: Double,
-        val heartRateBpm: Double,
-        val powerWatts: Int,
-        val energyKcal: Int,
-        val elapsedSeconds: Int,
-        val distanceUnit: String,
-        val distanceRawTenths: Int,
-        val distanceMetres: Double,
-        val resistance: Int?,
-    )
 }

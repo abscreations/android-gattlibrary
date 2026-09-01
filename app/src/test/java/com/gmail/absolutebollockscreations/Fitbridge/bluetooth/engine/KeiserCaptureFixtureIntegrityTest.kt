@@ -59,43 +59,49 @@ class KeiserCaptureFixtureIntegrityTest {
     fun `captured dropout sequences pin asymmetric substitution and recovery`() {
         for (rawSequence in FixtureJson.array(load()["dropout_sequences"])) {
             val sequence = FixtureJson.obj(rawSequence)
-            var previousCadence = 0.0
-            var previousPower = 0
+            val filter = KeiserDropoutFilter()
             for (rawFrame in FixtureJson.array(sequence["frames"])) {
                 val frame = FixtureJson.obj(rawFrame)
                 val decoded = decode(packet(frame))
+                val filtered = filter.filter(decoded)
                 val expected = FixtureJson.obj(frame["expect"])
-                val filteredCadence = if (decoded.cadenceRpm == 0.0 && decoded.powerWatts != 0) previousCadence else decoded.cadenceRpm
-                val filteredPower = if (decoded.powerWatts == 0 && decoded.cadenceRpm != 0.0) previousPower else decoded.powerWatts
 
                 assertEquals(FixtureJson.double(expected["cadence_rpm"]), decoded.cadenceRpm, 1e-9)
                 assertEquals(FixtureJson.int(expected["power_watts"]), decoded.powerWatts)
-                assertEquals(FixtureJson.double(expected["filtered_cadence_rpm"]), filteredCadence, 1e-9)
-                assertEquals(FixtureJson.int(expected["filtered_power_watts"]), filteredPower)
-                previousCadence = filteredCadence
-                previousPower = filteredPower
+                assertEquals(FixtureJson.double(expected["filtered_cadence_rpm"]), filtered.cadenceRpm, 1e-9)
+                assertEquals(FixtureJson.int(expected["filtered_power_watts"]), filtered.powerWatts)
             }
         }
     }
 
     @Test
     fun `captured coast passes both zero values instead of retaining motion`() {
-        val coast = FixtureJson.array(load()["cases"])
-            .map(FixtureJson::obj)
-            .single { FixtureJson.string(it["id"]) == "coast-both-cadence-and-power-zero" }
+        val cases = FixtureJson.array(load()["cases"]).map(FixtureJson::obj)
+        val coast = cases.single { FixtureJson.string(it["id"]) == "coast-both-cadence-and-power-zero" }
         val seed = FixtureJson.obj(coast["filter_seed"])
         val expected = FixtureJson.obj(coast["expect"])
-        val decoded = decode(packet(coast))
-        val previousCadence = FixtureJson.double(seed["cadence_rpm"])
-        val previousPower = FixtureJson.int(seed["power_watts"])
-        val filteredCadence = if (decoded.cadenceRpm == 0.0 && decoded.powerWatts != 0) previousCadence else decoded.cadenceRpm
-        val filteredPower = if (decoded.powerWatts == 0 && decoded.cadenceRpm != 0.0) previousPower else decoded.powerWatts
 
-        assertEquals(FixtureJson.double(expected["filtered_cadence_rpm"]), filteredCadence, 1e-9)
-        assertEquals(FixtureJson.int(expected["filtered_power_watts"]), filteredPower)
+        // The corpus records the coast's preceding state as 78.0 rpm and 60 W, which is exactly
+        // the live 6.54 case above. Seeding the filter by running that packet through it keeps
+        // the previous state on the wire rather than hand-set beside it.
+        val riding = cases.single {
+            FixtureJson.string(it["id"]) == "imperial-live-fw-6.54-android-normalized"
+        }
+        val filter = KeiserDropoutFilter()
+        val seeded = filter.filter(decode(packet(riding)))
+        assertEquals(FixtureJson.double(seed["cadence_rpm"]), seeded.cadenceRpm, 1e-9)
+        assertEquals(FixtureJson.int(seed["power_watts"]), seeded.powerWatts)
+
+        val filtered = filter.filter(decode(packet(coast)))
+        assertEquals(FixtureJson.double(expected["filtered_cadence_rpm"]), filtered.cadenceRpm, 1e-9)
+        assertEquals(FixtureJson.int(expected["filtered_power_watts"]), filtered.powerWatts)
     }
 
-    private fun assertExpected(label: String, expected: Map<String, Any?>, actual: Decoded) {
+    private fun assertExpected(
+        label: String,
+        expected: Map<String, Any?>,
+        actual: KeiserMSeriesMeasurement.Reading,
+    ) {
         assertEquals("$label firmware", FixtureJson.string(expected["firmware"]), actual.firmware)
         assertEquals("$label data type", FixtureJson.int(expected["data_type"]), actual.dataType)
         assertEquals("$label realtime", expected.boolean("is_realtime"), actual.isRealtime)
@@ -105,35 +111,22 @@ class KeiserCaptureFixtureIntegrityTest {
         assertEquals("$label power", FixtureJson.int(expected["power_watts"]), actual.powerWatts)
         assertEquals("$label energy", FixtureJson.int(expected["energy_kcal"]), actual.energyKcal)
         assertEquals("$label elapsed", FixtureJson.int(expected["elapsed_seconds"]), actual.elapsedSeconds)
-        assertEquals("$label distance unit", FixtureJson.string(expected["distance_unit"]), actual.distanceUnit)
+        assertEquals("$label distance unit", FixtureJson.string(expected["distance_unit"]), actual.distanceUnit.wireName)
         assertEquals("$label raw distance", FixtureJson.int(expected["distance_raw_tenths"]), actual.distanceRawTenths)
         assertEquals("$label distance", FixtureJson.double(expected["distance_metres"]), actual.distanceMetres, 1e-9)
-        assertEquals("$label resistance", FixtureJson.int(expected["resistance"]), actual.resistance)
+        assertEquals("$label resistance", FixtureJson.int(expected["resistance"]), requireNotNull(actual.resistance))
     }
 
-    private fun decode(packet: ByteArray): Decoded {
-        require(packet.size == 19)
-        require(packet[0].u8() == 0x02 && packet[1].u8() == 0x01)
-        val dataType = packet[4].u8()
-        val encodedDistance = packet.u16(16)
-        val metric = encodedDistance and 0x8000 != 0
-        val distanceRawTenths = encodedDistance and 0x7fff
-        return Decoded(
-            firmware = "${packet[2].u8()}.${packet[3].u8().toString(16).padStart(2, '0')}",
-            dataType = dataType,
-            isRealtime = dataType == 0 || dataType in 0x81..0xfe,
-            systemId = packet[5].u8(),
-            cadenceRpm = packet.u16(6) / 10.0,
-            heartRateBpm = packet.u16(8) / 10.0,
-            powerWatts = packet.u16(10),
-            energyKcal = packet.u16(12),
-            elapsedSeconds = packet[14].u8() * 60 + packet[15].u8(),
-            distanceUnit = if (metric) "kilometres" else "miles",
-            distanceRawTenths = distanceRawTenths,
-            distanceMetres = distanceRawTenths * if (metric) 100.0 else 160.934,
-            resistance = packet[18].u8(),
-        )
-    }
+    /**
+     * Phase 11.3: this fixture consumer now exercises the production decoder and the production
+     * dropout filter. Every captured expectation is unchanged; the local reference implementations
+     * that used to compute them are gone, so the corpus can no longer agree with a decoder
+     * FitBridge does not ship.
+     */
+    private fun decode(packet: ByteArray): KeiserMSeriesMeasurement.Reading =
+        requireNotNull(KeiserMSeriesMeasurement.parse(packet)) {
+            "production decoder rejected a captured packet"
+        }
 
     private fun packet(case: Map<String, Any?>): ByteArray = FixtureJson.array(case["packet"])
         .map { FixtureJson.int(it).toByte() }
@@ -147,24 +140,4 @@ class KeiserCaptureFixtureIntegrityTest {
 
     private fun Map<String, Any?>.boolean(key: String): Boolean = this[key] as? Boolean
         ?: error("expected boolean $key")
-
-    private fun Byte.u8(): Int = toInt() and 0xff
-
-    private fun ByteArray.u16(offset: Int): Int = this[offset].u8() or (this[offset + 1].u8() shl 8)
-
-    private data class Decoded(
-        val firmware: String,
-        val dataType: Int,
-        val isRealtime: Boolean,
-        val systemId: Int,
-        val cadenceRpm: Double,
-        val heartRateBpm: Double,
-        val powerWatts: Int,
-        val energyKcal: Int,
-        val elapsedSeconds: Int,
-        val distanceUnit: String,
-        val distanceRawTenths: Int,
-        val distanceMetres: Double,
-        val resistance: Int,
-    )
 }
