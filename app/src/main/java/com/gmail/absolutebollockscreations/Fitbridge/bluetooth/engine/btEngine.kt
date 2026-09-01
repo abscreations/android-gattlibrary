@@ -169,6 +169,34 @@ class BtEngine internal constructor(
 
     internal val state: BtEngineState = BtEngineState()
     internal val metricFusion: MetricFusion = MetricFusion(state)
+
+    /**
+     * Who currently needs the platform scan running (plan §5.3).
+     *
+     * Before phase 11 the picker was the only owner, so "the picker closed" and "stop the radio"
+     * were the same instruction. An advertisement-only machine's telemetry *is* the scan, so it
+     * must outlive the picker and its five-minute timeout.
+     */
+    internal val scanLeases = ScanLeaseRegistry()
+
+    /**
+     * The selected Keiser bike, if any.
+     *
+     * Constructed unconditionally and idle until something selects a bike, which costs one object
+     * and keeps the wiring in one place rather than behind a nullable that every call site has to
+     * remember to check.
+     */
+    internal val keiserSource = KeiserAdvertisementSource(
+        fusion = metricFusion,
+        leases = scanLeases,
+        // The source takes and gives up the lease; the engine owns the radio. Selecting a bike
+        // from a screen with no scan running must still start one, and the last owner leaving
+        // must stop it.
+        // Through the same permission guard the public scan API uses. A lease is a claim on the
+        // radio, and a claim the OS will refuse must fail the same way here as anywhere else.
+        onScanLeaseAcquired = { guardScanPerm("advertisement lease acquired") { startScanImpl() } },
+        onScanLeaseReleased = { guardScanPerm("advertisement lease released") { stopScanImpl() } },
+    )
     private val linkRecovery = InSessionLinkRecovery()
     private val recoveryJobs = mutableMapOf<String, Job>()
 
@@ -534,6 +562,13 @@ class BtEngine internal constructor(
             // onLivenessTick`.
             runCatching { tickProtocolHandlers() }
                 .onFailure { Timber.tag(BtEngineState.TAG).w(it, "protocol handler tick failed") }
+            // An advertisement-only machine expires on silence rather than on an event, so
+            // something has to look. One second is coarse against a fast bike's one-second
+            // statistics window - its values can linger up to a tick past it - but the source is
+            // driven entirely by the time it is handed, so a finer poll is a constant away if the
+            // 11.6 UI work shows the lag.
+            runCatching { keiserSource.tick(nowMs) }
+                .onFailure { Timber.tag(BtEngineState.TAG).w(it, "Keiser source tick failed") }
         }
     }
 
@@ -641,9 +676,19 @@ class BtEngine internal constructor(
     fun startScan(
         useFtmsHardwareFilter: Boolean = true,
         onDevice: (name: String, address: String, result: ScanResult) -> Unit = { _, _, _ -> }
-    ) = guardScanPerm("startScan()") { startScanImpl(useFtmsHardwareFilter, onDevice) }
+    ) = guardScanPerm("startScan()") {
+        startScanForImpl(ScanLeaseOwner.DISCOVERY_UI, useFtmsHardwareFilter, onDevice)
+    }
 
-    fun stopScan() = guardScanPerm("stopScan()") { stopScanImpl() }
+    /**
+     * Give up the discovery UI's claim on the scan.
+     *
+     * The radio stops only if nothing else needs it. A selected advertisement-only machine does,
+     * for the whole session, which is why this is no longer an unconditional stop.
+     */
+    fun stopScan() = guardScanPerm("stopScan()") {
+        releaseScanLease(ScanLeaseOwner.DISCOVERY_UI)
+    }
 
     /* ───────────────────────────── connections ───────────────────────────── */
 
@@ -759,7 +804,72 @@ class BtEngine internal constructor(
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun connectMachine(address: String): Boolean = connectFtms(address)
+    fun connectMachine(address: String): Boolean =
+        selectMachine(address) != MachineSelectionOutcome.FAILED
+
+    /**
+     * Select the machine at [address] by whatever route its transport requires (plan §6.6).
+     *
+     * The branch is here rather than in the UI because the evidence for it is here: the discovery
+     * catalog knows whether this device was admitted as a GATT family or an advertisement-only
+     * one. Callers need the outcome because the affordances differ — a GATT machine gets the
+     * CCCD/control watcher and a disconnect button, and an advertisement-only one has neither,
+     * because there is no link to watch or to close.
+     */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    internal fun selectMachine(address: String): MachineSelectionOutcome {
+        val device = state.discoveredDevices.value.values.firstOrNull {
+            canonicalScanAddress(it.address) == canonicalScanAddress(address)
+        }
+        return when (machineSelectionRoute(device)) {
+            MachineSelectionRoute.ADVERTISEMENT_SELECT -> {
+                if (selectAdvertisementMachine(requireNotNull(device))) {
+                    MachineSelectionOutcome.ADVERTISEMENT_SELECTED
+                } else {
+                    MachineSelectionOutcome.FAILED
+                }
+            }
+            MachineSelectionRoute.GATT_CONNECT ->
+                if (connectFtms(address)) {
+                    MachineSelectionOutcome.GATT_CONNECTING
+                } else {
+                    MachineSelectionOutcome.FAILED
+                }
+        }
+    }
+
+    /**
+     * Select an advertisement-only machine.
+     *
+     * Deliberately short, and deliberately not `connectFtms`: no `getRemoteDevice`, no
+     * `ConnectionContext`, no GATT callback, no bonding, no recovery target, and the scan is
+     * *started* rather than stopped, because for this machine the scan is the telemetry.
+     */
+    private fun selectAdvertisementMachine(device: BtEngineState.DiscoveredDevice): Boolean {
+        val systemId = device.advertisementSystemId
+        val address = canonicalScanAddress(device.address)
+        if (systemId == null || address.isBlank()) {
+            // The row is admitted but has not yet carried a decodable field, so there is no system
+            // ID to filter on. Refusing is honest: selecting on address alone would attach to
+            // whichever bike answers first, which is the mistake this feature exists to avoid.
+            Timber.tag(BtEngineState.TAG).w(
+                "selectAdvertisementMachine refused: no system ID observed yet for %s",
+                device.name,
+            )
+            return false
+        }
+        // Exactly one machine origin at a time (§6.6): a GATT machine is disconnected here rather
+        // than left running beside a bike that has replaced it in fusion.
+        state.connectedDevices.value
+            .filter { it.machineConnection }
+            .forEach { runCatching { disconnectDevice(it.connectionKey) } }
+
+        keiserSource.select(
+            selection = KeiserSelection(address = address, systemId = systemId),
+            nowMs = elapsedRealtimeMs(),
+        )
+        return true
+    }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun connectFtms(
@@ -803,6 +913,9 @@ class BtEngine internal constructor(
         val dev = try { adapter?.getRemoteDevice(address) } catch (_: IllegalArgumentException) { null }
         if (dev == null) return@guardConnectPerm false
 
+        // Exactly one machine origin at a time (§6.6). Ending the advertisement source here also
+        // gives up its scan lease, so the stopScan() below can actually stop the radio.
+        keiserSource.end(KeiserEndReason.DESELECTED, elapsedRealtimeMs())
         stopScan()
         if (!recoveryAttempt) resetProviderAdvertisingState()
 
@@ -1250,7 +1363,8 @@ class BtEngine internal constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun release() {
         endRecoverySession()
-        runCatching { stopScan() }
+        keiserSource.end(KeiserEndReason.SESSION_ENDED, elapsedRealtimeMs())
+        runCatching { stopScanForShutdown() }
         state.connectedDevices.value.map { it.connectionKey }.forEach { connectionKey ->
             runCatching { disconnectDevice(connectionKey) }
         }
@@ -1298,16 +1412,16 @@ class BtEngine internal constructor(
                             .w("start(): scan fallback requested but BLUETOOTH_SCAN not granted")
                         false
                     } else {
-                        startScanImpl(useFtmsHardwareFilter = true) { _, _, _ -> }
+                        startScanForImpl(ScanLeaseOwner.DISCOVERY_UI)
                         val found = withTimeoutOrNull(12_000) {
                             state.devices.first { it.containsKey(address) }
                         }
-                        stopScanImpl()
+                        releaseScanLease(ScanLeaseOwner.DISCOVERY_UI)
                         if (found != null) connectFtms(address, activity) else false
                     }
                 } catch (t: Throwable) {
                     Timber.tag(BtEngineState.TAG).w(t, "start(): scan/connect fallback failed")
-                    runCatching { stopScanImpl() }
+                    runCatching { releaseScanLease(ScanLeaseOwner.DISCOVERY_UI) }
                     false
                 }
             }

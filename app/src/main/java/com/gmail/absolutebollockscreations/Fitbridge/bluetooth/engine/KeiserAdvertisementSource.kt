@@ -34,6 +34,30 @@ internal data class KeiserSelection(
     val sourceKey: String get() = "keiser:$address#$systemId"
 }
 
+/**
+ * What a Keiser advertisement says about the bike, for the scanner row.
+ *
+ * Identity, not telemetry, which is why it is read from any decodable field including a review-mode
+ * one. A bike parked on its summary screen still is bike number seven running firmware 6.54, and a
+ * row that went blank while the rider caught their breath would be worse than useless.
+ */
+internal data class KeiserRowMetadata(val systemId: Int, val firmware: String)
+
+/**
+ * Read the row metadata from an advertisement's manufacturer payloads, or null when none is a
+ * decodable Keiser field.
+ *
+ * Kept beside the source rather than in the scan layer so the parse and the identity claim it
+ * supports stay in one file, and so this is testable without a `ScanRecord`.
+ */
+internal fun keiserRowMetadata(
+    payloads: Map<Int, ManufacturerPayload>,
+): KeiserRowMetadata? {
+    val payload = payloads[KeiserMSeriesMeasurement.COMPANY_ID] ?: return null
+    val reading = KeiserMSeriesMeasurement.parse(payload.copyBytes()) ?: return null
+    return KeiserRowMetadata(systemId = reading.systemId, firmware = reading.firmware)
+}
+
 /** What the source did with one advertisement. Every value is a decision, not a failure. */
 internal enum class KeiserAdvertisementOutcome {
     /** Realtime telemetry from the selected bike. Freshness refreshed, metrics emitted. */

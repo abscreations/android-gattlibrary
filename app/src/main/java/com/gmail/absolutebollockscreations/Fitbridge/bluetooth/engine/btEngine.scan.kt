@@ -138,7 +138,19 @@ internal fun BtEngine.startScanImpl(
             // path discards is precisely the one a capture needs to have seen.
             captureAdvertisement(name, result)
 
-            val candidates = detectServiceCandidates(result)
+            val observation = detectServiceCandidates(result)
+            val candidates = observation.candidates
+
+            // Offered before admission is even decided, and to a source that ignores anything but
+            // its own selection. Delivery must not deduplicate by address or payload: a Keiser
+            // holding a steady effort repeats the same nineteen bytes, and every repeat is a fresh
+            // liveness proof even when its content has not changed.
+            observation.manufacturerPayloads[KeiserMSeriesMeasurement.COMPANY_ID]?.let { payload ->
+                keiserSource.onAdvertisement(
+                    KeiserAdvertisement(address = address, payload = payload),
+                    arrivalMs = SystemClock.elapsedRealtime(),
+                )
+            }
 
             // The best-ranked candidate of any kind, not the best-ranked *SIG* candidate.
             //
@@ -161,6 +173,11 @@ internal fun BtEngine.startScanImpl(
                 transport = primary.transport,
                 matchCandidateId = primary.candidateId,
                 advertisedActivityType = primary.advertisedActivityType,
+                keiserRow = if (primary.transport == MatchTransport.ADVERTISEMENT_ONLY) {
+                    keiserRowMetadata(observation.manufacturerPayloads)
+                } else {
+                    null
+                },
             )
 
             onDevice(name, address, result)
@@ -208,6 +225,48 @@ internal fun BtEngine.startScanImpl(
     } catch (se: SecurityException) {
         Timber.tag(BtEngineState.TAG).e(se, "startScan: SecurityException")
     }
+}
+
+/**
+ * Start the platform scan on [owner]'s behalf.
+ *
+ * [startScanImpl] is idempotent, so joining a scan another owner already started is a no-op. That
+ * also means a later owner's `onDevice` callback does not replace the running one — harmless
+ * because discovery is consumed through `state.discoveredDevices`, and the picker's callback only
+ * logs.
+ */
+internal fun BtEngine.startScanForImpl(
+    owner: ScanLeaseOwner,
+    useFtmsHardwareFilter: Boolean = true,
+    onDevice: (name: String, address: String, result: ScanResult) -> Unit = { _, _, _ -> },
+) {
+    scanLeases.acquire(owner)
+    startScanImpl(useFtmsHardwareFilter, onDevice)
+}
+
+/**
+ * Give up [owner]'s claim on the platform scan, stopping the radio only when nobody is left.
+ *
+ * This is the whole point of the lease: closing the picker, connecting a heart-rate strap, or
+ * reaching the five-minute discovery timeout must not stop a scan an advertisement-only machine is
+ * living on, because for that machine the scan *is* the telemetry.
+ */
+internal fun BtEngine.releaseScanLease(owner: ScanLeaseOwner) {
+    if (scanLeases.release(owner)) {
+        stopScanImpl()
+    } else if (scanLeases.isHeld()) {
+        Timber.tag(BtEngineState.TAG).d(
+            "scan continues for %s after %s released its lease",
+            scanLeases.owners(),
+            owner,
+        )
+    }
+}
+
+/** Force the radio off regardless of leases. For teardown and for Bluetooth going away. */
+internal fun BtEngine.stopScanForShutdown() {
+    scanLeases.releaseAll()
+    stopScanImpl()
 }
 
 internal fun BtEngine.stopScanImpl() {
@@ -396,8 +455,22 @@ private fun hardwareScanFilters(): List<ScanFilter> =
         }
     }
 
-private fun detectServiceCandidates(result: ScanResult): List<RankedMatchCandidate> {
-    val record = result.scanRecord ?: return emptyList()
+/**
+ * One scan result, matched, with the canonical payloads that matched it.
+ *
+ * The payloads are carried out rather than recomputed because two consumers need the same bytes:
+ * the matcher, which decides admission, and the advertisement source, whose telemetry *is* those
+ * bytes. Canonicalizing twice would be wasteful; canonicalizing differently would be a defect.
+ */
+private class ScanObservation(
+    val candidates: List<RankedMatchCandidate>,
+    val manufacturerPayloads: Map<Int, ManufacturerPayload>,
+)
+
+private val EMPTY_SCAN_OBSERVATION = ScanObservation(emptyList(), emptyMap())
+
+private fun detectServiceCandidates(result: ScanResult): ScanObservation {
+    val record = result.scanRecord ?: return EMPTY_SCAN_OBSERVATION
     // Advertised UUIDs, not served ones: service data is carried on the air, so it is keyed by
     // whatever the family advertises.
     val registeredServices = deviceMatcherRegistry.scanFilterServiceUuids()
@@ -412,17 +485,20 @@ private fun detectServiceCandidates(result: ScanResult): List<RankedMatchCandida
             put(companyId, ManufacturerPayload.fromAndroidScanRecord(companyId, value))
         }
     }
-    return rankedServiceCandidates(
-        MatchObservation(
-            localName = record.deviceName,
-            manufacturerCompanyIds = manufacturerPayloads.keys,
-            manufacturerPayloads = manufacturerPayloads,
-            advertisedServiceUuids = record.serviceUuids.orEmpty()
-                .mapTo(linkedSetOf()) { CanonicalUuid.fromUuid(it.uuid) },
-            serviceDataUuids = registeredServices.filterTo(linkedSetOf()) { uuid ->
-                record.getServiceData(ParcelUuidCompat(uuid.toUuid())) != null
-            },
+    return ScanObservation(
+        candidates = rankedServiceCandidates(
+            MatchObservation(
+                localName = record.deviceName,
+                manufacturerCompanyIds = manufacturerPayloads.keys,
+                manufacturerPayloads = manufacturerPayloads,
+                advertisedServiceUuids = record.serviceUuids.orEmpty()
+                    .mapTo(linkedSetOf()) { CanonicalUuid.fromUuid(it.uuid) },
+                serviceDataUuids = registeredServices.filterTo(linkedSetOf()) { uuid ->
+                    record.getServiceData(ParcelUuidCompat(uuid.toUuid())) != null
+                },
+            ),
         ),
+        manufacturerPayloads = manufacturerPayloads,
     )
 }
 
@@ -517,6 +593,7 @@ private fun BtEngine.upsertDiscoveredDevice(
     transport: MatchTransport = MatchTransport.GATT,
     matchCandidateId: String? = null,
     advertisedActivityType: ActivityType? = null,
+    keiserRow: KeiserRowMetadata? = null,
 ) {
     synchronized(state) {
         val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
@@ -564,6 +641,8 @@ private fun BtEngine.upsertDiscoveredDevice(
                 current?.transport ?: transport.toDeviceTransport()
             },
             matchCandidateId = matchCandidateId ?: current?.matchCandidateId,
+            advertisementSystemId = keiserRow?.systemId ?: current?.advertisementSystemId,
+            advertisementFirmware = keiserRow?.firmware ?: current?.advertisementFirmware,
             machineFeature = current?.machineFeature,
             advertisedMachineFeature =
                 advertisedMachineFeature ?: current?.advertisedMachineFeature,

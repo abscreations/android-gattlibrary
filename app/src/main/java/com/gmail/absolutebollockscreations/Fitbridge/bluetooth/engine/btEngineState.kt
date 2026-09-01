@@ -136,6 +136,15 @@ class BtEngineState : HrmStateSink {
         val transport: DeviceTransport = DeviceTransport.GATT,
         /** Matcher candidate that admitted this device, for diagnostics and selection routing. */
         val matchCandidateId: String? = null,
+        /**
+         * System ID an advertisement-only bike broadcasts — the number on its console (phase 11.5b).
+         *
+         * Identity rather than telemetry, so it is read from any decodable field including a
+         * review-mode one: a bike parked on its summary screen is still bike number seven.
+         */
+        val advertisementSystemId: Int? = null,
+        /** Firmware an advertisement-only device reports, for the row and for diagnostics. */
+        val advertisementFirmware: String? = null,
         // Authoritative type inferred from GATT characteristics after connecting.
         val machineFeature: Int? = null,
         // Optimistic ActivityType ordinal decoded from advertised FTMS Service Data.
