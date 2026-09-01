@@ -1,7 +1,11 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,6 +14,7 @@ import org.junit.Test
 import java.util.Collections
 import java.util.UUID
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RideOnVirtualGearingTest {
     private inner class Transport : GattTransport {
         override val connectionId = ConnectionId("AA:BB:CC:DD:EE:82", 1)
@@ -31,41 +36,48 @@ class RideOnVirtualGearingTest {
     }
 
     @Test
-    fun `gear table is fixed monotonic and gear 12 sequence zero matches vector`() = runBlocking {
+    fun `gear table is fixed monotonic and gear 12 sequence zero matches vector`() = runTest {
         assertEquals(24, RIDEON_GEAR_RATIOS.size)
         assertTrue(RIDEON_GEAR_RATIOS.zipWithNext().all { it.first < it.second })
         assertEquals(7500, RIDEON_GEAR_RATIOS.first())
         assertEquals(54899, RIDEON_GEAR_RATIOS.last())
         val transport = readyTransport()
         assertTrue(transport.session.submitVirtualGear(12))
-        await { transport.writes.any { (it[0].toInt() and 0xFF) == 0x3F } }
+        runCurrent()
+        assertTrue(transport.writes.any { (it[0].toInt() and 0xFF) == 0x3F })
         assertArrayEquals(hex("3F 08 01 10 00 22 04 38 C0 BB 01"), transport.writes.last())
         transport.session.close()
     }
 
     @Test
-    fun `invalid gears send nothing and mismatched response timeout cannot block next shift`() = runBlocking {
-        val transport = readyTransport(shiftTimeout = 20)
+    fun `invalid gears send nothing and mismatched response timeout cannot block next shift`() = runTest {
+        val shiftTimeout = 20L
+        val transport = readyTransport(shiftTimeout = shiftTimeout)
         assertFalse(transport.session.submitVirtualGear(0))
         assertFalse(transport.session.submitVirtualGear(25))
         val before = transport.writes.size
         transport.respondToShifts = false
         assertTrue(transport.session.submitVirtualGear(1))
-        await { transport.writes.size == before + 1 }
+        runCurrent()
+        assertEquals(before + 1, transport.writes.size)
         transport.session.onPacket(transport.connectionId, RideOnUuids.SYNC_TX, hex("40 10 63"))
         assertTrue(transport.session.submitVirtualGear(2))
-        await { transport.writes.size == before + 2 }
+        advanceTimeBy(shiftTimeout)
+        runCurrent()
+        assertEquals(before + 2, transport.writes.size)
         assertEquals(listOf(7500L, 8700L), transport.writes.takeLast(2).map(::ratio))
         transport.session.close()
     }
 
     @Test
-    fun `accepted sequence wraps after uint32 maximum`() = runBlocking {
+    fun `accepted sequence wraps after uint32 maximum`() = runTest {
         val transport = readyTransport(initialSequence = 0xFFFF_FFFFL)
         transport.session.submitVirtualGear(1)
-        await { transport.writes.count { (it[0].toInt() and 0xFF) == 0x3F } == 1 }
+        runCurrent()
+        assertEquals(1, transport.writes.count { (it[0].toInt() and 0xFF) == 0x3F })
         transport.session.submitVirtualGear(2)
-        await { transport.writes.count { (it[0].toInt() and 0xFF) == 0x3F } == 2 }
+        runCurrent()
+        assertEquals(2, transport.writes.count { (it[0].toInt() and 0xFF) == 0x3F })
         val sequences = transport.writes.filter { (it[0].toInt() and 0xFF) == 0x3F }.map { packet ->
             val decoded = (RideOnProtoCodec.decode(packet) as RideOnDecodeResult.Decoded).packet
             (decoded.fields.first { it.number == 2 } as RideOnProtoField.Varint).value
@@ -74,21 +86,18 @@ class RideOnVirtualGearingTest {
         transport.session.close()
     }
 
-    private suspend fun readyTransport(shiftTimeout: Long = 50, initialSequence: Long = 0): Transport {
+    private fun TestScope.readyTransport(shiftTimeout: Long = 50, initialSequence: Long = 0): Transport {
         val transport = Transport()
         transport.session = RideOnControlSession(
             transport, RideOnServiceForm.CORE2,
             RideOnSessionTiming(200, 5, 50, 1, shiftTimeout),
+            dispatcher = StandardTestDispatcher(testScheduler),
             initialShiftSequence = initialSequence,
         )
         transport.session.startAfterSubscriptionsReady()
-        await { transport.session.controlGranted }
+        runCurrent()
+        assertTrue(transport.session.controlGranted)
         return transport
-    }
-
-    private suspend fun await(condition: () -> Boolean) {
-        repeat(100) { if (condition()) return else delay(5) }
-        error("condition not reached")
     }
 
     private fun ratio(packet: ByteArray): Long {

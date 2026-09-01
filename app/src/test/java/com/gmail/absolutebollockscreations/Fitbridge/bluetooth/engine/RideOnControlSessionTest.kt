@@ -1,7 +1,10 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,6 +13,7 @@ import org.junit.Test
 import java.util.Collections
 import java.util.UUID
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RideOnControlSessionTest {
     private class FakeTransport(
         override val connectionId: ConnectionId = ConnectionId("AA:BB:CC:DD:EE:82", 1),
@@ -35,11 +39,6 @@ class RideOnControlSessionTest {
 
     private val timing = RideOnSessionTiming(negotiationTimeoutMs = 160, retryIntervalMs = 10, writeTimeoutMs = 50)
 
-    private suspend fun await(condition: () -> Boolean) {
-        repeat(100) { if (condition()) return else delay(5) }
-        error("condition not reached")
-    }
-
     @Test
     fun `subscription gate requires both exact surfaces on the same generation`() {
         val id = ConnectionId("AA:BB:CC:DD:EE:82", 1)
@@ -51,17 +50,23 @@ class RideOnControlSessionTest {
     }
 
     @Test
-    fun `original form negotiates only 02 02 then initializes in order`() = runBlocking {
+    fun `original form negotiates only 02 02 then initializes in order`() = runTest {
         val transport = FakeTransport()
         lateinit var session: RideOnControlSession
-        session = RideOnControlSession(transport, RideOnServiceForm.ORIGINAL, timing)
+        session = RideOnControlSession(
+            transport,
+            RideOnServiceForm.ORIGINAL,
+            timing,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
         transport.onWrite = { payload ->
             if (payload.contentEquals(RideOnUuids.HANDSHAKE_ORIGINAL)) {
                 session.onPacket(transport.connectionId, RideOnUuids.SYNC_TX, payload)
             }
         }
         session.startAfterSubscriptionsReady()
-        await { session.controlGranted }
+        runCurrent()
+        assertTrue(session.controlGranted)
         assertEquals(3, transport.writes.size)
         assertArrayEquals(RideOnUuids.HANDSHAKE_ORIGINAL, transport.writes[0])
         assertArrayEquals(byteArrayOf(0x41, 0x08, 0x05), transport.writes[1])
@@ -71,18 +76,25 @@ class RideOnControlSessionTest {
     }
 
     @Test
-    fun `CORE2 accepts first valid protocol packet and riding data before general response`() = runBlocking {
+    fun `CORE2 accepts first valid protocol packet and riding data before general response`() = runTest {
         val transport = FakeTransport()
         val riding = mutableListOf<RideOnTelemetry>()
         lateinit var session: RideOnControlSession
-        session = RideOnControlSession(transport, RideOnServiceForm.CORE2, timing, onRidingData = { riding += it })
+        session = RideOnControlSession(
+            transport,
+            RideOnServiceForm.CORE2,
+            timing,
+            dispatcher = StandardTestDispatcher(testScheduler),
+            onRidingData = { riding += it },
+        )
         transport.onWrite = { payload ->
             if (payload.contentEquals(RideOnUuids.HANDSHAKE_CORE2)) {
                 session.onPacket(transport.connectionId, RideOnUuids.ASYNC_TX, hex("03 08 64"))
             }
         }
         session.startAfterSubscriptionsReady()
-        await { session.controlGranted }
+        runCurrent()
+        assertTrue(session.controlGranted)
         assertEquals(1, riding.size)
         assertArrayEquals(RideOnUuids.HANDSHAKE_CORE2, transport.writes.first())
         assertFalse(transport.writes.any { it.contentEquals(RideOnUuids.HANDSHAKE_ORIGINAL) })
@@ -90,10 +102,15 @@ class RideOnControlSessionTest {
     }
 
     @Test
-    fun `wrong surface stale generation and malformed packet cannot negotiate`() = runBlocking {
+    fun `wrong surface stale generation and malformed packet cannot negotiate`() = runTest {
         val transport = FakeTransport()
         lateinit var session: RideOnControlSession
-        session = RideOnControlSession(transport, RideOnServiceForm.CORE2, timing)
+        session = RideOnControlSession(
+            transport,
+            RideOnServiceForm.CORE2,
+            timing,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
         transport.onWrite = { payload ->
             if (payload.contentEquals(RideOnUuids.HANDSHAKE_CORE2)) {
                 session.onPacket(transport.connectionId, UUID.randomUUID(), hex("03 08 01"))
@@ -102,20 +119,20 @@ class RideOnControlSessionTest {
             }
         }
         session.startAfterSubscriptionsReady()
-        await { transport.writes.size == 2 }
-        delay(100)
+        advanceUntilIdle()
         assertFalse(session.controlGranted)
         assertEquals(2, transport.writes.size)
         session.close()
     }
 
     @Test
-    fun `failed initialization and close never grant authority`() = runBlocking {
+    fun `failed initialization and close never grant authority`() = runTest {
         val transport = FakeTransport()
         var failed = 0
         lateinit var session: RideOnControlSession
         session = RideOnControlSession(
             transport, RideOnServiceForm.ORIGINAL, timing,
+            dispatcher = StandardTestDispatcher(testScheduler),
             onInitializationFailed = { failed++ },
         )
         transport.onWrite = { payload ->
@@ -125,7 +142,8 @@ class RideOnControlSessionTest {
             }
         }
         session.startAfterSubscriptionsReady()
-        await { failed == 1 }
+        advanceUntilIdle()
+        assertEquals(1, failed)
         assertFalse(session.controlGranted)
         session.close()
         assertTrue(session.isClosed)
