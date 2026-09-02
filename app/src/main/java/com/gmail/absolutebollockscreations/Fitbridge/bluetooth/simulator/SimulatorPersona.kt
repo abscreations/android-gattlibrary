@@ -33,6 +33,11 @@ sealed interface SimulatorPersona {
         override val advertisedName: String = "PM5 $serialNumber"
     }
 
+    /** Best-effort Android host for the M-series' advertisement-only measurement protocol. */
+    data object KeiserMSeries : SimulatorPersona {
+        override val advertisedName: String = "M3"
+    }
+
     /** Physical-capture-backed Precor Spinner Chrono Power fixture. */
     data object PrecorChrono : SimulatorPersona {
         override val advertisedName: String = "CHRONO 0"

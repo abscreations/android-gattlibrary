@@ -102,11 +102,13 @@ class SimulatorHeartRateOverrideTest {
         val text = source.readText()
 
         val substitution = text.indexOf("withLiveHeartRate(generated)")
+        val keiser = text.indexOf("peripheral.publishKeiser(sample)")
         val precor = text.indexOf("peripheral.publishPrecor(sample)")
         val lifeFitness = text.indexOf("peripheral.publishLifeFitness(sample)")
         val engineWrite = text.indexOf("engineState.setHeartRate(sample.heartRate)")
 
         assertTrue("the substitution must exist", substitution > 0)
+        assertTrue("it must precede the Keiser encoder", substitution < keiser)
         assertTrue("it must precede the Precor encoder", substitution < precor)
         assertTrue("it must precede the Life Fitness encoder", substitution < lifeFitness)
         assertTrue("it must precede the engine-state write", substitution < engineWrite)

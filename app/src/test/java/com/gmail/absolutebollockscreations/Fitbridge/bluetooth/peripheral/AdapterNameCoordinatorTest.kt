@@ -288,6 +288,16 @@ class AdapterNameCoordinatorTest {
     }
 
     @Test
+    fun `a stranded Keiser simulator name is never recorded as the user's original`() {
+        val gateway = FakeGateway("M3")
+        val store = FakeStore()
+
+        coordinator(gateway, store).apply("FBRG-Bike") {}
+
+        assertNull("must not save a Keiser session name as the original", store.value)
+    }
+
+    @Test
     fun `stranded KICKR simulator names are never recorded as the user's original`() {
         listOf("Wahoo KICKR AEE4", "KICKR CORE C3FB", "KICKR CORE 2 1A2B").forEach { name ->
             val gateway = FakeGateway(name)

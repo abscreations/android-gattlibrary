@@ -46,6 +46,7 @@ class SimulatorPersonaDescriptorTest {
     @Test
     fun `control-free personas say so rather than leaving the slot empty`() {
         val measurementOnly = listOf(
+            SimulatorPersona.KeiserMSeries,
             SimulatorPersona.PrecorChrono,
             SimulatorPersona.SchwinnX70,
             SimulatorPersona.LifeFitness(LifeFitnessMachine.TREADMILL),
@@ -167,6 +168,16 @@ class SimulatorPersonaDescriptorTest {
             "${SchwinnX70Ride.RESISTANCE_FLOOR}–${SchwinnX70Ride.RESISTANCE_CEILING}",
             descriptor.ranges.single { it.metric == "resistance" }.span,
         )
+    }
+
+    @Test
+    fun `Keiser descriptor states advertisement only Android limitations`() {
+        val descriptor = SimulatorPersona.KeiserMSeries.describe()
+        assertTrue(descriptor.protocol.contains("Non-connectable"))
+        assertTrue(descriptor.protocol.contains("0x0102"))
+        assertTrue(descriptor.protocol.contains("Android best effort"))
+        assertTrue(descriptor.controlModes.isEmpty())
+        assertTrue(descriptor.metrics.contains("resistance"))
     }
 
     @Test

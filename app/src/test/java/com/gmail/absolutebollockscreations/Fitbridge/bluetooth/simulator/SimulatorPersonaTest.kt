@@ -75,6 +75,11 @@ class SimulatorPersonaTest {
     }
 
     @Test
+    fun `Keiser persona has an M3 discovery identity`() {
+        assertEquals("M3", SimulatorPersona.KeiserMSeries.advertisedName)
+    }
+
+    @Test
     fun `simulator selector places the four Life Fitness personas before Precor`() {
         val options = simulatorPersonaOptions()
         val precorIndex = options.indexOf(SimulatorPersona.PrecorChrono)
@@ -87,10 +92,20 @@ class SimulatorPersonaTest {
     }
 
     @Test
+    fun `simulator selector orders Keiser then Precor then Schwinn`() {
+        val options = simulatorPersonaOptions(includeKickr = false)
+        val keiser = options.indexOf(SimulatorPersona.KeiserMSeries)
+        assertTrue(keiser >= 0)
+        assertEquals(SimulatorPersona.PrecorChrono, options[keiser + 1])
+        assertEquals(SimulatorPersona.SchwinnX70, options[keiser + 2])
+        assertTrue(options[keiser - 1] is SimulatorPersona.LifeFitness)
+    }
+
+    @Test
     fun `simulator selector places generic FE-C personas then Tacx identities after Precor`() {
         // FE-C over BLE was added 2026-08-19, after every other persona here (plan
         // `docs/fe-c-ble_simulator_implementation.md` §3.3). Precor is no longer the list's last
-        // entry; the seven FE-C equipment types are. There is no separate "+ CPS" persona: the
+        // entry; Schwinn and the seven FE-C equipment types follow it. There is no separate "+ CPS" persona: the
         // Incyclist overlay is implicit to equipment type, not a UI-selectable option.
         val options = simulatorPersonaOptions()
         val precorIndex = options.indexOf(SimulatorPersona.PrecorChrono)

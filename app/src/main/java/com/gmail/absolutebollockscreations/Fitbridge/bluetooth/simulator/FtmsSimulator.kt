@@ -76,6 +76,9 @@ class FtmsSimulator(
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
 
+        /** Refresh the Keiser manufacturer-data advertisement from the coherent bike sample. */
+        fun publishKeiser(sample: FtmsMockSample) {}
+
         /** Publish one capture-shaped Life Fitness FTMS record after local setup unlocks the link. */
         fun publishLifeFitness(sample: FtmsMockSample) {}
 
@@ -261,6 +264,10 @@ class FtmsSimulator(
         when (persona) {
             is SimulatorPersona.Concept2Pm5 -> {
                 startConcept2(persona, concept2Scenario)
+                return
+            }
+            SimulatorPersona.KeiserMSeries -> {
+                startKeiser()
                 return
             }
             SimulatorPersona.PrecorChrono -> {
@@ -475,6 +482,54 @@ class FtmsSimulator(
             }
         }
         Timber.tag(TAG).i("Precor Chrono simulator started")
+    }
+
+    private fun startKeiser() {
+        val persona = SimulatorPersona.KeiserMSeries
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        val mockEngine = FtmsMockEngine(FtmsMachineProfile.INDOOR_BIKE, controlsEnabled = false)
+        engine = mockEngine
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            engine = null
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            machine = FtmsMachineProfile.INDOOR_BIKE,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        publish(mockEngine.snapshot())
+        val periodMs = KeiserMSeriesSimulatorEncoder.SAMPLE_PERIOD_MS
+        job = scope.launch {
+            while (isActive) {
+                delay(periodMs)
+                val active = engine ?: break
+                publish(active.tick(periodMs / 1000.0))
+            }
+        }
+        Timber.tag(TAG).i("Keiser M-series Android simulator started")
     }
 
     /**
@@ -820,6 +875,9 @@ class FtmsSimulator(
 
         if (_state.value.persona == SimulatorPersona.PrecorChrono) {
             peripheral.publishPrecor(sample)
+        }
+        if (_state.value.persona == SimulatorPersona.KeiserMSeries) {
+            peripheral.publishKeiser(sample)
         }
         if (_state.value.persona is SimulatorPersona.LifeFitness) {
             peripheral.publishLifeFitness(sample)

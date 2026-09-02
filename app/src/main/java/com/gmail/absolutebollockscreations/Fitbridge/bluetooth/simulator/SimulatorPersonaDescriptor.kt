@@ -92,6 +92,7 @@ fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     SimulatorPersona.IndoorBikeSpeedAndPower -> describeIndoorBikeSpeedAndPower()
     is SimulatorPersona.Ftms -> describeFtms(profile)
     is SimulatorPersona.Concept2Pm5 -> describeConcept2(machine)
+    SimulatorPersona.KeiserMSeries -> describeKeiserMSeries()
     SimulatorPersona.PrecorChrono -> describePrecorChrono()
     is SimulatorPersona.LifeFitness -> describeLifeFitness(machine)
     SimulatorPersona.SchwinnX70 -> describeSchwinnX70()
@@ -139,6 +140,15 @@ private fun describeConcept2(machine: Concept2Machine) = SimulatorPersonaDescrip
     rangeKind = SimulatorRangeKind.RIDE,
     ranges = emptyList(),
     metrics = "individual + multiplexed status, stroke, split and summary characteristics",
+)
+
+private fun describeKeiserMSeries() = SimulatorPersonaDescriptor(
+    title = "Keiser · M-series bike",
+    protocol = "Non-connectable 0x0102 manufacturer advertisements · Android best effort",
+    controlModes = emptyList(),
+    rangeKind = SimulatorRangeKind.RIDE,
+    ranges = emptyList(),
+    metrics = "cadence, power, resistance, distance, energy, elapsed time, heart rate",
 )
 
 private fun describePrecorChrono() = SimulatorPersonaDescriptor(
