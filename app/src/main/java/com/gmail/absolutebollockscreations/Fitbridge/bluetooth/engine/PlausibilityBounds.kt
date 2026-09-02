@@ -36,9 +36,10 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  * Cumulative metrics — `DISTANCE`, `ENERGY`, `ELAPSED`, the counters — have no upper bound
  * here. Their plausible ceiling depends on session length rather than physiology, and dropping
  * one sample from a cumulative series does more damage than letting it through: the accumulator
- * works on deltas, so a gap is not neutral. They keep the existing non-negative check. If they
- * need protection it belongs in the accumulator as a rate-of-change rule, which is a different
- * mechanism and not this one.
+ * works on deltas, so a gap is not neutral. They keep the existing non-negative check. Distance
+ * has a separate rate-of-change/reset gate in `MetricFusion`, where continuity state is available;
+ * that mechanism intentionally does not turn a session-dependent cumulative value into a fixed
+ * ceiling here.
  *
  * `INCLINATION` and `RAMP_ANGLE` are signed and bounded both ways. `RESISTANCE` is a vendor
  * level with no shared meaning across machines and stays unbounded.

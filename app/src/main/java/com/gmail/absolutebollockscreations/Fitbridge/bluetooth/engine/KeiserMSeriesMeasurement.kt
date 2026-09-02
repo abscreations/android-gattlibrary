@@ -130,8 +130,8 @@ internal object KeiserMSeriesMeasurement {
     /** gymnasticon's `KEISER_STATS_NEWVER_MINOR`, read as hexadecimal. */
     const val FAST_INTERVAL_MINOR = 0x30
 
-    /** Statistics window for firmware advertising at roughly 300–355 ms. */
-    const val FAST_STATS_TIMEOUT_MS = 1_000L
+    /** Android-tolerant statistics window for firmware advertising at roughly 300–355 ms. */
+    const val FAST_STATS_TIMEOUT_MS = 2_000L
 
     /** Statistics window for older or unrecognised firmware advertising at roughly 2 s. */
     const val SLOW_STATS_TIMEOUT_MS = 7_000L

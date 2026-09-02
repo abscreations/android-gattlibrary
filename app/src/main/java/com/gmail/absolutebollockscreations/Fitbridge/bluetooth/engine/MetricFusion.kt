@@ -313,7 +313,11 @@ internal class MetricFusion(
     private val cumulativeTotals = mutableMapOf<MetricKind, Double>()
     private val cumulativeActiveSource = mutableMapOf<MetricKind, MetricSourceId>()
     private val cumulativeLastNative = mutableMapOf<MetricKind, Double>()
+    private val cumulativeDistanceRateAnchors = mutableMapOf<MetricKind, Pair<Long, Double>>()
+    private val quarantinedCumulativeDistance = mutableSetOf<MetricKind>()
+    private val cumulativeDistanceResetObserved = mutableSetOf<MetricKind>()
     private val heartRateFilters = mutableMapOf<MetricSourceId, HeartRateJumpEmaFilter>()
+    private val rejectionWarningGate = RejectionWarningGate(REJECTION_WARNING_WINDOW_MS)
     private val distancePaceBuffer = ArrayDeque<Pair<Long, Double>>()
     private var persona: FusionPersona = FusionPersona.RIDE
     private var machineOriginId: MetricOriginId? = null
@@ -379,15 +383,18 @@ internal class MetricFusion(
             // §11b: dropped and captured, not published. Arming here rather than logging only
             // is the whole point - a bound firing means a field was decoded wrongly, and the
             // packets that caused it are still in the ring for another few seconds.
-            Timber.tag(BtEngineState.TAG).w(
-                "Implausible %s from %s: %.3f %s outside %s (persona=%s) - dropped",
-                sample.metric,
-                sample.sourceClass,
-                sample.value,
-                sample.unit,
-                PlausibilityBounds.describe(sample.metric, persona),
-                persona,
-            )
+            if (rejectionWarningGate.shouldLog(sample)) {
+                Timber.tag(BtEngineState.TAG).w(
+                    "Implausible %s from %s: %.3f %s outside %s (persona=%s) - dropped; repeated warnings suppressed for %d ms",
+                    sample.metric,
+                    sample.sourceClass,
+                    sample.value,
+                    sample.unit,
+                    PlausibilityBounds.describe(sample.metric, persona),
+                    persona,
+                    REJECTION_WARNING_WINDOW_MS,
+                )
+            }
             CaptureHooks.boundsRejection(sample, PlausibilityBounds.describe(sample.metric, persona))
             return@synchronized FusionSubmission.REJECTED_IMPLAUSIBLE
         }
@@ -545,7 +552,11 @@ internal class MetricFusion(
         cumulativeTotals.clear()
         cumulativeActiveSource.clear()
         cumulativeLastNative.clear()
+        cumulativeDistanceRateAnchors.clear()
+        quarantinedCumulativeDistance.clear()
+        cumulativeDistanceResetObserved.clear()
         heartRateFilters.clear()
+        rejectionWarningGate.reset()
         distancePaceBuffer.clear()
         if (clearMachine) machineOriginId = null
     }
@@ -786,6 +797,71 @@ internal class MetricFusion(
         val native = sample.nativeCumulative ?: return
         val totalBefore = cumulativeTotals[metric]
         val activeSource = cumulativeActiveSource[metric]
+        val sourceChanged = activeSource != sample.sourceId || previousSource != sample.sourceId
+        val lastNative = cumulativeLastNative[metric]
+        if (metric == MetricKind.DISTANCE) {
+            when {
+                totalBefore == null || sourceChanged || lastNative == null -> {
+                    cumulativeDistanceRateAnchors[metric] = sample.arrivalMs to native
+                    quarantinedCumulativeDistance.remove(metric)
+                    cumulativeDistanceResetObserved.remove(metric)
+                }
+                metric in quarantinedCumulativeDistance -> {
+                    if (native < lastNative) {
+                        if (metric !in cumulativeDistanceResetObserved) {
+                            // The boundary scenario emits zero before restoring the real counter.
+                            // Remember that reset marker without replacing the last sane native
+                            // value: restoration must add only growth since that sane value.
+                            cumulativeDistanceResetObserved += metric
+                        } else if (native > 0.0) {
+                            // The counter stayed below the old value after its reset marker. This
+                            // is a genuine reset rather than boundary restoration: establish the
+                            // first positive value as the new baseline and preserve the total.
+                            quarantinedCumulativeDistance.remove(metric)
+                            cumulativeDistanceResetObserved.remove(metric)
+                            cumulativeDistanceRateAnchors[metric] = sample.arrivalMs to native
+                            cumulativeLastNative[metric] = native
+                        }
+                        projectPassThrough(sample.copy(value = totalBefore, nativeCumulative = native))
+                        return
+                    }
+                    if (metric in cumulativeDistanceResetObserved &&
+                        isPlausibleCumulativeDistanceProgress(metric, native, sample.arrivalMs)
+                    ) {
+                        // The normal counter returned after the reset marker. Leave lastNative at
+                        // the last sane value so the canonical calculation below contributes only
+                        // the legitimate distance accumulated through the boundary test.
+                        quarantinedCumulativeDistance.remove(metric)
+                        cumulativeDistanceResetObserved.remove(metric)
+                    } else {
+                        projectPassThrough(sample.copy(value = totalBefore, nativeCumulative = native))
+                        return
+                    }
+                }
+                native < lastNative -> {
+                    cumulativeDistanceRateAnchors[metric] = sample.arrivalMs to native
+                    cumulativeDistanceResetObserved.remove(metric)
+                }
+                !isPlausibleCumulativeDistanceProgress(metric, native, sample.arrivalMs) -> {
+                    // Preserve the session total and, critically, the last sane native value.
+                    // Boundary words remain quarantined until an observed reset is followed by
+                    // either restoration of the sane counter or a new positive counter baseline.
+                    quarantinedCumulativeDistance += metric
+                    cumulativeDistanceResetObserved.remove(metric)
+                    Timber.tag(BtEngineState.TAG).w(
+                        "Implausible cumulative distance jump from %.1f m to %.1f m - held until counter reset",
+                        lastNative,
+                        native,
+                    )
+                    CaptureHooks.boundsRejection(
+                        sample,
+                        "cumulative growth envelope: ${PlausibilityBounds.rangeFor(MetricKind.SPEED, persona)?.max} km/h plus ${DISTANCE_COUNTER_BURST_ALLOWANCE_METERS.toInt()} m burst",
+                    )
+                    projectPassThrough(sample.copy(value = totalBefore, nativeCumulative = native))
+                    return
+                }
+            }
+        }
         val canonical = when {
             // An RSC sensor's total-distance counter may have started long before this
             // FitBridge session. Its first value establishes the origin; only later deltas
@@ -793,14 +869,31 @@ internal class MetricFusion(
             totalBefore == null && metric == MetricKind.DISTANCE &&
                 sample.sourceClass == MetricSourceClass.RSC -> 0.0
             totalBefore == null -> native
-            activeSource != sample.sourceId || previousSource != sample.sourceId -> totalBefore
-            native < (cumulativeLastNative[metric] ?: native) -> totalBefore
-            else -> totalBefore + (native - (cumulativeLastNative[metric] ?: native))
+            sourceChanged -> totalBefore
+            native < (lastNative ?: native) -> totalBefore
+            else -> totalBefore + (native - (lastNative ?: native))
         }
         cumulativeTotals[metric] = canonical
         cumulativeActiveSource[metric] = sample.sourceId
         cumulativeLastNative[metric] = native
         projectPassThrough(sample.copy(value = canonical, nativeCumulative = native))
+    }
+
+    /**
+     * Cumulative distance is coarse on some machines, so the envelope includes a one-off burst
+     * allowance. Beyond that allowance, growth cannot outrun the persona's already-declared
+     * maximum speed from the point where this native counter was established or reset.
+     */
+    private fun isPlausibleCumulativeDistanceProgress(
+        metric: MetricKind,
+        native: Double,
+        arrivalMs: Long,
+    ): Boolean {
+        val (anchorAt, anchorNative) = cumulativeDistanceRateAnchors[metric] ?: return true
+        val elapsedSeconds = (arrivalMs - anchorAt).coerceAtLeast(0L) / 1_000.0
+        val maxKph = PlausibilityBounds.rangeFor(MetricKind.SPEED, persona)?.max ?: return true
+        val allowedGrowth = DISTANCE_COUNTER_BURST_ALLOWANCE_METERS + maxKph / 3.6 * elapsedSeconds
+        return native - anchorNative <= allowedGrowth
     }
 
     private fun isFresh(sample: MetricSample, nowMs: Long): Boolean {
@@ -1226,12 +1319,35 @@ internal class MetricFusion(
         const val DISTANCE_PACE_MIN_MS = 5_000L
         const val DISTANCE_PACE_TARGET_MS = 10_000L
         const val DISTANCE_PACE_BUFFER_MS = 30_000L
+        const val DISTANCE_COUNTER_BURST_ALLOWANCE_METERS = 500.0
+        const val REJECTION_WARNING_WINDOW_MS = 10_000L
         val SESSION_SOURCE = MetricSourceId(
             connectionId = ConnectionId("FITBRIDGE_SESSION", 0L),
             protocol = MetricProtocol.SESSION,
             characteristicUuid = UUID(0L, 0L),
         )
     }
+}
+
+/** Logs the first bounds failure per metric/source, then one reminder per window. */
+internal class RejectionWarningGate(private val windowMs: Long) {
+    private data class Key(val metric: MetricKind, val sourceId: MetricSourceId)
+
+    private val lastLoggedAt = mutableMapOf<Key, Long>()
+
+    init {
+        require(windowMs > 0L)
+    }
+
+    fun shouldLog(sample: MetricSample): Boolean {
+        val key = Key(sample.metric, sample.sourceId)
+        val previous = lastLoggedAt[key]
+        if (previous != null && sample.arrivalMs - previous < windowMs) return false
+        lastLoggedAt[key] = sample.arrivalMs
+        return true
+    }
+
+    fun reset() = lastLoggedAt.clear()
 }
 
 private fun MetricOriginId.tieBreakKey(): String = when (this) {

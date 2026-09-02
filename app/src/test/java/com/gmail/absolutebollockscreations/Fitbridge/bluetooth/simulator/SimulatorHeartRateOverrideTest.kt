@@ -102,7 +102,7 @@ class SimulatorHeartRateOverrideTest {
         val text = source.readText()
 
         val substitution = text.indexOf("withLiveHeartRate(generated)")
-        val keiser = text.indexOf("peripheral.publishKeiser(sample)")
+        val keiser = text.indexOf("peripheral.publishKeiser(output.manufacturerPayload)")
         val precor = text.indexOf("peripheral.publishPrecor(sample)")
         val lifeFitness = text.indexOf("peripheral.publishLifeFitness(sample)")
         val engineWrite = text.indexOf("engineState.setHeartRate(sample.heartRate)")

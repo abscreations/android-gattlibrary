@@ -18,8 +18,10 @@ import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KeiserMSeriesMeasurement
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FtmsMockSample
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KeiserMSeriesSimulatorEncoder
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KeiserMSeriesSimulatorProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
 import java.util.concurrent.atomic.AtomicLong
+import timber.log.Timber
 
 /** Pure legacy-envelope facts, kept separate from Android objects for focused unit coverage. */
 internal data class KeiserMSeriesAdvertisingPlan(
@@ -32,7 +34,7 @@ internal data class KeiserMSeriesAdvertisingPlan(
     val advertisingBytes: Int,
 ) {
     init {
-        require(manufacturerPayload.size == KeiserMSeriesSimulatorEncoder.MANUFACTURER_PAYLOAD_LENGTH)
+        require(manufacturerPayload.size in 1..KeiserMSeriesSimulatorEncoder.MANUFACTURER_PAYLOAD_LENGTH)
         require(advertisingBytes <= MAX_LEGACY_BYTES)
     }
 
@@ -40,15 +42,15 @@ internal data class KeiserMSeriesAdvertisingPlan(
         const val MAX_LEGACY_BYTES = 31
         const val FAST_INTERVAL_UNITS = 0x0237
 
-        fun create(payload: ByteArray): KeiserMSeriesAdvertisingPlan {
-            val name = SimulatorPersona.KeiserMSeries.advertisedName
+        fun create(persona: SimulatorPersona.KeiserMSeries, payload: ByteArray): KeiserMSeriesAdvertisingPlan {
+            val name = persona.advertisedName
             return KeiserMSeriesAdvertisingPlan(
                 localName = name,
                 manufacturerId = KeiserMSeriesMeasurement.COMPANY_ID,
                 manufacturerPayload = payload.copyOf(),
                 connectable = false,
                 scannable = false,
-                intervalUnits = FAST_INTERVAL_UNITS,
+                intervalUnits = persona.profile.advertisingIntervalUnits,
                 // Flags AD + complete-name AD + manufacturer AD (including company ID).
                 advertisingBytes = 3 + 2 + name.toByteArray(Charsets.UTF_8).size + 4 + payload.size,
             )
@@ -82,10 +84,13 @@ internal class KeiserMSeriesPeripheralController(
     @Volatile private var activeSet: AdvertisingSet? = null
     private var advertiser: BluetoothLeAdvertiser? = null
     private var callback: AdvertisingSetCallback? = null
-    @Volatile private var latestPayload: ByteArray = initialPayload()
+    @Volatile private var latestPayload: ByteArray? = null
     private var lastAppliedPayload: ByteArray? = null
     private var applyingPayload: ByteArray? = null
     private var updateInFlight = false
+    private var startInFlight = false
+    private var sessionActive = false
+    private var activePersona: SimulatorPersona.KeiserMSeries? = null
 
     private val adapterNames = AdapterNameCoordinator(
         gateway = object : AdapterNameCoordinator.Gateway {
@@ -117,14 +122,30 @@ internal class KeiserMSeriesPeripheralController(
 
     val isAdvertising: Boolean get() = status.advertising
 
-    fun publish(sample: FtmsMockSample) {
-        latestPayload = KeiserMSeriesSimulatorEncoder.encode(sample)
-        main.post { pumpPayloadUpdate() }
+    fun publish(manufacturerPayload: ByteArray?) {
+        latestPayload = manufacturerPayload?.copyOf()
+        main.post {
+            if (manufacturerPayload == null) {
+                suspendAdvertising()
+            } else if (activeSet == null && !startInFlight && sessionActive) {
+                val persona = activePersona ?: return@post
+                Timber.tag(TAG).i(
+                    "Keiser advertising restart requested epoch=%d persona=%s payloadBytes=%d",
+                    operationEpoch.get(),
+                    persona.advertisedName,
+                    manufacturerPayload.size,
+                )
+                beginAdvertising(operationEpoch.get(), persona, null)
+            } else {
+                pumpPayloadUpdate()
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
-    fun start(onResult: (Result<Unit>) -> Unit) {
+    fun start(persona: SimulatorPersona.KeiserMSeries, onResult: (Result<Unit>) -> Unit) {
         val epoch = operationEpoch.incrementAndGet()
+        Timber.tag(TAG).i("Keiser advertising session start requested epoch=%d persona=%s", epoch, persona.advertisedName)
         if (!hasPermissions()) {
             failStart(IllegalStateException("Bluetooth advertising permission has not been granted"), onResult)
             return
@@ -142,62 +163,123 @@ internal class KeiserMSeriesPeripheralController(
 
         stopResources(restoreName = false)
         publishStatus(Status())
-        latestPayload = initialPayload()
+        activePersona = persona
+        latestPayload = initialPayload(persona.profile)
         advertiser = bleAdvertiser
-        adapterNames.apply(SimulatorPersona.KeiserMSeries.advertisedName) nameCallback@{ result ->
+        sessionActive = true
+        adapterNames.apply(persona.advertisedName) nameCallback@{ result ->
             if (operationEpoch.get() != epoch) return@nameCallback
             result.fold(
-                onSuccess = { beginAdvertising(epoch, onResult) },
+                onSuccess = { beginAdvertising(epoch, persona, onResult) },
                 onFailure = { failStart(it, onResult) },
             )
         }
     }
 
     fun stop() {
-        operationEpoch.incrementAndGet()
+        val epoch = operationEpoch.incrementAndGet()
+        Timber.tag(TAG).i("Keiser advertising session stop requested epoch=%d", epoch)
         stopResources(restoreName = true)
         publishStatus(Status())
     }
 
     fun dispose() {
+        Timber.tag(TAG).i("Keiser advertising controller disposed")
         stop()
         adapterNames.cancelAll("Keiser M-series controller disposed")
     }
 
     @SuppressLint("MissingPermission")
-    private fun beginAdvertising(epoch: Long, onResult: (Result<Unit>) -> Unit) {
-        val plan = KeiserMSeriesAdvertisingPlan.create(latestPayload)
+    private fun beginAdvertising(
+        epoch: Long,
+        persona: SimulatorPersona.KeiserMSeries,
+        initialResult: ((Result<Unit>) -> Unit)?,
+    ) {
+        val payload = latestPayload ?: return
+        val plan = KeiserMSeriesAdvertisingPlan.create(persona, payload)
+        Timber.tag(TAG).i(
+            "Calling startAdvertisingSet epoch=%d persona=%s payloadBytes=%d intervalUnits=0x%04X initial=%s",
+            epoch,
+            persona.advertisedName,
+            payload.size,
+            plan.intervalUnits,
+            initialResult != null,
+        )
+        startInFlight = true
         val sessionCallback = object : AdvertisingSetCallback() {
             override fun onAdvertisingSetStarted(set: AdvertisingSet?, txPower: Int, result: Int) {
-                if (operationEpoch.get() != epoch) return
+                if (operationEpoch.get() != epoch) {
+                    Timber.tag(TAG).w(
+                        "Ignoring stale advertising-start callback callbackEpoch=%d activeEpoch=%d result=%d setPresent=%s",
+                        epoch,
+                        operationEpoch.get(),
+                        result,
+                        set != null,
+                    )
+                    return
+                }
+                startInFlight = false
                 if (result != ADVERTISE_SUCCESS || set == null) {
-                    failStart(IllegalStateException("Keiser advertising failed (code $result)"), onResult)
+                    Timber.tag(TAG).e(
+                        "Keiser advertising start failed epoch=%d persona=%s result=%d setPresent=%s",
+                        epoch,
+                        persona.advertisedName,
+                        result,
+                        set != null,
+                    )
+                    val failure = IllegalStateException("Keiser advertising failed (code $result)")
+                    if (initialResult != null) {
+                        failStart(failure, initialResult)
+                    } else {
+                        publishStatus(status.copy(advertising = false, lastError = failure.message))
+                    }
                     return
                 }
                 activeSet = set
                 lastAppliedPayload = plan.manufacturerPayload
+                Timber.tag(TAG).i(
+                    "Keiser advertising started epoch=%d persona=%s txPower=%d payloadBytes=%d initial=%s",
+                    epoch,
+                    plan.localName,
+                    txPower,
+                    plan.manufacturerPayload.size,
+                    initialResult != null,
+                )
                 publishStatus(
-                    Status(
+                    status.copy(
                         advertising = true,
                         advertisedName = plan.localName,
-                        framesApplied = 1,
+                        framesApplied = status.framesApplied + 1,
+                        lastError = null,
                     ),
                 )
-                FtmsForegroundService.start(
-                    context,
-                    "Sharing as ${plan.localName}",
-                    "Simulated Keiser M-series advertisements; measurements only",
-                ) { foreground ->
-                    if (operationEpoch.get() != epoch) return@start
-                    foreground.fold(
-                        onSuccess = { onResult(Result.success(Unit)) },
-                        onFailure = { failStart(it, onResult) },
-                    )
+                pumpPayloadUpdate()
+                if (initialResult != null) {
+                    FtmsForegroundService.start(
+                        context,
+                        "Sharing as ${plan.localName}",
+                        "Simulated Keiser M-series advertisements; measurements only",
+                    ) { foreground ->
+                        if (operationEpoch.get() != epoch) return@start
+                        foreground.fold(
+                            onSuccess = { initialResult(Result.success(Unit)) },
+                            onFailure = { failStart(it, initialResult) },
+                        )
+                    }
                 }
             }
 
             override fun onAdvertisingDataSet(set: AdvertisingSet?, result: Int) {
-                if (operationEpoch.get() != epoch || set !== activeSet) return
+                if (operationEpoch.get() != epoch || set !== activeSet) {
+                    Timber.tag(TAG).w(
+                        "Ignoring stale advertising-data callback callbackEpoch=%d activeEpoch=%d result=%d setMatches=%s",
+                        epoch,
+                        operationEpoch.get(),
+                        result,
+                        set === activeSet,
+                    )
+                    return
+                }
                 updateInFlight = false
                 val applied = applyingPayload
                 applyingPayload = null
@@ -206,8 +288,18 @@ internal class KeiserMSeriesPeripheralController(
                     publishStatus(status.copy(framesApplied = status.framesApplied + 1, lastError = null))
                     pumpPayloadUpdate()
                 } else {
+                    Timber.tag(TAG).e("Keiser advertising data update failed epoch=%d result=%d", epoch, result)
                     publishStatus(status.copy(lastError = "Keiser data update failed (code $result)"))
                 }
+            }
+
+            override fun onAdvertisingSetStopped(set: AdvertisingSet?) {
+                Timber.tag(TAG).i(
+                    "Keiser advertising stopped callbackEpoch=%d activeEpoch=%d setMatches=%s",
+                    epoch,
+                    operationEpoch.get(),
+                    set === activeSet,
+                )
             }
         }
         callback = sessionCallback
@@ -218,29 +310,75 @@ internal class KeiserMSeriesPeripheralController(
             .setInterval(plan.intervalUnits)
             .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_MEDIUM)
             .build()
-        advertiser?.startAdvertisingSet(
-            parameters,
-            advertiseData(plan),
-            null,
-            null,
-            null,
-            sessionCallback,
-        )
+        runCatching {
+            val activeAdvertiser = checkNotNull(advertiser) { "Bluetooth LE advertising is unavailable" }
+            activeAdvertiser.startAdvertisingSet(
+                parameters,
+                advertiseData(plan),
+                null,
+                null,
+                null,
+                sessionCallback,
+            )
+        }.onFailure { failure ->
+            startInFlight = false
+            Timber.tag(TAG).e(failure, "startAdvertisingSet threw epoch=%d persona=%s", epoch, persona.advertisedName)
+            if (initialResult != null) {
+                failStart(failure, initialResult)
+            } else {
+                publishStatus(status.copy(advertising = false, lastError = failure.message))
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
     private fun pumpPayloadUpdate() {
         val set = activeSet ?: return
-        if (updateInFlight || lastAppliedPayload?.let(latestPayload::contentEquals) == true) return
-        val payload = latestPayload.copyOf()
+        val latest = latestPayload ?: return
+        if (updateInFlight || lastAppliedPayload?.let(latest::contentEquals) == true) return
+        val payload = latest.copyOf()
+        val persona = activePersona ?: return
         applyingPayload = payload
         updateInFlight = true
-        runCatching { set.setAdvertisingData(advertiseData(KeiserMSeriesAdvertisingPlan.create(payload))) }
+        runCatching { set.setAdvertisingData(advertiseData(KeiserMSeriesAdvertisingPlan.create(persona, payload))) }
             .onFailure { failure ->
                 updateInFlight = false
                 applyingPayload = null
+                Timber.tag(TAG).e(failure, "setAdvertisingData threw epoch=%d", operationEpoch.get())
                 publishStatus(status.copy(lastError = failure.message ?: "Keiser data update failed"))
             }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun suspendAdvertising() {
+        val activeCallback = callback
+        if (activeCallback == null) {
+            if (activeSet != null || startInFlight) {
+                Timber.tag(TAG).w(
+                    "Keiser advertising suspend found inconsistent state epoch=%d activeSet=%s startInFlight=%s",
+                    operationEpoch.get(),
+                    activeSet != null,
+                    startInFlight,
+                )
+            }
+            return
+        }
+        Timber.tag(TAG).i(
+            "Keiser advertising suspend requested epoch=%d activeSet=%s startInFlight=%s updateInFlight=%s",
+            operationEpoch.get(),
+            activeSet != null,
+            startInFlight,
+            updateInFlight,
+        )
+        runCatching { advertiser?.stopAdvertisingSet(activeCallback) }
+            .onFailure { Timber.tag(TAG).e(it, "stopAdvertisingSet threw during suspend epoch=%d", operationEpoch.get()) }
+        callback = null
+        activeSet = null
+        startInFlight = false
+        updateInFlight = false
+        applyingPayload = null
+        lastAppliedPayload = null
+        publishStatus(status.copy(advertising = false, lastError = null))
     }
 
     private fun advertiseData(plan: KeiserMSeriesAdvertisingPlan): AdvertiseData =
@@ -251,6 +389,7 @@ internal class KeiserMSeriesPeripheralController(
             .build()
 
     private fun failStart(failure: Throwable, onResult: (Result<Unit>) -> Unit) {
+        Timber.tag(TAG).e(failure, "Keiser advertising session start failed epoch=%d", operationEpoch.get())
         stopResources(restoreName = true)
         publishStatus(Status(lastError = failure.message))
         onResult(Result.failure(failure))
@@ -258,10 +397,17 @@ internal class KeiserMSeriesPeripheralController(
 
     @SuppressLint("MissingPermission")
     private fun stopResources(restoreName: Boolean) {
-        callback?.let { active -> runCatching { advertiser?.stopAdvertisingSet(active) } }
+        callback?.let { active ->
+            runCatching { advertiser?.stopAdvertisingSet(active) }
+                .onFailure { Timber.tag(TAG).e(it, "stopAdvertisingSet threw during teardown epoch=%d", operationEpoch.get()) }
+        }
         callback = null
         activeSet = null
         advertiser = null
+        sessionActive = false
+        activePersona = null
+        latestPayload = null
+        startInFlight = false
         updateInFlight = false
         applyingPayload = null
         lastAppliedPayload = null
@@ -289,10 +435,11 @@ internal class KeiserMSeriesPeripheralController(
         (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
 
     companion object {
+        private const val TAG = "KeiserPeripheral"
         private const val PREFS = "com.gmail.absolutebollockscreations.Fitbridge.peripheral"
         private const val KEY_ORIGINAL_NAME = "original_adapter_name"
 
-        private fun initialPayload(): ByteArray = KeiserMSeriesSimulatorEncoder.encode(
+        private fun initialPayload(profile: KeiserMSeriesSimulatorProfile): ByteArray = KeiserMSeriesSimulatorEncoder.encode(
             FtmsMockSample(
                 elapsedSeconds = 0,
                 heartRate = 0,
@@ -304,6 +451,7 @@ internal class KeiserMSeriesPeripheralController(
                 resistance = 0,
                 powerWatts = 0,
             ),
+            profile,
         )
     }
 }

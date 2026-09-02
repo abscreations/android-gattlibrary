@@ -39,7 +39,7 @@ class KeiserProtocolFixtureIntegrityTest {
         val decoded = decode(packet(case))
 
         assertEquals("6.30", decoded.firmware)
-        assertEquals(1_000L, decoded.statsTimeoutMs)
+        assertEquals(2_000L, decoded.statsTimeoutMs)
         assertEquals(0, decoded.dataType)
         assertTrue(decoded.isRealtime)
         assertEquals(56, decoded.systemId)
@@ -59,6 +59,10 @@ class KeiserProtocolFixtureIntegrityTest {
             1e-9,
         )
         assertTrue(FixtureJson.string(case["divergence_reason"]).startsWith("V24:"))
+        assertEquals(
+            1_000,
+            FixtureJson.int(FixtureJson.obj(case["reference_actual"])["gymnasticon_stats_timeout_ms"]),
+        )
     }
 
     @Test
@@ -73,6 +77,10 @@ class KeiserProtocolFixtureIntegrityTest {
             assertEquals(FixtureJson.string(expected["firmware"]), firmware(bytes))
             assertEquals(FixtureJson.int(expected["stats_timeout_ms"]).toLong(), statsTimeoutMs(bytes))
             assertTrue(FixtureJson.string(case["scope"]).contains("version-only"))
+            if (FixtureJson.string(expected["firmware"]) in setOf("6.30", "6.40")) {
+                assertEquals(1_000, FixtureJson.int(FixtureJson.obj(case["reference_actual"])["stats_timeout_ms"]))
+                assertTrue(FixtureJson.string(case["divergence_reason"]).startsWith("V25:"))
+            }
         }
     }
 

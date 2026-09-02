@@ -33,9 +33,11 @@ sealed interface SimulatorPersona {
         override val advertisedName: String = "PM5 $serialNumber"
     }
 
-    /** Best-effort Android host for the M-series' advertisement-only measurement protocol. */
-    data object KeiserMSeries : SimulatorPersona {
-        override val advertisedName: String = "M3"
+    /** Best-effort Android host for one M-series validation identity. */
+    data class KeiserMSeries(
+        val profile: KeiserMSeriesSimulatorProfile,
+    ) : SimulatorPersona {
+        override val advertisedName: String = profile.advertisedName
     }
 
     /** Physical-capture-backed Precor Spinner Chrono Power fixture. */
@@ -114,6 +116,58 @@ sealed interface SimulatorPersona {
     ) : SimulatorPersona {
         override val advertisedName: String = KickrPersonaManifest.forPersona(device).advertising.localName
     }
+}
+
+/** Distinct identities intended to run on distinct Android simulator phones. */
+enum class KeiserMSeriesSimulatorProfile(
+    val displayName: String,
+    val advertisedName: String,
+    val systemId: Int,
+    val distanceUnit: KeiserMSeriesSimulatorDistanceUnit,
+    val firmwareMajor: Int,
+    val firmwareMinor: Int,
+    val samplePeriodMs: Long,
+    val advertisingIntervalUnits: Int,
+    val statsTimeoutMs: Long,
+) {
+    M3I_IMPERIAL(
+        displayName = "M3i · Imperial validation",
+        advertisedName = "M3i",
+        systemId = 1,
+        distanceUnit = KeiserMSeriesSimulatorDistanceUnit.MILES,
+        firmwareMajor = 6,
+        firmwareMinor = 0x30,
+        samplePeriodMs = 354L,
+        advertisingIntervalUnits = 0x0237,
+        statsTimeoutMs = 2_000L,
+    ),
+    M3M_METRIC(
+        displayName = "M3m · Metric validation",
+        advertisedName = "M3m",
+        systemId = 2,
+        distanceUnit = KeiserMSeriesSimulatorDistanceUnit.KILOMETRES,
+        firmwareMajor = 6,
+        firmwareMinor = 0x30,
+        samplePeriodMs = 354L,
+        advertisingIntervalUnits = 0x0237,
+        statsTimeoutMs = 2_000L,
+    ),
+    M3O_OLD_FIRMWARE(
+        displayName = "M3o · Old firmware validation",
+        advertisedName = "M3o",
+        systemId = 3,
+        distanceUnit = KeiserMSeriesSimulatorDistanceUnit.MILES,
+        firmwareMajor = 6,
+        firmwareMinor = 0x22,
+        samplePeriodMs = 2_000L,
+        advertisingIntervalUnits = 0x0C80,
+        statsTimeoutMs = 7_000L,
+    ),
+}
+
+enum class KeiserMSeriesSimulatorDistanceUnit(val metresPerTenth: Double) {
+    MILES(160.934),
+    KILOMETRES(100.0),
 }
 
 /** Shared routing facts for personas hosted by the standard FTMS/CSC/CPS provider. */

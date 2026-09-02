@@ -163,8 +163,24 @@ class BtEngineState : HrmStateSink {
         val firmware: String?,
         val generation: Long,
         val sourceState: AdvertisementSourceState,
+        /**
+         * Advertised model variant, e.g. `M3i` or `M3m`; `M3` when the row carried no letter.
+         *
+         * The bare `M3` this used to hardcode was the one place a rider running an imperial and a
+         * metric bike side by side could not tell them apart — both rows read `M3 #n` while the
+         * air, the simulator UI and the personas had said `M3i` and `M3m` all along.
+         *
+         * The literal default is spelled out rather than borrowed from
+         * `KeiserSelection.DEFAULT_MODEL`, which is internal and cannot appear in this public
+         * class's signature; `KeiserSelection.modelFromAdvertisedName` remains the one parser.
+         */
+        val model: String = "M3",
     ) {
-        val displayName: String get() = "M3 #$systemId"
+        /**
+         * Note that [address] is a current binding, not an identity: it changes under this object
+         * when the bike rotates its random address, while [systemId] and [generation] do not.
+         */
+        val displayName: String get() = "$model #$systemId"
     }
 
     /** Registry projection for one physical-link generation; independent of scan visibility. */

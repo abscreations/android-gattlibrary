@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -12,7 +13,7 @@ import org.junit.Test
  * The advertisement-only source's state machine, on a fake clock (plan §6.5, phase 11.5).
  *
  * Every timing assertion here is a plain number. The behavior under test *is* timing — a
- * one-second statistics window, a seven-second one, a sixty-second disappearance — and a test that
+ * two-second statistics window, a seven-second one, a sixty-second disappearance — and a test that
  * waited real seconds to prove them would be slow, flaky, and no more truthful. The source reads no
  * clock of its own for exactly this reason.
  */
@@ -94,7 +95,7 @@ class KeiserAdvertisementSourceTest {
 
         observed.select(selection, nowMs = 0L)
         observed.onAdvertisement(advertisement(), arrivalMs = 0L)
-        observed.tick(1_001L)
+        observed.tick(2_001L)
         observed.tick(KeiserMSeriesMeasurement.BIKE_GONE_TIMEOUT_MS)
 
         assertEquals(KeiserSourceState.LIVE, snapshots[0]?.state)
@@ -199,9 +200,16 @@ class KeiserAdvertisementSourceTest {
     fun `another broadcaster, another system ID, review, and malformed are all ignored`() {
         source.select(selection, nowMs = 0L)
 
+        // A genuinely other broadcaster: another address *and* another console number. An address
+        // we do not know carrying the number we do know is a different case entirely — see the
+        // rotation and collision tests below — and conflating the two is what let an address
+        // rotation read as a disappearance.
         assertEquals(
             KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS,
-            source.onAdvertisement(advertisement(from = otherAddress), arrivalMs = 10L),
+            source.onAdvertisement(
+                advertisement(from = otherAddress, bytes = packet(systemId = 0x39)),
+                arrivalMs = 10L,
+            ),
         )
         assertEquals(
             KeiserAdvertisementOutcome.IGNORED_OTHER_SYSTEM_ID,
@@ -231,7 +239,7 @@ class KeiserAdvertisementSourceTest {
         source.onAdvertisement(advertisement(bytes = packet(dataType = 0xFF)), arrivalMs = 900L)
         source.onAdvertisement(advertisement(from = otherAddress), arrivalMs = 950L)
         source.onAdvertisement(advertisement(bytes = packet(systemId = 0x39)), arrivalMs = 980L)
-        source.tick(1_001L)
+        source.tick(2_001L)
 
         assertEquals(KeiserSourceState.STALE, source.state())
     }
@@ -239,14 +247,14 @@ class KeiserAdvertisementSourceTest {
     // ── statistics window ────────────────────────────────────────────────────────────────
 
     @Test
-    fun `fast firmware expires after one second and its boundary is inclusive`() {
+    fun `fast firmware expires after two seconds and its boundary is inclusive`() {
         source.select(selection, nowMs = 0L)
         source.onAdvertisement(advertisement(bytes = packet(firmwareMinor = 0x30)), arrivalMs = 0L)
 
-        source.tick(1_000L)
+        source.tick(2_000L)
         assertEquals(KeiserSourceState.LIVE, source.state())
 
-        source.tick(1_001L)
+        source.tick(2_001L)
         assertEquals(KeiserSourceState.STALE, source.state())
         assertNull(fusion.selectedSource(MetricKind.POWER))
     }
@@ -267,7 +275,7 @@ class KeiserAdvertisementSourceTest {
     fun `a stale source recovers on the next accepted advertisement`() {
         source.select(selection, nowMs = 0L)
         source.onAdvertisement(advertisement(), arrivalMs = 0L)
-        source.tick(2_000L)
+        source.tick(2_001L)
         assertEquals(KeiserSourceState.STALE, source.state())
 
         assertEquals(
@@ -392,6 +400,201 @@ class KeiserAdvertisementSourceTest {
                 advertisement(from = otherAddress, bytes = packet(systemId = 0x39)),
                 arrivalMs = 120L,
             ),
+        )
+    }
+
+    // ── address rotation ─────────────────────────────────────────────────────────────────
+
+    /**
+     * A Keiser broadcasts from a random address and mints a new one whenever its advertiser
+     * restarts — which the validation scenario provokes on every silence window, and which a studio
+     * provokes on every console power-cycle. Before phase 11.5b the source keyed identity on the
+     * address, so a rotation looked exactly like the bike vanishing: telemetry froze on the last
+     * accepted frame, decodable frames from the same console were discarded as another broadcaster,
+     * and sixty seconds later the origin ended. A field capture of two simulator bikes showed 63
+     * such frames thrown away across one rotation.
+     */
+    @Test
+    fun `a rotated address re-binds without ending the generation or rebasing the origin`() {
+        val origin = source.select(selection, nowMs = 0L)
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 10, elapsedSeconds = 120)),
+            arrivalMs = 0L,
+        )
+        val powerBefore = state.instantPower.value
+
+        // Three seconds of silence — the scenario's own STALE window — then the same console,
+        // same ride, from an address we have never seen.
+        source.tick(2_001L)
+        assertEquals(KeiserSourceState.STALE, source.state())
+
+        val outcome = source.onAdvertisement(
+            advertisement(
+                from = otherAddress,
+                bytes = speedPacket(distanceTenthsKm = 11, elapsedSeconds = 123),
+            ),
+            arrivalMs = 3_000L,
+        )
+
+        assertEquals(KeiserAdvertisementOutcome.ACCEPTED_REBOUND, outcome)
+        assertEquals(KeiserSourceState.LIVE, source.state())
+        assertEquals("the generation must survive a rotation", origin, source.originId())
+        assertEquals(origin, fusion.selectedMachineOrigin())
+        assertEquals(otherAddress, source.selection()!!.address)
+        assertEquals(0x38, source.selection()!!.systemId)
+        assertNotNull("telemetry resumes on the new address", state.instantPower.value)
+        assertEquals(powerBefore, state.instantPower.value)
+
+        // And the new address is now the bound one: further packets are ordinary accepts.
+        assertEquals(
+            KeiserAdvertisementOutcome.ACCEPTED,
+            source.onAdvertisement(
+                advertisement(
+                    from = otherAddress,
+                    bytes = speedPacket(distanceTenthsKm = 12, elapsedSeconds = 124),
+                ),
+                arrivalMs = 3_400L,
+            ),
+        )
+    }
+
+    @Test
+    fun `a second address claiming the selected number while the bound one is live is refused`() {
+        source.select(selection, nowMs = 0L)
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 10, elapsedSeconds = 120)),
+            arrivalMs = 0L,
+        )
+
+        // Inside the fast firmware's two-second window, so the bike we chose has not gone anywhere.
+        // Following the newcomer here would silently move the ride onto somebody else's machine.
+        assertEquals(
+            KeiserAdvertisementOutcome.IGNORED_ADDRESS_COLLISION,
+            source.onAdvertisement(
+                advertisement(
+                    from = otherAddress,
+                    bytes = speedPacket(distanceTenthsKm = 10, elapsedSeconds = 120),
+                ),
+                arrivalMs = 500L,
+            ),
+        )
+        assertEquals(address, source.selection()!!.address)
+    }
+
+    @Test
+    fun `a different console wearing the same number does not inherit the ride`() {
+        source.select(selection, nowMs = 0L)
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 40, elapsedSeconds = 600)),
+            arrivalMs = 0L,
+        )
+        source.tick(2_000L)
+
+        // Ten minutes into our ride, a bike two seconds into its own claims the same number.
+        assertEquals(
+            KeiserAdvertisementOutcome.IGNORED_DISCONTINUOUS,
+            source.onAdvertisement(
+                advertisement(
+                    from = otherAddress,
+                    bytes = speedPacket(distanceTenthsKm = 0, elapsedSeconds = 2),
+                ),
+                arrivalMs = 3_000L,
+            ),
+        )
+        assertEquals(address, source.selection()!!.address)
+    }
+
+    @Test
+    fun `a rotation is refused once the bike has already gone`() {
+        source.select(selection, nowMs = 0L)
+        source.onAdvertisement(advertisement(), arrivalMs = 0L)
+        source.tick(KeiserMSeriesMeasurement.BIKE_GONE_TIMEOUT_MS)
+        assertEquals(KeiserSourceState.GONE, source.state())
+
+        // Once the source reaches BIKE_GONE, a returning bike is a new ride to select rather than
+        // a generation to resurrect. The Android validation scenario no longer repeats this
+        // already-proven 60-second wait during every five-minute run.
+        assertEquals(
+            KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE,
+            source.onAdvertisement(advertisement(from = otherAddress), arrivalMs = 70_000L),
+        )
+    }
+
+    /**
+     * The simulator truncates one frame every fifteen seconds on purpose. It must be refused, it
+     * must not move the binding, and the next well-formed frame must carry on as though it had
+     * never arrived — including across a rotation, where a short frame is the worst possible
+     * moment to hand the binding to whoever sent it.
+     */
+    @Test
+    fun `a truncated frame moves nothing, from either address`() {
+        source.select(selection, nowMs = 0L)
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 10, elapsedSeconds = 120)),
+            arrivalMs = 0L,
+        )
+
+        assertEquals(
+            KeiserAdvertisementOutcome.IGNORED_MALFORMED,
+            source.onAdvertisement(
+                advertisement(bytes = speedPacket(10, 121).copyOf(18)),
+                arrivalMs = 400L,
+            ),
+        )
+        source.tick(2_000L)
+        assertEquals(
+            "a short frame from an unknown address is not ours and cannot claim the binding",
+            KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS,
+            source.onAdvertisement(
+                advertisement(from = otherAddress, bytes = speedPacket(11, 123).copyOf(18)),
+                arrivalMs = 3_000L,
+            ),
+        )
+        assertEquals(address, source.selection()!!.address)
+
+        // Recovery: the next well-formed frame is accepted normally.
+        assertEquals(
+            KeiserAdvertisementOutcome.ACCEPTED,
+            source.onAdvertisement(
+                advertisement(bytes = speedPacket(distanceTenthsKm = 11, elapsedSeconds = 123)),
+                arrivalMs = 3_400L,
+            ),
+        )
+    }
+
+    @Test
+    fun `a review frame from an unknown address never claims the binding`() {
+        source.select(selection, nowMs = 0L)
+        source.onAdvertisement(
+            advertisement(bytes = speedPacket(distanceTenthsKm = 10, elapsedSeconds = 120)),
+            arrivalMs = 0L,
+        )
+        source.tick(2_000L)
+
+        assertEquals(
+            KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS,
+            source.onAdvertisement(
+                advertisement(from = otherAddress, bytes = packet(dataType = 0xFF)),
+                arrivalMs = 3_000L,
+            ),
+        )
+        assertEquals(address, source.selection()!!.address)
+    }
+
+    // ── model label ──────────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `the model label keeps the advertised variant letter and never guesses one`() {
+        assertEquals("M3i", KeiserSelection.modelFromAdvertisedName("M3i"))
+        assertEquals("M3m", KeiserSelection.modelFromAdvertisedName("M3m"))
+        assertEquals("M3o", KeiserSelection.modelFromAdvertisedName("M3o"))
+        assertEquals("M3i", KeiserSelection.modelFromAdvertisedName("m3I bike 4"))
+        assertEquals("M3", KeiserSelection.modelFromAdvertisedName("M3"))
+        assertEquals("M3", KeiserSelection.modelFromAdvertisedName(null))
+        assertEquals("M3", KeiserSelection.modelFromAdvertisedName("Keiser"))
+        assertEquals(
+            "M3i #56",
+            KeiserSelection(address, systemId = 56, model = "M3i").displayName,
         )
     }
 

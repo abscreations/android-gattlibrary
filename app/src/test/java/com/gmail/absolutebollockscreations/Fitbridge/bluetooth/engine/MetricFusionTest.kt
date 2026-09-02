@@ -117,6 +117,17 @@ class MetricFusionTest {
     }
 
     @Test
+    fun `rejection warning gate suppresses repeats per metric and source then reopens`() {
+        val gate = RejectionWarningGate(windowMs = 10_000)
+        val pace = sample(MetricKind.AVERAGE_PACE, 0.5, arrivalMs = 1_000)
+
+        assertEquals(true, gate.shouldLog(pace))
+        assertEquals(false, gate.shouldLog(pace.copy(arrivalMs = 2_000)))
+        assertEquals(true, gate.shouldLog(pace.copy(metric = MetricKind.INSTANT_PACE, arrivalMs = 2_000)))
+        assertEquals(true, gate.shouldLog(pace.copy(arrivalMs = 11_000)))
+    }
+
+    @Test
     fun `instant CSC speed samples publish simple average in metric display units`() {
         val state = BtEngineState().apply { setUnits(0) }
         val fusion = MetricFusion(state)

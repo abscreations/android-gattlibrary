@@ -8,9 +8,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeiserMSeriesSimulatorEncoderTest {
+    private val metricProfile = KeiserMSeriesSimulatorProfile.M3M_METRIC
+
     @Test
     fun `generated Android manufacturer value round trips through production decoder`() {
-        val payload = KeiserMSeriesSimulatorEncoder.encode(sample())
+        val payload = KeiserMSeriesSimulatorEncoder.encode(sample(), metricProfile)
         val reading = KeiserMSeriesMeasurement.parse(
             KeiserMSeriesSimulatorEncoder.canonicalField(payload),
         )
@@ -20,7 +22,7 @@ class KeiserMSeriesSimulatorEncoderTest {
         requireNotNull(reading)
         assertEquals("6.30", reading.firmware)
         assertTrue(reading.isRealtime)
-        assertEquals(KeiserMSeriesSimulatorEncoder.SYNTHETIC_SYSTEM_ID, reading.systemId)
+        assertEquals(metricProfile.systemId, reading.systemId)
         assertEquals(87.6, reading.cadenceRpm, 0.0)
         assertEquals(143.0, reading.heartRateBpm, 0.0)
         assertEquals(271, reading.powerWatts)
@@ -47,6 +49,7 @@ class KeiserMSeriesSimulatorEncoderTest {
                             resistance = Int.MAX_VALUE,
                             powerWatts = Int.MAX_VALUE,
                         ),
+                        metricProfile,
                     ),
                 ),
             ),
@@ -63,16 +66,39 @@ class KeiserMSeriesSimulatorEncoderTest {
 
     @Test
     fun `legacy envelope is non connectable non scannable and fits thirty one bytes`() {
+        val persona = SimulatorPersona.KeiserMSeries(metricProfile)
         val plan = com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
-            .KeiserMSeriesAdvertisingPlan.create(KeiserMSeriesSimulatorEncoder.encode(sample()))
+            .KeiserMSeriesAdvertisingPlan.create(
+                persona,
+                KeiserMSeriesSimulatorEncoder.encode(sample(), metricProfile),
+            )
 
-        assertEquals("M3", plan.localName)
+        assertEquals("M3m", plan.localName)
         assertEquals(KeiserMSeriesMeasurement.COMPANY_ID, plan.manufacturerId)
         assertFalse(plan.connectable)
         assertFalse(plan.scannable)
         assertEquals(0x0237, plan.intervalUnits)
-        assertEquals(28, plan.advertisingBytes)
+        assertEquals(29, plan.advertisingBytes)
         assertTrue(plan.advertisingBytes <= 31)
+    }
+
+    @Test
+    fun `old persona emits firmware 6 22 at the captured slow interval`() {
+        val profile = KeiserMSeriesSimulatorProfile.M3O_OLD_FIRMWARE
+        val persona = SimulatorPersona.KeiserMSeries(profile)
+        val payload = KeiserMSeriesSimulatorEncoder.encode(sample(), profile)
+        val reading = requireNotNull(
+            KeiserMSeriesMeasurement.parse(KeiserMSeriesSimulatorEncoder.canonicalField(payload)),
+        )
+        val plan = com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
+            .KeiserMSeriesAdvertisingPlan.create(persona, payload)
+
+        assertEquals("6.22", reading.firmware)
+        assertEquals(KeiserMSeriesMeasurement.SLOW_STATS_TIMEOUT_MS, reading.statsTimeoutMs)
+        assertEquals(0x0C80, plan.intervalUnits)
+        assertEquals(2_000L, profile.samplePeriodMs)
+        assertEquals(17, payload.size)
+        assertEquals(17, reading.resistance)
     }
 
     private fun sample() = FtmsMockSample(

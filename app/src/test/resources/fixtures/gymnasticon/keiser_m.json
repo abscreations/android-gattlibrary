@@ -42,7 +42,7 @@
     "resistance_present_from_minor_hex": "21",
     "new_firmware_major": 6,
     "new_firmware_minor_hex": "30",
-    "new_stats_timeout_ms": 1000,
+    "new_stats_timeout_ms": 2000,
     "old_or_unknown_stats_timeout_ms": 7000,
     "bike_gone_timeout_ms": 60000,
     "realtime_predicate": "data_type == 0x00 or data_type in 0x81..0xfe",
@@ -56,7 +56,7 @@
       "expect": {
         "structurally_valid": true,
         "firmware": "6.30",
-        "stats_timeout_ms": 1000,
+        "stats_timeout_ms": 2000,
         "data_type": 0,
         "is_realtime": true,
         "system_id": 56,
@@ -72,9 +72,10 @@
         "resistance": 10
       },
       "reference_actual": {
-        "gymnasticon_cadence_rpm": 82.0
+        "gymnasticon_cadence_rpm": 82.0,
+        "gymnasticon_stats_timeout_ms": 1000
       },
-      "divergence_reason": "V24: gymnasticon rounds the documented one-tenth-rpm field; FitBridge preserves the wire precision, corroborated by captured fractional cadence values."
+      "divergence_reason": "V24: gymnasticon rounds the documented one-tenth-rpm field; FitBridge preserves the wire precision, corroborated by captured fractional cadence values. V25: gymnasticon uses a 1000 ms fast-firmware timeout; FitBridge uses 2000 ms after real Android scan delivery repeatedly exceeded 1000 ms during continuous advertising."
     }
   ],
   "version_cases": [
@@ -83,14 +84,18 @@
       "origin": "gymnasticon-v1.4.1",
       "scope": "version-only; not packet-shape evidence",
       "packet": [2, 1, 6, 64, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
-      "expect": { "firmware": "6.40", "stats_timeout_ms": 1000 }
+      "expect": { "firmware": "6.40", "stats_timeout_ms": 2000 },
+      "reference_actual": { "stats_timeout_ms": 1000 },
+      "divergence_reason": "V25: Android-tolerant freshness policy from the 2026-09-02 real-BLE validation run."
     },
     {
       "id": "gymnasticon-version-6.30",
       "origin": "gymnasticon-v1.4.1",
       "scope": "version-only; not packet-shape evidence",
       "packet": [2, 1, 6, 48, 0, 56, 56, 3, 70, 5, 115, 0, 13, 0, 4, 39, 1, 0, 10],
-      "expect": { "firmware": "6.30", "stats_timeout_ms": 1000 }
+      "expect": { "firmware": "6.30", "stats_timeout_ms": 2000 },
+      "reference_actual": { "stats_timeout_ms": 1000 },
+      "divergence_reason": "V25: Android-tolerant freshness policy from the 2026-09-02 real-BLE validation run."
     },
     {
       "id": "gymnasticon-version-6.22",

@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "family": "keiser-m-series",
+  "acquisition": "structurally-redacted-android-btsnoop-extraction",
+  "extracted": "2026-09-02",
+  "capture_kind": "raw Android Bluetooth HCI btsnoop of FitBridge consuming two Android simulator personas",
+  "privacy": "Bluetooth addresses, absolute timestamps, phone identities, local-name suffixes, and unrelated HCI traffic are excluded. Times are relative to the first retained Keiser manufacturer record.",
+  "evidence_limit": "Tier-S simulator evidence only. It is not a physical-Keiser or Android advertising-throughput claim. Keiser has no GATT or control surface.",
+  "source": {
+    "source_file": "keiser-btsnoop_hci-4.log",
+    "source_sha256": "2f146a7c4d59cbc511b004a983a7a43fd6bd7eaf6daa3207278b56de14e064c2",
+    "source_bytes": 3793836,
+    "retained_manufacturer_company_id": 258,
+    "retained_records": 2142,
+    "raw_file_committed": false
+  },
+  "identities": [
+    {
+      "persona": "M3m",
+      "firmware": "6.30",
+      "system_id": 2,
+      "distance_unit": "kilometres",
+      "valid_records": 1658,
+      "malformed_records": 38,
+      "median_valid_gap_seconds": 0.391399,
+      "observed_data_types": [0, 1, 128, 129, 254, 255]
+    },
+    {
+      "persona": "M3o",
+      "firmware": "6.22",
+      "system_id": 3,
+      "distance_unit": "miles",
+      "valid_records": 109,
+      "malformed_records": 18,
+      "median_valid_gap_seconds": 2.041541,
+      "maximum_valid_gap_seconds": 13.149397,
+      "observed_data_types": [0, 1, 128, 129, 254]
+    }
+  ],
+  "session_windows": [
+    {
+      "persona": "M3m",
+      "valid_records": 637,
+      "duration_seconds": 298.786871,
+      "median_gap_seconds": 0.391290,
+      "maximum_gap_seconds": 2.433622
+    },
+    {
+      "persona": "M3o",
+      "valid_records": 109,
+      "duration_seconds": 300.876971,
+      "median_gap_seconds": 2.041541,
+      "maximum_gap_seconds": 13.149397
+    }
+  ],
+  "cases": [
+    {
+      "id": "m3m-metric-live",
+      "relative_seconds": 2143.308719,
+      "packet_hex": "0201063000023403d8049c0000000000008006",
+      "expect": { "firmware": "6.30", "system_id": 2, "is_realtime": true, "distance_metres": 0.0 }
+    },
+    {
+      "id": "m3m-metric-first-tenth-kilometre",
+      "relative_seconds": 2149.545803,
+      "packet_hex": "0201063000023c03e204a40001000006018006",
+      "expect": { "firmware": "6.30", "system_id": 2, "is_realtime": true, "distance_metres": 100.0 }
+    },
+    {
+      "id": "m3m-review-frame",
+      "relative_seconds": 56.089978,
+      "packet_hex": "02010630800276035005d3000b000103058008",
+      "expect": { "firmware": "6.30", "system_id": 2, "is_realtime": false, "data_type": 128 }
+    },
+    {
+      "id": "m3o-imperial-live",
+      "relative_seconds": 2570.361507,
+      "packet_hex": "02010622000354031405b80006000024020007",
+      "expect": { "firmware": "6.22", "system_id": 3, "is_realtime": true, "distance_metres": 321.868 }
+    },
+    {
+      "id": "m3o-imperial-boundary-max",
+      "relative_seconds": 2615.570569,
+      "packet_hex": "0201062200037c037805d8000f000114ff7f09",
+      "expect": { "firmware": "6.22", "system_id": 3, "distance_raw_tenths": 32767, "distance_metres": 5273324.378 }
+    },
+    {
+      "id": "m3o-boundary-reset-marker",
+      "relative_seconds": 2617.604539,
+      "packet_hex": "0201062200037b037805d6000f000116000009",
+      "expect": { "firmware": "6.22", "system_id": 3, "distance_raw_tenths": 0, "distance_metres": 0.0 }
+    },
+    {
+      "id": "m3o-normal-counter-restored",
+      "relative_seconds": 2619.646091,
+      "packet_hex": "0201062200037b037805d70010000118050009",
+      "expect": { "firmware": "6.22", "system_id": 3, "distance_raw_tenths": 5, "distance_metres": 804.67 }
+    },
+    {
+      "id": "m3o-malformed-missing-resistance",
+      "relative_seconds": 2580.663961,
+      "packet_hex": "02010622000357031e05ba000800002e0200",
+      "expect": { "accepted": false, "packet_bytes": 18 }
+    }
+  ]
+}

@@ -5,10 +5,18 @@ import timber.log.Timber
 /**
  * The bike the user picked, for this session only (plan §6.6).
  *
- * Both halves are required. The address selects one broadcaster; the system ID is the number
- * printed on the bike's console, and it is what the rider actually used to choose between the
- * twenty machines in a studio. Matching on address alone would be enough in a room with one bike
- * and silently wrong in the room this feature exists for.
+ * ## The system ID is the identity; the address is only where it is currently speaking from
+ *
+ * The system ID is the number printed on the bike's console, it is what the rider actually used
+ * to choose between the twenty machines in a studio, and — critically — it is the only half of
+ * this pair the bike itself guarantees to keep. A Keiser broadcasts from a *random* BLE address
+ * and rotates it whenever its advertiser restarts, which on the validation rig happens on every
+ * scenario silence window and in a studio happens whenever a console power-cycles or the
+ * platform's privacy timer fires. Binding identity to the address meant a rotation looked exactly
+ * like the bike vanishing: telemetry froze on the last accepted frame while perfectly decodable
+ * ones from the same console were discarded as another broadcaster, and sixty seconds later the
+ * origin ended. [address] is therefore a *binding*, re-learned under the guard in
+ * [KeiserAdvertisementSource.onAdvertisement], not a name.
  *
  * **Never persisted.** §11 forbids writing the address or system ID to `AppSettings` or
  * `SharedPreferences`: the bike a person rode on Tuesday is not a preference, and a remembered
@@ -17,21 +25,67 @@ import timber.log.Timber
 internal data class KeiserSelection(
     val address: String,
     val systemId: Int,
+    /**
+     * Advertised model variant, for display only — never a filter.
+     *
+     * The scanner row already knows whether it admitted an `M3i` or an `M3m`, and a tester running
+     * an imperial and a metric bike side by side needs that letter to tell the two rows and the
+     * two run screens apart. It rides on the selection rather than being re-derived because the
+     * discovered row it came from is pruned the moment the address rotates.
+     */
+    val model: String = DEFAULT_MODEL,
 ) {
     init {
         require(address.isNotBlank()) { "A Keiser selection needs the broadcaster's address" }
         require(systemId in 0..0xff) { "System ID is a uint8" }
+        require(model.isNotBlank()) { "A Keiser selection needs a model label" }
     }
 
     /**
      * Stable in-session identity for [MetricOriginId.Advertisement].
      *
-     * Carries the address because two bikes in one room must not share a fusion origin. It never
-     * reaches a capture file in this form: `CaptureHooks.sample` runs advertisement origins through
-     * the same redaction table that maps GATT addresses to `c1`, `c2`, so a trace records which
-     * source produced a sample without recording which machine it was.
+     * Keyed on the system ID alone, because that is the half that survives an address rotation and
+     * fusion must not see a re-bound bike as a new origin — a new origin rebases every cumulative
+     * counter, which is the same frozen-then-reset ride the address binding used to produce. Two
+     * bikes cannot collide here: the source tracks exactly one selection, and two consoles sharing
+     * a system ID is the collision [KeiserAdvertisementOutcome.IGNORED_ADDRESS_COLLISION] refuses.
+     *
+     * Dropping the address from the key also removes it from one more structure: `CaptureHooks`
+     * already redacted this string, and now there is nothing in it left to redact.
      */
-    val sourceKey: String get() = "keiser:$address#$systemId"
+    val sourceKey: String get() = "keiser:#$systemId"
+
+    /** Row and run-screen label, e.g. `M3i #1`. */
+    val displayName: String get() = "$model #$systemId"
+
+    /** The same bike, now speaking from [address]. Identity, generation and origin are unchanged. */
+    internal fun boundTo(address: String): KeiserSelection = copy(address = address)
+
+    internal companion object {
+        /** Used when a row was admitted without a decodable variant letter in its local name. */
+        const val DEFAULT_MODEL = "M3"
+
+        /**
+         * `M3`, optionally one variant letter. Anything else is not a model label.
+         *
+         * Case-insensitive to match `DeviceMatcherRegistry`'s own `^M3` local-name pattern, which
+         * is what admitted the row in the first place; a parser stricter than the matcher would
+         * drop the letter off exactly the rows the matcher went out of its way to accept.
+         */
+        private val MODEL_PATTERN = Regex("^M3[A-Za-z]?", RegexOption.IGNORE_CASE)
+
+        /**
+         * The model label carried by an advertised local name, or [DEFAULT_MODEL].
+         *
+         * Normalised so `m3I` and `M3i` produce one label: the matcher admits the name
+         * case-insensitively, and two rows that differ only in the case a console was flashed with
+         * would otherwise read as two different machines.
+         */
+        fun modelFromAdvertisedName(name: String?): String {
+            val match = name?.trim()?.let { MODEL_PATTERN.find(it) }?.value ?: return DEFAULT_MODEL
+            return match.take(2).uppercase() + match.drop(2).lowercase()
+        }
+    }
 }
 
 /**
@@ -63,11 +117,38 @@ internal enum class KeiserAdvertisementOutcome {
     /** Realtime telemetry from the selected bike. Freshness refreshed, metrics emitted. */
     ACCEPTED,
 
+    /**
+     * Realtime telemetry from the selected bike, arriving from a new broadcaster address.
+     *
+     * Accepted exactly as [ACCEPTED] is — same generation, same origin, same cumulative counters —
+     * and reported separately only so a trace and a test can tell a re-binding apart from an
+     * uneventful packet.
+     */
+    ACCEPTED_REBOUND,
+
     /** Nothing is selected, or this generation has already ended. A late callback lands here. */
     IGNORED_NOT_ACTIVE,
 
     /** Another broadcaster. The room is full of them. */
     IGNORED_OTHER_ADDRESS,
+
+    /**
+     * A second address claiming the selected system ID while the bound one is still live.
+     *
+     * Two consoles configured to the same number, or a stale duplicate row. The incumbent keeps
+     * the binding: it is the one the rider chose and the one currently producing telemetry, and
+     * following the newer address would silently move a ride onto somebody else's bike.
+     */
+    IGNORED_ADDRESS_COLLISION,
+
+    /**
+     * A new address carrying the selected system ID, but not carrying on the same ride.
+     *
+     * The elapsed clock jumped backwards or forwards past what the silence can account for, or the
+     * firmware changed. That is a different machine wearing the same console number, not the one
+     * this generation belongs to.
+     */
+    IGNORED_DISCONTINUOUS,
 
     /** The selected address, but not the selected bike's system ID. */
     IGNORED_OTHER_SYSTEM_ID,
@@ -130,7 +211,7 @@ internal data class KeiserSourceSnapshot(
  * [onAdvertisement] takes the arrival time and [tick] takes the current time; the source reads no
  * clock of its own. That makes the entire state machine — statistics expiry, the sixty-second
  * disappearance, late-callback rejection — testable with plain numbers, which matters because the
- * behavior being asserted is *timing* and a test that waits a real second to prove a one-second
+ * behavior being asserted is *timing* and a test that waits in real time to prove a two-second
  * window is both slow and flaky.
  *
  * ## Generations
@@ -147,7 +228,18 @@ internal data class KeiserSourceSnapshot(
  * review-mode replay, another broadcaster, or the same address under a different system ID all
  * leave the statistics clock exactly where it was. Otherwise a bike sitting on its summary screen
  * — which the capture corpus shows sending seventy consecutive review frames — would hold the
- * source alive forever while publishing nothing.
+ * source alive forever while publishing nothing. The validation scenario's every-fifteen-second
+ * truncated frame is the same rule seen from the other side: it is refused, it moves nothing, and
+ * the next well-formed frame carries on as though it had never arrived.
+ *
+ * ## Address rotation is expected, and does not end anything
+ *
+ * A Keiser broadcasts from a random address and mints a new one whenever its advertiser restarts.
+ * The selection therefore names the bike by system ID and merely *binds* an address, which
+ * [onAdvertisement] re-learns when the bound one falls silent and a new one carries the same
+ * system ID on a ride that demonstrably continues. Generation, origin and cumulative counters all
+ * survive it, because nothing about the bike changed — only which random number it announces
+ * itself with.
  */
 internal class KeiserAdvertisementSource(
     private val fusion: MetricFusion,
@@ -168,6 +260,15 @@ internal class KeiserAdvertisementSource(
     private var statsTimeoutMs: Long = KeiserMSeriesMeasurement.SLOW_STATS_TIMEOUT_MS
     private var state: KeiserSourceState = KeiserSourceState.IDLE
     private var firmware: String? = null
+
+    /**
+     * Elapsed clock of the last accepted reading, or null before the first one.
+     *
+     * The continuity evidence a re-binding is allowed on. It is the one field in the payload that
+     * both advances predictably and cannot be guessed by a different bike that happens to share a
+     * console number.
+     */
+    private var lastAcceptedElapsedSeconds: Int? = null
 
     /** Current state. The UI reads this; it never reads a connection state, because there is none. */
     fun state(): KeiserSourceState = synchronized(lock) { state }
@@ -209,6 +310,7 @@ internal class KeiserAdvertisementSource(
         lastAcceptedArrivalMs = nowMs
         statsTimeoutMs = KeiserMSeriesMeasurement.SLOW_STATS_TIMEOUT_MS
         firmware = null
+        lastAcceptedElapsedSeconds = null
         state = KeiserSourceState.LIVE
         dropoutFilter.reset()
         speedEstimator.reset()
@@ -254,36 +356,82 @@ internal class KeiserAdvertisementSource(
                 KeiserAdvertisementOutcome.IGNORED_NOT_ACTIVE,
             )
         }
-        if (advertisement.address != selected.address) {
-            return@synchronized recordDecisionLocked(
-                selected,
-                KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS,
-            )
-        }
 
+        val fromBoundAddress = advertisement.address == selected.address
         val reading = KeiserMSeriesMeasurement.parse(advertisement.payload.copyBytes())
             ?: return@synchronized recordDecisionLocked(
                 selected,
-                KeiserAdvertisementOutcome.IGNORED_MALFORMED,
+                // A short frame from a broadcaster we are not bound to is simply not ours. Only
+                // the bound address's malformed frames are worth reporting as malformed, and the
+                // simulator emits one every fifteen seconds precisely to prove they are survivable.
+                if (fromBoundAddress) {
+                    KeiserAdvertisementOutcome.IGNORED_MALFORMED
+                } else {
+                    KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS
+                },
             )
         if (reading.systemId != selected.systemId) {
             return@synchronized recordDecisionLocked(
                 selected,
-                KeiserAdvertisementOutcome.IGNORED_OTHER_SYSTEM_ID,
+                if (fromBoundAddress) {
+                    KeiserAdvertisementOutcome.IGNORED_OTHER_SYSTEM_ID
+                } else {
+                    KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS
+                },
             )
         }
+
+        // A review-mode replay never moves the binding and never refreshes liveness, whichever
+        // address it came from: a bike parked on its summary screen must not be able to steal a
+        // ride from the one still transmitting under the number the rider chose.
         if (!reading.isRealtime) {
             return@synchronized recordDecisionLocked(
                 selected,
-                KeiserAdvertisementOutcome.IGNORED_REVIEW,
+                if (fromBoundAddress) {
+                    KeiserAdvertisementOutcome.IGNORED_REVIEW
+                } else {
+                    KeiserAdvertisementOutcome.IGNORED_OTHER_ADDRESS
+                },
             )
         }
+
+        var rebound = false
+        if (!fromBoundAddress) {
+            val silenceMs = arrivalMs - lastAcceptedArrivalMs
+            // The incumbent is still inside its own statistics window, so it has not gone
+            // anywhere. Two live addresses under one system ID is a collision, not a rotation.
+            if (silenceMs <= statsTimeoutMs) {
+                return@synchronized recordDecisionLocked(
+                    selected,
+                    KeiserAdvertisementOutcome.IGNORED_ADDRESS_COLLISION,
+                )
+            }
+            if (!continuesRideLocked(reading, silenceMs)) {
+                return@synchronized recordDecisionLocked(
+                    selected,
+                    KeiserAdvertisementOutcome.IGNORED_DISCONTINUOUS,
+                )
+            }
+            selection = selected.boundTo(advertisement.address)
+            rebound = true
+            // No address in an ordinary log (§11). The system ID and the generation are what a
+            // reader needs, and they are what the capture already carries.
+            Timber.tag(BtEngineState.TAG).i(
+                "Keiser bike #%d re-bound to a new broadcaster address after %d ms of silence " +
+                    "(generation %d, origin unchanged)",
+                selected.systemId,
+                silenceMs,
+                generation,
+            )
+        }
+        val bound = selection ?: selected
 
         // Out-of-order delivery is possible and is not evidence of anything going wrong, but it
         // must not drag the statistics clock backwards into an accidental stale state.
         lastAcceptedArrivalMs = maxOf(lastAcceptedArrivalMs, arrivalMs)
         statsTimeoutMs = reading.statsTimeoutMs
         firmware = reading.firmware
+        lastAcceptedElapsedSeconds = reading.elapsedSeconds
         state = KeiserSourceState.LIVE
         publishStateLocked()
 
@@ -292,7 +440,9 @@ internal class KeiserAdvertisementSource(
         val emitter = MetricEmitter(
             fusion = fusion,
             sourceId = MetricSourceId(
-                originId = MetricOriginId.Advertisement(selected.sourceKey, generation),
+                // Unchanged across a re-binding. The bike did not become a different bike by
+                // changing which random address it speaks from, and fusion must not treat it as one.
+                originId = MetricOriginId.Advertisement(bound.sourceKey, generation),
                 protocol = MetricProtocol.VENDOR,
                 endpointId = MetricEndpointId.ManufacturerData(KeiserMSeriesMeasurement.COMPANY_ID),
             ),
@@ -309,7 +459,49 @@ internal class KeiserAdvertisementSource(
                 confidence = confidence,
             )
         }
-        recordDecisionLocked(selected, KeiserAdvertisementOutcome.ACCEPTED)
+        recordDecisionLocked(
+            bound,
+            if (rebound) {
+                KeiserAdvertisementOutcome.ACCEPTED_REBOUND
+            } else {
+                KeiserAdvertisementOutcome.ACCEPTED
+            },
+        )
+    }
+
+    /**
+     * Whether [reading] plausibly continues the ride this generation has been watching.
+     *
+     * The only claim being tested is that the console at the far end of a new address is the same
+     * console, mid-ride, that went quiet a moment ago — not that it is a Keiser, which the payload
+     * already proved, and not that its number matches, which the caller already checked. Two
+     * cheap pieces of evidence carry it:
+     *
+     *  - **Firmware.** A bike does not reflash itself between two advertisements.
+     *  - **The elapsed clock.** It advances with the silence and nothing else. A different console
+     *    that happens to share a system ID is overwhelmingly likely to be at a different point in
+     *    its own ride, and a console that was power-cycled restarts at zero — both of which land
+     *    outside the window and are correctly refused.
+     *
+     * The window is deliberately loose on the forward side: advertisements are lost routinely, so
+     * the silence measured here is a lower bound on the silence the bike actually experienced. It
+     * is tight on the backward side, where the only legitimate movement is the rounding of a
+     * whole-second field.
+     *
+     * Returns true before the first accepted reading of a generation, when there is nothing to
+     * continue from — a bike selected from a row and then rotating before its first accepted
+     * packet has no ride to contradict.
+     */
+    private fun continuesRideLocked(
+        reading: KeiserMSeriesMeasurement.Reading,
+        silenceMs: Long,
+    ): Boolean {
+        val previous = lastAcceptedElapsedSeconds ?: return true
+        firmware?.let { if (reading.firmware != it) return false }
+        val silenceSeconds = (silenceMs / 1_000L).coerceAtLeast(0L)
+        val lower = previous - ELAPSED_BACKWARD_TOLERANCE_SECONDS
+        val upper = previous + silenceSeconds + ELAPSED_FORWARD_TOLERANCE_SECONDS
+        return reading.elapsedSeconds >= lower && reading.elapsedSeconds <= upper
     }
 
     /**
@@ -382,6 +574,7 @@ internal class KeiserAdvertisementSource(
         speedEstimator.reset()
         selection = null
         firmware = null
+        lastAcceptedElapsedSeconds = null
         state = if (reason == KeiserEndReason.BIKE_GONE) {
             KeiserSourceState.GONE
         } else {
@@ -404,6 +597,17 @@ internal class KeiserAdvertisementSource(
         onSourceStateChanged(KeiserSourceSnapshot(selected, generation, firmware, state))
     }
 
+    private companion object {
+        /** The elapsed field is whole seconds; only rounding may legitimately move it backwards. */
+        const val ELAPSED_BACKWARD_TOLERANCE_SECONDS = 2
+
+        /**
+         * Slack above the measured silence, because the measurement is a lower bound: the bike may
+         * have stopped transmitting well before the last packet we happened to receive from it.
+         */
+        const val ELAPSED_FORWARD_TOLERANCE_SECONDS = 15
+    }
+
     private fun recordDecisionLocked(
         selected: KeiserSelection?,
         outcome: KeiserAdvertisementOutcome,
@@ -415,7 +619,12 @@ internal class KeiserAdvertisementSource(
             generation = generation,
             state = state,
             decision = outcome.name,
-            freshnessMs = statsTimeoutMs.takeIf { outcome == KeiserAdvertisementOutcome.ACCEPTED },
+            // Both accepting outcomes carry the window; a re-binding is an acceptance that
+            // happened to change an address, not a different kind of event.
+            freshnessMs = statsTimeoutMs.takeIf {
+                outcome == KeiserAdvertisementOutcome.ACCEPTED ||
+                    outcome == KeiserAdvertisementOutcome.ACCEPTED_REBOUND
+            },
         )
         return outcome
     }

@@ -289,12 +289,14 @@ class AdapterNameCoordinatorTest {
 
     @Test
     fun `a stranded Keiser simulator name is never recorded as the user's original`() {
-        val gateway = FakeGateway("M3")
-        val store = FakeStore()
+        listOf("M3", "M3i", "M3m").forEach { name ->
+            val gateway = FakeGateway(name)
+            val store = FakeStore()
 
-        coordinator(gateway, store).apply("FBRG-Bike") {}
+            coordinator(gateway, store).apply("FBRG-Bike") {}
 
-        assertNull("must not save a Keiser session name as the original", store.value)
+            assertNull("must not save Keiser session name $name as the original", store.value)
+        }
     }
 
     @Test

@@ -598,6 +598,37 @@ class MetricFusionPolicyTest {
     }
 
     @Test
+    fun `impossible cumulative distance jump is rebased and recovery continues from reset`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val keiser = source(ftmsConnection, MetricProtocol.VENDOR, 62)
+
+        fusion.submit(sample(MetricKind.DISTANCE, 700.0, 1_000, keiser, MetricSourceClass.VENDOR_NATIVE))
+        fusion.submit(sample(MetricKind.DISTANCE, 3_276_600.0, 1_354, keiser, MetricSourceClass.VENDOR_NATIVE))
+        assertEquals(700, state.totalDistanceMeters.value)
+
+        // The authored boundary sequence returns the native counter to zero. That is a reset,
+        // not backwards travel, and the first ordinary increment after it must resume the total.
+        fusion.submit(sample(MetricKind.DISTANCE, 0.0, 1_708, keiser, MetricSourceClass.VENDOR_NATIVE))
+        fusion.submit(sample(MetricKind.DISTANCE, 804.7, 2_062, keiser, MetricSourceClass.VENDOR_NATIVE))
+        assertEquals(805, state.totalDistanceMeters.value)
+        fusion.submit(sample(MetricKind.DISTANCE, 814.7, 2_416, keiser, MetricSourceClass.VENDOR_NATIVE))
+        assertEquals(815, state.totalDistanceMeters.value)
+    }
+
+    @Test
+    fun `coarse cumulative distance increments retain a burst allowance`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        val keiser = source(ftmsConnection, MetricProtocol.VENDOR, 63)
+
+        fusion.submit(sample(MetricKind.DISTANCE, 100.0, 1_000, keiser, MetricSourceClass.VENDOR_NATIVE))
+        fusion.submit(sample(MetricKind.DISTANCE, 200.0, 1_354, keiser, MetricSourceClass.VENDOR_NATIVE))
+
+        assertEquals(200, state.totalDistanceMeters.value)
+    }
+
+    @Test
     fun `cumulative distance remains continuous across a recovered link generation`() {
         val state = BtEngineState()
         val fusion = MetricFusion(state)

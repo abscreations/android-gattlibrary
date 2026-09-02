@@ -71,7 +71,23 @@ internal interface MachineControlEndpoint {
     ): Boolean
 }
 
-internal enum class MachineControlRoute { FTMS, FEC, WAHOO, RIDEON, UNAVAILABLE }
+internal enum class MachineControlRoute {
+    FTMS,
+    FEC,
+    WAHOO,
+    RIDEON,
+
+    /**
+     * The selected machine broadcasts and cannot receive (phase 11.5).
+     *
+     * Distinct from [UNAVAILABLE], which means a control surface was expected and is not up yet.
+     * Here there is no surface and never will be, so the difference is worth keeping: one is a
+     * link that has not converged and is worth complaining about, the other is a bike.
+     */
+    ADVERTISEMENT_ONLY,
+
+    UNAVAILABLE,
+}
 
 /** Exact downstream ranges approved for the legacy KICKR protocol surface. */
 internal fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
@@ -96,8 +112,13 @@ internal fun machineControlRoute(
     hasFeCHandler: Boolean,
     hasWahooControl: Boolean = false,
     hasRideOnControl: Boolean = false,
+    hasAdvertisementMachine: Boolean = false,
 ): MachineControlRoute =
     when {
+        // First, and unconditionally. Selecting an advertisement-only machine already disconnected
+        // whatever GATT machine held the slot (§6.6), so a stale connection context left behind by
+        // that teardown must not route control at a bike that cannot receive it.
+        hasAdvertisementMachine -> MachineControlRoute.ADVERTISEMENT_ONLY
         selectedAdapterId == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID && hasRideOnControl ->
             MachineControlRoute.RIDEON
         selectedAdapterId == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID ->
@@ -113,6 +134,39 @@ internal fun machineControlRoute(
 
 /** Honest closed route used while a selected adapter has no published endpoint. */
 internal object UnavailableMachineControlEndpoint : MachineControlEndpoint {
+    override fun requestControl() = false
+    override fun startOrResume() = false
+    override fun stopOrPause() = false
+    override fun setTargetSpeedKph(kph: Float) = false
+    override fun setTargetInclinationPercent(percent: Float) = false
+    override fun setTargetResistance(level: Float) = false
+    override fun setTargetPowerWatts(watts: Int) = false
+    override fun setWheelCircumferenceMm(millimetres: Float) = false
+    override fun setIndoorBikeSimulation(
+        windSpeedMps: Float,
+        gradePercent: Float,
+        rollingResistanceCoefficient: Float,
+        windResistanceCoefficient: Float,
+    ) = false
+}
+
+/**
+ * The selected machine is a broadcaster. Every control call is declined, and none of them warns.
+ *
+ * Silence is the point. Before this existed the run screen's ordinary start-up sequence ran the
+ * full FTMS control dance against a Keiser — `requestControl`, an eight-second wait for CCCDs that
+ * do not exist, a second eight-second wait for a control grant that will never come — and logged
+ * `CP: requestControl ignored (controlPointPresent=false)`, `startOrResume(): CCCDs not ready`
+ * and `did not gain control within timeout` on the way through. None of that was a fault: there is
+ * no link, no CCCD and no control point, exactly as the phase intended. A warning that fires every
+ * time the system works as designed trains a reader to skim past warnings, and it buried the one
+ * line in that capture that actually mattered.
+ *
+ * Declining rather than pretending to succeed: `false` is the honest answer to "did the machine
+ * take this command", and the run screen already treats a machine it cannot drive as one it simply
+ * displays. [KeiserMSeriesMeasurement]'s own header is the authority — there is nothing writable.
+ */
+internal object AdvertisementOnlyMachineControlEndpoint : MachineControlEndpoint {
     override fun requestControl() = false
     override fun startOrResume() = false
     override fun stopOrPause() = false

@@ -47,8 +47,8 @@ class KeiserMSeriesDecoderTest {
         // Read as decimal, minor 0x40 is 64 and minor 0x30 is 48, so the ordering survives; read
         // as the rendered strings "6.40" and "6.30" parsed back as decimal fractions, 6.40 is
         // *below* 6.30 in the tenths place and this bike would fall back to the slow window.
-        assertEquals(1_000L, parse(withByte(3, 0x40)).statsTimeoutMs)
-        assertEquals(1_000L, parse(withByte(3, 0x30)).statsTimeoutMs)
+        assertEquals(2_000L, parse(withByte(3, 0x40)).statsTimeoutMs)
+        assertEquals(2_000L, parse(withByte(3, 0x30)).statsTimeoutMs)
         assertEquals(7_000L, parse(withByte(3, 0x22)).statsTimeoutMs)
         assertEquals("6.40", parse(withByte(3, 0x40)).firmware)
         assertEquals("6.30", parse(withByte(3, 0x30)).firmware)
@@ -62,7 +62,7 @@ class KeiserMSeriesDecoderTest {
         // which is visible; the reverse blanks live telemetry, which reads as a broken app.
         assertEquals(7_000L, KeiserMSeriesMeasurement.statsTimeoutMs(7, 0x40))
         assertEquals(7_000L, KeiserMSeriesMeasurement.statsTimeoutMs(5, 0x40))
-        assertEquals(1_000L, KeiserMSeriesMeasurement.statsTimeoutMs(6, 0x30))
+        assertEquals(2_000L, KeiserMSeriesMeasurement.statsTimeoutMs(6, 0x30))
     }
 
     @Test
@@ -320,7 +320,7 @@ class KeiserMSeriesDecoderTest {
         val slow = keiserSamples(parse(withByte(3, 0x22)))
 
         assertTrue(fast.isNotEmpty())
-        assertTrue(fast.all { it.freshnessMs == 1_000L })
+        assertTrue(fast.all { it.freshnessMs == 2_000L })
         assertTrue(slow.isNotEmpty())
         assertTrue(slow.all { it.freshnessMs == 7_000L })
     }

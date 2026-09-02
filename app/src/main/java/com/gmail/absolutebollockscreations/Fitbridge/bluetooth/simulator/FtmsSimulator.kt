@@ -76,8 +76,8 @@ class FtmsSimulator(
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
 
-        /** Refresh the Keiser manufacturer-data advertisement from the coherent bike sample. */
-        fun publishKeiser(sample: FtmsMockSample) {}
+        /** Set the Keiser manufacturer value, or suspend its advertising set on null. */
+        fun publishKeiser(manufacturerPayload: ByteArray?) {}
 
         /** Publish one capture-shaped Life Fitness FTMS record after local setup unlocks the link. */
         fun publishLifeFitness(sample: FtmsMockSample) {}
@@ -116,6 +116,8 @@ class FtmsSimulator(
     }
 
     private var schwinnX70: SchwinnX70Session? = null
+    private var keiserScenario: KeiserMSeriesValidationScenario? = null
+    private var lastKeiserScenarioEvent: KeiserMSeriesValidationScenario.Event? = null
 
     data class State(
         val running: Boolean = false,
@@ -266,8 +268,8 @@ class FtmsSimulator(
                 startConcept2(persona, concept2Scenario)
                 return
             }
-            SimulatorPersona.KeiserMSeries -> {
-                startKeiser()
+            is SimulatorPersona.KeiserMSeries -> {
+                startKeiser(persona)
                 return
             }
             SimulatorPersona.PrecorChrono -> {
@@ -380,6 +382,8 @@ class FtmsSimulator(
 
     fun stop() {
         schwinnX70 = null
+        keiserScenario = null
+        lastKeiserScenarioEvent = null
         job?.cancel()
         job = null
         engine = null
@@ -484,8 +488,7 @@ class FtmsSimulator(
         Timber.tag(TAG).i("Precor Chrono simulator started")
     }
 
-    private fun startKeiser() {
-        val persona = SimulatorPersona.KeiserMSeries
+    private fun startKeiser(persona: SimulatorPersona.KeiserMSeries) {
         if (realMachineAttached()) {
             _state.value = State(
                 persona = persona,
@@ -497,12 +500,15 @@ class FtmsSimulator(
 
         val mockEngine = FtmsMockEngine(FtmsMachineProfile.INDOOR_BIKE, controlsEnabled = false)
         engine = mockEngine
+        keiserScenario = KeiserMSeriesValidationScenario(persona.profile)
+        lastKeiserScenarioEvent = null
         peripheral.setControlOverride(null)
         val started = runCatching {
             peripheral.startAdvertising(persona, TargetCapabilities.NONE)
         }.getOrDefault(false)
         if (!started) {
             engine = null
+            keiserScenario = null
             _state.value = State(
                 persona = persona,
                 lastError = "Could not start advertising as ${persona.advertisedName}",
@@ -521,7 +527,7 @@ class FtmsSimulator(
             advertising = peripheral.isAdvertising,
         )
         publish(mockEngine.snapshot())
-        val periodMs = KeiserMSeriesSimulatorEncoder.SAMPLE_PERIOD_MS
+        val periodMs = persona.profile.samplePeriodMs
         job = scope.launch {
             while (isActive) {
                 delay(periodMs)
@@ -871,13 +877,28 @@ class FtmsSimulator(
         // rather than in each encoder because this is the last point before the standard-FTMS path
         // (engineState -> EngineMetricPump) and the proprietary path (straight to the encoders)
         // diverge. One substitution covers every persona, including ones not written yet.
-        val sample = withLiveHeartRate(generated)
+        var sample = withLiveHeartRate(generated)
+
+        keiserScenario?.let { scenario ->
+            val output = scenario.next(sample)
+            if (output.event != lastKeiserScenarioEvent) {
+                Timber.tag(TAG).i(
+                    "Keiser scenario transition persona=%s event=%s loop=%d elapsedMs=%d payload=%s payloadBytes=%d",
+                    (_state.value.persona as? SimulatorPersona.KeiserMSeries)?.advertisedName,
+                    output.event,
+                    output.loopIndex,
+                    output.loopElapsedMs,
+                    if (output.manufacturerPayload == null) "SUSPEND" else "PUBLISH",
+                    output.manufacturerPayload?.size ?: 0,
+                )
+                lastKeiserScenarioEvent = output.event
+            }
+            sample = output.sample
+            peripheral.publishKeiser(output.manufacturerPayload)
+        }
 
         if (_state.value.persona == SimulatorPersona.PrecorChrono) {
             peripheral.publishPrecor(sample)
-        }
-        if (_state.value.persona == SimulatorPersona.KeiserMSeries) {
-            peripheral.publishKeiser(sample)
         }
         if (_state.value.persona is SimulatorPersona.LifeFitness) {
             peripheral.publishLifeFitness(sample)

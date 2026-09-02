@@ -75,8 +75,18 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `Keiser persona has an M3 discovery identity`() {
-        assertEquals("M3", SimulatorPersona.KeiserMSeries.advertisedName)
+    fun `Keiser personas have distinct M3 discovery identities and units`() {
+        val personas = KeiserMSeriesSimulatorProfile.entries.map { SimulatorPersona.KeiserMSeries(it) }
+        assertEquals(listOf("M3i", "M3m", "M3o"), personas.map { it.advertisedName })
+        assertEquals(listOf(1, 2, 3), personas.map { it.profile.systemId })
+        assertEquals(
+            listOf(
+                KeiserMSeriesSimulatorDistanceUnit.MILES,
+                KeiserMSeriesSimulatorDistanceUnit.KILOMETRES,
+                KeiserMSeriesSimulatorDistanceUnit.MILES,
+            ),
+            personas.map { it.profile.distanceUnit },
+        )
     }
 
     @Test
@@ -94,10 +104,12 @@ class SimulatorPersonaTest {
     @Test
     fun `simulator selector orders Keiser then Precor then Schwinn`() {
         val options = simulatorPersonaOptions(includeKickr = false)
-        val keiser = options.indexOf(SimulatorPersona.KeiserMSeries)
+        val keiserPersonas = KeiserMSeriesSimulatorProfile.entries.map { SimulatorPersona.KeiserMSeries(it) }
+        val keiser = options.indexOf(keiserPersonas.first())
         assertTrue(keiser >= 0)
-        assertEquals(SimulatorPersona.PrecorChrono, options[keiser + 1])
-        assertEquals(SimulatorPersona.SchwinnX70, options[keiser + 2])
+        assertEquals(keiserPersonas, options.subList(keiser, keiser + 3))
+        assertEquals(SimulatorPersona.PrecorChrono, options[keiser + 3])
+        assertEquals(SimulatorPersona.SchwinnX70, options[keiser + 4])
         assertTrue(options[keiser - 1] is SimulatorPersona.LifeFitness)
     }
 

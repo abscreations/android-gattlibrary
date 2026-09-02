@@ -161,7 +161,7 @@ class BtEngine internal constructor(
         private const val SESSION_ELAPSED_TICK_MS = 250L
 
         /** §0.7a liveness poll. Far finer than the 30 s timeout it evaluates. */
-        // Fast Keiser firmware has a one-second freshness window. Four checks per second keep the
+        // Fast Keiser firmware has a two-second freshness window. Four checks per second keep the
         // visible stale transition close to that protocol boundary without reading a wall clock in
         // the source itself; the existing GATT supervisor is idempotent at this cadence.
         private const val LIVENESS_TICK_MS = 250L
@@ -208,6 +208,7 @@ class BtEngine internal constructor(
                             address = it.selection.address,
                             candidateId = KEISER_M_SERIES_CANDIDATE_ID,
                             systemId = it.selection.systemId,
+                            model = it.selection.model,
                             firmware = it.firmware,
                             generation = it.generation,
                             sourceState = when (it.state) {
@@ -897,10 +898,26 @@ class BtEngine internal constructor(
         state.resetFtmsCapabilities()
         metricFusion.setPersona(FusionPersona.RIDE, elapsedRealtimeMs())
         keiserSource.select(
-            selection = KeiserSelection(address = address, systemId = systemId),
+            selection = KeiserSelection(
+                address = address,
+                systemId = systemId,
+                // Read once, here, from the row that was actually chosen. The row itself is pruned
+                // the moment the bike rotates its address, so re-deriving this later would find
+                // nothing to derive it from.
+                model = KeiserSelection.modelFromAdvertisedName(device.name),
+            ),
             nowMs = elapsedRealtimeMs(),
         )
         return true
+    }
+
+    /**
+     * End an advertisement-only machine selection without affecting ordinary discovery scanning.
+     * The source owns the telemetry scan lease, fusion origin, and displayed selection state, so
+     * all teardown must pass through its lifecycle rather than clearing UI state independently.
+     */
+    fun deselectAdvertisementMachine() {
+        keiserSource.end(KeiserEndReason.DESELECTED, elapsedRealtimeMs())
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -1634,7 +1651,17 @@ class BtEngine internal constructor(
         val rideOnSession = context?.handlers?.filterIsInstance<RideOnProtocolHandler>()
             ?.firstOrNull()?.controlSession
             ?.takeIf { it.controlGranted && it.connectionId == context.connectionId }
-        return when (machineControlRoute(adapterId, fecHandler != null, wahooSession != null, rideOnSession != null)) {
+        return when (
+            machineControlRoute(
+                selectedAdapterId = adapterId,
+                hasFeCHandler = fecHandler != null,
+                hasWahooControl = wahooSession != null,
+                hasRideOnControl = rideOnSession != null,
+                // Asked of the source rather than of the connection registry: an advertisement-only
+                // machine has no connection to ask about, which is exactly the case being detected.
+                hasAdvertisementMachine = keiserSource.selection() != null,
+            )
+        ) {
             MachineControlRoute.FEC ->
                 fecHandler?.let { FeCBleMachineControlEndpoint(this, it) }
                     ?: UnavailableMachineControlEndpoint
@@ -1652,6 +1679,7 @@ class BtEngine internal constructor(
                         riderMassKg = { state.lifeFitnessProfile.weightKg.toDouble() },
                     )
                 } ?: UnavailableMachineControlEndpoint
+            MachineControlRoute.ADVERTISEMENT_ONLY -> AdvertisementOnlyMachineControlEndpoint
             MachineControlRoute.UNAVAILABLE -> UnavailableMachineControlEndpoint
             MachineControlRoute.FTMS -> ftmsControlEndpoint
         }
@@ -1686,6 +1714,15 @@ class BtEngine internal constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun requestControl(): Boolean = guardConnectPerm(op = "requestControl()", default = false) {
         if (state.haveControlFlow.value) return@guardConnectPerm true
+        // Guarded here rather than at each call site so every path — the run screen, the FEATURES
+        // retry, btService's facade — declines quietly against a machine that cannot receive.
+        val endpoint = controlEndpoint()
+        if (endpoint is AdvertisementOnlyMachineControlEndpoint) {
+            Timber.tag(BtEngineState.TAG).d(
+                "requestControl(): advertisement-only machine has no control point; not requesting",
+            )
+            return@guardConnectPerm endpoint.requestControl()
+        }
         val ok: Boolean = BtEngineControlPoint.requestControl(this)
         if (!ok) {
             Timber.tag(BtEngineState.TAG).w(
@@ -1718,6 +1755,15 @@ class BtEngine internal constructor(
     override fun startOrResume(): Boolean = guardConnectPerm(op = "startOrResume()", default = false) {
         val endpoint = controlEndpoint()
         if (endpoint is FeCBleMachineControlEndpoint) {
+            return@guardConnectPerm endpoint.startOrResume()
+        }
+        // A broadcaster is not a machine that has failed to converge; it is a machine with no
+        // control surface at all. Taking the FTMS path below would spend sixteen seconds waiting
+        // for a CCCD and a control grant that cannot arrive, and log a warning at every step of it.
+        if (endpoint is AdvertisementOnlyMachineControlEndpoint) {
+            Timber.tag(BtEngineState.TAG).d(
+                "startOrResume(): advertisement-only machine has no control point; nothing to send",
+            )
             return@guardConnectPerm endpoint.startOrResume()
         }
         if (!state.cccdReady.value) {
@@ -1785,6 +1831,12 @@ class BtEngine internal constructor(
     override fun stopOrPause(): Boolean = guardConnectPerm(op = "stopOrPause()", default = false) {
         val endpoint = controlEndpoint()
         if (endpoint is FeCBleMachineControlEndpoint) {
+            return@guardConnectPerm endpoint.stopOrPause()
+        }
+        if (endpoint is AdvertisementOnlyMachineControlEndpoint) {
+            Timber.tag(BtEngineState.TAG).d(
+                "stopOrPause(): advertisement-only machine has no control point; nothing to send",
+            )
             return@guardConnectPerm endpoint.stopOrPause()
         }
         val ok: Boolean = BtEngineControlPoint.stopOrPause(this)

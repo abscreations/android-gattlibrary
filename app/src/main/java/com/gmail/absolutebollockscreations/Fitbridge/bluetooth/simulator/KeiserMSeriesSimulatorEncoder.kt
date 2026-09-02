@@ -5,22 +5,23 @@ import kotlin.math.roundToInt
 
 /** Renders the dynamic part Android supplies to Keiser's manufacturer-data AD structure. */
 internal object KeiserMSeriesSimulatorEncoder {
-    const val FIRMWARE_MAJOR = 6
-    const val FIRMWARE_MINOR = 0x30
     const val DATA_TYPE_REALTIME = 0x00
-    const val SYNTHETIC_SYSTEM_ID = 1
-
     /** Keiser's captured fast interval (`0x0237 * 0.625 ms`), rounded for coroutine scheduling. */
     const val SAMPLE_PERIOD_MS = 354L
 
     /** Company ID is supplied separately to Android and is therefore absent from this value. */
     const val MANUFACTURER_PAYLOAD_LENGTH = KeiserMSeriesMeasurement.CURRENT_FIELD_LENGTH - 2
 
-    fun encode(sample: FtmsMockSample): ByteArray = ByteArray(MANUFACTURER_PAYLOAD_LENGTH).also { data ->
-        data[0] = FIRMWARE_MAJOR.toByte()
-        data[1] = FIRMWARE_MINOR.toByte()
-        data[2] = DATA_TYPE_REALTIME.toByte()
-        data[3] = SYNTHETIC_SYSTEM_ID.toByte()
+    fun encode(
+        sample: FtmsMockSample,
+        profile: KeiserMSeriesSimulatorProfile,
+        dataType: Int = DATA_TYPE_REALTIME,
+        distanceRawTenths: Int? = null,
+    ): ByteArray = ByteArray(MANUFACTURER_PAYLOAD_LENGTH).also { data ->
+        data[0] = profile.firmwareMajor.toByte()
+        data[1] = profile.firmwareMinor.toByte()
+        data[2] = dataType.coerceIn(0, U8_MAX).toByte()
+        data[3] = profile.systemId.toByte()
         putU16(data, 4, scaledTenths(sample.cadence))
         putU16(data, 6, sample.heartRate.coerceAtLeast(0) * 10L)
         putU16(data, 8, sample.powerWatts ?: 0)
@@ -30,11 +31,16 @@ internal object KeiserMSeriesSimulatorEncoder {
         data[12] = (elapsed / 60).toByte()
         data[13] = (elapsed % 60).toByte()
 
-        // The simulator always presents metric distance. One wire unit is 0.1 km = 100 m.
-        val distanceTenthsKm = ((sample.distanceMeters ?: 0).coerceAtLeast(0) / 100.0)
+        val metresPerTenth = profile.distanceUnit.metresPerTenth
+        val distanceTenths = distanceRawTenths ?: ((sample.distanceMeters ?: 0).coerceAtLeast(0) / metresPerTenth)
             .roundToInt()
-            .coerceAtMost(DISTANCE_TENTHS_MASK)
-        putU16(data, 14, distanceTenthsKm or DISTANCE_METRIC_BIT)
+        val boundedDistance = distanceTenths.coerceIn(0, DISTANCE_TENTHS_MASK)
+        val unitBit = if (profile.distanceUnit == KeiserMSeriesSimulatorDistanceUnit.KILOMETRES) {
+            DISTANCE_METRIC_BIT
+        } else {
+            0
+        }
+        putU16(data, 14, boundedDistance or unitBit)
         data[16] = (sample.resistance ?: 0).coerceIn(0, U8_MAX).toByte()
     }
 

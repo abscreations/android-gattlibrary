@@ -281,7 +281,7 @@ internal class AdapterNameCoordinator(
          */
         const val SESSION_NAME_PREFIX = BtServiceProfiles.DEVICE_NAME_PREFIX
         private val PM5_SESSION_NAME = Regex("PM5 [0-9]{9}")
-        private val KEISER_SESSION_NAME = Regex("M3(?: .+)?")
+        private val KEISER_SESSION_NAME = Regex("M3(?:i|m)?(?: .+)?")
         private val KICKR_SESSION_NAME = Regex("(?:Wahoo KICKR|KICKR CORE)(?: .+)?")
     }
 }
