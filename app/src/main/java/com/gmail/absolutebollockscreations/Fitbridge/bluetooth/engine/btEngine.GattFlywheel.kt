@@ -5,6 +5,8 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.BleCapture
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CaptureTrigger
 import timber.log.Timber
 import java.util.UUID
 
@@ -99,6 +101,69 @@ internal fun List<BluetoothGattService>.toFlywheelInventory(): FlywheelGattInven
 
 internal enum class FlywheelSetupState { IDLE, SUBSCRIBING, READY, FAILED, CANCELLED }
 
+internal data class FlywheelDisconnectDiagnosis(
+    val matchesConnectionIntervalQuirk: Boolean,
+    val elapsedMs: Long?,
+    val firstReportForGeneration: Boolean,
+)
+
+/** Pure, once-per-generation classifier for the documented approximately 30-second link drop. */
+internal class FlywheelDisconnectDiagnostic {
+    private var connectionId: ConnectionId? = null
+    private var connectedAtMs: Long? = null
+    private var activated = false
+    private var reported = false
+
+    fun begin(connectionId: ConnectionId, nowMs: Long) {
+        this.connectionId = connectionId
+        connectedAtMs = nowMs
+        activated = false
+        reported = false
+    }
+
+    fun markActivated(connectionId: ConnectionId): Boolean {
+        if (this.connectionId != connectionId) return false
+        activated = true
+        return true
+    }
+
+    fun diagnose(
+        callbackConnectionId: ConnectionId,
+        reason: String,
+        nowMs: Long,
+    ): FlywheelDisconnectDiagnosis {
+        val started = connectedAtMs
+        if (connectionId != callbackConnectionId || started == null || !activated) {
+            return FlywheelDisconnectDiagnosis(false, null, false)
+        }
+        val elapsed = nowMs - started
+        val matches = reason.startsWith("platform disconnect") &&
+            elapsed in MIN_QUIRK_LIFETIME_MS..MAX_QUIRK_LIFETIME_MS
+        val first = matches && !reported
+        if (first) reported = true
+        return FlywheelDisconnectDiagnosis(matches, elapsed, first)
+    }
+
+    fun cancel() {
+        connectionId = null
+        connectedAtMs = null
+        activated = false
+        reported = false
+    }
+
+    private companion object {
+        const val MIN_QUIRK_LIFETIME_MS = 25_000L
+        const val MAX_QUIRK_LIFETIME_MS = 35_000L
+    }
+}
+
+/** Arms the dedicated trigger only for the diagnostic's first report in this generation. */
+internal fun armFlywheelDisconnectCapture(diagnosis: FlywheelDisconnectDiagnosis): Boolean {
+    if (!diagnosis.firstReportForGeneration) return false
+    BleCapture.arm(CaptureTrigger.FLYWHEEL_CONNECTION_INTERVAL_QUIRK)
+    return true
+}
+
 /** Pure connection-generation gate for bounded TX subscription setup. */
 internal class FlywheelSubscriptionGate(
     val connectionId: ConnectionId,
@@ -165,6 +230,7 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
     private var structuralMatch = false
     private var dropoutFilter = FlywheelDropoutFilter()
     private var syntheticMetrics = FlywheelSyntheticMetrics()
+    private var disconnectDiagnostic = FlywheelDisconnectDiagnostic()
 
     internal fun setupState(): FlywheelSetupState = setupGate?.state ?: FlywheelSetupState.IDLE
     internal fun hasStructuralMatch(): Boolean = structuralMatch
@@ -174,6 +240,9 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override fun onConnected(engine: BtEngine, gatt: BluetoothGatt) {
         resetLinkState()
+        engine.state.connectionRegistry.contextForGatt(gatt)?.let { context ->
+            disconnectDiagnostic.begin(context.connectionId, engine.elapsedRealtimeMs())
+        }
     }
 
     override fun onDisconnected(engine: BtEngine) {
@@ -204,6 +273,7 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
         val service = services.first { it.uuid == BluetoothIds.UUID_FLYWHEEL_SERVICE }
         val tx = requireNotNull(service.getCharacteristic(BluetoothIds.UUID_FLYWHEEL_TX))
         structuralMatch = true
+        disconnectDiagnostic.markActivated(context.connectionId)
         setupGate = FlywheelSubscriptionGate(context.connectionId, SUBSCRIPTION_TIMEOUT_MS).also {
             it.begin(MonotonicMetricClock.SYSTEM.nowMs())
         }
@@ -313,12 +383,23 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
         }
     }
 
+    internal fun onLinkTerminating(connectionId: ConnectionId, reason: String, nowMs: Long) {
+        val diagnosis = disconnectDiagnostic.diagnose(connectionId, reason, nowMs)
+        if (!armFlywheelDisconnectCapture(diagnosis)) return
+        Timber.tag(BtEngineState.TAG).w(
+            "Flywheel connection-interval quirk observed generation=%d lifetimeMs=%d",
+            connectionId.linkGeneration,
+            diagnosis.elapsedMs,
+        )
+    }
+
     private fun resetLinkState() {
         setupGate?.cancel()
         setupGate = null
         structuralMatch = false
         dropoutFilter = FlywheelDropoutFilter()
         syntheticMetrics = FlywheelSyntheticMetrics()
+        disconnectDiagnostic.cancel()
     }
 
     private companion object {

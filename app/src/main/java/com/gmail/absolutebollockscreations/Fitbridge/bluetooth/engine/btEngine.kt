@@ -638,7 +638,7 @@ class BtEngine internal constructor(
         state.putDiscoveredDevices(emptyMap())
     }
 
-    private fun elapsedRealtimeMs(): Long = android.os.SystemClock.elapsedRealtime()
+    internal fun elapsedRealtimeMs(): Long = android.os.SystemClock.elapsedRealtime()
 
     /** Public entry point for UI/service to clear short-term series and reset baselines. */
     fun clearTimeSeries(keepTotals: Boolean = true) {
@@ -1275,6 +1275,9 @@ class BtEngine internal constructor(
         state.cscNativeEvents.remove(context.connectionId)
         state.cpsNativeEvents.remove(context.connectionId)
         state.treadmillNativePace.remove(context.connectionId)
+        context.handlers.filterIsInstance<FlywheelProtocolHandler>().forEach { handler ->
+            handler.onLinkTerminating(context.connectionId, reason, elapsedRealtimeMs())
+        }
         val target = recoveryTargetFor(context)
         if (reason.startsWith("platform disconnect") || reason == "recovery timeout") {
             linkRecovery.updateTarget(target)

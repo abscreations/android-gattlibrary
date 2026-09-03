@@ -93,4 +93,7 @@ internal enum class CaptureTrigger(val wireName: String) {
 
     /** A vendor initialization sequence failed. Phases 6, 8, 12–16. */
     VENDOR_SETUP_FAILURE("vendor_setup_failure"),
+
+    /** Flywheel's documented connection-parameter disconnect around 30 seconds (Phase 12.5). */
+    FLYWHEEL_CONNECTION_INTERVAL_QUIRK("flywheel_connection_interval_quirk"),
 }
