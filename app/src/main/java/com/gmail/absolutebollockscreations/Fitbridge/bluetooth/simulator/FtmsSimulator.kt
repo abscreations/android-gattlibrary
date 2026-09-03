@@ -76,6 +76,13 @@ class FtmsSimulator(
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
 
+        /**
+         * Publish one running-footpod tick: RSC measurement, Cycling Power measurement and, on
+         * its own slower tick, battery level. The peripheral renders all three from one gait
+         * snapshot so cadence and the crank counter cannot disagree.
+         */
+        fun publishStrydFootpod(sample: FtmsMockSample) {}
+
         /** Set the Keiser manufacturer value, or suspend its advertising set on null. */
         fun publishKeiser(manufacturerPayload: ByteArray?) {}
 
@@ -302,6 +309,10 @@ class FtmsSimulator(
                 startKickr(persona.copy(controlEnabled = enableControls))
                 return
             }
+            SimulatorPersona.StrydFootpod -> {
+                startStrydFootpod()
+                return
+            }
             SimulatorPersona.IndoorBikeSpeedAndPower -> Unit
             is SimulatorPersona.Ftms -> Unit
         }
@@ -486,6 +497,63 @@ class FtmsSimulator(
             }
         }
         Timber.tag(TAG).i("Precor Chrono simulator started")
+    }
+
+    /**
+     * Running footpod session.
+     *
+     * Driven by the treadmill ride rather than the indoor-bike one every other measurement-only
+     * persona uses: a footpod that reported 24-38 km/h would be describing a cyclist, and the
+     * gait model in `RunningGait` is only anchored to the corpus inside running and walking
+     * speeds. Controls are off unconditionally - the captured Cycling Power Control Point was
+     * never written in any capture, so there is no reference behaviour to honour and the plan's
+     * downstream-honesty invariant says an unhonourable control is not advertised.
+     */
+    private fun startStrydFootpod() {
+        val persona = SimulatorPersona.StrydFootpod
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        val mockEngine = FtmsMockEngine(FtmsMachineProfile.TREADMILL, controlsEnabled = false)
+        engine = mockEngine
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            engine = null
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            machine = FtmsMachineProfile.TREADMILL,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        publish(mockEngine.snapshot())
+        job = scope.launch {
+            while (isActive) {
+                delay(StrydFootpodEncoder.MEASUREMENT_PERIOD_MS)
+                val active = engine ?: break
+                publish(active.tick(StrydFootpodEncoder.MEASUREMENT_PERIOD_MS / 1000.0))
+            }
+        }
+        Timber.tag(TAG).i("Stryd footpod simulator started")
     }
 
     private fun startKeiser(persona: SimulatorPersona.KeiserMSeries) {
@@ -899,6 +967,9 @@ class FtmsSimulator(
 
         if (_state.value.persona == SimulatorPersona.PrecorChrono) {
             peripheral.publishPrecor(sample)
+        }
+        if (_state.value.persona == SimulatorPersona.StrydFootpod) {
+            peripheral.publishStrydFootpod(sample)
         }
         if (_state.value.persona is SimulatorPersona.LifeFitness) {
             peripheral.publishLifeFitness(sample)

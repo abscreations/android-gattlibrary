@@ -136,6 +136,14 @@ object BluetoothIds {
     val UUID_SC_CONTROL_POINT: UUID = shortUuid(0x2A55) // write / indicate
 
     // ─────────────────────────────────────────────────────────────
+    // Battery (Service 0x180F)
+    // ─────────────────────────────────────────────────────────────
+    // Present on the captured Stryd footpods, which notify the level rather than
+    // only exposing it for reading.
+    val UUID_BATTERY_SERVICE: UUID = shortUuid(0x180F)
+    val UUID_BATTERY_LEVEL: UUID   = shortUuid(0x2A19) // read / notify
+
+    // ─────────────────────────────────────────────────────────────
     // Running Speed & Cadence (Service 0x1814)
     // ─────────────────────────────────────────────────────────────
     val UUID_RSC_SERVICE: UUID         = shortUuid(0x1814)
@@ -869,7 +877,21 @@ object BtServiceProfiles {
     const val DEVICE_NAME_FTMS_CLIMBER: String    = DEVICE_NAME_PREFIX + "Climber"
     const val DEVICE_NAME_FTMS_STEPPER: String    = DEVICE_NAME_PREFIX + "Stepper"
     const val DEVICE_NAME_FTMS_TREAD: String      = DEVICE_NAME_PREFIX + "Treadmill"
-    const val DEVICE_NAME_CSC_CPS: String         = DEVICE_NAME_FTMS_BIKE
+    /**
+     * The native CSC + Cycling Power persona names itself after the two services it publishes.
+     *
+     * It used to alias [DEVICE_NAME_FTMS_BIKE], which put two different personas on the scan list
+     * under one name: the FTMS indoor bike and the native-sensor bike both appeared as
+     * "FBRG-Bike", and the only way to tell which one you had connected to was to discover its
+     * services. Naming it for its protocol is the same convention the descriptor line already
+     * uses, and at seven characters it is *shorter* than the name [FtmsAdvertisingPlan] budgets
+     * for this persona, so the advertisement gets smaller rather than larger.
+     *
+     * It carries no [DEVICE_NAME_PREFIX], so [AdapterNameCoordinator.isSessionName] lists it
+     * explicitly - otherwise a crash mid-session would strand the user's phone permanently named
+     * "CSC/CPS".
+     */
+    const val DEVICE_NAME_CSC_CPS: String         = "CSC/CPS"
 
     /**
      * Advertised local name for an FTMS persona.

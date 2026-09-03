@@ -90,6 +90,7 @@ internal fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machi
 /** Normalized selector descriptor for one persona. */
 fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     SimulatorPersona.IndoorBikeSpeedAndPower -> describeIndoorBikeSpeedAndPower()
+    SimulatorPersona.StrydFootpod -> describeStrydFootpod()
     is SimulatorPersona.Ftms -> describeFtms(profile)
     is SimulatorPersona.Concept2Pm5 -> describeConcept2(machine)
     is SimulatorPersona.KeiserMSeries -> describeKeiserMSeries(profile)
@@ -112,6 +113,29 @@ private fun describeIndoorBikeSpeedAndPower() = SimulatorPersonaDescriptor(
     ranges = emptyList(),
     metrics = "speed, cadence, power",
 )
+
+/**
+ * Running footpod.
+ *
+ * The ride slot is read off the treadmill entry in [FtmsMockProfile] rather than re-typed, for the
+ * reason this file exists: a descriptor that drifts from behaviour is worse than no descriptor.
+ * Cadence and stride length are absent from the slot deliberately - neither is a range the persona
+ * declares, both fall out of speed through `RunningGait`.
+ */
+private fun describeStrydFootpod(): SimulatorPersonaDescriptor {
+    val ride = FtmsMockProfile.forMachine(FtmsMachineProfile.TREADMILL)
+    return SimulatorPersonaDescriptor(
+        title = "Stryd · Running footpod",
+        protocol = "RSC 0x1814/0x2A53 + CPS 0x1818/0x2A63",
+        controlModes = emptyList(),
+        rangeKind = SimulatorRangeKind.RIDE,
+        ranges = buildList {
+            ride.speed?.let { add(SimulatorPersonaRange("speed", span(it.min, it.max, "km/h", 1))) }
+            add(SimulatorPersonaRange("power", span(ride.power.min, ride.power.max, "W", 0)))
+        },
+        metrics = "speed, cadence, stride length, distance, power, battery",
+    )
+}
 
 private fun describeFtms(profile: FtmsMachineProfile): SimulatorPersonaDescriptor {
     val capabilities = FtmsMockControlProfile.forMachine(profile)

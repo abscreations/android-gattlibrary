@@ -6,17 +6,23 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceP
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.advertisedName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SimulatorPersonaTest {
     @Test
-    fun `speed and power persona is first immediately before every standard FTMS persona`() {
+    fun `the two native sensor personas lead, then every standard FTMS persona`() {
+        // The footpod joined the head of the list on 2026-09-02. It belongs there rather than
+        // among the capture-backed consoles below: like the indoor bike it publishes native
+        // sensor services rather than a fitness machine, and neither accepts control.
         val options = simulatorPersonaOptions(includeKickr = false)
         assertEquals(SimulatorPersona.IndoorBikeSpeedAndPower, options.first())
+        assertEquals(SimulatorPersona.StrydFootpod, options[1])
         assertEquals(
             FtmsMockEngine.supportedMachines,
-            options.drop(1)
+            options.drop(2)
                 .take(FtmsMockEngine.supportedMachines.size)
                 .filterIsInstance<SimulatorPersona.Ftms>()
                 .map { it.profile },
@@ -24,9 +30,23 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `speed and power persona uses the combined bike sensor identity`() {
+    fun `footpod persona advertises the captured local name and routes to no standard surface`() {
+        assertEquals("Stryd", SimulatorPersona.StrydFootpod.advertisedName)
+        // It is not an FTMS machine and not the native-bike surface, so it must own its own
+        // controller rather than fall through to the shared FTMS/CSC/CPS provider.
+        assertNull(SimulatorPersona.StrydFootpod.standardSurface())
+    }
+
+    @Test
+    fun `speed and power persona is named for the two services it publishes`() {
+        // It used to alias the FTMS bike's name, so both personas appeared on a scan list as
+        // "FBRG-Bike" and only service discovery could tell them apart.
         assertEquals(
-            "FBRG-Bike",
+            "CSC/CPS",
+            SimulatorPersona.IndoorBikeSpeedAndPower.advertisedName,
+        )
+        assertNotEquals(
+            FtmsMachineProfile.INDOOR_BIKE.advertisedName,
             SimulatorPersona.IndoorBikeSpeedAndPower.advertisedName,
         )
     }

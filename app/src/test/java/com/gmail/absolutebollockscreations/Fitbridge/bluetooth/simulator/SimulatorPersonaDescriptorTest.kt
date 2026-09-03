@@ -48,6 +48,7 @@ class SimulatorPersonaDescriptorTest {
         val measurementOnly = listOf(
             SimulatorPersona.KeiserMSeries(KeiserMSeriesSimulatorProfile.M3I_IMPERIAL),
             SimulatorPersona.PrecorChrono,
+            SimulatorPersona.StrydFootpod,
             SimulatorPersona.SchwinnX70,
             SimulatorPersona.LifeFitness(LifeFitnessMachine.TREADMILL),
             SimulatorPersona.Concept2Pm5(Concept2Machine.ROW_ERG),

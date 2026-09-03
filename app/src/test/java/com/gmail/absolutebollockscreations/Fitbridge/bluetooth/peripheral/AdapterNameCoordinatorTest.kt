@@ -378,4 +378,28 @@ class AdapterNameCoordinatorTest {
             names.all { it.startsWith(AdapterNameCoordinator.SESSION_NAME_PREFIX) },
         )
     }
+
+    @Test
+    fun `no persona in the selector can be mistaken for the user's own name`() {
+        // The FTMS names above are safe by construction because they carry the prefix. The rest
+        // are not: PM5, Keiser and KICKR names are matched by pattern and the remainder by an
+        // explicit set, so a persona added with a bare name and no entry would silently reopen
+        // the stranding bug. Driving every selector name through the coordinator is what catches
+        // that on the day the persona is added rather than after a user reports it.
+        com.gmail.absolutebollockscreations.Fitbridge
+            .simulatorPersonaOptions(includeKickr = true)
+            .map { it.advertisedName }
+            .distinct()
+            .forEach { stranded ->
+                val gateway = FakeGateway(stranded)
+                val store = FakeStore()
+
+                coordinator(gateway, store).apply("FBRG-Bike") {}
+
+                assertNull(
+                    "a crash leaving the adapter named '$stranded' would strand the phone",
+                    store.value,
+                )
+            }
+    }
 }

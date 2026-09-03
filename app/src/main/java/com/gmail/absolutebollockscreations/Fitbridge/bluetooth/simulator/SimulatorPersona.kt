@@ -15,6 +15,21 @@ sealed interface SimulatorPersona {
         override val advertisedName: String = BtServiceProfiles.DEVICE_NAME_CSC_CPS
     }
 
+    /**
+     * Running footpod publishing the native RSC and Cycling Power sensor services.
+     *
+     * Sits directly below [IndoorBikeSpeedAndPower] because it is the running counterpart of it:
+     * both are native sensor services rather than a fitness machine, and neither accepts control.
+     * Where the bike persona integrates speed and cadence into wheel and crank events, this one
+     * integrates speed into *stride* events and publishes them twice - as RSC cadence and, exactly
+     * as the captured hardware does, as the Cycling Power crank counter.
+     *
+     * Wire specification and evidence: `docs/stryd-footpod-simulator-implementation.md`.
+     */
+    data object StrydFootpod : SimulatorPersona {
+        override val advertisedName: String = "Stryd"
+    }
+
     data class Ftms(val profile: FtmsMachineProfile) : SimulatorPersona {
         override val advertisedName: String = profile.advertisedName
     }
