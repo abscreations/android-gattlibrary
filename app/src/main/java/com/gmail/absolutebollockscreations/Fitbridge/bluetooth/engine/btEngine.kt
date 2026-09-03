@@ -1689,6 +1689,9 @@ class BtEngine internal constructor(
         val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
             ?: return BtEngineState.FtmsCapabilities()
         val selected = state.adapterLiveness.selectedAdapterId(context.connectionId)
+        if (selected == AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID) {
+            return BtEngineState.FtmsCapabilities()
+        }
         if (selected == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID) {
             val unlocked = context.handlers.filterIsInstance<RideOnProtocolHandler>()
                 .firstOrNull()?.controlSession?.controlGranted == true

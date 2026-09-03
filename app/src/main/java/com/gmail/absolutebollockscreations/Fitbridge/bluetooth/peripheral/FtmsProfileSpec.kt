@@ -181,6 +181,17 @@ internal val keiserMSeriesMeasurementCapabilities = FtmsMeasurementCapabilities(
     power = true,
 )
 
+/** Tier-1/unverified Flywheel Sports measurement contract (Phase 12.4). */
+internal val flywheelMeasurementCapabilities = FtmsMeasurementCapabilities(
+    averageSpeed = true,
+    cadence = true,
+    totalDistance = true,
+    power = true,
+    expendedEnergy = false,
+    heartRate = false,
+    elapsedTime = false,
+)
+
 /** FE-C Page 19 has no FTMS Force on Belt/Power Output field despite using Treadmill persona. */
 internal val feCTreadmillMeasurementCapabilities =
     FtmsMachineProfile.TREADMILL.measurementCapabilities.copy(forceOnBeltAndPowerOutput = false)
@@ -200,6 +211,11 @@ internal fun providerMeasurementCapabilities(
     profile == FtmsMachineProfile.INDOOR_BIKE &&
         advertisementCandidateId == KEISER_M_SERIES_CANDIDATE_ID ->
         keiserMSeriesMeasurementCapabilities
+
+    profile == FtmsMachineProfile.INDOOR_BIKE &&
+        BluetoothIds.UUID_FLYWHEEL_SERVICE in upstreamServiceUuids &&
+        BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
+        flywheelMeasurementCapabilities
 
     profile == FtmsMachineProfile.TREADMILL &&
         BluetoothIds.UUID_FEC_SERVICE in upstreamServiceUuids &&

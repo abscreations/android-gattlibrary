@@ -74,6 +74,23 @@ class ConnectionContextTest {
     }
 
     @Test
+    fun `registry projects Flywheel as a bike from its exact service`() {
+        val registry = ConnectionRegistry()
+        val context = registry.open(
+            role = LegacyConnectionRole.FTMS,
+            address = "AA:BB:CC:DD:EE:13",
+            gatt = null,
+            initialState = BluetoothProfile.STATE_CONNECTED,
+        )
+        context.discoveredServiceUuids += BluetoothIds.UUID_FLYWHEEL_SERVICE
+        registry.replaceHandlers(context, emptyList())
+
+        val link = registry.connectedDevices.value.single()
+        assertEquals(BtEngineState.MachineIdentityFamily.FLYWHEEL_SPORTS, link.machineIdentityFamily)
+        assertEquals(BtEngineState.MachineDeviceType.BIKE, link.machineDeviceType)
+    }
+
+    @Test
     fun `registry publishes live link snapshots independently of discovery maps`() {
         val registry = ConnectionRegistry()
         val machine = registry.open(

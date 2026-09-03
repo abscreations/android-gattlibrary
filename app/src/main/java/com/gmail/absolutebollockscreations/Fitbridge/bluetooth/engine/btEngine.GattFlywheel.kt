@@ -148,10 +148,11 @@ internal class FlywheelSubscriptionGate(
 }
 
 /**
- * Phase 12.3 Flywheel handler: identity confirmation and one TX CCCD only.
+ * Flywheel handler: exact identity, one TX CCCD, and measurement-only telemetry.
  *
- * Telemetry emission is intentionally absent until Phase 12.4. There is no transport writer,
- * control session, keepalive, setup payload, or operation targeting RX anywhere in this handler.
+ * There is no transport writer, control session, keepalive, setup payload, or operation targeting
+ * RX anywhere in this handler. One dropout filter belongs to this handler/link generation and is
+ * discarded on disconnect before another generation can emit.
  */
 internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
     override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_FLYWHEEL_SERVICE)
@@ -162,6 +163,8 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     private var setupGate: FlywheelSubscriptionGate? = null
     private var structuralMatch = false
+    private var dropoutFilter = FlywheelDropoutFilter()
+    private var syntheticMetrics = FlywheelSyntheticMetrics()
 
     internal fun setupState(): FlywheelSetupState = setupGate?.state ?: FlywheelSetupState.IDLE
     internal fun hasStructuralMatch(): Boolean = structuralMatch
@@ -174,8 +177,7 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
     }
 
     override fun onDisconnected(engine: BtEngine) {
-        setupGate?.cancel()
-        setupGate = null
+        resetLinkState()
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -223,6 +225,81 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun onCharacteristicChanged(
+        engine: BtEngine,
+        gatt: BluetoothGatt,
+        ch: BluetoothGattCharacteristic,
+        value: ByteArray,
+    ) {
+        if (ch.uuid != BluetoothIds.UUID_FLYWHEEL_TX) return
+        val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
+        val gate = setupGate ?: return
+        if (gate.connectionId != context.connectionId || gate.state != FlywheelSetupState.READY) return
+
+        val decoded = FlywheelMeasurement.decode(value)
+        if (decoded !is FlywheelDecodeResult.Decoded) {
+            Timber.tag(BtEngineState.TAG).w(
+                "Flywheel notification rejected connection=%s reason=%s len=%d",
+                context.connectionId,
+                (decoded as FlywheelDecodeResult.Rejected).reason,
+                value.size,
+            )
+            return
+        }
+        val arrivalMs = MonotonicMetricClock.SYSTEM.nowMs()
+        val nativeEmitter = engine.metricEmitterFor(
+            gatt,
+            ch.uuid,
+            MetricProtocol.VENDOR,
+            MetricSourceClass.VENDOR_NATIVE,
+            arrivalMs,
+        ) ?: return
+        val raw = decoded.reading
+        val rawPowerPlausible = PlausibilityBounds.isPlausible(
+            MetricKind.POWER,
+            FusionPersona.RIDE,
+            raw.powerWatts.toDouble(),
+        )
+        val rawCadencePlausible = PlausibilityBounds.isPlausible(
+            MetricKind.CADENCE,
+            FusionPersona.RIDE,
+            raw.cadenceRpm.toDouble(),
+        )
+        if (!rawPowerPlausible || !rawCadencePlausible) {
+            // Submission is intentional even for the bad field: fusion drops it and arms the
+            // standard bounds diagnostic. No filter/estimator state is touched by this frame.
+            nativeEmitter.emit(MetricKind.POWER, raw.powerWatts)
+            nativeEmitter.emit(MetricKind.CADENCE, raw.cadenceRpm)
+            return
+        }
+
+        val filtered = dropoutFilter.filter(raw)
+        syntheticMetrics.samples(
+            filtered,
+            arrivalMs,
+            engine.state.lifeFitnessProfile.weightKg.toDouble(),
+        ).forEach { sample ->
+            val emitter = if (sample.sourceClass == MetricSourceClass.VENDOR_NATIVE) {
+                nativeEmitter
+            } else {
+                engine.metricEmitterFor(
+                    gatt,
+                    ch.uuid,
+                    MetricProtocol.VENDOR,
+                    sample.sourceClass,
+                    arrivalMs,
+                ) ?: return@forEach
+            }
+            emitter.emit(
+                sample.metric,
+                sample.value,
+                nativeCumulative = sample.cumulative,
+                quality = sample.quality,
+            )
+        }
+    }
+
     override fun onLivenessTick(engine: BtEngine, gatt: BluetoothGatt) {
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
         val gate = setupGate ?: return
@@ -240,6 +317,8 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
         setupGate?.cancel()
         setupGate = null
         structuralMatch = false
+        dropoutFilter = FlywheelDropoutFilter()
+        syntheticMetrics = FlywheelSyntheticMetrics()
     }
 
     private companion object {

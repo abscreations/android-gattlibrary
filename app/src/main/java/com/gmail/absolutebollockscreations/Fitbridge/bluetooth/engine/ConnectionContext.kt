@@ -555,7 +555,9 @@ internal class ConnectionRegistry {
                 machineConnection = context.machineConnection,
                 machineIdentityFamily = machineIdentityFamily(context),
                 machineDeviceType = context.machineDeviceType
-                    ?: if (BluetoothIds.UUID_PRECOR_SERVICE in context.discoveredServiceUuids) {
+                    ?: if (BluetoothIds.UUID_PRECOR_SERVICE in context.discoveredServiceUuids ||
+                        BluetoothIds.UUID_FLYWHEEL_SERVICE in context.discoveredServiceUuids
+                    ) {
                         BtEngineState.MachineDeviceType.BIKE
                     } else {
                         null
@@ -578,6 +580,9 @@ internal class ConnectionRegistry {
 
         BluetoothIds.UUID_FEC_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.FE_C_OVER_BLE
+
+        BluetoothIds.UUID_FLYWHEEL_SERVICE in context.discoveredServiceUuids ->
+            BtEngineState.MachineIdentityFamily.FLYWHEEL_SPORTS
 
         context.lifeFitnessSetupState != LifeFitnessLinkSetupState.NOT_REQUIRED ->
             BtEngineState.MachineIdentityFamily.LIFE_FITNESS
