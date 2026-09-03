@@ -393,6 +393,7 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,
             BluetoothIds.UUID_FEC_SERVICE,
+            BluetoothIds.UUID_FLYWHEEL_SERVICE,
             // Legacy KICKR shares CPS with ordinary power meters. This equality asserts only
             // that its machine handler/candidate chain covers CPS; the Phase-10 fingerprint
             // tests separately prove that bare CPS never activates the candidate.
@@ -426,6 +427,7 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,
             BluetoothIds.UUID_FEC_SERVICE,
+            BluetoothIds.UUID_FLYWHEEL_SERVICE,
             BluetoothIds.UUID_CYCLING_POWER_SERVICE,
             BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
             BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE,

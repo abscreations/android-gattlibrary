@@ -97,6 +97,7 @@ internal data class ProtocolKey(val value: String) {
         val FEC = ProtocolKey("fec.ble")
         val WAHOO_KICKR = ProtocolKey("wahoo.kickr.legacy")
         val RIDEON = ProtocolKey("wahoo.kickr.rideon")
+        val FLYWHEEL = ProtocolKey("flywheel.sports")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -160,6 +161,7 @@ internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FEC,
     ProtocolKey.WAHOO_KICKR,
     ProtocolKey.RIDEON,
+    ProtocolKey.FLYWHEEL,
 )
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
@@ -194,6 +196,7 @@ internal class HandlerFactory(
                 ProtocolKey.FEC to { FeCOverBleProtocolHandler() },
                 ProtocolKey.WAHOO_KICKR to { WahooKickrProtocolHandler() },
                 ProtocolKey.RIDEON to { RideOnProtocolHandler() },
+                ProtocolKey.FLYWHEEL to { FlywheelProtocolHandler() },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)

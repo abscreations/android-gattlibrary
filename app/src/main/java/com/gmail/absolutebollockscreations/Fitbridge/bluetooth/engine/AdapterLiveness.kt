@@ -267,6 +267,9 @@ internal class AdapterLivenessCoordinator(
         val wahooMatch = context.handlers
             .filterIsInstance<WahooKickrProtocolHandler>()
             .firstNotNullOfOrNull { it.structuralMatch }
+        val flywheelMatched = context.handlers
+            .filterIsInstance<FlywheelProtocolHandler>()
+            .any { it.hasStructuralMatch() }
         return buildList {
             if (BluetoothIds.UUID_FTMS_SERVICE in services) {
                 add(
@@ -413,6 +416,27 @@ internal class AdapterLivenessCoordinator(
                     ),
                 )
             }
+            if (flywheelMatched) {
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = FLYWHEEL_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_CHARACTERISTIC,
+                                    structuralValue = BluetoothIds.UUID_FLYWHEEL_TX.toString(),
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.LOW,
+                                    note = "Flywheel advertisement identity and exact RX/TX GATT surface confirmed",
+                                ),
+                            ),
+                        ),
+                        rank = RANK_FLYWHEEL,
+                        requiresSetup = true,
+                        livenessTimeoutMs = livenessTimeoutMs,
+                    ),
+                )
+            }
             if (wahooMatch != null) {
                 val markerSummary = wahooMatch.markerServices
                     .map { it.toString() }
@@ -488,6 +512,7 @@ internal class AdapterLivenessCoordinator(
 
         const val SCHWINN_X70_ADAPTER_ID = "schwinn.x70"
         const val FEC_ADAPTER_ID = "fec.ble"
+        const val FLYWHEEL_ADAPTER_ID = "flywheel.sports"
 
         /**
          * Equal to [RANK_PRECOR] and [RANK_CONCEPT2], for the reason given above.
@@ -509,6 +534,7 @@ internal class AdapterLivenessCoordinator(
          * identical reason [RANK_CONCEPT2] gives.
          */
         const val RANK_FEC = 80
+        const val RANK_FLYWHEEL = 80
 
         /**
          * 30 s from subscription completion.

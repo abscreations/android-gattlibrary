@@ -5,6 +5,7 @@ import java.util.Locale
 import java.util.UUID
 
 internal const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
+internal const val FLYWHEEL_CANDIDATE_ID = "vendor.flywheel.sports"
 
 /** Matcher-layer UUID storage. Values are always lowercase canonical 128-bit UUID strings. */
 @JvmInline
@@ -546,6 +547,7 @@ internal class DeviceMatcherRegistry private constructor(
                 concept2Definition(),
                 precorDefinition(),
                 schwinnX70Definition(),
+                flywheelDefinition(),
                 fecDefinition(),
                 keiserMSeriesDefinition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
@@ -635,6 +637,33 @@ internal class DeviceMatcherRegistry private constructor(
             requiredEvidenceAlternatives = listOf(
                 setOf(MatchEvidenceKind.ADVERTISED_SERVICE, MatchEvidenceKind.LOCAL_NAME_PATTERN),
                 setOf(MatchEvidenceKind.GATT_SERVICE, MatchEvidenceKind.GATT_CHARACTERISTIC),
+            ),
+        )
+
+        /**
+         * Flywheel's service is Nordic UART, a transport used by unrelated products. The
+         * advertisement-stage identity is therefore the conjunction of the exact source name and
+         * full service UUID. Neither weak name evidence nor generic Nordic UART alone may claim the
+         * bike; post-connect activation separately validates both endpoints and their properties.
+         */
+        private fun flywheelDefinition() = MatchDefinition(
+            candidateId = FLYWHEEL_CANDIDATE_ID,
+            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_FLYWHEEL_SERVICE),
+            preference = 140,
+            localNamePatterns = listOf(Regex("^Flywheel 1$", RegexOption.IGNORE_CASE)),
+            personaCharacteristicUuids = setOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_FLYWHEEL_RX),
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_FLYWHEEL_TX),
+            ),
+            machineRole = true,
+            advertisedActivityType = ActivityType.BIKING,
+            requiredEvidenceAlternatives = listOf(
+                setOf(MatchEvidenceKind.ADVERTISED_SERVICE, MatchEvidenceKind.LOCAL_NAME_PATTERN),
+                setOf(
+                    MatchEvidenceKind.GATT_SERVICE,
+                    MatchEvidenceKind.GATT_CHARACTERISTIC,
+                    MatchEvidenceKind.LOCAL_NAME_PATTERN,
+                ),
             ),
         )
 
