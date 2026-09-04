@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "family": "kayak-first-paddle",
+  "acquisition": "sanitized-user-submitted-qz-application-debug-logs",
+  "extracted": "2026-09-04",
+  "capture_kind": "QZ 2.20.30 application debug logs from one physical console; not raw Bluetooth HCI or a FitBridge BLECAP export",
+  "redaction": "The Bluetooth address and address-bearing manufacturer suffix use one internally consistent pseudonym; the advertised console identifier is replaced by <console-id>; athlete weight is replaced by a same-width neutral value; host and device epochs are normalized while relative progression is preserved. Account identifiers, application settings, product/store tokens, unrelated devices, absolute wall-clock timestamps, and QZ-rendered workout summaries are excluded.",
+  "evidence_limit": "This corpus proves the observed semantic advertisement, service-level GATT discovery, exercised FFE1 write-without-response/notify path, setup/control traffic, fragmentation, short responses, and changing physical-console measurement fields for this one unidentified model/firmware. It does not prove a byte-exact advertisement, scan-response placement, complete characteristic properties or descriptors, security requirements, model/firmware coverage, field semantics against console ground truth, or FitBridge interoperability.",
+  "sources": [
+    {
+      "id": "scan-apr12-long",
+      "source_file": "debug-Sun_Apr_12_10_11_46_2026.log",
+      "source_sha256": "b3bb372d4defef0505149f3e031b45c62f91ed6445ce49e741a84be04c094f6d",
+      "bytes": 790856,
+      "target_scan_observations": 9,
+      "role": "scan-only advertisement repetition"
+    },
+    {
+      "id": "scan-apr12-short",
+      "source_file": "debug-Sun_Apr_12_10_13_49_2026.log",
+      "source_sha256": "6bd2f8574b456c61ef9a5925cd09c1e4cd85c6ebc2b2829f097d743006570ce2",
+      "bytes": 192877,
+      "target_scan_observations": 1,
+      "role": "scan-only advertisement repetition"
+    },
+    {
+      "id": "reset-apr24",
+      "source_file": "debug-Fri_Apr_24_12_07_54_2026.log",
+      "source_sha256": "470c57af4c7ea299c9c1a78da86196b0da5e62e4e131611be19ea99e3eef49a5",
+      "bytes": 317685,
+      "target_scan_observations": 1,
+      "measurement_polls": 0,
+      "ffe1_notifications": 4,
+      "role": "connection and reset-response variants"
+    },
+    {
+      "id": "failed-setup-apr24",
+      "source_file": "debug-Fri_Apr_24_12_08_49_2026.log",
+      "source_sha256": "9e6b89da8d9367e63b1d95cd15044af585962fab8d9b037d2f7abb18e5f762ec",
+      "bytes": 487274,
+      "target_scan_observations": 1,
+      "measurement_polls": 0,
+      "ffe1_notifications": 2,
+      "role": "reset followed by three unanswered legacy handshakes"
+    },
+    {
+      "id": "idle-long-apr24",
+      "source_file": "debug-Fri_Apr_24_13_52_17_2026.log",
+      "source_sha256": "25493b13166300f15248549b64a2173a569672933fcf2d64e09252caa3b6dbc9",
+      "bytes": 1516576,
+      "target_scan_observations": 1,
+      "measurement_polls": 218,
+      "complete_24_field_responses": 214,
+      "ffe1_notifications": 860,
+      "role": "successful setup, idle polling, four missing poll responses, stop acknowledgement"
+    },
+    {
+      "id": "idle-short-apr24",
+      "source_file": "debug-Fri_Apr_24_13_58_01_2026.log",
+      "source_sha256": "a092e0e89f3ce12e7133117199c3a6d17b7872bac1d1bee660da727b7743bf90",
+      "bytes": 760182,
+      "target_scan_observations": 1,
+      "measurement_polls": 67,
+      "complete_24_field_responses": 67,
+      "ffe1_notifications": 272,
+      "role": "successful setup, idle polling, stop acknowledgement"
+    },
+    {
+      "id": "workout-apr24",
+      "source_file": "debug-Fri_Apr_24_15_12_10_2026.log",
+      "source_sha256": "0a482fe2b29de87e923a409b4cc4da00839f11ee90e9e0c43e7825bdd2fa12fe",
+      "bytes": 1677307,
+      "target_scan_observations": 1,
+      "measurement_polls": 209,
+      "complete_24_field_responses": 197,
+      "short_2_field_responses": 6,
+      "short_8_field_responses": 5,
+      "ffe1_notifications": 1046,
+      "workout_starts": 3,
+      "workout_stops": 3,
+      "role": "three physical workout intervals with changing distance, speed, cadence, power, and elapsed time"
+    }
+  ],
+  "advertisement": {
+    "observations": 15,
+    "local_name_sanitized": "<console-id>",
+    "local_name_shape": "eight ASCII characters; captured value looked serial-like and is not asserted to be a model",
+    "advertised_services": [
+      "0000ffe0-0000-1000-8000-00805f9b34fb"
+    ],
+    "manufacturer_data_id": 42841,
+    "manufacturer_payload_sanitized": [136, 160, 1, 2, 3, 4, 5, 6],
+    "pseudonymous_address_bytes": [6, 5, 4, 3, 2, 1],
+    "structural_relation": "The final six manufacturer bytes are the reverse of the Bluetooth address bytes in every observation.",
+    "not_observed": [
+      "raw advertising PDU",
+      "advertisement versus scan-response placement",
+      "AD element ordering",
+      "address type",
+      "connectability flags",
+      "TX power"
+    ]
+  },
+  "gatt": {
+    "discovered_services": [
+      "00001800-0000-1000-8000-00805f9b34fb",
+      "00001801-0000-1000-8000-00805f9b34fb",
+      "0000180a-0000-1000-8000-00805f9b34fb",
+      "0000ffe0-0000-1000-8000-00805f9b34fb"
+    ],
+    "protocol_service": {
+      "uuid": "0000ffe0-0000-1000-8000-00805f9b34fb",
+      "observed_handle_range": [35, 39],
+      "characteristic": {
+        "uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
+        "value_handle": 36,
+        "exercised_operations": ["write-without-response", "notify"]
+      },
+      "cccd": {
+        "handle": 38,
+        "written_value": [1, 0]
+      }
+    },
+    "not_observed": [
+      "characteristics within GAP, GATT, or Device Information",
+      "declared FFE1 property bitmask",
+      "whether FFE1 is readable",
+      "complete descriptor inventory",
+      "security or bonding requirements",
+      "device information values",
+      "negotiated MTU"
+    ]
+  },
+  "transaction_cases": [
+    {
+      "id": "reset-write",
+      "direction": "central-to-console",
+      "ascii": "1\r\n",
+      "bytes": [49, 13, 10]
+    },
+    {
+      "id": "reset-binary-response",
+      "direction": "console-to-central",
+      "bytes": [49, 1, 0],
+      "classification": "hardware-observed non-text reset response"
+    },
+    {
+      "id": "reset-normal-response-normalized-epoch",
+      "direction": "console-to-central",
+      "ascii": "1;1;900000000\r\n",
+      "classification": "hardware-observed response with device epoch normalized"
+    },
+    {
+      "id": "legacy-handshake-write-normalized",
+      "direction": "central-to-console",
+      "ascii": "2;1700000000;120;70;",
+      "classification": "captured 20-byte write; host epoch and athlete weight replaced with same-width neutral values",
+      "observed_attempts_per_setup": 3,
+      "observed_responses": 0
+    },
+    {
+      "id": "display-config-write",
+      "direction": "central-to-console",
+      "ascii": "5;0;2;5;11;15\r\n"
+    },
+    {
+      "id": "display-config-response",
+      "direction": "console-to-central",
+      "ascii": "5;1\r\n"
+    },
+    {
+      "id": "start-write-normalized-device-epoch",
+      "direction": "central-to-console",
+      "ascii": "9;1;1;900000000000\r\n",
+      "observed_count": 3
+    },
+    {
+      "id": "start-response",
+      "direction": "console-to-central",
+      "ascii": "9;1\r\n",
+      "observed_count": 6
+    },
+    {
+      "id": "poll-write",
+      "direction": "central-to-console",
+      "ascii": "6\r\n",
+      "observed_count": 494
+    },
+    {
+      "id": "stop-write-short",
+      "direction": "central-to-console",
+      "ascii": "9;3\r\n",
+      "observed_count": 2
+    },
+    {
+      "id": "stop-write-with-mode",
+      "direction": "central-to-console",
+      "ascii": "9;3;1\r\n",
+      "observed_count": 3
+    },
+    {
+      "id": "stop-response",
+      "direction": "console-to-central",
+      "ascii": "9;3;1\r\n",
+      "observed_count": 5
+    }
+  ],
+  "setup_transcripts": [
+    {
+      "id": "idle-long-successful-setup",
+      "source": "idle-long-apr24",
+      "time_origin": "first reset write; relative timing retained",
+      "precondition": "FFE1 notifications enabled through CCCD value 01 00",
+      "classification": "operational setup with display acknowledgement and subsequent polling; handshake remained unacknowledged",
+      "events": [
+        { "t_ms": 0, "direction": "central-to-console", "ascii": "1\r\n", "classification": "reset-a-attempt" },
+        { "t_ms": 114, "direction": "console-to-central", "bytes": [49, 1, 0], "classification": "reset-a-binary-response" },
+        { "t_ms": 6172, "direction": "central-to-console", "ascii": "1\r\n", "classification": "reset-b-attempt-1-no-response" },
+        { "t_ms": 17308, "direction": "central-to-console", "ascii": "1\r\n", "classification": "reset-b-attempt-2" },
+        { "t_ms": 17395, "direction": "console-to-central", "ascii": "1;1;900000000\r\n", "classification": "reset-b-text-response-normalized-device-epoch" },
+        { "t_ms": 27441, "direction": "central-to-console", "ascii": "2;1700000000;120;70;", "classification": "legacy-handshake-attempt-1-no-response-normalized" },
+        { "t_ms": 38529, "direction": "central-to-console", "ascii": "2;1700000000;120;70;", "classification": "legacy-handshake-attempt-2-no-response-normalized" },
+        { "t_ms": 49656, "direction": "central-to-console", "ascii": "2;1700000000;120;70;", "classification": "legacy-handshake-attempt-3-no-response-normalized" },
+        { "t_ms": 64797, "direction": "central-to-console", "ascii": "5;0;2;5;11;15\r\n", "classification": "display-configuration" },
+        { "t_ms": 64857, "direction": "console-to-central", "ascii": "5;1\r\n", "classification": "display-configuration-response" },
+        { "t_ms": 74909, "direction": "central-to-console", "ascii": "6\r\n", "classification": "first-poll" }
+      ]
+    }
+  ],
+  "fragmentation_cases": [
+    {
+      "id": "idle-24-fields-four-notifications",
+      "source": "idle-long-apr24 and idle-short-apr24",
+      "observed_complete_repeats": 281,
+      "chunks_ascii": [
+        "6;900000000000;0;0;0",
+        ";0.00;0;0;0;0;0.00;0",
+        ".00;0;0;0;0;0;0;0;0;",
+        "0;0;0;0\r\n"
+      ],
+      "reassembled_ascii": "6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;0;0",
+      "expect": {
+        "field_count": 24,
+        "distance_m": 0,
+        "speed_mps": 0.0,
+        "speed_kmh": 0.0,
+        "cadence_spm": 0,
+        "power_watts": 0,
+        "elapsed_seconds": 0
+      }
+    },
+    {
+      "id": "active-24-fields-five-notifications",
+      "source": "workout-apr24",
+      "chunks_ascii": [
+        "6;900000006500;0;0;0",
+        ";0.00;0;1;0;0;0.08;1",
+        ".15;80;80;662;43;165",
+        "5;107;3310;215;60;60",
+        ";6;1\r\n"
+      ],
+      "reassembled_ascii": "6;900000006500;0;0;0;0.00;0;1;0;0;0.08;1.15;80;80;662;43;1655;107;3310;215;60;60;6;1",
+      "expect": {
+        "field_count": 24,
+        "distance_m": 0,
+        "speed_mps": 1.15,
+        "speed_kmh": 4.14,
+        "cadence_spm": 80,
+        "power_watts": 60,
+        "elapsed_seconds": 6
+      }
+    }
+  ],
+  "measurement_layout": {
+    "minimum_fields": 24,
+    "distance_index": 9,
+    "distance_unit": "metres",
+    "speed_index": 11,
+    "speed_unit": "metres-per-second",
+    "cadence_index": 13,
+    "cadence_unit": "strokes-per-minute",
+    "power_index": 21,
+    "power_unit": "watts",
+    "elapsed_index": 22,
+    "elapsed_unit": "seconds",
+    "status_index": 23,
+    "authority": "Phase 8 TMIW field map; the changing physical-console values are consistent with it but were not compared with photographed console ground truth"
+  },
+  "measurement_summary": {
+    "valid_24_field_frames": 478,
+    "idle_frames": 281,
+    "workout_frames": 197,
+    "workout_nonzero_frames": {
+      "distance": 193,
+      "speed": 194,
+      "cadence": 194,
+      "power": 194,
+      "elapsed": 197
+    },
+    "workout_observed_ranges": {
+      "distance_m": [0, 152],
+      "speed_mps": [0.0, 3.36],
+      "speed_kmh": [0.0, 12.096],
+      "cadence_spm": [0, 99],
+      "power_watts": [0, 103],
+      "elapsed_seconds": [5, 69]
+    },
+    "workout_sessions": [
+      {"session": 1, "frames": 144, "elapsed_range": [5, 69], "max_distance_m": 152, "max_speed_mps": 3.36, "max_cadence_spm": 99, "max_power_watts": 103},
+      {"session": 2, "frames": 31, "elapsed_range": [5, 33], "max_distance_m": 50, "max_speed_mps": 3.03, "max_cadence_spm": 86, "max_power_watts": 94},
+      {"session": 3, "frames": 22, "elapsed_range": [7, 30], "max_distance_m": 37, "max_speed_mps": 3.02, "max_cadence_spm": 89, "max_power_watts": 94}
+    ]
+  },
+  "measurement_cases": [
+    {"id":"s1-start-idle","session":1,"t_ms":83392,"frame_ascii":"6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;5;5","expect":{"distance_m":0,"speed_mps":0.0,"speed_kmh":0.0,"cadence_spm":0,"power_watts":0,"elapsed_seconds":5}},
+    {"id":"s1-10s","session":1,"t_ms":88895,"frame_ascii":"6;900000010449;0;0;0;0.00;0;1;0;11;0.94;2.75;98;76;229;72;573;180;1147;360;96;82;10;1","expect":{"distance_m":11,"speed_mps":2.75,"speed_kmh":9.9,"cadence_spm":76,"power_watts":82,"elapsed_seconds":10}},
+    {"id":"s1-20s","session":1,"t_ms":98896,"frame_ascii":"6;900000020101;0;0;0;0.00;0;1;0;38;1.94;3.26;84;90;103;61;258;152;516;305;85;102;20;1","expect":{"distance_m":38,"speed_mps":3.26,"speed_kmh":11.736,"cadence_spm":90,"power_watts":102,"elapsed_seconds":20}},
+    {"id":"s1-30s","session":1,"t_ms":108897,"frame_ascii":"6;900000030430;0;0;0;0.00;0;1;0;67;2.26;2.82;86;87;88;71;220;177;441;355;86;88;30;1","expect":{"distance_m":67,"speed_mps":2.82,"speed_kmh":10.152,"cadence_spm":87,"power_watts":88,"elapsed_seconds":30}},
+    {"id":"s1-40s","session":1,"t_ms":118898,"frame_ascii":"6;900000040098;0;0;0;0.00;0;1;0;94;2.39;2.74;86;86;83;73;209;182;418;365;86;84;40;1","expect":{"distance_m":94,"speed_mps":2.74,"speed_kmh":9.864,"cadence_spm":86,"power_watts":84,"elapsed_seconds":40}},
+    {"id":"s1-50s","session":1,"t_ms":128896,"frame_ascii":"6;900000050461;0;0;0;0.00;0;1;0;123;2.47;2.88;86;86;81;69;202;172;405;345;85;89;50;1","expect":{"distance_m":123,"speed_mps":2.88,"speed_kmh":10.368,"cadence_spm":86,"power_watts":89,"elapsed_seconds":50}},
+    {"id":"s1-max-speed-power","session":1,"t_ms":133894,"frame_ascii":"6;900000055527;0;0;0;0.00;0;1;0;139;2.53;3.36;87;97;79;59;197;147;395;295;86;103;55;1","expect":{"distance_m":139,"speed_mps":3.36,"speed_kmh":12.096,"cadence_spm":97,"power_watts":103,"elapsed_seconds":55}},
+    {"id":"s1-max-cadence","session":1,"t_ms":134895,"frame_ascii":"6;900000056105;0;0;0;0.00;0;1;0;141;2.54;3.30;87;99;78;60;197;150;394;300;87;101;56;1","expect":{"distance_m":141,"speed_mps":3.3,"speed_kmh":11.88,"cadence_spm":99,"power_watts":101,"elapsed_seconds":56}},
+    {"id":"s1-max-distance","session":1,"t_ms":138896,"frame_ascii":"6;900000059855;0;0;0;0.00;0;1;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;60;1","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"power_watts":90,"elapsed_seconds":60}},
+    {"id":"s1-coast-frozen-distance","session":1,"t_ms":147895,"frame_ascii":"6;900000059855;0;0;0;0.00;0;0;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;69;1","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"power_watts":90,"elapsed_seconds":69}},
+    {"id":"s1-stopped-status-zero","session":1,"t_ms":252896,"frame_ascii":"6;900000059855;0;0;0;0.00;0;0;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;53;0","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"power_watts":90,"elapsed_seconds":53}},
+    {"id":"s2-start-idle","session":2,"t_ms":258976,"frame_ascii":"6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;5;5","expect":{"distance_m":0,"speed_mps":0.0,"speed_kmh":0.0,"cadence_spm":0,"power_watts":0,"elapsed_seconds":5}},
+    {"id":"s2-10s","session":2,"t_ms":263893,"frame_ascii":"6;900000009457;0;0;0;0.00;0;1;0;13;1.09;3.03;80;81;193;66;483;165;967;330;96;92;10;1","expect":{"distance_m":13,"speed_mps":3.03,"speed_kmh":10.908,"cadence_spm":81,"power_watts":92,"elapsed_seconds":10}},
+    {"id":"s2-20s","session":2,"t_ms":273896,"frame_ascii":"6;900000019910;0;0;0;0.00;0;1;0;39;1.96;2.54;84;86;101;78;254;195;509;390;80;74;20;1","expect":{"distance_m":39,"speed_mps":2.54,"speed_kmh":9.144,"cadence_spm":86,"power_watts":74,"elapsed_seconds":20}},
+    {"id":"s2-25s-max-distance","session":2,"t_ms":278892,"frame_ascii":"6;900000024192;0;0;0;0.00;0;1;0;50;2.07;2.51;84;83;96;80;241;200;483;400;78;73;25;1","expect":{"distance_m":50,"speed_mps":2.51,"speed_kmh":9.036,"cadence_spm":83,"power_watts":73,"elapsed_seconds":25}},
+    {"id":"s2-stopped-status-zero","session":2,"t_ms":296894,"frame_ascii":"6;900000024192;0;0;0;0.00;0;0;0;50;2.07;2.51;84;83;96;80;241;200;483;400;78;73;19;0","expect":{"distance_m":50,"speed_mps":2.51,"speed_kmh":9.036,"cadence_spm":83,"power_watts":73,"elapsed_seconds":19}},
+    {"id":"s3-first-active","session":3,"t_ms":303896,"frame_ascii":"6;900000000000;0;0;0;0.00;0;1;0;4;0.33;1.45;36;38;337;72;843;180;1686;360;37;48;7;1","expect":{"distance_m":4,"speed_mps":1.45,"speed_kmh":5.22,"cadence_spm":38,"power_watts":48,"elapsed_seconds":7}},
+    {"id":"s3-10s-max-speed-power","session":3,"t_ms":306895,"frame_ascii":"6;900000002981;0;0;0;0.00;0;1;0;13;1.12;3.02;63;76;189;66;474;165;949;330;79;94;10;1","expect":{"distance_m":13,"speed_mps":3.02,"speed_kmh":10.872,"cadence_spm":76,"power_watts":94,"elapsed_seconds":10}},
+    {"id":"s3-15s-max-cadence","session":3,"t_ms":311899,"frame_ascii":"6;900000007703;0;0;0;0.00;0;1;0;26;1.79;2.66;77;89;111;75;279;187;559;375;84;79;15;1","expect":{"distance_m":26,"speed_mps":2.66,"speed_kmh":9.576,"cadence_spm":89,"power_watts":79,"elapsed_seconds":15}},
+    {"id":"s3-19s-max-distance","session":3,"t_ms":315897,"frame_ascii":"6;900000011797;0;0;0;0.00;0;1;0;37;2.01;2.68;81;88;99;74;248;185;497;370;82;78;19;1","expect":{"distance_m":37,"speed_mps":2.68,"speed_kmh":9.648,"cadence_spm":88,"power_watts":78,"elapsed_seconds":19}},
+    {"id":"s3-frozen-after-effort","session":3,"t_ms":326892,"frame_ascii":"6;900000011797;0;0;0;0.00;0;0;0;37;2.01;2.68;81;88;99;74;248;185;497;370;82;78;30;1","expect":{"distance_m":37,"speed_mps":2.68,"speed_kmh":9.648,"cadence_spm":88,"power_watts":78,"elapsed_seconds":30}}
+  ],
+  "short_measurement_cases": [
+    {"id":"ack-like-1","frame_ascii":"6;1","observed_count":5,"expect":"reject-too-few-fields"},
+    {"id":"ack-like-6","frame_ascii":"6;6","observed_count":1,"expect":"reject-too-few-fields"},
+    {"id":"short-8-fields-1","frame_ascii":"6;162;392;325;87;94;57;1","observed_count":1,"expect":"reject-too-few-fields"},
+    {"id":"short-8-fields-2","frame_ascii":"6;177;413;355;86;86;43;1","observed_count":1,"expect":"reject-too-few-fields"},
+    {"id":"short-8-fields-3","frame_ascii":"6;182;412;365;86;83;44;1","observed_count":1,"expect":"reject-too-few-fields"},
+    {"id":"short-8-fields-4","frame_ascii":"6;187;533;375;83;79;16;1","observed_count":1,"expect":"reject-too-few-fields"},
+    {"id":"short-8-fields-5","frame_ascii":"6;192;632;385;85;74;13;1","observed_count":1,"expect":"reject-too-few-fields"}
+  ]
+}
