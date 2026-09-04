@@ -76,6 +76,9 @@ class FtmsSimulator(
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
 
+        /** Publish one proprietary Flywheel measurement frame from the coherent bike sample. */
+        fun publishFlywheel(sample: FtmsMockSample) {}
+
         /**
          * Publish one running-footpod tick: RSC measurement, Cycling Power measurement and, on
          * its own slower tick, battery level. The peripheral renders all three from one gait
@@ -281,6 +284,10 @@ class FtmsSimulator(
             }
             SimulatorPersona.PrecorChrono -> {
                 startPrecor()
+                return
+            }
+            SimulatorPersona.FlywheelSports -> {
+                startFlywheel()
                 return
             }
             is SimulatorPersona.LifeFitness -> {
@@ -497,6 +504,53 @@ class FtmsSimulator(
             }
         }
         Timber.tag(TAG).i("Precor Chrono simulator started")
+    }
+
+    private fun startFlywheel() {
+        val persona = SimulatorPersona.FlywheelSports
+        if (realMachineAttached()) {
+            _state.value = State(
+                persona = persona,
+                lastError = "Disconnect the physical machine before simulating data",
+            )
+            return
+        }
+        if (_state.value.running) stop()
+
+        val mockEngine = FtmsMockEngine(FtmsMachineProfile.INDOOR_BIKE, controlsEnabled = false)
+        engine = mockEngine
+        peripheral.setControlOverride(null)
+        val started = runCatching {
+            peripheral.startAdvertising(persona, TargetCapabilities.NONE)
+        }.getOrDefault(false)
+        if (!started) {
+            engine = null
+            _state.value = State(
+                persona = persona,
+                lastError = "Could not start advertising as ${persona.advertisedName}",
+            )
+            return
+        }
+
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            machine = FtmsMachineProfile.INDOOR_BIKE,
+            controlsEnabled = false,
+            controlsAvailable = false,
+            advertising = peripheral.isAdvertising,
+        )
+        publish(mockEngine.snapshot())
+        job = scope.launch {
+            while (isActive) {
+                delay(FlywheelSportsEncoder.PERIOD_MS)
+                val active = engine ?: break
+                publish(active.tick(FlywheelSportsEncoder.PERIOD_MS / 1000.0))
+            }
+        }
+        Timber.tag(TAG).i("Flywheel Sports simulator started")
     }
 
     /**
@@ -967,6 +1021,9 @@ class FtmsSimulator(
 
         if (_state.value.persona == SimulatorPersona.PrecorChrono) {
             peripheral.publishPrecor(sample)
+        }
+        if (_state.value.persona == SimulatorPersona.FlywheelSports) {
+            peripheral.publishFlywheel(sample)
         }
         if (_state.value.persona == SimulatorPersona.StrydFootpod) {
             peripheral.publishStrydFootpod(sample)

@@ -1,6 +1,8 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import android.bluetooth.BluetoothGattCharacteristic
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.providerMeasurementCapabilities
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.requiresSpeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -192,6 +194,111 @@ class FlywheelConnectionAndGattTest {
         )
         assertTrue(coordinator.setupFailed(context, "Flywheel TX subscription timed out"))
         assertEquals(AdapterPolicyState.SETUP_FAILED, coordinator.stateOf(context.connectionId))
+    }
+
+    @Test
+    fun `one hertz Flywheel telemetry keeps selection live with complete measurement capabilities`() {
+        val handler = FlywheelProtocolHandler().also { it.recordStructuralMatch() }
+        val context = ConnectionContext(
+            connectionId = connection(10),
+            address = "AA:BB:CC:DD:EE:13",
+            machineConnection = true,
+            gatt = null,
+            connectionState = MutableStateFlow(LinkState.CONNECTED),
+            discoveredServiceUuids = linkedSetOf(BluetoothIds.UUID_FLYWHEEL_SERVICE),
+            handlers = mutableListOf(handler),
+        )
+        val coordinator = AdapterLivenessCoordinator()
+        context.cccd.setReady(true)
+        coordinator.onSubscriptionsComplete(context, nowMs = 0L)
+        assertTrue(coordinator.setupSucceeded(context, nowMs = 100L))
+        coordinator.onSample(
+            MetricSample(
+                connectionId = context.connectionId,
+                sourceId = MetricSourceId(
+                    connectionId = context.connectionId,
+                    protocol = MetricProtocol.VENDOR,
+                    characteristicUuid = BluetoothIds.UUID_FLYWHEEL_TX,
+                ),
+                protocol = MetricProtocol.VENDOR,
+                sourceClass = MetricSourceClass.VENDOR_NATIVE,
+                metric = MetricKind.POWER,
+                arrivalMs = 1_100L,
+                value = 177.0,
+            ),
+        )
+        coordinator.tick(AdapterLivenessCoordinator.DEFAULT_LIVENESS_TIMEOUT_MS + 10_000L)
+
+        assertEquals(AdapterPolicyState.READY, coordinator.stateOf(context.connectionId))
+        assertEquals(
+            AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID,
+            coordinator.selectedAdapterId(context.connectionId),
+        )
+        val capabilities = providerMeasurementCapabilities(
+            BtServiceProfiles.FtmsMachineProfile.INDOOR_BIKE,
+            context.discoveredServiceUuids,
+        )
+        assertTrue(
+            "indoor bike supplies mandatory instantaneous speed",
+            requiresSpeed(BtServiceProfiles.FtmsMachineProfile.INDOOR_BIKE),
+        )
+        assertTrue(capabilities.averageSpeed)
+        assertTrue(capabilities.cadence)
+        assertTrue(capabilities.totalDistance)
+        assertTrue(capabilities.power)
+    }
+
+    @Test
+    fun `exact Flywheel surface outranks stale Concept2 services and becomes ready`() {
+        assertTrue(AdapterLivenessCoordinator.RANK_FTMS > AdapterLivenessCoordinator.RANK_FLYWHEEL)
+        assertTrue(
+            AdapterLivenessCoordinator.RANK_FLYWHEEL > AdapterLivenessCoordinator.RANK_CONCEPT2,
+        )
+        val handler = FlywheelProtocolHandler().also { it.recordStructuralMatch() }
+        val context = ConnectionContext(
+            connectionId = connection(11),
+            address = "AA:BB:CC:DD:EE:14",
+            machineConnection = true,
+            gatt = null,
+            connectionState = MutableStateFlow(LinkState.CONNECTED),
+            discoveredServiceUuids = linkedSetOf(
+                BluetoothIds.UUID_FLYWHEEL_SERVICE,
+                BluetoothIds.UUID_C2_ERG_SERVICE,
+            ),
+            handlers = mutableListOf(handler),
+        )
+        val coordinator = AdapterLivenessCoordinator()
+
+        coordinator.onSubscriptionsComplete(context, nowMs = 0L)
+        assertEquals(
+            AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID,
+            coordinator.selectedAdapterId(context.connectionId),
+        )
+        assertEquals(AdapterPolicyState.SETUP_REQUIRED, coordinator.stateOf(context.connectionId))
+        context.cccd.setReady(true)
+        assertTrue(coordinator.setupSucceeded(context, nowMs = 100L))
+        coordinator.onSample(
+            MetricSample(
+                connectionId = context.connectionId,
+                sourceId = MetricSourceId(
+                    connectionId = context.connectionId,
+                    protocol = MetricProtocol.VENDOR,
+                    characteristicUuid = BluetoothIds.UUID_FLYWHEEL_TX,
+                ),
+                protocol = MetricProtocol.VENDOR,
+                sourceClass = MetricSourceClass.VENDOR_NATIVE,
+                metric = MetricKind.POWER,
+                arrivalMs = 1_100L,
+                value = 177.0,
+            ),
+        )
+        coordinator.tick(AdapterLivenessCoordinator.DEFAULT_LIVENESS_TIMEOUT_MS + 10_000L)
+
+        assertEquals(AdapterPolicyState.READY, coordinator.stateOf(context.connectionId))
+        assertEquals(
+            AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID,
+            coordinator.selectedAdapterId(context.connectionId),
+        )
     }
 
     @Test

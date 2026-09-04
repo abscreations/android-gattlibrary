@@ -36,7 +36,7 @@ internal class FlywheelSyntheticMetrics {
         }
         previousArrivalMs = arrivalMs
         val averageSpeedKph = if (integratedMs > 0L) {
-            distanceMetres * 3_600_000.0 / integratedMs
+            distanceMetres * 3_600.0 / integratedMs
         } else {
             speedKph
         }
@@ -74,6 +74,13 @@ internal class FlywheelSyntheticMetrics {
                 cumulative = distanceMetres,
             ),
         )
+    }
+
+    /** Run Mode owns workout totals even when the physical Flywheel link stays connected. */
+    fun resetSession() {
+        previousArrivalMs = null
+        distanceMetres = 0.0
+        integratedMs = 0L
     }
 
     private companion object {

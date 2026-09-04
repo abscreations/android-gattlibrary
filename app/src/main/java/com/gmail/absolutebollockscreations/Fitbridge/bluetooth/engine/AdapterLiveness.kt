@@ -85,14 +85,15 @@ internal class AdapterLivenessCoordinator(
         val connectionId = (sample.originId as? MetricOriginId.Gatt)?.connectionId ?: return
         val policy = synchronized(lock) { policies[connectionId] } ?: return
         val selectedAdapter = policy.snapshot().selected?.adapterId
-        val creditedAdapter = if (
-            selectedAdapter == WAHOO_KICKR_ADAPTER_ID && sample.protocol == MetricProtocol.CPS
-        ) {
-            // Legacy KICKR deliberately reuses the existing same-link CPS handler for telemetry.
-            // Crediting it here avoids a duplicate decoder/emitter in the Wahoo handler.
-            WAHOO_KICKR_ADAPTER_ID
-        } else {
-            FTMS_ADAPTER_ID
+        val creditedAdapter = when {
+            selectedAdapter == WAHOO_KICKR_ADAPTER_ID && sample.protocol == MetricProtocol.CPS -> {
+                // Legacy KICKR deliberately reuses the existing same-link CPS handler for telemetry.
+                // Crediting it here avoids a duplicate decoder/emitter in the Wahoo handler.
+                WAHOO_KICKR_ADAPTER_ID
+            }
+            selectedAdapter == FLYWHEEL_ADAPTER_ID && sample.protocol == MetricProtocol.VENDOR ->
+                FLYWHEEL_ADAPTER_ID
+            else -> FTMS_ADAPTER_ID
         }
         policy.metricSampleArrived(connectionId, creditedAdapter, sample.arrivalMs)
     }
@@ -534,7 +535,12 @@ internal class AdapterLivenessCoordinator(
          * identical reason [RANK_CONCEPT2] gives.
          */
         const val RANK_FEC = 80
-        const val RANK_FLYWHEEL = 80
+
+        /**
+         * An exact Flywheel identity plus its confirmed RX/TX surface outranks unrelated vendor
+         * services that may remain in a simulator's GATT database. Standard FTMS still wins.
+         */
+        const val RANK_FLYWHEEL = 90
 
         /**
          * 30 s from subscription completion.

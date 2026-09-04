@@ -2,10 +2,10 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.AdapterLivenessCoordinator
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.MachineControlRoute
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.machineControlRoute
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.flywheelProviderCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -50,7 +50,14 @@ class FlywheelDownstreamIntegrationTest {
         assertFalse(measurements.resistance)
         assertFalse(measurements.heartRate)
 
-        val targets = TargetCapabilities.fromEngineCapabilities(BtEngineState.FtmsCapabilities())
+        val engineCapabilities = flywheelProviderCapabilities()
+        assertTrue("measurement-only Flywheel capabilities are settled", engineCapabilities.featuresRead)
+        assertFalse(engineCapabilities.supportsSpeed)
+        assertFalse(engineCapabilities.supportsInclination)
+        assertFalse(engineCapabilities.supportsResistance)
+        assertFalse(engineCapabilities.supportsPower)
+
+        val targets = TargetCapabilities.fromEngineCapabilities(engineCapabilities)
         assertEquals(0, targets.toTargetFeatureBits())
         assertEquals(0L, u32(buildFtmsFeaturePayload(FtmsMachineProfile.INDOOR_BIKE, targets, measurementCapabilities = measurements), 4))
         assertEquals(

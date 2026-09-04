@@ -95,6 +95,19 @@ class SimulatorPersonaTest {
     }
 
     @Test
+    fun `Flywheel persona has the corroborated discovery identity and proprietary placement`() {
+        val options = simulatorPersonaOptions(includeKickr = false)
+        val firstKeiser = options.indexOf(
+            SimulatorPersona.KeiserMSeries(KeiserMSeriesSimulatorProfile.entries.first()),
+        )
+
+        assertEquals("Flywheel 1", SimulatorPersona.FlywheelSports.advertisedName)
+        assertEquals(1, options.count { it == SimulatorPersona.FlywheelSports })
+        assertEquals(SimulatorPersona.FlywheelSports, options[firstKeiser - 1])
+        assertNull(SimulatorPersona.FlywheelSports.standardSurface())
+    }
+
+    @Test
     fun `Keiser personas have distinct M3 discovery identities and units`() {
         val personas = KeiserMSeriesSimulatorProfile.entries.map { SimulatorPersona.KeiserMSeries(it) }
         assertEquals(listOf("M3i", "M3m", "M3o"), personas.map { it.advertisedName })
@@ -122,15 +135,16 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `simulator selector orders Keiser then Precor then Schwinn`() {
+    fun `simulator selector orders Flywheel then Keiser Precor and Schwinn`() {
         val options = simulatorPersonaOptions(includeKickr = false)
         val keiserPersonas = KeiserMSeriesSimulatorProfile.entries.map { SimulatorPersona.KeiserMSeries(it) }
         val keiser = options.indexOf(keiserPersonas.first())
         assertTrue(keiser >= 0)
+        assertEquals(SimulatorPersona.FlywheelSports, options[keiser - 1])
         assertEquals(keiserPersonas, options.subList(keiser, keiser + 3))
         assertEquals(SimulatorPersona.PrecorChrono, options[keiser + 3])
         assertEquals(SimulatorPersona.SchwinnX70, options[keiser + 4])
-        assertTrue(options[keiser - 1] is SimulatorPersona.LifeFitness)
+        assertTrue(options[keiser - 2] is SimulatorPersona.LifeFitness)
     }
 
     @Test
@@ -142,7 +156,7 @@ class SimulatorPersonaTest {
         val options = simulatorPersonaOptions()
         val precorIndex = options.indexOf(SimulatorPersona.PrecorChrono)
         assertTrue(precorIndex >= 0)
-        val fec = options.drop(precorIndex + 1).filterIsInstance<SimulatorPersona.FeCBle>()
+        val fec = options.drop(precorIndex + 2).filterIsInstance<SimulatorPersona.FeCBle>()
         assertEquals(
             FeCEquipmentType.entries,
             fec.take(FeCEquipmentType.entries.size).map { it.equipmentType },

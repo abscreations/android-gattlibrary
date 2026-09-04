@@ -238,6 +238,17 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
         structuralMatch = true
     }
 
+    /** Start a new workout without disturbing link-owned filtering or subscription state. */
+    internal fun resetSyntheticSession() {
+        syntheticMetrics.resetSession()
+    }
+
+    internal fun syntheticSamples(
+        reading: FlywheelMeasurement.Reading,
+        arrivalMs: Long,
+        athleteMassKg: Double,
+    ): List<FlywheelSample> = syntheticMetrics.samples(reading, arrivalMs, athleteMassKg)
+
     override fun onConnected(engine: BtEngine, gatt: BluetoothGatt) {
         resetLinkState()
         engine.state.connectionRegistry.contextForGatt(gatt)?.let { context ->
@@ -345,7 +356,7 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
         }
 
         val filtered = dropoutFilter.filter(raw)
-        syntheticMetrics.samples(
+        syntheticSamples(
             filtered,
             arrivalMs,
             engine.state.lifeFitnessProfile.weightKg.toDouble(),
@@ -404,5 +415,14 @@ internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     private companion object {
         const val SUBSCRIPTION_TIMEOUT_MS = 10_000L
+    }
+}
+
+/** Reset Flywheel workout accumulators on every live machine context at Run Mode start. */
+internal fun resetFlywheelSyntheticSessions(contexts: Iterable<ConnectionContext>) {
+    contexts.forEach { context ->
+        context.handlers.filterIsInstance<FlywheelProtocolHandler>().forEach { handler ->
+            handler.resetSyntheticSession()
+        }
     }
 }

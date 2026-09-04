@@ -316,6 +316,7 @@ internal class AdapterNameCoordinator(
             add(BtServiceProfiles.DEVICE_NAME_CSC_CPS)
             add(SimulatorPersona.StrydFootpod.advertisedName)
             add(SimulatorPersona.PrecorChrono.advertisedName)
+            add(SimulatorPersona.FlywheelSports.advertisedName)
             add(SCHWINN_X70_ADVERTISED_NAME)
             LifeFitnessMachine.entries.forEach { add(it.syntheticName) }
             KeiserMSeriesSimulatorProfile.entries.forEach { add(it.advertisedName) }

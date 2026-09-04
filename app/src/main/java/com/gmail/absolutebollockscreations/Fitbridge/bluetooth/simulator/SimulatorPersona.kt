@@ -60,6 +60,11 @@ sealed interface SimulatorPersona {
         override val advertisedName: String = "CHRONO 0"
     }
 
+    /** Corroborated Flywheel Sports measurement protocol validation fixture. */
+    data object FlywheelSports : SimulatorPersona {
+        override val advertisedName: String = "Flywheel 1"
+    }
+
     /** Capture-backed setup-gated Life Fitness FTMS console. */
     data class LifeFitness(
         val machine: LifeFitnessMachine,

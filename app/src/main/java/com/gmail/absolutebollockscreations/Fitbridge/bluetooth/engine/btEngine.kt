@@ -147,6 +147,15 @@ internal fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabiliti
     supportsPower = false,
 )
 
+/** Settled control capabilities for a measurement-only Flywheel Sports upstream. */
+internal fun flywheelProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
+    featuresRead = true,
+    supportsSpeed = false,
+    supportsInclination = false,
+    supportsResistance = false,
+    supportsPower = false,
+)
+
 class BtEngine internal constructor(
     internal val context: Context,
     private val handlerFactory: HandlerFactory,
@@ -576,14 +585,14 @@ class BtEngine internal constructor(
     private val livenessTickJob: Job = scope.launch {
         while (isActive) {
             delay(LIVENESS_TICK_MS)
-            val nowMs = elapsedRealtimeMs()
-            runCatching { state.adapterLiveness.tick(nowMs) }
+            val metricNowMs = MonotonicMetricClock.SYSTEM.nowMs()
+            runCatching { state.adapterLiveness.tick(metricNowMs) }
                 .onFailure { Timber.tag(BtEngineState.TAG).w(it, "liveness tick failed") }
             // The Life Fitness settle bound rides the same poll. A timeout is the absence of an
             // event either way, and reusing this tick means the deadline lives on the connection
             // context and dies with it, rather than being a scheduled callback that has to be
             // remembered and cancelled on every disconnect path.
-            runCatching { tickLifeFitnessSetup(nowMs) }
+            runCatching { tickLifeFitnessSetup(metricNowMs) }
                 .onFailure { Timber.tag(BtEngineState.TAG).w(it, "life fitness setup tick failed") }
             // Protocol handlers that act on silence rather than on an event. Concept2's
             // multiplexed-to-individual fallback (D41) is the first, and it sat uncalled for two
@@ -596,7 +605,7 @@ class BtEngine internal constructor(
             // statistics window - its values can linger up to a tick past it - but the source is
             // driven entirely by the time it is handed, so a finer poll is a constant away if the
             // 11.6 UI work shows the lag.
-            runCatching { keiserSource.tick(nowMs) }
+            runCatching { keiserSource.tick(elapsedRealtimeMs()) }
                 .onFailure { Timber.tag(BtEngineState.TAG).w(it, "Keiser source tick failed") }
         }
     }
@@ -1500,6 +1509,7 @@ class BtEngine internal constructor(
     fun markSessionStarted(activity: ActivityType, address: String?) {
         desiredActivity = activity
         desiredAddress = address
+        resetFlywheelSyntheticSessions(state.connectionRegistry.machineContexts())
         metricFusion.startSession(activity.fusionPersona())
         synchronized(cscSessionLock) {
             cscSessionGeneration += 1
@@ -1693,7 +1703,7 @@ class BtEngine internal constructor(
             ?: return BtEngineState.FtmsCapabilities()
         val selected = state.adapterLiveness.selectedAdapterId(context.connectionId)
         if (selected == AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID) {
-            return BtEngineState.FtmsCapabilities()
+            return flywheelProviderCapabilities()
         }
         if (selected == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID) {
             val unlocked = context.handlers.filterIsInstance<RideOnProtocolHandler>()

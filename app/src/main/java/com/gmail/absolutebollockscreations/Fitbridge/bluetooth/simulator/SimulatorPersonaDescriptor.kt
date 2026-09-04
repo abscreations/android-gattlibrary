@@ -95,6 +95,7 @@ fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     is SimulatorPersona.Concept2Pm5 -> describeConcept2(machine)
     is SimulatorPersona.KeiserMSeries -> describeKeiserMSeries(profile)
     SimulatorPersona.PrecorChrono -> describePrecorChrono()
+    SimulatorPersona.FlywheelSports -> describeFlywheelSports()
     is SimulatorPersona.LifeFitness -> describeLifeFitness(machine)
     SimulatorPersona.SchwinnX70 -> describeSchwinnX70()
     is SimulatorPersona.FeCBle -> describeFeCBle(this)
@@ -182,6 +183,15 @@ private fun describePrecorChrono() = SimulatorPersonaDescriptor(
     rangeKind = SimulatorRangeKind.RIDE,
     ranges = emptyList(),
     metrics = "speed, cadence, distance, power, energy, heart rate",
+)
+
+private fun describeFlywheelSports() = SimulatorPersonaDescriptor(
+    title = "Flywheel · Sports bike",
+    protocol = "Proprietary Nordic UART-style 34-byte frame · corroborated",
+    controlModes = emptyList(),
+    rangeKind = SimulatorRangeKind.RIDE,
+    ranges = emptyList(),
+    metrics = "power and cadence; FitBridge derives speed, average speed and distance",
 )
 
 private fun describeLifeFitness(machine: LifeFitnessMachine) = SimulatorPersonaDescriptor(
