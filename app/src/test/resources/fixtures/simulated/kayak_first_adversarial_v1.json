@@ -3,6 +3,10 @@
   "family": "kayak-first-paddle",
   "corpus_kind": "fitbridge-authored-language-neutral-adversarial-oracle",
   "authored": "2026-09-04",
+  "corpus_revision": 2,
+  "revision_history": [
+    "Revision 2 distinguishes the zero-field empty line as reject-empty-line while retaining reject-too-few-fields for counts 1 through 23. Revision 1 called all 0 through 23 too-few despite its own stream case and wire specification giving empty lines a distinct rejection. This correction was made during Phase 8.3 before production parser verification; no captured or decoded metric expectation changed."
+  ],
   "normative_source": "docs/kayak-first-wire-protocol-spec.md",
   "source_precedence": "Pinned Apache-2.0 TMIW is normative for transmitted behavior under D99. Sanitized QZ debug-ticket traffic is physical-console observation and simulator compatibility evidence, not the command authority.",
   "independence": "Expected outcomes were authored from the Phase 8.1 specification before a production Kayak First parser, framer, writer, transaction coordinator, or simulator exists. Production code must consume this oracle; it must never rewrite or generate it.",
@@ -210,7 +214,8 @@
   "truncation_matrix": {
     "source": "baseline_measurement.frame_ascii without CRLF",
     "prefix_field_counts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
-    "expect_each": "reject-too-few-fields"
+    "expect_count_0": "reject-empty-line",
+    "expect_counts_1_through_23": "reject-too-few-fields"
   },
   "measurement_mutation_cases": [
     { "id": "wrong-command", "mutations": [{ "index": 0, "value": "7" }], "expect": "reject-wrong-command" },

@@ -17,6 +17,7 @@ class KayakFirstAdversarialCorpusTest {
         val fixture = load()
 
         assertEquals(1, FixtureJson.int(fixture["schema_version"]))
+        assertEquals(2, FixtureJson.int(fixture["corpus_revision"]))
         assertEquals("kayak-first-paddle", FixtureJson.string(fixture["family"]))
         assertEquals(
             "fitbridge-authored-language-neutral-adversarial-oracle",
@@ -28,6 +29,7 @@ class KayakFirstAdversarialCorpusTest {
         )
         assertTrue(FixtureJson.string(fixture["source_precedence"]).contains("TMIW is normative"))
         assertTrue(FixtureJson.string(fixture["independence"]).contains("before a production"))
+        assertTrue(strings(fixture["revision_history"]).single().contains("zero-field empty line"))
 
         val transport = FixtureJson.obj(fixture["transport_contract"])
         assertEquals(20, FixtureJson.int(transport["maximum_outbound_chunk_bytes"]))
@@ -153,7 +155,11 @@ class KayakFirstAdversarialCorpusTest {
 
         val truncation = FixtureJson.obj(fixture["truncation_matrix"])
         assertEquals((0..23).toList(), ints(truncation["prefix_field_counts"]))
-        assertEquals("reject-too-few-fields", FixtureJson.string(truncation["expect_each"]))
+        assertEquals("reject-empty-line", FixtureJson.string(truncation["expect_count_0"]))
+        assertEquals(
+            "reject-too-few-fields",
+            FixtureJson.string(truncation["expect_counts_1_through_23"]),
+        )
 
         val mutations = FixtureJson.array(fixture["measurement_mutation_cases"]).map(FixtureJson::obj)
         assertEquals(39, mutations.size)
