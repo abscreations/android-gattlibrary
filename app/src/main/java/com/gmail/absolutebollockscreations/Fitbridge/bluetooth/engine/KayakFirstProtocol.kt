@@ -39,6 +39,14 @@ internal data class KayakFirstDisplayConfiguration(
     val slots: List<KayakFirstDisplayMetric>
         get() = listOf(slot1, slot2, slot3, slot4, slot5)
 
+    fun withSlot(index: Int, metric: KayakFirstDisplayMetric): KayakFirstDisplayConfiguration {
+        require(index in 0 until SLOT_COUNT)
+        val updated = slots.toMutableList().also { it[index] = metric }
+        return KayakFirstDisplayConfiguration(
+            updated[0], updated[1], updated[2], updated[3], updated[4],
+        )
+    }
+
     companion object {
         val DEFAULT = KayakFirstDisplayConfiguration(
             slot1 = KayakFirstDisplayMetric.ELAPSED_TIME,

@@ -253,6 +253,34 @@ internal class MachineAdapterPolicy(
         snapshotLocked()
     }
 
+    /** Terminal, evidence-producing path for adapters with their own bounded polling contract. */
+    fun connectedNoData(eventConnectionId: ConnectionId, reason: String): Boolean = synchronized(lock) {
+        require(reason.isNotBlank())
+        val current = selectedLocked()
+        if (!owns(eventConnectionId) || current == null ||
+            state == AdapterPolicyState.CONNECTED_NO_DATA
+        ) {
+            return@synchronized false
+        }
+        runCatching {
+            demotionRecorder.record(
+                AdapterDemotion(
+                    connectionId = connectionId,
+                    fromAdapterId = current.adapterId,
+                    toAdapterId = null,
+                    reason = reason,
+                    timeoutMs = current.livenessTimeoutMs,
+                    evidence = current.evidence,
+                ),
+            )
+        }.onFailure { error ->
+            Timber.tag("AdapterPolicy").e(error, "failed to record terminal polling failure")
+        }
+        demotionUsed = true
+        terminalNoDataLocked(reason)
+        true
+    }
+
     fun snapshot(): AdapterPolicySnapshot = synchronized(lock) { snapshotLocked() }
 
     private fun enterSelectedCandidateLocked() {

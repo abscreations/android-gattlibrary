@@ -156,6 +156,15 @@ internal fun flywheelProviderCapabilities(): FtmsCapabilities = FtmsCapabilities
     supportsPower = false,
 )
 
+/** Settled, measurement-only capabilities for the unverified Kayak First adapter. */
+internal fun kayakFirstProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
+    featuresRead = true,
+    supportsSpeed = false,
+    supportsInclination = false,
+    supportsResistance = false,
+    supportsPower = false,
+)
+
 class BtEngine internal constructor(
     internal val context: Context,
     private val handlerFactory: HandlerFactory,
@@ -181,6 +190,15 @@ class BtEngine internal constructor(
 
     internal val state: BtEngineState = BtEngineState()
     internal val metricFusion: MetricFusion = MetricFusion(state)
+
+    /** Set before connection; each Kayak First handler snapshots it for one link generation. */
+    @Volatile
+    internal var kayakFirstDisplayConfiguration: KayakFirstDisplayConfiguration? = null
+        private set
+
+    internal fun setKayakFirstDisplayConfiguration(configuration: KayakFirstDisplayConfiguration) {
+        kayakFirstDisplayConfiguration = configuration
+    }
 
     /**
      * Who currently needs the platform scan running (plan §5.3).
@@ -1705,6 +1723,9 @@ class BtEngine internal constructor(
         if (selected == AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID) {
             return flywheelProviderCapabilities()
         }
+        if (selected == AdapterLivenessCoordinator.KAYAK_FIRST_ADAPTER_ID) {
+            return kayakFirstProviderCapabilities()
+        }
         if (selected == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID) {
             val unlocked = context.handlers.filterIsInstance<RideOnProtocolHandler>()
                 .firstOrNull()?.controlSession?.controlGranted == true
@@ -1717,6 +1738,36 @@ class BtEngine internal constructor(
             .firstOrNull()?.controlSession?.controlGranted == true
         return if (unlocked) wahooKickrProviderCapabilities() else BtEngineState.FtmsCapabilities()
     }
+
+    internal fun hasSelectedKayakFirstAdapter(): Boolean {
+        val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS) ?: return false
+        return state.adapterLiveness.selectedAdapterId(context.connectionId) ==
+            AdapterLivenessCoordinator.KAYAK_FIRST_ADAPTER_ID
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    internal fun startLocalKayakFirstSession(): Boolean =
+        guardConnectPerm(op = "startLocalKayakFirstSession()", default = false) {
+            val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
+                ?: return@guardConnectPerm false
+            if (!hasSelectedKayakFirstAdapter()) return@guardConnectPerm false
+            context.handlers.filterIsInstance<KayakFirstProtocolHandler>()
+                .firstOrNull()
+                ?.requestLocalStart(this, context)
+                ?: false
+        }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    internal fun stopLocalKayakFirstSession(): Boolean =
+        guardConnectPerm(op = "stopLocalKayakFirstSession()", default = false) {
+            val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
+                ?: return@guardConnectPerm false
+            if (!hasSelectedKayakFirstAdapter()) return@guardConnectPerm false
+            context.handlers.filterIsInstance<KayakFirstProtocolHandler>()
+                .firstOrNull()
+                ?.requestLocalStop(this, context)
+                ?: false
+        }
 
     /* ───────────────────────────── FTMS Control Point ───────────────────────────── */
 
@@ -1733,7 +1784,9 @@ class BtEngine internal constructor(
         // Guarded here rather than at each call site so every path — the run screen, the FEATURES
         // retry, btService's facade — declines quietly against a machine that cannot receive.
         val endpoint = controlEndpoint()
-        if (endpoint is AdvertisementOnlyMachineControlEndpoint) {
+        if (endpoint is AdvertisementOnlyMachineControlEndpoint ||
+            endpoint === UnavailableMachineControlEndpoint
+        ) {
             Timber.tag(BtEngineState.TAG).d(
                 "requestControl(): advertisement-only machine has no control point; not requesting",
             )
@@ -1781,6 +1834,9 @@ class BtEngine internal constructor(
                 "startOrResume(): advertisement-only machine has no control point; nothing to send",
             )
             return@guardConnectPerm endpoint.startOrResume()
+        }
+        if (endpoint === UnavailableMachineControlEndpoint) {
+            return@guardConnectPerm false
         }
         if (!state.cccdReady.value) {
             Timber.tag(BtEngineState.TAG).d("startOrResume() deferred until CCCDs ready")
@@ -1854,6 +1910,9 @@ class BtEngine internal constructor(
                 "stopOrPause(): advertisement-only machine has no control point; nothing to send",
             )
             return@guardConnectPerm endpoint.stopOrPause()
+        }
+        if (endpoint === UnavailableMachineControlEndpoint) {
+            return@guardConnectPerm false
         }
         val ok: Boolean = BtEngineControlPoint.stopOrPause(this)
         if (!ok) {

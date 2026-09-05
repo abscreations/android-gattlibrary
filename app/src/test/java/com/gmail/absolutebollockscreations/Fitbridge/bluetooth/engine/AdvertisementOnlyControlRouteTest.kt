@@ -15,6 +15,17 @@ import org.junit.Test
 class AdvertisementOnlyControlRouteTest {
 
     @Test
+    fun `Kayak First has no downstream FTMS control route`() {
+        assertEquals(
+            MachineControlRoute.UNAVAILABLE,
+            machineControlRoute(
+                AdapterLivenessCoordinator.KAYAK_FIRST_ADAPTER_ID,
+                hasFeCHandler = false,
+            ),
+        )
+    }
+
+    @Test
     fun `a selected advertisement machine wins the route outright`() {
         assertEquals(
             MachineControlRoute.ADVERTISEMENT_ONLY,

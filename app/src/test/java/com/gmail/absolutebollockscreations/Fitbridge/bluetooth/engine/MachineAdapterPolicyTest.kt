@@ -203,6 +203,27 @@ class MachineAdapterPolicyTest {
     }
 
     @Test
+    fun `adapter-owned polling miss becomes terminal and records evidence once`() {
+        val demotions = mutableListOf<AdapterDemotion>()
+        val policy = MachineAdapterPolicy(
+            connection,
+            listOf(candidate("kayak.first", 40, 80, setup = true)),
+            AdapterDemotionRecorder(demotions::add),
+        )
+        policy.start()
+        policy.setupSucceeded(connection)
+        policy.subscriptionsCompleted(connection, 0)
+        policy.metricSampleArrived(connection, "kayak.first", 1)
+
+        assertTrue(policy.connectedNoData(connection, "three missed polls"))
+        assertEquals(AdapterPolicyState.CONNECTED_NO_DATA, policy.snapshot().state)
+        assertEquals("three missed polls", policy.snapshot().detail)
+        assertFalse(policy.connectedNoData(connection, "four missed polls"))
+        assertEquals(1, demotions.size)
+        assertNull(demotions.single().toAdapterId)
+    }
+
+    @Test
     fun `repeated lifecycle callbacks are idempotent and do not reset deadline`() {
         val policy = MachineAdapterPolicy(
             connection,

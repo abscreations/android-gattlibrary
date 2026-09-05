@@ -101,6 +101,7 @@ class BtEngineState : HrmStateSink {
         CONCEPT2_PM5,
         FE_C_OVER_BLE,
         FLYWHEEL_SPORTS,
+        KAYAK_FIRST,
     }
 
     /** Presentation-level machine kind; intentionally independent of session activity. */

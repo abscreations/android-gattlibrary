@@ -131,6 +131,8 @@ internal fun machineControlRoute(
             MachineControlRoute.FEC
         selectedAdapterId == AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID ->
             MachineControlRoute.UNAVAILABLE
+        selectedAdapterId == AdapterLivenessCoordinator.KAYAK_FIRST_ADAPTER_ID ->
+            MachineControlRoute.UNAVAILABLE
         else -> MachineControlRoute.FTMS
     }
 

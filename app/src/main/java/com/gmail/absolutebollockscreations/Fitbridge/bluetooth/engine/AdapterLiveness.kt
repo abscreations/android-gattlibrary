@@ -93,6 +93,8 @@ internal class AdapterLivenessCoordinator(
             }
             selectedAdapter == FLYWHEEL_ADAPTER_ID && sample.protocol == MetricProtocol.VENDOR ->
                 FLYWHEEL_ADAPTER_ID
+            selectedAdapter == KAYAK_FIRST_ADAPTER_ID && sample.protocol == MetricProtocol.VENDOR ->
+                KAYAK_FIRST_ADAPTER_ID
             else -> FTMS_ADAPTER_ID
         }
         policy.metricSampleArrived(connectionId, creditedAdapter, sample.arrivalMs)
@@ -113,6 +115,24 @@ internal class AdapterLivenessCoordinator(
                 snapshot.detail ?: "no detail",
             )
         }
+    }
+
+    fun pollingMissesExceeded(connectionId: ConnectionId, consecutiveMisses: Int): Boolean {
+        require(consecutiveMisses > 0)
+        val accepted = synchronized(lock) {
+            policies[connectionId]?.connectedNoData(
+                connectionId,
+                "Kayak First poll missed $consecutiveMisses consecutive responses",
+            ) ?: false
+        }
+        if (accepted) {
+            synchronized(lock) { reportedTerminal.add(connectionId) }
+            Timber.tag(TAG).w(
+                "Kayak First link generation %d connected but produced no polling data",
+                connectionId.linkGeneration,
+            )
+        }
+        return accepted
     }
 
     /** Drops per-link state when a connection generation ends. */

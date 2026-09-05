@@ -584,6 +584,10 @@ internal class ConnectionRegistry {
         BluetoothIds.UUID_FLYWHEEL_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.FLYWHEEL_SPORTS
 
+        context.handlers.filterIsInstance<KayakFirstProtocolHandler>()
+            .any { it.isProtocolConfirmed() } ->
+            BtEngineState.MachineIdentityFamily.KAYAK_FIRST
+
         context.lifeFitnessSetupState != LifeFitnessLinkSetupState.NOT_REQUIRED ->
             BtEngineState.MachineIdentityFamily.LIFE_FITNESS
 
