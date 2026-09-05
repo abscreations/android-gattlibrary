@@ -6,6 +6,32 @@ import java.util.UUID
 
 internal const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
 internal const val FLYWHEEL_CANDIDATE_ID = "vendor.flywheel.sports"
+internal const val KAYAK_FIRST_CANDIDATE_ID = "kayak.first"
+internal const val KAYAK_FIRST_MANUFACTURER_ID = 0xA759
+
+/** The captured value is eight bytes beginning 88 A0; canonical payloads include the company ID. */
+internal fun isKayakFirstManufacturerPayload(payload: ManufacturerPayload): Boolean {
+    val bytes = payload.copyBytes()
+    return bytes.size == 10 &&
+        (bytes[0].toInt() and 0xff) == 0x59 &&
+        (bytes[1].toInt() and 0xff) == 0xA7 &&
+        (bytes[2].toInt() and 0xff) == 0x88 &&
+        (bytes[3].toInt() and 0xff) == 0xA0
+}
+
+internal fun isKayakFirstAddressCorrelation(
+    address: String,
+    payload: ManufacturerPayload,
+): Boolean {
+    if (!isKayakFirstManufacturerPayload(payload)) return false
+    val addressBytes = address.split(':').takeIf { it.size == 6 }
+        ?.map { octet -> octet.toIntOrNull(16)?.takeIf { it in 0..0xff } }
+        ?.takeIf { it.none { octet -> octet == null } }
+        ?.map { requireNotNull(it) }
+        ?: return false
+    val suffix = payload.copyBytes().copyOfRange(4, 10).map { it.toInt() and 0xff }
+    return suffix == addressBytes.reversed()
+}
 
 /** Matcher-layer UUID storage. Values are always lowercase canonical 128-bit UUID strings. */
 @JvmInline
@@ -54,6 +80,7 @@ internal enum class MatchEvidenceKind {
      * payload, so the requirement has to be able to say exactly that.
      */
     MANUFACTURER_PAYLOAD,
+    ADDRESS_CORRELATION,
 }
 
 /**
@@ -129,6 +156,11 @@ internal fun interface ManufacturerPayloadRule {
     fun matches(companyId: Int, payload: ManufacturerPayload): Boolean
 }
 
+/** Optional, transient correlation evidence. Implementations must never expose the address. */
+internal fun interface ManufacturerAddressRule {
+    fun matches(address: String, payload: ManufacturerPayload): Boolean
+}
+
 /**
  * A filter FitBridge asks the OS radio to apply, before any advertisement reaches the app.
  *
@@ -199,6 +231,7 @@ internal data class PacketShapeRule(
 
 internal data class MatchObservation(
     val localName: String? = null,
+    val deviceAddress: String? = null,
     val manufacturerCompanyIds: Set<Int> = emptySet(),
     val serviceDataUuids: Set<CanonicalUuid> = emptySet(),
     val advertisedServiceUuids: Set<CanonicalUuid> = emptySet(),
@@ -271,6 +304,7 @@ internal data class MatchDefinition(
      * opaque blob behind a company identifier. A company ID names a company, not a product.
      */
     val manufacturerPayloadRule: ManufacturerPayloadRule? = null,
+    val manufacturerAddressRule: ManufacturerAddressRule? = null,
     /**
      * The activity this family is, when that is knowable from the advertisement alone.
      *
@@ -479,6 +513,25 @@ internal class DeviceMatcherRegistry private constructor(
                     )
                 }
         }
+        definition.manufacturerAddressRule?.let { rule ->
+            val address = observation.deviceAddress
+            if (address != null) {
+                definition.manufacturerCompanyIds
+                    .mapNotNull(observation.manufacturerPayloads::get)
+                    .firstOrNull { payload -> rule.matches(address, payload) }
+                    ?.let {
+                        add(
+                            fact(
+                                MatchEvidenceKind.ADDRESS_CORRELATION,
+                                "manufacturer-address-reversal:true",
+                                15,
+                                CollisionRisk.MEDIUM,
+                                "Manufacturer suffix reverses the transient exposed address",
+                            ),
+                        )
+                    }
+            }
+        }
         val localName = observation.localName.orEmpty()
         definition.localNamePatterns.firstOrNull { it.containsMatchIn(localName) }?.let { pattern ->
             add(
@@ -548,6 +601,7 @@ internal class DeviceMatcherRegistry private constructor(
                 precorDefinition(),
                 schwinnX70Definition(),
                 flywheelDefinition(),
+                kayakFirstDefinition(),
                 fecDefinition(),
                 keiserMSeriesDefinition(),
                 sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
@@ -664,6 +718,37 @@ internal class DeviceMatcherRegistry private constructor(
                     MatchEvidenceKind.GATT_CHARACTERISTIC,
                     MatchEvidenceKind.LOCAL_NAME_PATTERN,
                 ),
+            ),
+        )
+
+        /**
+         * FFE0 is a commonly reused serial bridge, so this definition admits only a provisional
+         * candidate. The handler still requires the exact FFE0/FFE1 parent, properties and CCCD,
+         * then a protocol response before setup can become ready. Name and manufacturer facts
+         * raise confidence but are deliberately optional because Android may omit scan-response
+         * fields and because the physical identifier must never become persisted identity.
+         */
+        private fun kayakFirstDefinition() = MatchDefinition(
+            candidateId = KAYAK_FIRST_CANDIDATE_ID,
+            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_KAYAK_FIRST_SERVICE),
+            preference = 135,
+            localNamePatterns = listOf(Regex("^[\\x20-\\x7E]{8}$")),
+            manufacturerCompanyIds = setOf(KAYAK_FIRST_MANUFACTURER_ID),
+            personaCharacteristicUuids = setOf(
+                CanonicalUuid.fromUuid(BluetoothIds.UUID_KAYAK_FIRST_IO),
+            ),
+            manufacturerPayloadRule = ManufacturerPayloadRule { companyId, payload ->
+                companyId == KAYAK_FIRST_MANUFACTURER_ID &&
+                    isKayakFirstManufacturerPayload(payload)
+            },
+            manufacturerAddressRule = ManufacturerAddressRule { address, payload ->
+                isKayakFirstAddressCorrelation(address, payload)
+            },
+            machineRole = true,
+            advertisedActivityType = ActivityType.ROWING,
+            requiredEvidenceAlternatives = listOf(
+                setOf(MatchEvidenceKind.ADVERTISED_SERVICE),
+                setOf(MatchEvidenceKind.GATT_SERVICE, MatchEvidenceKind.GATT_CHARACTERISTIC),
             ),
         )
 

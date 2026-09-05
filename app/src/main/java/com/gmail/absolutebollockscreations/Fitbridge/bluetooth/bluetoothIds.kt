@@ -647,6 +647,17 @@ object BluetoothIds {
         UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
 
     // ─────────────────────────────────────────────────────────────
+    // Kayak First paddle console (SIG-base serial bridge; Phase 8)
+    // ─────────────────────────────────────────────────────────────
+    /** Full service UUID observed in the physical console inventory and advertisement. */
+    val UUID_KAYAK_FIRST_SERVICE: UUID =
+        UUID.fromString("0000FFE0-0000-1000-8000-00805F9B34FB")
+
+    /** Same-parent bidirectional endpoint: write without response plus notify and CCCD. */
+    val UUID_KAYAK_FIRST_IO: UUID =
+        UUID.fromString("0000FFE1-0000-1000-8000-00805F9B34FB")
+
+    // ─────────────────────────────────────────────────────────────
     // FE-C over BLE (Tacx transport; ANT+ FE-C carried over a Nordic-UART-derived service)
     // ─────────────────────────────────────────────────────────────
     /**

@@ -69,6 +69,7 @@ class DeviceReachabilityTest {
         assertTrue("Concept2 must be scannable", BluetoothIds.UUID_C2_DISCOVERY_SERVICE in filter)
         assertTrue("Precor must be scannable", BluetoothIds.UUID_PRECOR_SERVICE in filter)
         assertTrue("Schwinn x70 must be scannable", BluetoothIds.UUID_X70_SERVICE in filter)
+        assertTrue("Kayak First must be scannable", BluetoothIds.UUID_KAYAK_FIRST_SERVICE in filter)
     }
 
     // ── Schwinn x70 admission (plan §7) ──────────────────────────────────────────
@@ -394,6 +395,7 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_X70_SERVICE,
             BluetoothIds.UUID_FEC_SERVICE,
             BluetoothIds.UUID_FLYWHEEL_SERVICE,
+            BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
             // Legacy KICKR shares CPS with ordinary power meters. This equality asserts only
             // that its machine handler/candidate chain covers CPS; the Phase-10 fingerprint
             // tests separately prove that bare CPS never activates the candidate.
@@ -428,6 +430,7 @@ class DeviceReachabilityTest {
             BluetoothIds.UUID_X70_SERVICE,
             BluetoothIds.UUID_FEC_SERVICE,
             BluetoothIds.UUID_FLYWHEEL_SERVICE,
+            BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
             BluetoothIds.UUID_CYCLING_POWER_SERVICE,
             BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
             BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE,

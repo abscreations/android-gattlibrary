@@ -489,6 +489,7 @@ private fun detectServiceCandidates(result: ScanResult): ScanObservation {
         candidates = rankedServiceCandidates(
             MatchObservation(
                 localName = record.deviceName,
+                deviceAddress = result.device.address,
                 manufacturerCompanyIds = manufacturerPayloads.keys,
                 manufacturerPayloads = manufacturerPayloads,
                 advertisedServiceUuids = record.serviceUuids.orEmpty()

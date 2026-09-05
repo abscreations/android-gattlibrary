@@ -271,6 +271,9 @@ internal class AdapterLivenessCoordinator(
         val flywheelMatched = context.handlers
             .filterIsInstance<FlywheelProtocolHandler>()
             .any { it.hasStructuralMatch() }
+        val kayakFirstMatched = context.handlers
+            .filterIsInstance<KayakFirstProtocolHandler>()
+            .any { it.hasStructuralMatch() }
         return buildList {
             if (BluetoothIds.UUID_FTMS_SERVICE in services) {
                 add(
@@ -438,6 +441,27 @@ internal class AdapterLivenessCoordinator(
                     ),
                 )
             }
+            if (kayakFirstMatched) {
+                add(
+                    MachineAdapterCandidate(
+                        adapterId = KAYAK_FIRST_ADAPTER_ID,
+                        evidence = MatchEvidence(
+                            listOf(
+                                MatchEvidenceFact(
+                                    kind = MatchEvidenceKind.GATT_CHARACTERISTIC,
+                                    structuralValue = BluetoothIds.UUID_KAYAK_FIRST_IO.toString(),
+                                    weight = 40,
+                                    collisionRisk = CollisionRisk.MEDIUM,
+                                    note = "Kayak First candidate and exact FFE0/FFE1 surface confirmed",
+                                ),
+                            ),
+                        ),
+                        rank = RANK_KAYAK_FIRST,
+                        requiresSetup = true,
+                        livenessTimeoutMs = livenessTimeoutMs,
+                    ),
+                )
+            }
             if (wahooMatch != null) {
                 val markerSummary = wahooMatch.markerServices
                     .map { it.toString() }
@@ -514,6 +538,7 @@ internal class AdapterLivenessCoordinator(
         const val SCHWINN_X70_ADAPTER_ID = "schwinn.x70"
         const val FEC_ADAPTER_ID = "fec.ble"
         const val FLYWHEEL_ADAPTER_ID = "flywheel.sports"
+        const val KAYAK_FIRST_ADAPTER_ID = "kayak.first"
 
         /**
          * Equal to [RANK_PRECOR] and [RANK_CONCEPT2], for the reason given above.
@@ -541,6 +566,9 @@ internal class AdapterLivenessCoordinator(
          * services that may remain in a simulator's GATT database. Standard FTMS still wins.
          */
         const val RANK_FLYWHEEL = 90
+
+        /** Generic FFE0 stays below FTMS; exact GATT plus protocol setup supplies confirmation. */
+        const val RANK_KAYAK_FIRST = 80
 
         /**
          * 30 s from subscription completion.

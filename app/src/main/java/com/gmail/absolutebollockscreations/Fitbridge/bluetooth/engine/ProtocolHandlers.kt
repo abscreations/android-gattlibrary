@@ -98,6 +98,7 @@ internal data class ProtocolKey(val value: String) {
         val WAHOO_KICKR = ProtocolKey("wahoo.kickr.legacy")
         val RIDEON = ProtocolKey("wahoo.kickr.rideon")
         val FLYWHEEL = ProtocolKey("flywheel.sports")
+        val KAYAK_FIRST = ProtocolKey("kayak.first")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
     }
 }
@@ -162,6 +163,7 @@ internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.WAHOO_KICKR,
     ProtocolKey.RIDEON,
     ProtocolKey.FLYWHEEL,
+    ProtocolKey.KAYAK_FIRST,
 )
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
@@ -183,6 +185,9 @@ internal class HandlerFactory(
     companion object {
         fun standard(
             enablePhase05HardwareTest: Boolean = BuildConfig.PHASE_05_HARDWARE_TEST,
+            kayakFirstDisplayConfiguration: () -> KayakFirstDisplayConfiguration = {
+                KayakFirstDisplayConfiguration.DEFAULT
+            },
         ): HandlerFactory {
             val builders = mutableMapOf<ProtocolKey, () -> BtEngineGattCore.ProtocolHandler>(
                 ProtocolKey.FTMS to ::FtmsProtocolHandler,
@@ -197,6 +202,9 @@ internal class HandlerFactory(
                 ProtocolKey.WAHOO_KICKR to { WahooKickrProtocolHandler() },
                 ProtocolKey.RIDEON to { RideOnProtocolHandler() },
                 ProtocolKey.FLYWHEEL to { FlywheelProtocolHandler() },
+                ProtocolKey.KAYAK_FIRST to {
+                    KayakFirstProtocolHandler(kayakFirstDisplayConfiguration())
+                },
             ).apply {
                 if (enablePhase05HardwareTest) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)
