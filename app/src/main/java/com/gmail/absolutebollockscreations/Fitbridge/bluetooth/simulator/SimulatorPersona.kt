@@ -65,6 +65,12 @@ sealed interface SimulatorPersona {
         override val advertisedName: String = "Flywheel 1"
     }
 
+    /** Capture-corroborated KayakFirst Blue console hosted on the evidenced FFE0/FFE1 surface. */
+    data object KayakFirstBlue : SimulatorPersona {
+        // Deliberately synthetic: the captures do not prove a stable physical-device name.
+        override val advertisedName: String = "KFBLUE01"
+    }
+
     /** Capture-backed setup-gated Life Fitness FTMS console. */
     data class LifeFitness(
         val machine: LifeFitnessMachine,

@@ -79,6 +79,11 @@ class FtmsSimulator(
         /** Publish one proprietary Flywheel measurement frame from the coherent bike sample. */
         fun publishFlywheel(sample: FtmsMockSample) {}
 
+        /** Update the snapshot returned by the KayakFirst console on its next command-6 poll. */
+        fun publishKayakFirst(sample: FtmsMockSample) {}
+
+        fun configureKayakFirst(mode: KayakFirstTelemetryMode, scenario: KayakFirstSimulatorScenario) {}
+
         /**
          * Publish one running-footpod tick: RSC measurement, Cycling Power measurement and, on
          * its own slower tick, battery level. The peripheral renders all three from one gait
@@ -253,6 +258,9 @@ class FtmsSimulator(
     fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
         FtmsMockControlProfile.forMachine(machine).any
 
+    fun configureKayakFirst(mode: KayakFirstTelemetryMode, scenario: KayakFirstSimulatorScenario) =
+        peripheral.configureKayakFirst(mode, scenario)
+
     /** UI entry point for the simulator's Zwift Click section. */
     fun sendZwiftClickShift(
         direction: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.ZwiftClickDirection,
@@ -288,6 +296,10 @@ class FtmsSimulator(
             }
             SimulatorPersona.FlywheelSports -> {
                 startFlywheel()
+                return
+            }
+            SimulatorPersona.KayakFirstBlue -> {
+                startKayakFirst()
                 return
             }
             is SimulatorPersona.LifeFitness -> {
@@ -551,6 +563,40 @@ class FtmsSimulator(
             }
         }
         Timber.tag(TAG).i("Flywheel Sports simulator started")
+    }
+
+    private fun startKayakFirst() {
+        val persona = SimulatorPersona.KayakFirstBlue
+        if (realMachineAttached()) {
+            _state.value = State(persona = persona, lastError = "Disconnect the physical machine before simulating data")
+            return
+        }
+        if (_state.value.running) stop()
+        val mockEngine = FtmsMockEngine(FtmsMachineProfile.INDOOR_ROWER, controlsEnabled = false)
+        engine = mockEngine
+        peripheral.setControlOverride(null)
+        if (!runCatching { peripheral.startAdvertising(persona, TargetCapabilities.NONE) }.getOrDefault(false)) {
+            engine = null
+            _state.value = State(persona = persona, lastError = "Could not start advertising as ${persona.advertisedName}")
+            return
+        }
+        sessionProjection.begin(haveControl = false)
+        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        _state.value = State(
+            running = true,
+            persona = persona,
+            machine = FtmsMachineProfile.INDOOR_ROWER,
+            advertising = peripheral.isAdvertising,
+        )
+        publish(mockEngine.snapshot())
+        job = scope.launch {
+            while (isActive) {
+                delay(KayakFirstSimulatorTelemetryEncoder.PERIOD_MS)
+                val active = engine ?: break
+                publish(active.tick(KayakFirstSimulatorTelemetryEncoder.PERIOD_MS / 1_000.0))
+            }
+        }
+        Timber.tag(TAG).i("KayakFirst Blue simulator started")
     }
 
     /**
@@ -1024,6 +1070,9 @@ class FtmsSimulator(
         }
         if (_state.value.persona == SimulatorPersona.FlywheelSports) {
             peripheral.publishFlywheel(sample)
+        }
+        if (_state.value.persona == SimulatorPersona.KayakFirstBlue) {
+            peripheral.publishKayakFirst(sample)
         }
         if (_state.value.persona == SimulatorPersona.StrydFootpod) {
             peripheral.publishStrydFootpod(sample)

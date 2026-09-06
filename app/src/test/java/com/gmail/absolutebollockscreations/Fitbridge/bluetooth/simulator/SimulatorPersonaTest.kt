@@ -95,7 +95,7 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `Flywheel persona has the corroborated discovery identity and proprietary placement`() {
+    fun `Flywheel persona keeps its identity immediately before KayakFirst and Keiser`() {
         val options = simulatorPersonaOptions(includeKickr = false)
         val firstKeiser = options.indexOf(
             SimulatorPersona.KeiserMSeries(KeiserMSeriesSimulatorProfile.entries.first()),
@@ -103,7 +103,8 @@ class SimulatorPersonaTest {
 
         assertEquals("Flywheel 1", SimulatorPersona.FlywheelSports.advertisedName)
         assertEquals(1, options.count { it == SimulatorPersona.FlywheelSports })
-        assertEquals(SimulatorPersona.FlywheelSports, options[firstKeiser - 1])
+        assertEquals(SimulatorPersona.FlywheelSports, options[firstKeiser - 2])
+        assertEquals(SimulatorPersona.KayakFirstBlue, options[firstKeiser - 1])
         assertNull(SimulatorPersona.FlywheelSports.standardSurface())
     }
 
@@ -135,16 +136,17 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `simulator selector orders Flywheel then Keiser Precor and Schwinn`() {
+    fun `simulator selector orders Flywheel KayakFirst Keiser Precor and Schwinn`() {
         val options = simulatorPersonaOptions(includeKickr = false)
         val keiserPersonas = KeiserMSeriesSimulatorProfile.entries.map { SimulatorPersona.KeiserMSeries(it) }
         val keiser = options.indexOf(keiserPersonas.first())
         assertTrue(keiser >= 0)
-        assertEquals(SimulatorPersona.FlywheelSports, options[keiser - 1])
+        assertEquals(SimulatorPersona.FlywheelSports, options[keiser - 2])
+        assertEquals(SimulatorPersona.KayakFirstBlue, options[keiser - 1])
         assertEquals(keiserPersonas, options.subList(keiser, keiser + 3))
         assertEquals(SimulatorPersona.PrecorChrono, options[keiser + 3])
         assertEquals(SimulatorPersona.SchwinnX70, options[keiser + 4])
-        assertTrue(options[keiser - 2] is SimulatorPersona.LifeFitness)
+        assertTrue(options[keiser - 3] is SimulatorPersona.LifeFitness)
     }
 
     @Test

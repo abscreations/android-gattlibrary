@@ -49,6 +49,7 @@ class SimulatorPersonaDescriptorTest {
             SimulatorPersona.KeiserMSeries(KeiserMSeriesSimulatorProfile.M3I_IMPERIAL),
             SimulatorPersona.PrecorChrono,
             SimulatorPersona.FlywheelSports,
+            SimulatorPersona.KayakFirstBlue,
             SimulatorPersona.StrydFootpod,
             SimulatorPersona.SchwinnX70,
             SimulatorPersona.LifeFitness(LifeFitnessMachine.TREADMILL),

@@ -96,6 +96,18 @@ fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     is SimulatorPersona.KeiserMSeries -> describeKeiserMSeries(profile)
     SimulatorPersona.PrecorChrono -> describePrecorChrono()
     SimulatorPersona.FlywheelSports -> describeFlywheelSports()
+    SimulatorPersona.KayakFirstBlue -> SimulatorPersonaDescriptor(
+        title = "KayakFirst (Blue) Indoor Paddle",
+        protocol = "KayakFirst FFE0/FFE1 text protocol",
+        controlModes = emptyList(),
+        rangeKind = SimulatorRangeKind.RIDE,
+        ranges = listOf(
+            SimulatorPersonaRange("Speed", "shared rowing workout"),
+            SimulatorPersonaRange("Cadence", "shared rowing workout"),
+            SimulatorPersonaRange("Power", "shared rowing workout"),
+        ),
+        metrics = "elapsed, distance, speed, stroke rate, power, energy",
+    )
     is SimulatorPersona.LifeFitness -> describeLifeFitness(machine)
     SimulatorPersona.SchwinnX70 -> describeSchwinnX70()
     is SimulatorPersona.FeCBle -> describeFeCBle(this)

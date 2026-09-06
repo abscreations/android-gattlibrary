@@ -152,6 +152,19 @@ class FtmsPeripheralController(
         val kickrPendingFrames: Int = 0,
         val kickrDroppedFrames: Long = 0,
         val kickrRejectedWrites: Long = 0,
+        /** Debug-only KayakFirst simulator diagnostics; null/default for every other persona. */
+        val kayakFirstSetupStage: String? = null,
+        val kayakFirstLastCommand: String? = null,
+        val kayakFirstTelemetryMode: String? = null,
+        val kayakFirstScenario: String? = null,
+        /** Five validated KayakFirst panel wire codes; avoids leaking the internal protocol type. */
+        val kayakFirstDisplayCodes: List<Int>? = null,
+        val kayakFirstPollRequests: Long = 0,
+        val kayakFirstShortRecords: Long = 0,
+        val kayakFirstMalformedCommands: Long = 0,
+        val kayakFirstMissingResponses: Long = 0,
+        val kayakFirstQueuedFragments: Int = 0,
+        val kayakFirstDroppedRecords: Long = 0,
         /** Set only while [kickrControlMode] reflects an active simulation write; null otherwise. */
         val kickrSimWindMps: Double? = null,
         val kickrSimGradePercent: Double? = null,
