@@ -8,6 +8,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceP
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.applyFitnessMachineStatus
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -16,15 +17,24 @@ class FtmsPassThroughCharacterizationTest {
     private class RecordingEngineFacade : BtServiceEngineFacade {
         override val isFtmsConnected: Boolean = true
         override val engineState = BtEngineState()
+        override var handlesDownstreamSessionTransitionsLocally: Boolean = false
         var requestedSpeedKph: Float? = null
+        var startCalls = 0
+        var stopCalls = 0
 
         override fun buildSupportedSpeedRange() = ByteArray(0)
         override fun buildSupportedInclineRange() = ByteArray(0)
         override fun buildSupportedResistanceRange() = ByteArray(0)
         override fun buildSupportedHeartRateRange() = ByteArray(0)
         override fun buildSupportedPowerRange() = ByteArray(0)
-        override fun startOrResume() = true
-        override fun stopOrPause() = true
+        override fun startOrResume(): Boolean {
+            startCalls++
+            return false
+        }
+        override fun stopOrPause(): Boolean {
+            stopCalls++
+            return false
+        }
         override fun setTargetSpeedKph(kph: Float): Boolean {
             requestedSpeedKph = kph
             return true
@@ -38,6 +48,51 @@ class FtmsPassThroughCharacterizationTest {
             rollingResistanceCoefficient: Float,
             windResistanceCoefficient: Float,
         ) = true
+    }
+
+    @Test
+    fun `measurement-only Kayak First session transitions terminate locally without opening targets`() {
+        val upstream = RecordingEngineFacade().apply {
+            handlesDownstreamSessionTransitionsLocally = true
+        }
+        val sink = EngineFtmsControlSink { upstream }
+        val handler = FtmsControlPointHandler(sink)
+        val session = FtmsProcedureSession()
+
+        assertEquals(
+            FtmsSpec.Result.SUCCESS,
+            handler.handle(byteArrayOf(FtmsSpec.Opcode.REQUEST_CONTROL), session).response[2],
+        )
+        assertEquals(
+            FtmsSpec.Result.SUCCESS,
+            handler.handle(byteArrayOf(FtmsSpec.Opcode.START_RESUME), session).response[2],
+        )
+        assertEquals(
+            FtmsSpec.Result.SUCCESS,
+            handler.handle(byteArrayOf(FtmsSpec.Opcode.STOP_PAUSE, 0x01), session).response[2],
+        )
+        assertEquals(0, upstream.startCalls)
+        assertEquals(0, upstream.stopCalls)
+        assertFalse(sink.targetCapabilities.any)
+        assertEquals(
+            FtmsSpec.Result.OPCODE_NOT_SUPPORTED,
+            handler.handle(
+                byteArrayOf(FtmsSpec.Opcode.SET_TARGET_SPEED, 0xE8.toByte(), 0x03),
+                session,
+            ).response[2],
+        )
+        assertNull(upstream.requestedSpeedKph)
+    }
+
+    @Test
+    fun `connected pass-through still propagates upstream session failure`() {
+        val upstream = RecordingEngineFacade()
+        val session = FtmsProcedureSession().apply { hasControl = true }
+        val outcome = FtmsControlPointHandler(EngineFtmsControlSink { upstream })
+            .handle(byteArrayOf(FtmsSpec.Opcode.START_RESUME), session)
+
+        assertEquals(FtmsSpec.Result.OPERATION_FAILED, outcome.response[2])
+        assertEquals(1, upstream.startCalls)
     }
 
     private class RecordingStatusSink : BtServiceControlSink {

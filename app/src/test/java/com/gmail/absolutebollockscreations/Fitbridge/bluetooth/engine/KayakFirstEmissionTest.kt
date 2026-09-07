@@ -7,13 +7,16 @@ import org.junit.Test
 
 class KayakFirstEmissionTest {
     @Test
-    fun `accepted reading maps only the five evidenced native metrics`() {
+    fun `accepted reading maps only definitive native metrics`() {
         val reading = KayakFirstMeasurement.Reading(
             distanceMetres = 152.0,
             speedMetresPerSecond = 3.36,
             cadenceSpm = 99,
-            powerWatts = 103,
+            forceNewtons = 103.0,
             elapsedSeconds = 69,
+            averageSpeedMetresPerSecond = 2.57,
+            averageCadenceSpm = 87,
+            averageForceNewtons = 87.0,
             diagnosticStatusRaw = "5",
             fieldCount = 24,
         )
@@ -24,13 +27,15 @@ class KayakFirstEmissionTest {
             listOf(
                 MetricKind.DISTANCE,
                 MetricKind.SPEED,
+                MetricKind.AVERAGE_SPEED,
                 MetricKind.CADENCE,
-                MetricKind.POWER,
+                MetricKind.AVERAGE_CADENCE,
                 MetricKind.ELAPSED,
             ),
             samples.map(KayakFirstSample::metric),
         )
-        listOf(152.0, 12.096, 99.0, 103.0, 69.0).zip(samples).forEach { (expected, sample) ->
+        listOf(152.0, 12.096, 9.252, 99.0, 87.0, 69.0)
+            .zip(samples).forEach { (expected, sample) ->
             assertEquals(expected, sample.value, 1e-9)
         }
         assertEquals(152.0, samples.first().nativeCumulative ?: error("missing native total"), 0.0)
@@ -38,6 +43,8 @@ class KayakFirstEmissionTest {
         assertTrue(samples.all { it.sourceClass == MetricSourceClass.VENDOR_NATIVE })
         assertTrue(samples.all { it.quality == MetricQuality.NATIVE })
         assertTrue(samples.none { it.metric == MetricKind.STROKE_RATE })
+        assertTrue(samples.none { it.metric == MetricKind.POWER })
+        assertTrue(samples.none { it.metric == MetricKind.AVERAGE_POWER })
         assertTrue(samples.none { it.metric == MetricKind.ENERGY })
     }
 
@@ -47,7 +54,7 @@ class KayakFirstEmissionTest {
             distanceMetres = 0.0,
             speedMetresPerSecond = 0.0,
             cadenceSpm = 0,
-            powerWatts = 0,
+            forceNewtons = 0.0,
             elapsedSeconds = 0,
             diagnosticStatusRaw = "0",
             fieldCount = 24,
@@ -55,8 +62,43 @@ class KayakFirstEmissionTest {
 
         val samples = kayakFirstSamples(reading)
 
-        assertEquals(5, samples.size)
+        assertEquals(6, samples.size)
         assertTrue(samples.all { it.value == 0.0 })
         assertEquals(0.0, samples.first().nativeCumulative ?: error("missing native total"), 0.0)
     }
+
+    @Test
+    fun `derived stroke count integrates evidenced cadence over protocol elapsed time`() {
+        val counter = KayakFirstDerivedStrokeCounter()
+        fun reading(elapsed: Long, cadence: Int) = KayakFirstMeasurement.Reading(
+            distanceMetres = 0.0,
+            speedMetresPerSecond = 0.0,
+            cadenceSpm = cadence,
+            forceNewtons = 0.0,
+            elapsedSeconds = elapsed,
+            diagnosticStatusRaw = "1",
+            fieldCount = 24,
+        )
+
+        assertEquals(0.0, counter.sample(reading(0, 0), 0).value, 0.0)
+        val tenSeconds = counter.sample(reading(10, 60), 10)
+        assertEquals(5.0, tenSeconds.value, 0.0)
+        assertEquals(MetricKind.STROKE_COUNT, tenSeconds.metric)
+        assertEquals(MetricSourceClass.DERIVED, tenSeconds.sourceClass)
+        assertEquals(MetricQuality.DERIVED, tenSeconds.quality)
+        assertEquals(15.0, counter.sample(reading(20, 60), 10).value, 0.0)
+
+        val held = reading(30, 60).copy(activePaddling = false)
+        assertEquals(15.0, counter.sample(held, 10).value, 0.0)
+
+        counter.reset()
+        // Reset clears the accumulation and the cadence history. A frame representing no time
+        // contributes nothing...
+        assertEquals(0.0, counter.sample(reading(100, 90), 0).value, 0.0)
+        // ...and the next represented interval integrates from zero again rather than resuming the
+        // pre-reset total. The zero-second frame still establishes the cadence reference, so ten
+        // seconds at a steady 90 spm is 15 strokes.
+        assertEquals(15.0, counter.sample(reading(110, 90), 10).value, 0.0)
+    }
+
 }

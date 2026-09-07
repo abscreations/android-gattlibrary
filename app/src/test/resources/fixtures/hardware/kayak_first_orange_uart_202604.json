@@ -1,0 +1,916 @@
+{
+  "schema_version": 1,
+  "family": "kayak-first-orange-e2-4.2.0",
+  "provenance": "Sanitized transcript of a real KayakFirst Orange UART session, supplied by the user during the refactor. Structure preserved exactly: command token, sequence counter and 10-digit microsecond timing per three-line response. Carries no address, identifier, profile value or wall-clock timestamp.",
+  "record_count": 110,
+  "observed_properties": {
+    "timing_digits": 10,
+    "sequence_first": 438,
+    "sequence_last": 479,
+    "sequence_values_absent_in_range": [
+      442,
+      456
+    ],
+    "first_command": "2",
+    "records_with_trailing_space_padding": 3,
+    "trailing_space_record_indexes": [
+      0,
+      1,
+      2
+    ],
+    "reset_command_records": 0,
+    "reset_acknowledgement_records": 0,
+    "commands_sharing_one_sequence_observed": 1,
+    "repeated_sequence_for_one_command_observed": 1
+  },
+  "notes": [
+    "The sequence is a shared counter that advances with the flywheel stroke, not a per-command or per-response counter. Several commands of one 1/2/3/4 cycle normally carry the same value.",
+    "One command can legitimately return the same sequence twice in a row. Per-command sequences are non-decreasing but not strictly increasing.",
+    "The global sequence stream is not monotonic: command 3 lags and produces six apparent decreases relative to the previous record.",
+    "The device pads the sequence line with trailing spaces on some responses. The line is otherwise a plain unsigned decimal; nothing else in the capture carries padding.",
+    "No reset command and no reset acknowledgement appear anywhere in this capture. The OK acknowledgement implemented by FitBridge comes from the E2 4.2.0 application analysis, not from this transcript.",
+    "Arrival timestamps were not captured. Any replay must synthesize them and must not treat the synthesized cadence as observed."
+  ],
+  "records": [
+    {
+      "command_line": "2",
+      "sequence_line": "00438     ",
+      "timing_line": "0000335045",
+      "command": "2",
+      "sequence": 438,
+      "timing_us": 335045
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00438    ",
+      "timing_line": "0000070006",
+      "command": "3",
+      "sequence": 438,
+      "timing_us": 70006
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00439   ",
+      "timing_line": "0000340055",
+      "command": "4",
+      "sequence": 439,
+      "timing_us": 340055
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00439",
+      "timing_line": "0000065006",
+      "command": "1",
+      "sequence": 439,
+      "timing_us": 65006
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00440",
+      "timing_line": "0000335044",
+      "command": "2",
+      "sequence": 440,
+      "timing_us": 335044
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00440",
+      "timing_line": "0000070010",
+      "command": "3",
+      "sequence": 440,
+      "timing_us": 70010
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00440",
+      "timing_line": "0000340049",
+      "command": "4",
+      "sequence": 440,
+      "timing_us": 340049
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00441",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 441,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00441",
+      "timing_line": "0000335053",
+      "command": "2",
+      "sequence": 441,
+      "timing_us": 335053
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00441",
+      "timing_line": "0000070013",
+      "command": "3",
+      "sequence": 441,
+      "timing_us": 70013
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00441",
+      "timing_line": "0000340051",
+      "command": "4",
+      "sequence": 441,
+      "timing_us": 340051
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00441",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 441,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00443",
+      "timing_line": "0000335048",
+      "command": "2",
+      "sequence": 443,
+      "timing_us": 335048
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00443",
+      "timing_line": "0000070008",
+      "command": "3",
+      "sequence": 443,
+      "timing_us": 70008
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00443",
+      "timing_line": "0000340045",
+      "command": "4",
+      "sequence": 443,
+      "timing_us": 340045
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00444",
+      "timing_line": "0000065008",
+      "command": "1",
+      "sequence": 444,
+      "timing_us": 65008
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00445",
+      "timing_line": "0000335049",
+      "command": "2",
+      "sequence": 445,
+      "timing_us": 335049
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00444",
+      "timing_line": "0000070011",
+      "command": "3",
+      "sequence": 444,
+      "timing_us": 70011
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00445",
+      "timing_line": "0000340053",
+      "command": "4",
+      "sequence": 445,
+      "timing_us": 340053
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00446",
+      "timing_line": "0000065011",
+      "command": "1",
+      "sequence": 446,
+      "timing_us": 65011
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00446",
+      "timing_line": "0000335043",
+      "command": "2",
+      "sequence": 446,
+      "timing_us": 335043
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00445",
+      "timing_line": "0000070011",
+      "command": "3",
+      "sequence": 445,
+      "timing_us": 70011
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00445",
+      "timing_line": "0000340053",
+      "command": "4",
+      "sequence": 445,
+      "timing_us": 340053
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00446",
+      "timing_line": "0000065011",
+      "command": "1",
+      "sequence": 446,
+      "timing_us": 65011
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00446",
+      "timing_line": "0000335043",
+      "command": "2",
+      "sequence": 446,
+      "timing_us": 335043
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00447",
+      "timing_line": "0000070009",
+      "command": "3",
+      "sequence": 447,
+      "timing_us": 70009
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00448",
+      "timing_line": "0000340039",
+      "command": "4",
+      "sequence": 448,
+      "timing_us": 340039
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00449",
+      "timing_line": "0000065006",
+      "command": "1",
+      "sequence": 449,
+      "timing_us": 65006
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00449",
+      "timing_line": "0000335040",
+      "command": "2",
+      "sequence": 449,
+      "timing_us": 335040
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00449",
+      "timing_line": "0000070012",
+      "command": "3",
+      "sequence": 449,
+      "timing_us": 70012
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00449",
+      "timing_line": "0000340053",
+      "command": "4",
+      "sequence": 449,
+      "timing_us": 340053
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00450",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 450,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00450",
+      "timing_line": "0000335046",
+      "command": "2",
+      "sequence": 450,
+      "timing_us": 335046
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00450",
+      "timing_line": "0000070014",
+      "command": "3",
+      "sequence": 450,
+      "timing_us": 70014
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00450",
+      "timing_line": "0000340047",
+      "command": "4",
+      "sequence": 450,
+      "timing_us": 340047
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00451",
+      "timing_line": "0000065007",
+      "command": "1",
+      "sequence": 451,
+      "timing_us": 65007
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00451",
+      "timing_line": "0000335049",
+      "command": "2",
+      "sequence": 451,
+      "timing_us": 335049
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00452",
+      "timing_line": "0000070010",
+      "command": "3",
+      "sequence": 452,
+      "timing_us": 70010
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00452",
+      "timing_line": "0000340052",
+      "command": "4",
+      "sequence": 452,
+      "timing_us": 340052
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00453",
+      "timing_line": "0000065006",
+      "command": "1",
+      "sequence": 453,
+      "timing_us": 65006
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00454",
+      "timing_line": "0000335047",
+      "command": "2",
+      "sequence": 454,
+      "timing_us": 335047
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00454",
+      "timing_line": "0000070006",
+      "command": "3",
+      "sequence": 454,
+      "timing_us": 70006
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00454",
+      "timing_line": "0000340045",
+      "command": "4",
+      "sequence": 454,
+      "timing_us": 340045
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00455",
+      "timing_line": "0000065008",
+      "command": "1",
+      "sequence": 455,
+      "timing_us": 65008
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00455",
+      "timing_line": "0000335047",
+      "command": "2",
+      "sequence": 455,
+      "timing_us": 335047
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00455",
+      "timing_line": "0000070008",
+      "command": "3",
+      "sequence": 455,
+      "timing_us": 70008
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00455",
+      "timing_line": "0000340051",
+      "command": "4",
+      "sequence": 455,
+      "timing_us": 340051
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00455",
+      "timing_line": "0000065008",
+      "command": "1",
+      "sequence": 455,
+      "timing_us": 65008
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00455",
+      "timing_line": "0000335047",
+      "command": "2",
+      "sequence": 455,
+      "timing_us": 335047
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00455",
+      "timing_line": "0000070008",
+      "command": "3",
+      "sequence": 455,
+      "timing_us": 70008
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00457",
+      "timing_line": "0000340046",
+      "command": "4",
+      "sequence": 457,
+      "timing_us": 340046
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00458",
+      "timing_line": "0000065011",
+      "command": "1",
+      "sequence": 458,
+      "timing_us": 65011
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00458",
+      "timing_line": "0000335044",
+      "command": "2",
+      "sequence": 458,
+      "timing_us": 335044
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00458",
+      "timing_line": "0000070007",
+      "command": "3",
+      "sequence": 458,
+      "timing_us": 70007
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00458",
+      "timing_line": "0000340038",
+      "command": "4",
+      "sequence": 458,
+      "timing_us": 340038
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00459",
+      "timing_line": "0000065008",
+      "command": "1",
+      "sequence": 459,
+      "timing_us": 65008
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00460",
+      "timing_line": "0000335053",
+      "command": "2",
+      "sequence": 460,
+      "timing_us": 335053
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00459",
+      "timing_line": "0000070009",
+      "command": "3",
+      "sequence": 459,
+      "timing_us": 70009
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00459",
+      "timing_line": "0000340051",
+      "command": "4",
+      "sequence": 459,
+      "timing_us": 340051
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00460",
+      "timing_line": "0000065006",
+      "command": "1",
+      "sequence": 460,
+      "timing_us": 65006
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00460",
+      "timing_line": "0000335053",
+      "command": "2",
+      "sequence": 460,
+      "timing_us": 335053
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00461",
+      "timing_line": "0000070012",
+      "command": "3",
+      "sequence": 461,
+      "timing_us": 70012
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00462",
+      "timing_line": "0000340035",
+      "command": "4",
+      "sequence": 462,
+      "timing_us": 340035
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00463",
+      "timing_line": "0000065007",
+      "command": "1",
+      "sequence": 463,
+      "timing_us": 65007
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00463",
+      "timing_line": "0000335045",
+      "command": "2",
+      "sequence": 463,
+      "timing_us": 335045
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00463",
+      "timing_line": "0000070008",
+      "command": "3",
+      "sequence": 463,
+      "timing_us": 70008
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00464",
+      "timing_line": "0000340053",
+      "command": "4",
+      "sequence": 464,
+      "timing_us": 340053
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00465",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 465,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00465",
+      "timing_line": "0000335043",
+      "command": "2",
+      "sequence": 465,
+      "timing_us": 335043
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00464",
+      "timing_line": "0000070010",
+      "command": "3",
+      "sequence": 464,
+      "timing_us": 70010
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00464",
+      "timing_line": "0000340053",
+      "command": "4",
+      "sequence": 464,
+      "timing_us": 340053
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00465",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 465,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00465",
+      "timing_line": "0000335043",
+      "command": "2",
+      "sequence": 465,
+      "timing_us": 335043
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00466",
+      "timing_line": "0000070013",
+      "command": "3",
+      "sequence": 466,
+      "timing_us": 70013
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00467",
+      "timing_line": "0000340050",
+      "command": "4",
+      "sequence": 467,
+      "timing_us": 340050
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00468",
+      "timing_line": "0000065006",
+      "command": "1",
+      "sequence": 468,
+      "timing_us": 65006
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00468",
+      "timing_line": "0000335050",
+      "command": "2",
+      "sequence": 468,
+      "timing_us": 335050
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00468",
+      "timing_line": "0000070008",
+      "command": "3",
+      "sequence": 468,
+      "timing_us": 70008
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00468",
+      "timing_line": "0000340052",
+      "command": "4",
+      "sequence": 468,
+      "timing_us": 340052
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00469",
+      "timing_line": "0000065007",
+      "command": "1",
+      "sequence": 469,
+      "timing_us": 65007
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00469",
+      "timing_line": "0000335041",
+      "command": "2",
+      "sequence": 469,
+      "timing_us": 335041
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00469",
+      "timing_line": "0000070012",
+      "command": "3",
+      "sequence": 469,
+      "timing_us": 70012
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00469",
+      "timing_line": "0000340046",
+      "command": "4",
+      "sequence": 469,
+      "timing_us": 340046
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00470",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 470,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00470",
+      "timing_line": "0000335046",
+      "command": "2",
+      "sequence": 470,
+      "timing_us": 335046
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00471",
+      "timing_line": "0000070008",
+      "command": "3",
+      "sequence": 471,
+      "timing_us": 70008
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00471",
+      "timing_line": "0000340053",
+      "command": "4",
+      "sequence": 471,
+      "timing_us": 340053
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00472",
+      "timing_line": "0000065007",
+      "command": "1",
+      "sequence": 472,
+      "timing_us": 65007
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00473",
+      "timing_line": "0000335044",
+      "command": "2",
+      "sequence": 473,
+      "timing_us": 335044
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00473",
+      "timing_line": "0000070008",
+      "command": "3",
+      "sequence": 473,
+      "timing_us": 70008
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00473",
+      "timing_line": "0000340046",
+      "command": "4",
+      "sequence": 473,
+      "timing_us": 340046
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00474",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 474,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00474",
+      "timing_line": "0000335043",
+      "command": "2",
+      "sequence": 474,
+      "timing_us": 335043
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00474",
+      "timing_line": "0000070006",
+      "command": "3",
+      "sequence": 474,
+      "timing_us": 70006
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00474",
+      "timing_line": "0000340042",
+      "command": "4",
+      "sequence": 474,
+      "timing_us": 340042
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00474",
+      "timing_line": "0000065010",
+      "command": "1",
+      "sequence": 474,
+      "timing_us": 65010
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00475",
+      "timing_line": "0000335049",
+      "command": "2",
+      "sequence": 475,
+      "timing_us": 335049
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00474",
+      "timing_line": "0000070006",
+      "command": "3",
+      "sequence": 474,
+      "timing_us": 70006
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00476",
+      "timing_line": "0000340050",
+      "command": "4",
+      "sequence": 476,
+      "timing_us": 340050
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00477",
+      "timing_line": "0000065006",
+      "command": "1",
+      "sequence": 477,
+      "timing_us": 65006
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00477",
+      "timing_line": "0000335042",
+      "command": "2",
+      "sequence": 477,
+      "timing_us": 335042
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00477",
+      "timing_line": "0000070012",
+      "command": "3",
+      "sequence": 477,
+      "timing_us": 70012
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00477",
+      "timing_line": "0000340050",
+      "command": "4",
+      "sequence": 477,
+      "timing_us": 340050
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00478",
+      "timing_line": "0000065007",
+      "command": "1",
+      "sequence": 478,
+      "timing_us": 65007
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00479",
+      "timing_line": "0000335045",
+      "command": "2",
+      "sequence": 479,
+      "timing_us": 335045
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00478",
+      "timing_line": "0000070006",
+      "command": "3",
+      "sequence": 478,
+      "timing_us": 70006
+    },
+    {
+      "command_line": "4",
+      "sequence_line": "00478",
+      "timing_line": "0000340039",
+      "command": "4",
+      "sequence": 478,
+      "timing_us": 340039
+    },
+    {
+      "command_line": "1",
+      "sequence_line": "00479",
+      "timing_line": "0000065009",
+      "command": "1",
+      "sequence": 479,
+      "timing_us": 65009
+    },
+    {
+      "command_line": "2",
+      "sequence_line": "00479",
+      "timing_line": "0000335045",
+      "command": "2",
+      "sequence": 479,
+      "timing_us": 335045
+    },
+    {
+      "command_line": "3",
+      "sequence_line": "00479",
+      "timing_line": "0000070012",
+      "command": "3",
+      "sequence": 479,
+      "timing_us": 70012
+    }
+  ]
+}

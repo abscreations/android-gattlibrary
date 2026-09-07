@@ -200,6 +200,43 @@ class BtEngine internal constructor(
         kayakFirstDisplayConfiguration = configuration
     }
 
+    /** Set before selection; the Kayak First handler snapshots this for one link generation. */
+    @Volatile
+    internal var kayakFirstSportMode: KayakFirstSportMode = KayakFirstSportMode.CANOEING
+        private set
+
+    internal fun setKayakFirstSportMode(mode: KayakFirstSportMode) {
+        kayakFirstSportMode = mode
+    }
+
+    /**
+     * Handshake dialect used for the next Kayak First link generation.
+     *
+     * LEGACY is the default because command 2 is the dialect proven end to end by the FitBridge
+     * captures. BULL selects the command-21 form shipped by the KayakFit client for newer Bull
+     * consoles. Snapshotted per generation like the other Kayak First settings.
+     */
+    @Volatile
+    internal var kayakFirstHandshakeVariant: KayakFirstHandshakeVariant =
+        KayakFirstHandshakeVariant.LEGACY
+        private set
+
+    internal fun setKayakFirstHandshakeVariant(variant: KayakFirstHandshakeVariant) {
+        kayakFirstHandshakeVariant = variant
+    }
+
+    /** Boat mass transmitted by the command-21 handshake. */
+    @Volatile
+    internal var kayakFirstBoatWeightKg: Int = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG
+        private set
+
+    internal fun setKayakFirstBoatWeightKg(weightKg: Int) {
+        kayakFirstBoatWeightKg = weightKg.coerceIn(
+            KayakFirstCommandCodec.BOAT_WEIGHT_RANGE_KG.first,
+            KayakFirstCommandCodec.BOAT_WEIGHT_RANGE_KG.last,
+        )
+    }
+
     /**
      * Who currently needs the platform scan running (plan §5.3).
      *
@@ -272,6 +309,9 @@ class BtEngine internal constructor(
 
     override val engineState: BtEngineState
         get() = state
+
+    override val handlesDownstreamSessionTransitionsLocally: Boolean
+        get() = hasSelectedKayakFirstAdapter()
 
     override fun buildSupportedSpeedRange(): ByteArray =
         BtServiceSupportedRangesAdapter.buildSpeedRange(state)
@@ -647,6 +687,8 @@ class BtEngine internal constructor(
         get() = state.discoveredDevices
     val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>>
         get() = state.connectedDevices
+    internal val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?>
+        get() = state.kayakFirstSetupProgress
     val activeAdvertisementMachine: StateFlow<BtEngineState.ActiveAdvertisementMachine?>
         get() = state.activeAdvertisementMachine
 

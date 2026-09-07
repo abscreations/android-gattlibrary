@@ -192,13 +192,13 @@ internal val flywheelMeasurementCapabilities = FtmsMeasurementCapabilities(
     elapsedTime = false,
 )
 
-/** Tier-1/unverified Kayak First measurement contract; no inferred energy, HR, or resistance. */
+/** KayakFirst native contract; estimated power/energy are enabled only after their source exists. */
 internal val kayakFirstMeasurementCapabilities = FtmsMeasurementCapabilities(
     cadence = true,
     totalDistance = true,
     pace = true,
     power = true,
-    expendedEnergy = false,
+    expendedEnergy = true,
     heartRate = false,
     elapsedTime = true,
 )

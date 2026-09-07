@@ -50,6 +50,7 @@ class SimulatorPersonaDescriptorTest {
             SimulatorPersona.PrecorChrono,
             SimulatorPersona.FlywheelSports,
             SimulatorPersona.KayakFirstBlue,
+            SimulatorPersona.KayakFirstOrange,
             SimulatorPersona.StrydFootpod,
             SimulatorPersona.SchwinnX70,
             SimulatorPersona.LifeFitness(LifeFitnessMachine.TREADMILL),

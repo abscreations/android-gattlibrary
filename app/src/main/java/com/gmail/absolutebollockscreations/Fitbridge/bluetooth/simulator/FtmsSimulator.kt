@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -118,6 +119,12 @@ class FtmsSimulator(
             direction: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.ZwiftClickDirection,
         ): Boolean = false
 
+        /** True when the active persona has completed the setup required before generation. */
+        val generationReady: Boolean get() = false
+
+        /** True while the active persona permits cumulative model state to advance. */
+        val generationAdvancing: Boolean get() = generationReady
+
         val isAdvertising: Boolean
     }
 
@@ -164,6 +171,17 @@ class FtmsSimulator(
     @Volatile
     private var engine: FtmsMockEngine? = null
     private var concept2Engine: Concept2Pm5MockEngine? = null
+    private val generationGate = SimulatorGenerationGate()
+
+    private suspend fun awaitClientSubscription(): Boolean {
+        while (
+            currentCoroutineContext().isActive &&
+            !generationGate.observe(peripheral.generationReady)
+        ) {
+            delay(SUBSCRIPTION_POLL_MS)
+        }
+        return generationGate.observe(peripheral.generationReady)
+    }
 
     /**
      * Control Point target while the simulator owns the machine.
@@ -281,6 +299,7 @@ class FtmsSimulator(
         enableControls: Boolean = false,
         concept2Scenario: Concept2Scenario = Concept2Scenario.STEADY,
     ) {
+        if (!_state.value.running) generationGate.reset()
         when (persona) {
             is SimulatorPersona.Concept2Pm5 -> {
                 startConcept2(persona, concept2Scenario)
@@ -298,8 +317,10 @@ class FtmsSimulator(
                 startFlywheel()
                 return
             }
-            SimulatorPersona.KayakFirstBlue -> {
-                startKayakFirst()
+            SimulatorPersona.KayakFirstBlue,
+            SimulatorPersona.KayakFirstOrange,
+            -> {
+                startKayakFirst(persona)
                 return
             }
             is SimulatorPersona.LifeFitness -> {
@@ -396,11 +417,9 @@ class FtmsSimulator(
             acceptedTargets = mockEngine.controlTargets(),
         )
 
-        // Publish one sample before the loop so the UI and any already-subscribed
-        // client see data immediately rather than after the first period.
-        publish(mockEngine.snapshot())
-
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publish(mockEngine.snapshot())
             while (isActive) {
                 delay(PERIOD_MS)
                 val e = engine ?: break
@@ -418,6 +437,7 @@ class FtmsSimulator(
         job = null
         engine = null
         concept2Engine = null
+        generationGate.reset()
         FitBridgeWakeLock.releaseCpu(wakeLockOwner)
         peripheral.setControlOverride(null)
         runCatching { peripheral.stopAdvertising() }
@@ -460,8 +480,9 @@ class FtmsSimulator(
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
         )
-        publishConcept2(pm5.snapshot())
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publishConcept2(pm5.snapshot())
             while (isActive) {
                 delay(PERIOD_MS)
                 val active = concept2Engine ?: break
@@ -507,8 +528,9 @@ class FtmsSimulator(
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
         )
-        publish(mockEngine.snapshot())
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publish(mockEngine.snapshot())
             while (isActive) {
                 delay(PrecorChronoEncoder.PAIR_PERIOD_MS)
                 val active = engine ?: break
@@ -554,8 +576,9 @@ class FtmsSimulator(
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
         )
-        publish(mockEngine.snapshot())
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publish(mockEngine.snapshot())
             while (isActive) {
                 delay(FlywheelSportsEncoder.PERIOD_MS)
                 val active = engine ?: break
@@ -565,8 +588,11 @@ class FtmsSimulator(
         Timber.tag(TAG).i("Flywheel Sports simulator started")
     }
 
-    private fun startKayakFirst() {
-        val persona = SimulatorPersona.KayakFirstBlue
+    private fun startKayakFirst(persona: SimulatorPersona) {
+        require(
+            persona == SimulatorPersona.KayakFirstBlue ||
+                persona == SimulatorPersona.KayakFirstOrange,
+        )
         if (realMachineAttached()) {
             _state.value = State(persona = persona, lastError = "Disconnect the physical machine before simulating data")
             return
@@ -588,15 +614,21 @@ class FtmsSimulator(
             machine = FtmsMachineProfile.INDOOR_ROWER,
             advertising = peripheral.isAdvertising,
         )
-        publish(mockEngine.snapshot())
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publish(kayakFirstIdleSample())
             while (isActive) {
+                while (isActive && !peripheral.generationAdvancing) {
+                    delay(SUBSCRIPTION_POLL_MS)
+                }
+                if (!isActive) break
                 delay(KayakFirstSimulatorTelemetryEncoder.PERIOD_MS)
+                if (!peripheral.generationAdvancing) continue
                 val active = engine ?: break
                 publish(active.tick(KayakFirstSimulatorTelemetryEncoder.PERIOD_MS / 1_000.0))
             }
         }
-        Timber.tag(TAG).i("KayakFirst Blue simulator started")
+        Timber.tag(TAG).i("KayakFirst simulator started persona=%s", persona.advertisedName)
     }
 
     /**
@@ -645,8 +677,9 @@ class FtmsSimulator(
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
         )
-        publish(mockEngine.snapshot())
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publish(mockEngine.snapshot())
             while (isActive) {
                 delay(StrydFootpodEncoder.MEASUREMENT_PERIOD_MS)
                 val active = engine ?: break
@@ -838,9 +871,10 @@ class FtmsSimulator(
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
         )
-        publish(mockEngine.snapshot())
         val periodMs = SchwinnX70Ride.PAIR_PERIOD_MS
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publish(mockEngine.snapshot())
             while (isActive) {
                 delay(periodMs)
                 val active = engine ?: break
@@ -885,8 +919,9 @@ class FtmsSimulator(
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
         )
-        publish(lifeFitnessVisibleSample(persona.machine, mockEngine.snapshot()))
         job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            publish(lifeFitnessVisibleSample(persona.machine, mockEngine.snapshot()))
             while (isActive) {
                 delay(LIFE_FITNESS_PERIOD_MS)
                 val active = engine ?: break
@@ -1071,7 +1106,9 @@ class FtmsSimulator(
         if (_state.value.persona == SimulatorPersona.FlywheelSports) {
             peripheral.publishFlywheel(sample)
         }
-        if (_state.value.persona == SimulatorPersona.KayakFirstBlue) {
+        if (_state.value.persona == SimulatorPersona.KayakFirstBlue ||
+            _state.value.persona == SimulatorPersona.KayakFirstOrange
+        ) {
             peripheral.publishKayakFirst(sample)
         }
         if (_state.value.persona == SimulatorPersona.StrydFootpod) {
@@ -1130,6 +1167,7 @@ class FtmsSimulator(
     }
 
     companion object {
+        private const val SUBSCRIPTION_POLL_MS = 50L
         private const val TAG = "FtmsSimulator"
 
         /**

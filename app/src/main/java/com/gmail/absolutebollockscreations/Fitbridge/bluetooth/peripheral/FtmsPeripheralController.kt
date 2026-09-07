@@ -84,6 +84,8 @@ class FtmsPeripheralController(
         val connected: Boolean = false,
         val clientId: String? = null,
         val subscribed: Boolean = false,
+        val simulatorGenerationReady: Boolean = false,
+        val simulatorGenerationAdvancing: Boolean = false,
         val machineType: String? = null,
         val advertisedName: String? = null,
         val packetsSent: Long = 0,

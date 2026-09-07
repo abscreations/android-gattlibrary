@@ -98,7 +98,11 @@ internal class KayakFirstFrameAssembler(
         size >= CRLF_BYTES && this[size - 2] == CR_BYTE && this[size - 1] == LF_BYTE
 
     private companion object {
-        const val DEFAULT_MAXIMUM_PENDING_BYTES = 512
+        // 4,096 matches the shipping KayakFit Bull client. A Bull console can carry several
+        // 24-field frames plus a partial one in a single notification burst, and a 512-byte cap
+        // discarded a legitimate in-flight line as FRAME_TOO_LONG. The cap still exists solely to
+        // stop unbounded growth when a terminator never arrives.
+        const val DEFAULT_MAXIMUM_PENDING_BYTES = 4_096
         const val CRLF_BYTES = 2
         val CR_BYTE = 0x0D.toByte()
         val LF_BYTE = 0x0A.toByte()

@@ -64,16 +64,25 @@ class EngineMetricPump(
         val speedKph = engineState.speedKph.value
             ?: engineState.speedMph.value?.let { it * MILES_TO_KM }
 
-        // Rower pace: the engine carries pace as minutes per km / per unit, while
-        // FTMS Rower Data wants seconds per 500 m. Convert only for the rower,
-        // where the wire field actually exists.
+        // FTMS Rower Data carries pace rather than speed. Prefer canonical native
+        // speed so a distance-derived pace cannot disagree with the speed shown by
+        // the central UI. Display units never participate in this projection.
         val pace500 = if (profile == FtmsMachineProfile.INDOOR_ROWER) {
-            engineState.instPace.value?.let { minutesPerKmToSecondsPer500m(it) }
+            if (speedKph != null) {
+                speedKphToSecondsPer500m(speedKph)
+            } else {
+                engineState.instPace.value?.let { minutesPerKmToSecondsPer500m(it) }
+            }
         } else {
             null
         }
         val avgPace500 = if (profile == FtmsMachineProfile.INDOOR_ROWER) {
-            engineState.avgPace.value?.let { minutesPerKmToSecondsPer500m(it) }
+            val averageSpeedKph = engineState.avgSpeedKph.value
+            if (averageSpeedKph != null) {
+                speedKphToSecondsPer500m(averageSpeedKph)
+            } else {
+                engineState.avgPace.value?.let { minutesPerKmToSecondsPer500m(it) }
+            }
         } else {
             null
         }
@@ -114,11 +123,10 @@ class EngineMetricPump(
             distanceMeters = engineState.totalDistanceMeters.value,
             elapsedSeconds = engineState.elapsedTimeSec.value,
             caloriesTotal = engineState.expEnergyTotal.value,
-            // The engine does not decode the per-hour / per-minute energy rates,
-            // so they stay absent rather than being sent as zero. The encoder
-            // writes the FTMS "not available" sentinels for them.
-            caloriesPerHour = null,
-            caloriesPerMinute = null,
+            // Native or explicitly derived energy rate is forwarded when present.
+            // Per-minute is the same rate converted to the FTMS integer field.
+            caloriesPerHour = engineState.expEnergyRateKcalPerHour.value,
+            caloriesPerMinute = engineState.expEnergyRateKcalPerHour.value?.let { it / 60 },
             // Not rounded: 0x2ACE Resistance Level is in tenths, so rounding here
             // discarded the fractional part of every compliant machine's level.
             resistance = engineState.resistance.value?.toFloat(),
@@ -141,6 +149,9 @@ class EngineMetricPump(
 
     private fun minutesPerKmToSecondsPer500m(minutesPerKm: Double): Double? =
         if (minutesPerKm.isFinite() && minutesPerKm > 0.0) minutesPerKm * 60.0 / 2.0 else null
+
+    private fun speedKphToSecondsPer500m(speedKph: Double): Double? =
+        if (speedKph.isFinite() && speedKph > 0.0) 1_800.0 / speedKph else null
 
     companion object {
         /**

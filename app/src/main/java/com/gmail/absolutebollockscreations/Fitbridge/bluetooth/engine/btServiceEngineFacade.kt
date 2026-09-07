@@ -79,6 +79,17 @@ interface BtServiceEngineFacade {
     /** Read-only exposure of engine state for metrics / capabilities. */
     val engineState: BtEngineState
 
+    /**
+     * True when downstream FTMS session procedures terminate in the provider instead of being
+     * forwarded to the selected machine.
+     *
+     * This is independent of target capability. Some real FTMS machines have no targets but still
+     * require Start/Stop writes, while Kayak First explicitly presents downstream as measurement-
+     * only and must not map its vendor session commands onto FTMS Control Point procedures.
+     */
+    val handlesDownstreamSessionTransitionsLocally: Boolean
+        get() = false
+
     // ───────────────────── Supported * Range payload builders ─────────────────────
 
     /** Build FTMS Supported Speed Range (0x2AD4) payload from current BtEngineState. */

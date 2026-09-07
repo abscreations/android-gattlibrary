@@ -437,6 +437,23 @@ class BtEngineState : HrmStateSink {
     val connectedDevices: StateFlow<List<ConnectedDeviceLink>> =
         connectionRegistry.connectedDevices
 
+    private val _kayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgress?>(null)
+    internal val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> =
+        _kayakFirstSetupProgress
+
+    internal fun setKayakFirstSetupProgress(progress: KayakFirstSetupProgress) {
+        val current = _kayakFirstSetupProgress.value
+        if (current == null || progress.connectionId.linkGeneration >= current.connectionId.linkGeneration) {
+            _kayakFirstSetupProgress.value = progress
+        }
+    }
+
+    internal fun clearKayakFirstSetupProgress(connectionId: ConnectionId) {
+        if (_kayakFirstSetupProgress.value?.connectionId == connectionId) {
+            _kayakFirstSetupProgress.value = null
+        }
+    }
+
     // FTMS connection (primary). Compatibility accessor over the Phase 0 registry.
     var gatt: BluetoothGatt?
         get() = connectionRegistry.current(LegacyConnectionRole.FTMS)?.gatt

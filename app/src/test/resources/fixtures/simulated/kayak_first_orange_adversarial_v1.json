@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "family": "kayak-first-orange-e2-4.2.0",
+  "normative_source": "docs/kayak-first-wire-protocol-spec.md",
+  "provenance": "FitBridge adversarial corpus grounded in the real UART transcript and official E2 4.2.0 APK analysis recorded by the refactor plan",
+  "steady_tuple_us": [65008, 335046, 70009, 340048],
+  "cases": [
+    {"id":"baseline-t-min", "lines":["1","1","0000065008"], "expect":"timing"},
+    {"id":"baseline-t-h", "lines":["2","2","0000335046"], "expect":"timing"},
+    {"id":"baseline-t-max", "lines":["3","3","0000070009"], "expect":"timing"},
+    {"id":"baseline-t-v", "lines":["4","4","0000340048"], "expect":"timing"},
+    {"id":"auxiliary-separated", "lines":["5","5","0000000123"], "expect":"auxiliary"},
+    {"id":"reset-ok", "lines":["OK"], "expect":"reset"},
+    {"id":"negative-sequence", "lines":["1","-1"], "expect":"reject"},
+    {"id":"sequence-overflow", "lines":["1","18446744073709551616"], "expect":"reject"},
+    {"id":"timing-sign", "lines":["1","1","+65008"], "expect":"reject"},
+    {"id":"timing-decimal", "lines":["1","1","65008.0"], "expect":"reject"},
+    {"id":"timing-zero", "lines":["1","1","0000000000"], "expect":"reject"},
+    {"id":"timing-eleven-digits", "lines":["1","1","10000000000"], "expect":"reject"},
+    {"id":"unknown-command", "lines":["6"], "expect":"reject"},
+    {"id":"empty-command", "lines":[""], "expect":"reject"}
+  ]
+}

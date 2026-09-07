@@ -13,10 +13,26 @@ internal enum class KayakFirstSetupState {
     CANCELLED,
 }
 
-internal enum class KayakFirstTransactionKind(val responseToken: String) {
-    RESET("1"),
-    HANDSHAKE("2"),
-    DISPLAY("5"),
+internal enum class KayakFirstTransactionKind {
+    RESET,
+    HANDSHAKE,
+    DISPLAY,
+    ;
+
+    /**
+     * Token the console is expected to answer with.
+     *
+     * The handshake token depends on the dialect sent, so it is resolved from the variant rather
+     * than fixed on the kind.
+     */
+    fun responseToken(handshakeVariant: KayakFirstHandshakeVariant): String = when (this) {
+        RESET -> "1"
+        HANDSHAKE -> when (handshakeVariant) {
+            KayakFirstHandshakeVariant.LEGACY -> "2"
+            KayakFirstHandshakeVariant.BULL -> "21"
+        }
+        DISPLAY -> "5"
+    }
 }
 
 internal enum class KayakFirstTransactionResult {
@@ -65,6 +81,10 @@ internal sealed interface KayakFirstSetupAction {
 internal class KayakFirstSetupCoordinator(
     val connectionId: ConnectionId,
     val displayConfiguration: KayakFirstDisplayConfiguration,
+    val sportMode: KayakFirstSportMode = KayakFirstSportMode.CANOEING,
+    val handshakeVariant: KayakFirstHandshakeVariant = KayakFirstHandshakeVariant.LEGACY,
+    val athleteWeightKg: Int = KayakFirstCommandCodec.NEUTRAL_WEIGHT_KG,
+    val boatWeightKg: Int = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG,
     private val payloadCapacity: Int = KayakFirstCommandCodec.DEFAULT_PAYLOAD_CAPACITY,
 ) {
     init {
@@ -79,7 +99,7 @@ internal class KayakFirstSetupCoordinator(
     var activeTransaction: KayakFirstTransaction? = null
         private set
 
-    private var handshake: KayakFirstCommand.LegacyHandshake? = null
+    private var handshake: KayakFirstCommand.Handshake? = null
     private var acknowledgementDeadlineMs: Long? = null
     private var subscriptionDeadlineMs: Long? = null
     private var retryAtMs: Long? = null
@@ -125,7 +145,20 @@ internal class KayakFirstSetupCoordinator(
                 KayakFirstSetupAction.Failed(KayakFirstSetupFailure.SUBSCRIPTION_FAILED),
             )
         }
-        handshake = KayakFirstCommand.LegacyHandshake(unixEpochSeconds, timezoneOffsetMinutes)
+        handshake = when (handshakeVariant) {
+            KayakFirstHandshakeVariant.LEGACY -> KayakFirstCommand.LegacyHandshake(
+                unixEpochSeconds = unixEpochSeconds,
+                timezoneOffsetMinutes = timezoneOffsetMinutes,
+                sport = sportMode,
+                athleteWeightKg = athleteWeightKg,
+            )
+            KayakFirstHandshakeVariant.BULL -> KayakFirstCommand.BullHandshake(
+                unixEpochSeconds = unixEpochSeconds,
+                timezoneOffsetMinutes = timezoneOffsetMinutes,
+                athleteWeightKg = athleteWeightKg,
+                boatWeightKg = boatWeightKg,
+            )
+        }
         subscriptionDeadlineMs = null
         state = KayakFirstSetupState.RESET_A
         return issueAttempt(1)
@@ -183,6 +216,13 @@ internal class KayakFirstSetupCoordinator(
             KayakFirstResponseKind.SESSION,
             KayakFirstResponseKind.KNOWN_OUT_OF_PROFILE,
             -> return emptyList()
+        }
+        if (
+            kind == KayakFirstTransactionKind.HANDSHAKE &&
+            response.token != kind.responseToken(handshakeVariant)
+        ) {
+            // A command-2 line cannot complete a command-21 transaction, or the reverse.
+            return emptyList()
         }
         val accepted = when (kind) {
             KayakFirstTransactionKind.RESET,

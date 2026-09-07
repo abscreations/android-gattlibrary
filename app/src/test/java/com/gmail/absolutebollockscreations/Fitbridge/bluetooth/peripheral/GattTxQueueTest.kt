@@ -124,4 +124,48 @@ class GattTxQueueTest {
         assertFalse(cancelled.await())
         scope.cancel()
     }
+
+    @Test
+    fun `data resumes after a late control confirmation that remains inside the bounded window`() =
+        runBlocking {
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
+            val queue = GattTxQueue(
+                scope,
+                dataTimeoutMs = 250,
+                controlTimeoutMs = 250,
+            ) { posted.trySend(it).isSuccess }
+
+            val control = async {
+                queue.send(
+                    1,
+                    "AA",
+                    characteristic,
+                    byteArrayOf(1),
+                    true,
+                    GattTxQueue.Priority.CONTROL,
+                    "delayed-control",
+                )
+            }
+            assertTrue(posted.receive().purpose == "delayed-control")
+            delay(150)
+            queue.onNotificationSent("AA", true)
+            assertTrue(control.await())
+
+            val data = async {
+                queue.send(
+                    1,
+                    "AA",
+                    characteristic,
+                    byteArrayOf(2),
+                    false,
+                    GattTxQueue.Priority.DATA,
+                    "data-after-delayed-control",
+                )
+            }
+            assertTrue(posted.receive().purpose == "data-after-delayed-control")
+            queue.onNotificationSent("AA", true)
+            assertTrue(data.await())
+            scope.cancel()
+        }
 }

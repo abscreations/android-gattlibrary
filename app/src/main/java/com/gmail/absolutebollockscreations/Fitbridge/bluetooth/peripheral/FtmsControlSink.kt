@@ -292,6 +292,7 @@ class EngineFtmsControlSink(
     ): Boolean {
         val e = engine
         if (e == null || !e.isFtmsConnected) return true
+        if (e.handlesDownstreamSessionTransitionsLocally) return true
         return runCatching { action(e) }.getOrElse { t ->
             Timber.tag(TAG).w(t, "%s: upstream call threw", label)
             false

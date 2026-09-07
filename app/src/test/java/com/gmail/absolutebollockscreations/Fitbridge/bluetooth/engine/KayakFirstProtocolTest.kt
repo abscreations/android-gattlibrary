@@ -66,7 +66,71 @@ class KayakFirstProtocolTest {
         }
 
         assertEquals(80, KayakFirstCommandCodec.NEUTRAL_WEIGHT_KG)
-        assertEquals(1, KayakFirstCommandCodec.KAYAKING_SPORT_CODE)
+        assertEquals(1, KayakFirstSportMode.CANOEING.wireCode)
+        assertEquals(2, KayakFirstSportMode.KAYAKING.wireCode)
+    }
+
+    @Test
+    fun `sport selection is encoded in the complete legacy handshake`() {
+        val canoe = KayakFirstCommand.LegacyHandshake(
+            1_788_737_313L,
+            -240,
+            KayakFirstSportMode.CANOEING,
+        )
+        val kayak = canoe.copy(sport = KayakFirstSportMode.KAYAKING)
+
+        assertEquals("2;1788737313;-240;80;1\r\n", KayakFirstCommandCodec.encode(canoe).toString(Charsets.UTF_8))
+        assertEquals("2;1788737313;-240;80;2\r\n", KayakFirstCommandCodec.encode(kayak).toString(Charsets.UTF_8))
+    }
+
+    @Test
+    fun `bull handshake encodes command 21 with athlete and boat weight`() {
+        val bull = KayakFirstCommand.BullHandshake(
+            unixEpochSeconds = 1_788_737_313L,
+            timezoneOffsetMinutes = -240,
+            athleteWeightKg = 93,
+            boatWeightKg = 12,
+        )
+        assertEquals(
+            "21;1788737313;-240;93;12\r\n",
+            KayakFirstCommandCodec.encode(bull).toString(Charsets.UTF_8),
+        )
+    }
+
+    @Test
+    fun `configured athlete weight is transmitted and an absent one falls back to neutral`() {
+        assertEquals(93, KayakFirstCommandCodec.athleteWeightKgOrNeutral(93))
+        assertEquals(
+            KayakFirstCommandCodec.NEUTRAL_WEIGHT_KG,
+            KayakFirstCommandCodec.athleteWeightKgOrNeutral(null),
+        )
+        // An out-of-range configuration is neutralized rather than transmitted.
+        assertEquals(
+            KayakFirstCommandCodec.NEUTRAL_WEIGHT_KG,
+            KayakFirstCommandCodec.athleteWeightKgOrNeutral(2),
+        )
+        val legacy = KayakFirstCommand.LegacyHandshake(
+            unixEpochSeconds = 1_788_737_313L,
+            timezoneOffsetMinutes = -240,
+            sport = KayakFirstSportMode.KAYAKING,
+            athleteWeightKg = 93,
+        )
+        assertEquals(
+            "2;1788737313;-240;93;2\r\n",
+            KayakFirstCommandCodec.encode(legacy).toString(Charsets.UTF_8),
+        )
+    }
+
+    @Test
+    fun `both handshake tokens classify as handshake responses`() {
+        listOf("2;1", "21;1").forEach { line ->
+            val decoded = KayakFirstResponseDecoder.decode(line)
+            assertTrue(decoded is KayakFirstLineDecodeResult.Decoded)
+            assertEquals(
+                KayakFirstResponseKind.HANDSHAKE,
+                (decoded as KayakFirstLineDecodeResult.Decoded).response.kind,
+            )
+        }
     }
 
     @Test
@@ -132,11 +196,17 @@ class KayakFirstProtocolTest {
             KayakFirstLineRejection.EMPTY_LINE,
             (KayakFirstResponseDecoder.decode("") as KayakFirstLineDecodeResult.Rejected).reason,
         )
-        for (line in listOf("21;1", "3;1", "8;1")) {
+        // Command 21 entered the profile with the Bull convergence; 3 and 8 remain outside it.
+        for (line in listOf("3;1", "8;1")) {
             val response = (KayakFirstResponseDecoder.decode(line) as KayakFirstLineDecodeResult.Decoded)
                 .response
             assertEquals(KayakFirstResponseKind.KNOWN_OUT_OF_PROFILE, response.kind)
         }
+        assertEquals(
+            KayakFirstResponseKind.HANDSHAKE,
+            (KayakFirstResponseDecoder.decode("21;1") as KayakFirstLineDecodeResult.Decoded)
+                .response.kind,
+        )
     }
 
     private fun commandFor(id: String): KayakFirstCommand = when (id) {

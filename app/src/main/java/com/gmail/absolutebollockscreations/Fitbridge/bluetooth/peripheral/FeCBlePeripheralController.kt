@@ -14,6 +14,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCBleS
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCBleTelemetryScheduler
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.RejectReason
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorGenerationGate
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -84,6 +85,7 @@ internal class FeCBlePeripheralController(
     @Volatile private var active: Boolean = false
     @Volatile private var state: FeCBleMachineState? = null
     @Volatile private var scheduler: FeCBleTelemetryScheduler? = null
+    private val generationGate = SimulatorGenerationGate()
     @Volatile private var advertiser: FeCBlePeripheralAdvertiser? = null
 
     /**
@@ -134,6 +136,7 @@ internal class FeCBlePeripheralController(
 
     @SuppressLint("MissingPermission")
     fun start(persona: SimulatorPersona.FeCBle, onResult: (Result<Unit>) -> Unit) {
+        generationGate.reset()
         val epochValue = operationEpoch.incrementAndGet()
         if (!hasPermissions()) {
             val error = IllegalStateException("Bluetooth advertising permission has not been granted")
@@ -216,6 +219,7 @@ internal class FeCBlePeripheralController(
     }
 
     fun stop() {
+        generationGate.reset()
         operationEpoch.incrementAndGet()
         active = false
         stopResources(restoreName = true)
@@ -239,7 +243,10 @@ internal class FeCBlePeripheralController(
                 val currentState = state
                 val currentScheduler = scheduler
                 val currentAdvertiser = advertiser
-                if (currentState != null && currentScheduler != null && currentAdvertiser != null) {
+                if (
+                    generationGate.observe(status.subscribedClients > 0) && currentState != null &&
+                    currentScheduler != null && currentAdvertiser != null
+                ) {
                     val frame = synchronized(currentState) { currentScheduler.tick(currentState) }
                     currentAdvertiser.publish(frame)
                     // Plan §18.2: CPS power must equal this same tick's page-25 power, so it is

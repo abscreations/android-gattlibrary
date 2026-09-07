@@ -140,14 +140,82 @@ class KayakFirstConnectionAndSetupTest {
     }
 
     @Test
+    fun `selected sport is retained by the setup generation`() {
+        val id = connection(31)
+        val setup = KayakFirstSetupCoordinator(
+            id,
+            KayakFirstDisplayConfiguration.DEFAULT,
+            KayakFirstSportMode.KAYAKING,
+        )
+
+        assertTrue(setup.beginSubscription(0))
+        setup.onSubscribed(id, 1_788_737_313L, -240, 1)
+        assertEquals(KayakFirstSportMode.KAYAKING, setup.sportMode)
+    }
+
+    @Test
+    fun `bull generation sends command 21 and only a command 21 line completes it`() {
+        val id = connection(32)
+        val setup = KayakFirstSetupCoordinator(
+            id,
+            KayakFirstDisplayConfiguration.DEFAULT,
+            handshakeVariant = KayakFirstHandshakeVariant.BULL,
+            athleteWeightKg = 93,
+            boatWeightKg = 12,
+        )
+        var now = reachHandshake(setup, id)
+
+        val transaction = requireNotNull(setup.activeTransaction)
+        val bull = transaction.command as KayakFirstCommand.BullHandshake
+        assertEquals(93, bull.athleteWeightKg)
+        assertEquals(12, bull.boatWeightKg)
+        // reachHandshake subscribes with epoch 1 / offset 0.
+        assertEquals(
+            "21;1;0;93;12\r\n",
+            KayakFirstCommandCodec.encode(bull).toString(Charsets.UTF_8),
+        )
+
+        setup.onWriteCompleted(id, transaction.kind, 1, true, now)
+        now += 10
+        // A legacy command-2 acknowledgement cannot complete a command-21 transaction.
+        setup.onTextResponse(
+            id,
+            KayakFirstTextResponse(KayakFirstResponseKind.HANDSHAKE, "2", listOf("1")),
+            now,
+        )
+        assertEquals(1, requireNotNull(setup.activeTransaction).attempt)
+
+        setup.onTextResponse(
+            id,
+            KayakFirstTextResponse(KayakFirstResponseKind.HANDSHAKE, "21", listOf("1")),
+            now,
+        )
+        assertEquals(null, setup.activeTransaction)
+        assertTrue(
+            setup.completedTransactions.any {
+                it.kind == KayakFirstTransactionKind.HANDSHAKE &&
+                    it.terminalResult == KayakFirstTransactionResult.SUCCESS
+            },
+        )
+    }
+
+    @Test
     fun `handshake alone may exhaust and continue unconfirmed after bounded retries`() {
         val id = connection(2)
-        val setup = KayakFirstSetupCoordinator(id, KayakFirstDisplayConfiguration.DEFAULT)
+        val setup = KayakFirstSetupCoordinator(
+            id,
+            KayakFirstDisplayConfiguration.DEFAULT,
+            KayakFirstSportMode.KAYAKING,
+        )
         var now = reachHandshake(setup, id)
 
         for (attempt in 1..3) {
             val transaction = requireNotNull(setup.activeTransaction)
             assertEquals(attempt, transaction.attempt)
+            assertEquals(
+                KayakFirstSportMode.KAYAKING,
+                (transaction.command as KayakFirstCommand.LegacyHandshake).sport,
+            )
             setup.onWriteCompleted(id, transaction.kind, attempt, true, now)
             now += KayakFirstSetupCoordinator.ACK_DEADLINE_MS
             assertTrue(setup.tick(now).isEmpty())

@@ -96,14 +96,108 @@ class KayakFirstMeasurementTest {
             requireNotNull(PlausibilityBounds.rangeFor(MetricKind.CADENCE, FusionPersona.ROW_PADDLE)).max,
             0.0,
         )
-        assertEquals(
-            3000.0,
-            requireNotNull(PlausibilityBounds.rangeFor(MetricKind.POWER, FusionPersona.ROW_PADDLE)).max,
-            0.0,
-        )
         assertEquals(40.0, KayakFirstMeasurement.MAX_SPEED_KPH, 0.0)
         assertEquals(120, KayakFirstMeasurement.MAX_CADENCE_SPM)
-        assertEquals(3000, KayakFirstMeasurement.MAX_POWER_WATTS)
+    }
+
+    @Test
+    fun `physical vector decodes average and paired pace fields at captured indexes`() {
+        val reading = (KayakFirstMeasurement.decode(
+            "6;900000040098;0;0;0;0.00;0;1;0;94;2.39;2.74;86;86;83;73;209;182;418;365;86;84;40;1",
+        ) as KayakFirstMeasurementDecodeResult.Decoded).reading
+
+        assertEquals(2.39, reading.averageSpeedMetresPerSecond, 0.0)
+        assertEquals(8.604, reading.averageSpeedKph, 1e-9)
+        assertEquals(86, reading.averageCadenceSpm)
+        assertEquals(83L, reading.average200mPaceSeconds)
+        assertEquals(73L, reading.instantaneous200mPaceSeconds)
+        assertEquals(209L, reading.average500mPaceSeconds)
+        assertEquals(182L, reading.instantaneous500mPaceSeconds)
+        assertEquals(418L, reading.average1000mPaceSeconds)
+        assertEquals(365L, reading.instantaneous1000mPaceSeconds)
+        assertEquals(86.0, reading.averageForceNewtons, 0.0)
+        assertEquals(84.0, reading.forceNewtons, 0.0)
+        assertEquals(900000040098L, reading.eventTimestampMs)
+        assertTrue(reading.activePaddling)
+        assertEquals(2L * reading.average500mPaceSeconds, reading.average1000mPaceSeconds)
+        assertEquals(2L * reading.instantaneous500mPaceSeconds + 1L, reading.instantaneous1000mPaceSeconds)
+    }
+
+    @Test
+    fun `fresh flag accepts only zero or one and held elapsed remains decoded`() {
+        val held = (KayakFirstMeasurement.decode(
+            baselineLine().split(';').toMutableList().also {
+                it[KayakFirstMeasurement.ACTIVE_PADDLING_INDEX] = "0"
+                it[KayakFirstMeasurement.ELAPSED_INDEX] = "70"
+            }.joinToString(";"),
+        ) as KayakFirstMeasurementDecodeResult.Decoded).reading
+        assertTrue(!held.activePaddling)
+        assertEquals(70L, held.elapsedSeconds)
+
+        val invalid = KayakFirstMeasurement.decode(
+            baselineLine().split(';').toMutableList().also {
+                it[KayakFirstMeasurement.ACTIVE_PADDLING_INDEX] = "2"
+            }.joinToString(";"),
+        ) as KayakFirstMeasurementDecodeResult.Rejected
+        assertEquals(KayakFirstMeasurementRejection.INVALID_NUMBER, invalid.reason)
+        assertEquals(KayakFirstMeasurement.ACTIVE_PADDLING_INDEX, invalid.fieldIndex)
+    }
+
+    @Test
+    fun `field 23 decodes as the coverage window and never gates the measurement`() {
+        fun windowOf(raw: String) = (KayakFirstMeasurement.decode(
+            baselineLine().split(';').toMutableList().also {
+                it[KayakFirstMeasurement.WINDOW_INDEX] = raw
+            }.joinToString(";"),
+        ) as KayakFirstMeasurementDecodeResult.Decoded).reading
+
+        assertEquals(1L, windowOf("1").coverageWindowSeconds)
+        // Two seconds when a poll was missed; larger on the first frame after a start.
+        assertEquals(2L, windowOf("2").coverageWindowSeconds)
+        assertEquals(5L, windowOf("5").coverageWindowSeconds)
+        // Zero is not a usable weight.
+        assertEquals(null, windowOf("0").coverageWindowSeconds)
+        // A corrupt value must not reject an otherwise usable frame, and must not be a weight.
+        val corrupt = windowOf("x")
+        assertEquals(null, corrupt.windowSeconds)
+        assertEquals("x", corrupt.diagnosticStatusRaw)
+        // A wild value is clamped rather than injecting an enormous integration weight.
+        assertEquals(
+            KayakFirstMeasurement.MAX_WINDOW_SECONDS,
+            windowOf("999999").coverageWindowSeconds,
+        )
+    }
+
+    @Test
+    fun `newly consumed fields reject malformed overflow and implausible values`() {
+        val fields = baselineLine().split(';').toMutableList()
+
+        fun rejection(index: Int, value: String): KayakFirstMeasurementDecodeResult.Rejected {
+            val mutated = fields.toMutableList().also { it[index] = value }
+            return KayakFirstMeasurement.decode(mutated.joinToString(";"))
+                as KayakFirstMeasurementDecodeResult.Rejected
+        }
+
+        assertEquals(
+            KayakFirstMeasurementRejection.INVALID_NUMBER,
+            rejection(KayakFirstMeasurement.AVERAGE_500M_PACE_INDEX, "12.5").reason,
+        )
+        assertEquals(
+            KayakFirstMeasurementRejection.NUMERIC_OVERFLOW,
+            rejection(KayakFirstMeasurement.AVERAGE_1000M_PACE_INDEX, "999999999999999999999").reason,
+        )
+        assertEquals(
+            KayakFirstMeasurementRejection.SPEED_OUT_OF_RANGE,
+            rejection(KayakFirstMeasurement.AVERAGE_SPEED_INDEX, "12.00").reason,
+        )
+        assertEquals(
+            KayakFirstMeasurementRejection.CADENCE_OUT_OF_RANGE,
+            rejection(KayakFirstMeasurement.AVERAGE_CADENCE_INDEX, "121").reason,
+        )
+        assertEquals(
+            KayakFirstMeasurementRejection.INVALID_NUMBER,
+            rejection(KayakFirstMeasurement.AVERAGE_FORCE_INDEX, "force").reason,
+        )
     }
 
     @Test
@@ -152,7 +246,7 @@ class KayakFirstMeasurementTest {
         assertEquals(FixtureJson.double(expected["speed_mps"]), reading.speedMetresPerSecond, 1e-9)
         assertEquals(FixtureJson.double(expected["speed_kmh"]), reading.speedKph, 1e-9)
         assertEquals(FixtureJson.int(expected["cadence_spm"]), reading.cadenceSpm)
-        assertEquals(FixtureJson.int(expected["power_watts"]), reading.powerWatts)
+        assertEquals(FixtureJson.int(expected["power_watts"]).toDouble(), reading.forceNewtons, 0.0)
         assertEquals(FixtureJson.int(expected["elapsed_seconds"]).toLong(), reading.elapsedSeconds)
     }
 
@@ -164,7 +258,6 @@ class KayakFirstMeasurementTest {
         "reject-numeric-overflow" -> KayakFirstMeasurementRejection.NUMERIC_OVERFLOW
         "reject-plausibility-speed" -> KayakFirstMeasurementRejection.SPEED_OUT_OF_RANGE
         "reject-plausibility-cadence" -> KayakFirstMeasurementRejection.CADENCE_OUT_OF_RANGE
-        "reject-plausibility-power" -> KayakFirstMeasurementRejection.POWER_OUT_OF_RANGE
         else -> error("Unhandled expected result $expected")
     }
 

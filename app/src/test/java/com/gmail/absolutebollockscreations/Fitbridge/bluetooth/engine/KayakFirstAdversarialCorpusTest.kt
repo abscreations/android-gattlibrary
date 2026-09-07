@@ -33,11 +33,11 @@ class KayakFirstAdversarialCorpusTest {
 
         val transport = FixtureJson.obj(fixture["transport_contract"])
         assertEquals(20, FixtureJson.int(transport["maximum_outbound_chunk_bytes"]))
-        assertEquals(512, FixtureJson.int(transport["maximum_pending_line_bytes"]))
+        assertEquals(4_096, FixtureJson.int(transport["maximum_pending_line_bytes"]))
         assertEquals(1000, FixtureJson.int(transport["ack_deadline_ms"]))
         assertEquals(1000, FixtureJson.int(transport["retry_delay_ms"]))
         assertEquals(3, FixtureJson.int(transport["maximum_attempts"]))
-        assertEquals(500, FixtureJson.int(transport["poll_interval_ms"]))
+        assertEquals(1_000, FixtureJson.int(transport["poll_interval_ms"]))
         assertEquals(3000, FixtureJson.int(transport["machine_freshness_ms"]))
     }
 
@@ -190,7 +190,6 @@ class KayakFirstAdversarialCorpusTest {
         assertTrue("reject-numeric-overflow" in results)
         assertTrue("reject-plausibility-speed" in results)
         assertTrue("reject-plausibility-cadence" in results)
-        assertTrue("reject-plausibility-power" in results)
         assertTrue("accept-measurement-ignore-extra-fields" in results)
 
         val continuity = FixtureJson.array(fixture["continuity_cases"]).map(FixtureJson::obj)

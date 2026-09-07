@@ -66,6 +66,7 @@ internal class PrecorChronoPeripheralAdvertiser(
     private val main = Handler(Looper.getMainLooper())
     private val epoch = AtomicLong(0)
     private val clients = ConcurrentHashMap<String, Client>()
+    private val advertisingGate = ConnectableAdvertisingGate()
     private val connectionRetention = PeripheralConnectionRetentionGuard()
     private var server: BluetoothGattServer? = null
     private var advertiseCallback: AdvertiseCallback? = null
@@ -114,6 +115,7 @@ internal class PrecorChronoPeripheralAdvertiser(
         isAdvertising = false
         clients.values.forEach { runCatching { server?.cancelConnection(it.device) } }
         clients.clear()
+        advertisingGate.reset()
         connectionRetention.clear()
         runCatching { server?.clearServices() }
         runCatching { server?.close() }
@@ -140,6 +142,9 @@ internal class PrecorChronoPeripheralAdvertiser(
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     clients.putIfAbsent(key, Client(device))
+                    if (advertisingGate.onConnected(key) == ConnectableAdvertisingGate.Action.PAUSE) {
+                        pauseAdvertising()
+                    }
                     connectionRetention.retainOnce(key) {
                         val retained = runCatching { server?.connect(device, false) == true }
                             .getOrElse { error ->
@@ -154,6 +159,9 @@ internal class PrecorChronoPeripheralAdvertiser(
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     connectionRetention.release(key)
                     clients.remove(key)
+                    if (advertisingGate.onDisconnected(key) == ConnectableAdvertisingGate.Action.RESUME) {
+                        resumeAdvertising(callbackEpoch)
+                    }
                 }
             }
             publishState()
@@ -242,6 +250,22 @@ internal class PrecorChronoPeripheralAdvertiser(
     }
 
     @SuppressLint("MissingPermission")
+    private fun pauseAdvertising() {
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        advertiseCallback?.let { callback ->
+            runCatching { manager?.adapter?.bluetoothLeAdvertiser?.stopAdvertising(callback) }
+        }
+        advertiseCallback = null
+        isAdvertising = false
+        publishState()
+    }
+
+    private fun resumeAdvertising(currentEpoch: Long) {
+        if (server == null || clients.isNotEmpty() || advertiseCallback != null || isAdvertising) return
+        startAdvertising(currentEpoch)
+    }
+
+    @SuppressLint("MissingPermission")
     private fun startAdvertising(currentEpoch: Long) {
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val advertiser = manager?.adapter?.bluetoothLeAdvertiser
@@ -266,14 +290,14 @@ internal class PrecorChronoPeripheralAdvertiser(
             .build()
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 isAdvertising = true
                 publishState()
                 finishStart(Result.success(Unit))
             }
 
             override fun onStartFailure(errorCode: Int) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 val message = "Precor Chrono advertising failed ($errorCode)"
                 listener.onState(false, clients.isNotEmpty(), anySubscribed(), message)
                 finishStart(Result.failure(IllegalStateException(message)))

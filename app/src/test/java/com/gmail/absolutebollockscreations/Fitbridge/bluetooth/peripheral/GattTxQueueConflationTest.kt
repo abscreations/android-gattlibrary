@@ -317,18 +317,25 @@ class GattTxQueueConflationTest {
     }
 
     @Test
-    fun `the control timeout still covers two slow connection intervals`() {
-        // Lowered from 5s after the 2026-08-05 capture, where an unconfirmed
-        // control indication silenced a client for the whole timeout. It must not
-        // fall below a confirmation round trip: a client answers at its next
-        // connection event, and 990ms is the slowest interval FitBridge expects.
+    fun `the control timeout covers five Garmin connection intervals plus jitter`() {
+        // The 2026-09-07 rowing capture measured 3.93s from indication to
+        // confirmation on a Garmin watch negotiating a 990ms interval. Cover five
+        // intervals plus bounded Android callback jitter while remaining finite.
         assertTrue(
-            "control timeout must cover two 990ms intervals",
-            GattTxQueue.DEFAULT_CONTROL_TIMEOUT_MS >= 2 * 990L,
+            "control timeout must cover five 990ms intervals",
+            GattTxQueue.DEFAULT_CONTROL_TIMEOUT_MS >= 5 * 990L,
         )
         assertTrue(
-            "control timeout must stay well below the old 5s blackout",
-            GattTxQueue.DEFAULT_CONTROL_TIMEOUT_MS <= 2_500L,
+            "control timeout must remain bounded",
+            GattTxQueue.DEFAULT_CONTROL_TIMEOUT_MS <= 6_000L,
+        )
+        assertTrue(
+            "data timeout must cover five 990ms intervals",
+            GattTxQueue.DEFAULT_DATA_TIMEOUT_MS >= 5 * 990L,
+        )
+        assertTrue(
+            "data timeout must remain bounded",
+            GattTxQueue.DEFAULT_DATA_TIMEOUT_MS <= 6_000L,
         )
     }
 

@@ -45,6 +45,7 @@ internal class FlywheelSportsPeripheralAdvertiser(
     private val main = Handler(Looper.getMainLooper())
     private val epoch = AtomicLong(0)
     private val clients = ConcurrentHashMap<String, Client>()
+    private val advertisingGate = ConnectableAdvertisingGate()
     private val retention = PeripheralConnectionRetentionGuard()
     private var server: BluetoothGattServer? = null
     private var advertiseCallback: AdvertiseCallback? = null
@@ -90,6 +91,7 @@ internal class FlywheelSportsPeripheralAdvertiser(
         isAdvertising = false
         clients.values.forEach { runCatching { server?.cancelConnection(it.device) } }
         clients.clear()
+        advertisingGate.reset()
         retention.clear()
         runCatching { server?.clearServices() }
         runCatching { server?.close() }
@@ -113,11 +115,17 @@ internal class FlywheelSportsPeripheralAdvertiser(
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     clients.putIfAbsent(key, Client(device))
+                    if (advertisingGate.onConnected(key) == ConnectableAdvertisingGate.Action.PAUSE) {
+                        pauseAdvertising()
+                    }
                     retention.retainOnce(key) { runCatching { server?.connect(device, false) == true }.getOrDefault(false) }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     retention.release(key)
                     clients.remove(key)
+                    if (advertisingGate.onDisconnected(key) == ConnectableAdvertisingGate.Action.RESUME) {
+                        resumeAdvertising(callbackEpoch)
+                    }
                 }
             }
             publishState()
@@ -204,6 +212,22 @@ internal class FlywheelSportsPeripheralAdvertiser(
     }
 
     @SuppressLint("MissingPermission")
+    private fun pauseAdvertising() {
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        advertiseCallback?.let { callback ->
+            runCatching { manager?.adapter?.bluetoothLeAdvertiser?.stopAdvertising(callback) }
+        }
+        advertiseCallback = null
+        isAdvertising = false
+        publishState()
+    }
+
+    private fun resumeAdvertising(currentEpoch: Long) {
+        if (server == null || clients.isNotEmpty() || advertiseCallback != null || isAdvertising) return
+        startAdvertising(currentEpoch)
+    }
+
+    @SuppressLint("MissingPermission")
     private fun startAdvertising(currentEpoch: Long) {
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val advertiser = manager?.adapter?.bluetoothLeAdvertiser
@@ -220,14 +244,14 @@ internal class FlywheelSportsPeripheralAdvertiser(
         val scanResponse = AdvertiseData.Builder().addServiceUuid(ParcelUuid(plan.serviceUuid)).build()
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 isAdvertising = true
                 publishState()
                 finishStart(Result.success(Unit))
             }
 
             override fun onStartFailure(errorCode: Int) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 val message = "Flywheel advertising failed ($errorCode)"
                 listener.onState(false, clients.isNotEmpty(), anySubscribed(), message)
                 finishStart(Result.failure(IllegalStateException(message)))

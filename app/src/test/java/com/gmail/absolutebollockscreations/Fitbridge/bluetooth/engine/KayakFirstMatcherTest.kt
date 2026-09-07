@@ -31,7 +31,7 @@ class KayakFirstMatcherTest {
         )
         val candidate = candidate(
             MatchObservation(
-                localName = "KFBLUE01",
+                localName = "25100001",
                 deviceAddress = "06:05:04:03:02:01",
                 manufacturerCompanyIds = setOf(KAYAK_FIRST_MANUFACTURER_ID),
                 manufacturerPayloads = mapOf(KAYAK_FIRST_MANUFACTURER_ID to payload),
@@ -49,7 +49,7 @@ class KayakFirstMatcherTest {
             ),
             kinds(candidate),
         )
-        assertTrue(candidate.evidence.facts.none { "KFBLUE01" in it.structuralValue })
+        assertTrue(candidate.evidence.facts.none { "25100001" in it.structuralValue })
         assertTrue(candidate.evidence.facts.none { "88" in it.structuralValue })
         assertTrue(candidate.evidence.facts.none { "06:05" in it.structuralValue })
     }
@@ -61,7 +61,7 @@ class KayakFirstMatcherTest {
             byteArrayOf(0x88.toByte(), 0xA0.toByte(), 1, 2, 3, 4, 5, 6),
         )
         val observations = listOf(
-            MatchObservation(localName = "KFBLUE01"),
+            MatchObservation(localName = "25100001"),
             MatchObservation(
                 manufacturerCompanyIds = setOf(KAYAK_FIRST_MANUFACTURER_ID),
                 manufacturerPayloads = mapOf(KAYAK_FIRST_MANUFACTURER_ID to payload),

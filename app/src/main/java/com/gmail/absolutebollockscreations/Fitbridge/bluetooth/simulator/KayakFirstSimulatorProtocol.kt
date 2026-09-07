@@ -1,12 +1,31 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstDisplayConfiguration
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstDerivedMetrics
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstDisplayMetric
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstHandshakeVariant
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.Locale
+import kotlin.math.roundToInt
 
 enum class KayakFirstTelemetryMode { GENERATED_WORKOUT, CAPTURED_REPLAY }
+
+internal fun kayakFirstIdleSample() = FtmsMockSample(
+    elapsedSeconds = 0,
+    heartRate = 0,
+    caloriesTotal = 0,
+    caloriesPerHour = 0,
+    caloriesPerMinute = 0,
+    speedKph = 0.0,
+    averageSpeedKph = 0.0,
+    distanceMeters = 0,
+    cadence = 0.0,
+    averageCadence = 0.0,
+    powerWatts = 0,
+    averagePowerWatts = 0,
+    movementCount = 0,
+)
 
 enum class KayakFirstSimulatorScenario {
     HAPPY_PATH,
@@ -48,7 +67,21 @@ internal object KayakFirstScenarioRenderer {
 
 internal sealed interface KayakFirstSimulatorCommand {
     data object Reset : KayakFirstSimulatorCommand
-    data class Handshake(val epochSeconds: Long, val timezoneMinutes: Int) : KayakFirstSimulatorCommand
+    /**
+     * Either handshake dialect.
+     *
+     * [sport] is populated by the legacy command-2 form and [boatWeightKg] by the Bull command-21
+     * form; each is null for the other dialect. The simulator accepts both so central-side dialect
+     * selection and official-client interoperability can both be exercised.
+     */
+    data class Handshake(
+        val epochSeconds: Long,
+        val timezoneMinutes: Int,
+        val bodyWeightKg: Double,
+        val sport: Int? = null,
+        val boatWeightKg: Double? = null,
+        val variant: KayakFirstHandshakeVariant = KayakFirstHandshakeVariant.LEGACY,
+    ) : KayakFirstSimulatorCommand
     data class Display(val configuration: KayakFirstDisplayConfiguration) : KayakFirstSimulatorCommand
     data object Poll : KayakFirstSimulatorCommand
     data object Start : KayakFirstSimulatorCommand
@@ -101,8 +134,26 @@ internal class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int
         val command = when (parts.first()) {
             "1" -> if (parts.size == 1) KayakFirstSimulatorCommand.Reset else null
             "2" -> if (parts.size == 5 && parts[1].toLongOrNull()?.let { it >= 0 } == true &&
-                parts[2].toIntOrNull() != null && parts[3] == "80" && parts[4] == "1"
-            ) KayakFirstSimulatorCommand.Handshake(parts[1].toLong(), parts[2].toInt()) else null
+                parts[2].toIntOrNull() != null &&
+                parts[3].toDoubleOrNull()?.let { it.isFinite() && it in 20.0..250.0 } == true &&
+                parts[4].toIntOrNull()?.let { it in 1..2 } == true
+            ) KayakFirstSimulatorCommand.Handshake(
+                epochSeconds = parts[1].toLong(),
+                timezoneMinutes = parts[2].toInt(),
+                bodyWeightKg = parts[3].toDouble(),
+                sport = parts[4].toInt(),
+            ) else null
+            "21" -> if (parts.size == 5 && parts[1].toLongOrNull()?.let { it >= 0 } == true &&
+                parts[2].toIntOrNull() != null &&
+                parts[3].toDoubleOrNull()?.let { it.isFinite() && it in 20.0..250.0 } == true &&
+                parts[4].toDoubleOrNull()?.let { it.isFinite() && it in 1.0..60.0 } == true
+            ) KayakFirstSimulatorCommand.Handshake(
+                epochSeconds = parts[1].toLong(),
+                timezoneMinutes = parts[2].toInt(),
+                bodyWeightKg = parts[3].toDouble(),
+                boatWeightKg = parts[4].toDouble(),
+                variant = KayakFirstHandshakeVariant.BULL,
+            ) else null
             "5" -> KayakFirstDisplayConfiguration.fromWireCodes(parts.drop(1).mapNotNull(String::toIntOrNull))
                 ?.takeIf { parts.size == 6 }?.let(KayakFirstSimulatorCommand::Display)
             "6" -> if (parts.size == 1) KayakFirstSimulatorCommand.Poll else null
@@ -122,20 +173,50 @@ internal class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int
 internal object KayakFirstSimulatorTelemetryEncoder {
     const val PERIOD_MS = 1_000L
 
-    fun generated(sample: FtmsMockSample, running: Boolean): ByteArray {
+    fun generated(
+        sample: FtmsMockSample,
+        running: Boolean,
+        activePaddling: Boolean = running,
+    ): ByteArray {
         val fields = MutableList(24) { "0" }
         fields[0] = "6"
         fields[1] = (900_000_000_000L + sample.elapsedSeconds * 1_000L).toString()
         fields[5] = "0.00"
+        fields[7] = if (activePaddling) "1" else "0"
         fields[9] = (sample.distanceMeters ?: 0).coerceAtLeast(0).toString()
-        fields[10] = "0.00"
-        fields[11] = "%.2f".format(Locale.US, (sample.speedKph ?: 0.0).coerceAtLeast(0.0) / 3.6)
-        fields[12] = "0.00"
-        fields[13] = (sample.cadence ?: 0.0).coerceAtLeast(0.0).toInt().toString()
-        fields[21] = (sample.powerWatts ?: 0).coerceAtLeast(0).toString()
+        val averageSpeedMps = (sample.averageSpeedKph ?: sample.speedKph ?: 0.0).coerceAtLeast(0.0) / 3.6
+        val speedMps = (sample.speedKph ?: 0.0).coerceAtLeast(0.0) / 3.6
+        fields[10] = "%.2f".format(Locale.US, averageSpeedMps)
+        fields[11] = "%.2f".format(Locale.US, speedMps)
+        fields[12] = (sample.averageCadence ?: sample.cadence ?: 0.0).coerceAtLeast(0.0).roundToInt().toString()
+        fields[13] = (sample.cadence ?: 0.0).coerceAtLeast(0.0).roundToInt().toString()
+        fun pace(distanceMetres: Int, metresPerSecond: Double): String =
+            if (metresPerSecond > 0.0) (distanceMetres / metresPerSecond).roundToInt().toString() else "0"
+        fields[14] = pace(200, averageSpeedMps)
+        fields[15] = pace(200, speedMps)
+        fields[16] = pace(500, averageSpeedMps)
+        fields[17] = pace(500, speedMps)
+        fields[18] = pace(1_000, averageSpeedMps)
+        fields[19] = pace(1_000, speedMps)
+        // C6[20]/[21] are average/instantaneous pull force in newtons, never power. The values are
+        // inverted from the shared snapshot's watts through the same force/length/cadence relation
+        // the central uses, so a simulator-to-central round trip reproduces the snapshot's power
+        // instead of asserting an independent force model.
+        fields[20] = forceNewtons(sample.averagePowerWatts, sample.averageCadence ?: sample.cadence)
+        fields[21] = forceNewtons(sample.powerWatts, sample.cadence)
         fields[22] = sample.elapsedSeconds.coerceAtLeast(0).toString()
+        // C6[23] is the coverage window in seconds for this datapoint, matching the 1 Hz poll.
         fields[23] = if (running) "1" else "0"
         return (fields.joinToString(";") + "\r\n").toByteArray(Charsets.UTF_8)
+    }
+
+    /** Inverts `P = F x L x cadence / 60` so generated force stays consistent with generated power. */
+    private fun forceNewtons(powerWatts: Int?, cadenceSpm: Double?): String {
+        val watts = (powerWatts ?: 0).coerceAtLeast(0).toDouble()
+        val cadence = (cadenceSpm ?: 0.0).coerceAtLeast(0.0)
+        if (watts <= 0.0 || cadence <= 0.0) return "0"
+        val force = watts * 60.0 / (KayakFirstDerivedMetrics.DEFAULT_PULL_LENGTH_M * cadence)
+        return "%.2f".format(Locale.US, force)
     }
 
     val capturedFrames: List<ByteArray> = listOf(
@@ -144,8 +225,56 @@ internal object KayakFirstSimulatorTelemetryEncoder {
         "6;900000020101;0;0;0;0.00;0;1;0;38;1.94;3.26;84;90;103;61;258;152;516;305;85;102;20;1\r\n",
     ).map { it.toByteArray(Charsets.UTF_8) }
 
-    fun captured(index: Int): ByteArray = capturedFrames[index.mod(capturedFrames.size)].copyOf()
+    fun captured(index: Int): ByteArray {
+        val safeIndex = index.coerceAtLeast(0)
+        val loop = safeIndex / capturedFrames.size
+        val fields = capturedFrames[safeIndex % capturedFrames.size]
+            .toString(Charsets.UTF_8)
+            .trimEnd('\r', '\n')
+            .split(';')
+            .toMutableList()
+        if (loop > 0) {
+            fields[1] = (fields[1].toLong() + loop * CAPTURE_TIMESTAMP_SPAN_MS).toString()
+            fields[9] = (fields[9].toLong() + loop * CAPTURE_DISTANCE_SPAN).toString()
+            fields[22] = (fields[22].toLong() + loop * CAPTURE_ELAPSED_SPAN_SECONDS).toString()
+        }
+        return (fields.joinToString(";") + "\r\n").toByteArray(Charsets.UTF_8)
+    }
+
+    /**
+     * Selects the captured observation whose original ten-second timestamp is at or before the
+     * simulator workout clock. Poll frequency must not change the replay clock.
+     */
+    fun capturedAtElapsedSeconds(elapsedSeconds: Int): ByteArray =
+        captured(elapsedSeconds.coerceAtLeast(0) / CAPTURE_SAMPLE_PERIOD_SECONDS)
+
+    private const val CAPTURE_SAMPLE_PERIOD_SECONDS = 10
+    private const val CAPTURE_TIMESTAMP_SPAN_MS = 30_000L
+    private const val CAPTURE_DISTANCE_SPAN = 38L
+    private const val CAPTURE_ELAPSED_SPAN_SECONDS = 30L
 }
+
+internal data class KayakFirstCapturedPoll(
+    val frame: ByteArray,
+    val nextCursor: Int,
+)
+
+internal fun kayakFirstCapturedPoll(
+    cursor: Int,
+    running: Boolean,
+    elapsedSeconds: Int,
+): KayakFirstCapturedPoll =
+    if (running) {
+        KayakFirstCapturedPoll(
+            frame = KayakFirstSimulatorTelemetryEncoder.capturedAtElapsedSeconds(elapsedSeconds),
+            nextCursor = maxOf(cursor, elapsedSeconds.coerceAtLeast(0) / 10 + 1),
+        )
+    } else {
+        KayakFirstCapturedPoll(
+            frame = KayakFirstSimulatorTelemetryEncoder.captured(0),
+            nextCursor = cursor,
+        )
+    }
 
 internal data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric, val value: String)
 

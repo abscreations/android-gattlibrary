@@ -65,6 +65,7 @@ class Concept2Pm5PeripheralAdvertiser(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val epoch = AtomicLong(0)
     private val clients = ConcurrentHashMap<String, Client>()
+    private val advertisingGate = ConnectableAdvertisingGate()
     private val connectionRetention = PeripheralConnectionRetentionGuard()
     private var server: BluetoothGattServer? = null
     private var advertiseCallback: AdvertiseCallback? = null
@@ -120,6 +121,7 @@ class Concept2Pm5PeripheralAdvertiser(
         isAdvertising = false
         clients.values.forEach { runCatching { server?.cancelConnection(it.device) } }
         clients.clear()
+        advertisingGate.reset()
         connectionRetention.clear()
         runCatching { server?.clearServices() }
         runCatching { server?.close() }
@@ -138,6 +140,22 @@ class Concept2Pm5PeripheralAdvertiser(
         } else if (server?.addService(next) != true) {
             finishStart(Result.failure(IllegalStateException("Could not add PM5 service ${next.uuid}")))
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun pauseAdvertising() {
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        advertiseCallback?.let { callback ->
+            runCatching { manager?.adapter?.bluetoothLeAdvertiser?.stopAdvertising(callback) }
+        }
+        advertiseCallback = null
+        isAdvertising = false
+        listener.onState(false, clients.isNotEmpty(), anySubscribed(), null)
+    }
+
+    private fun resumeAdvertising(currentEpoch: Long) {
+        if (server == null || clients.isNotEmpty() || advertiseCallback != null || isAdvertising) return
+        startAdvertising(currentEpoch)
     }
 
     @SuppressLint("MissingPermission")
@@ -163,7 +181,7 @@ class Concept2Pm5PeripheralAdvertiser(
         val scan = AdvertiseData.Builder().setIncludeDeviceName(true).build()
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 isAdvertising = true
                 listener.onState(true, clients.isNotEmpty(), anySubscribed(), null)
                 startNotifier()
@@ -171,7 +189,7 @@ class Concept2Pm5PeripheralAdvertiser(
             }
 
             override fun onStartFailure(errorCode: Int) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 val message = "PM5 advertising failed ($errorCode)"
                 listener.onState(false, clients.isNotEmpty(), anySubscribed(), message)
                 finishStart(Result.failure(IllegalStateException(message)))
@@ -203,6 +221,9 @@ class Concept2Pm5PeripheralAdvertiser(
             val key = device.address.lowercase()
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 clients.putIfAbsent(key, Client(device))
+                if (advertisingGate.onConnected(key) == ConnectableAdvertisingGate.Action.PAUSE) {
+                    pauseAdvertising()
+                }
                 connectionRetention.retainOnce(key) {
                     val retained = runCatching { server?.connect(device, false) == true }
                         .getOrElse { error ->
@@ -216,6 +237,9 @@ class Concept2Pm5PeripheralAdvertiser(
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 connectionRetention.release(key)
                 clients.remove(key)?.session?.reset()
+                if (advertisingGate.onDisconnected(key) == ConnectableAdvertisingGate.Action.RESUME) {
+                    resumeAdvertising(callbackEpoch)
+                }
             }
             listener.onState(isAdvertising, clients.isNotEmpty(), anySubscribed(), null)
         }

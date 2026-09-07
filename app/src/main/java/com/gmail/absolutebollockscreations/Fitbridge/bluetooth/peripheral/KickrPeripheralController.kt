@@ -13,6 +13,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrLe
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSyntheticModel
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrControlMode
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorGenerationGate
 import java.util.concurrent.atomic.AtomicLong
 
 /** Transactional adapter-name, foreground-service and telemetry lifecycle for KICKR simulation. */
@@ -62,6 +63,7 @@ internal class KickrPeripheralController(
     private var activePersona: KickrSimulatorPersona? = null
     private var packets = 0L
     private var ticker: Runnable? = null
+    private val generationGate = SimulatorGenerationGate()
     @Volatile private var status = Status()
 
     private val adapterNames = AdapterNameCoordinator(
@@ -104,6 +106,7 @@ internal class KickrPeripheralController(
         ftmsControlEnabled: Boolean = true,
         onResult: (Result<Unit>) -> Unit,
     ) {
+        generationGate.reset()
         val epoch = operationEpoch.incrementAndGet()
         if (!hasPermissions()) {
             val error = IllegalStateException("Bluetooth advertising permission has not been granted")
@@ -158,6 +161,7 @@ internal class KickrPeripheralController(
     }
 
     fun stop() {
+        generationGate.reset()
         operationEpoch.incrementAndGet()
         stopResources(restoreName = true)
         activePersona = null
@@ -194,7 +198,9 @@ internal class KickrPeripheralController(
         ticker?.let(main::removeCallbacks)
         lateinit var task: Runnable
         task = Runnable {
-            advertiser.publish(model.advance(TICK_SECONDS))
+            if (generationGate.observe(status.subscribed)) {
+                advertiser.publish(model.advance(TICK_SECONDS))
+            }
             if (activePersona != null) main.postDelayed(task, TICK_MS)
         }
         ticker = task

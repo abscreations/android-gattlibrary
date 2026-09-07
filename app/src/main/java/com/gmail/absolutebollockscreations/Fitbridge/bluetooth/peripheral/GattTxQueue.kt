@@ -79,11 +79,12 @@ internal class GattTxQueue(
      * watch wrote REQUEST_CONTROL, never confirmed the response indication, and
      * received nothing at all for the full timeout before dropping the link.
      *
-     * Lower is therefore better for data continuity, but it cannot go below a
-     * round trip: a confirmation is sent at the client's next connection event,
-     * so a 990 ms interval needs roughly two intervals to answer. 2 s keeps the
-     * blackout well under half what it was while still tolerating the slowest
-     * interval FitBridge expects to see.
+     * Lower is therefore better for data continuity, but the 2026-09-07 Garmin
+     * rowing capture shows that a watch negotiating a 990 ms interval can take
+     * about four intervals (3.93 s) to confirm. The bounded default therefore
+     * covers five such intervals plus callback jitter. This deliberately accepts
+     * a longer possible blackout rather than timing out a known healthy client,
+     * losing acknowledgement correlation, and then failing its session setup.
      */
     private val controlTimeoutMs: Long = DEFAULT_CONTROL_TIMEOUT_MS,
     /**
@@ -462,16 +463,11 @@ internal class GattTxQueue(
     }
 
     companion object {
-        /** Covers two 990 ms Garmin connection intervals plus callback jitter. */
-        const val DEFAULT_DATA_TIMEOUT_MS = 2_500L
+        /** Five 990 ms Garmin intervals plus bounded Android callback jitter. */
+        const val DEFAULT_DATA_TIMEOUT_MS = 5_500L
 
-        /**
-         * Was 5 s. Halved after the 2026-08-05 capture, where an unconfirmed
-         * control-point indication silenced a client's entire measurement stream
-         * for the full 5 s and the client then dropped the link. Still covers two
-         * 990 ms connection intervals, which is what a confirmation needs.
-         */
-        const val DEFAULT_CONTROL_TIMEOUT_MS = 2_000L
+        /** Five 990 ms Garmin intervals plus bounded Android callback jitter. */
+        const val DEFAULT_CONTROL_TIMEOUT_MS = 5_500L
 
         const val DEFAULT_MAX_PENDING_CONTROL = 16
     }

@@ -103,6 +103,7 @@ internal class KickrPeripheralAdvertiser(
     private val epoch = AtomicLong(0)
     private val generation = AtomicLong(0)
     private val clients = ConcurrentHashMap<String, Client>()
+    private val advertisingGate = ConnectableAdvertisingGate()
     private val connectionRetention = PeripheralConnectionRetentionGuard()
     private var server: BluetoothGattServer? = null
     private var advertiseCallback: AdvertiseCallback? = null
@@ -222,6 +223,7 @@ internal class KickrPeripheralAdvertiser(
             runCatching { server?.cancelConnection(client.device) }
         }
         clients.clear()
+        advertisingGate.reset()
         connectionRetention.clear()
         runCatching { server?.clearServices() }
         runCatching { server?.close() }
@@ -259,6 +261,9 @@ internal class KickrPeripheralAdvertiser(
                     ),
                 )
                 clients[key] = client
+                if (advertisingGate.onConnected(key) == ConnectableAdvertisingGate.Action.PAUSE) {
+                    pauseAdvertising()
+                }
                 PeripheralCaptureHooks.clientConnected(device.address, client.session.generation, 23)
                 connectionRetention.retainOnce(key) { server?.connect(device, false) == true }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
@@ -270,6 +275,9 @@ internal class KickrPeripheralAdvertiser(
                         "gatt_status=$status",
                     )
                     client.session.clear()
+                }
+                if (advertisingGate.onDisconnected(key) == ConnectableAdvertisingGate.Action.RESUME) {
+                    resumeAdvertising(callbackEpoch)
                 }
             }
             publishState()
@@ -453,6 +461,22 @@ internal class KickrPeripheralAdvertiser(
     }
 
     @SuppressLint("MissingPermission")
+    private fun pauseAdvertising() {
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        advertiseCallback?.let { callback ->
+            runCatching { manager?.adapter?.bluetoothLeAdvertiser?.stopAdvertising(callback) }
+        }
+        advertiseCallback = null
+        isAdvertising = false
+        publishState()
+    }
+
+    private fun resumeAdvertising(currentEpoch: Long) {
+        if (server == null || clients.isNotEmpty() || advertiseCallback != null || isAdvertising) return
+        startAdvertising(currentEpoch)
+    }
+
+    @SuppressLint("MissingPermission")
     private fun startAdvertising(currentEpoch: Long) {
         val plan = manifest?.advertising ?: return
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -472,14 +496,14 @@ internal class KickrPeripheralAdvertiser(
         }
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 isAdvertising = true
                 publishState()
                 finishStart(Result.success(Unit))
             }
 
             override fun onStartFailure(errorCode: Int) {
-                if (epoch.get() != currentEpoch) return
+                if (epoch.get() != currentEpoch || advertiseCallback !== this) return
                 val failure = IllegalStateException("KICKR advertising failed ($errorCode)")
                 listener.onState(false, clients.isNotEmpty(), anySubscribed(), failure.message)
                 finishStart(Result.failure(failure))

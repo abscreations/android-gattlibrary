@@ -94,16 +94,16 @@ class KayakFirstFrameAssemblerTest {
     }
 
     @Test
-    fun `line limit accepts 512 rejects byte 513 and recovers`() {
+    fun `line limit accepts its cap rejects the next byte and recovers`() {
         val cases = FixtureJson.array(load()["buffer_limit_cases"])
             .map(FixtureJson::obj)
             .associateBy { FixtureJson.string(it["id"]) }
 
-        val exact = KayakFirstFrameAssembler()
+        val exact = KayakFirstFrameAssembler(CORPUS_CAP_BYTES)
         assertTrue(feedGenerated(exact, requireNotNull(cases["exactly-512-bytes-remains-bounded"])).isEmpty())
         assertEquals(512, exact.pendingByteCount())
 
-        val delimited = KayakFirstFrameAssembler()
+        val delimited = KayakFirstFrameAssembler(CORPUS_CAP_BYTES)
         val delimitedEvents = feedGenerated(
             delimited,
             requireNotNull(cases["delimiter-after-exactly-512-bytes"]),
@@ -111,14 +111,14 @@ class KayakFirstFrameAssemblerTest {
         assertEquals(1, delimitedEvents.filterIsInstance<KayakFirstFrameEvent.TextLine>().size)
         assertEquals(512, (delimitedEvents.single() as KayakFirstFrameEvent.TextLine).value.length)
 
-        val overflow = KayakFirstFrameAssembler()
+        val overflow = KayakFirstFrameAssembler(CORPUS_CAP_BYTES)
         assertRejected(
             KayakFirstFrameRejection.FRAME_TOO_LONG,
             feedGenerated(overflow, requireNotNull(cases["byte-513-overflows-and-clears"])),
         )
         assertEquals(0, overflow.pendingByteCount())
 
-        val recovered = KayakFirstFrameAssembler()
+        val recovered = KayakFirstFrameAssembler(CORPUS_CAP_BYTES)
         assertEquals(
             listOf(
                 KayakFirstFrameEvent.Rejected(KayakFirstFrameRejection.FRAME_TOO_LONG),
@@ -132,7 +132,20 @@ class KayakFirstFrameAssemblerTest {
             .map(FixtureJson::obj)
             .map { FixtureJson.string(it["frame_ascii"]).toByteArray(Charsets.UTF_8).size }
         assertTrue(observedLengths.isNotEmpty())
-        assertTrue(requireNotNull(observedLengths.maxOrNull()) < 512)
+        assertTrue(requireNotNull(observedLengths.maxOrNull()) < CORPUS_CAP_BYTES)
+    }
+
+    @Test
+    fun `production cap is the converged 4096 bytes and admits a multi-frame burst`() {
+        val assembler = KayakFirstFrameAssembler()
+        // A Bull console can deliver several complete frames plus a partial one in one burst; the
+        // former 512-byte cap discarded the in-flight line as overlong.
+        val frame = "6;900000010449;0;0;0;0.00;0;1;0;11;0.94;2.75;98;76;229;72;573;180;1147;360;96;82;10;1\r\n"
+        val burst = frame.repeat(8) + "6;900000020101;0;0;0;0.00;0;1;0;38"
+        val events = assembler.accept(burst.toByteArray())
+        assertEquals(8, events.filterIsInstance<KayakFirstFrameEvent.TextLine>().size)
+        assertTrue(events.none { it is KayakFirstFrameEvent.Rejected })
+        assertTrue(assembler.pendingByteCount() > 0)
     }
 
     @Test
@@ -187,4 +200,15 @@ class KayakFirstFrameAssemblerTest {
     private fun strings(value: Any?): List<String> = FixtureJson.array(value).map(FixtureJson::string)
 
     private fun ints(value: Any?): List<Int> = FixtureJson.array(value).map(FixtureJson::int)
+
+    private companion object {
+        /**
+         * Cap the pinned buffer-limit corpus cases were authored against.
+         *
+         * Those cases pin cap *behaviour* — accept exactly the cap, reject the next byte, clear and
+         * recover — which is independent of the cap's value. The production default moved to 4,096
+         * bytes with the KayakFit convergence and is covered separately.
+         */
+        const val CORPUS_CAP_BYTES = 512
+    }
 }

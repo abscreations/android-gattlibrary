@@ -68,7 +68,12 @@ sealed interface SimulatorPersona {
     /** Capture-corroborated KayakFirst Blue console hosted on the evidenced FFE0/FFE1 surface. */
     data object KayakFirstBlue : SimulatorPersona {
         // Deliberately synthetic: the captures do not prove a stable physical-device name.
-        override val advertisedName: String = "KFBLUE01"
+        override val advertisedName: String = "25100001"
+    }
+
+    /** E2 4.2.0 Orange timing-MCU protocol on the documented Blue-derived RF shell. */
+    data object KayakFirstOrange : SimulatorPersona {
+        override val advertisedName: String = KayakFirstOrangeSimulatorProtocol.ADVERTISED_NAME
     }
 
     /** Capture-backed setup-gated Life Fitness FTMS console. */

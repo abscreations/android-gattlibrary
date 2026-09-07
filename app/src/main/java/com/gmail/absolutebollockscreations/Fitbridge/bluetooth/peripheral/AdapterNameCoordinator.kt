@@ -318,6 +318,7 @@ internal class AdapterNameCoordinator(
             add(SimulatorPersona.PrecorChrono.advertisedName)
             add(SimulatorPersona.FlywheelSports.advertisedName)
             add(SimulatorPersona.KayakFirstBlue.advertisedName)
+            add(SimulatorPersona.KayakFirstOrange.advertisedName)
             add(SCHWINN_X70_ADVERTISED_NAME)
             LifeFitnessMachine.entries.forEach { add(it.syntheticName) }
             KeiserMSeriesSimulatorProfile.entries.forEach { add(it.advertisedName) }

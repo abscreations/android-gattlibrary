@@ -12,6 +12,8 @@ internal data class KayakFirstAdvertisingPlan(
     val manufacturerPayload: ByteArray,
     val advertisingBytes: Int,
     val scanResponseBytes: Int,
+    val primaryPayload: ByteArray,
+    val scanResponsePayload: ByteArray,
 ) {
     init {
         require(localName.toByteArray(Charsets.UTF_8).size == 8)
@@ -19,30 +21,57 @@ internal data class KayakFirstAdvertisingPlan(
     }
 
     companion object {
-        fun create() = KayakFirstAdvertisingPlan(
-            localName = SimulatorPersona.KayakFirstBlue.advertisedName,
-            manufacturerId = 0xA759,
-            manufacturerPayload = byteArrayOf(
-                0x88.toByte(), 0xA0.toByte(), 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
-            ),
-            // Flags AD (3) + complete 16-bit service UUID AD (4).
-            advertisingBytes = 7,
-            // Complete-name AD (10) + manufacturer AD header/id/payload (12).
-            scanResponseBytes = 22,
-        )
+        fun create(
+            localName: String = SimulatorPersona.KayakFirstBlue.advertisedName,
+            localAddress: String = "06:05:04:03:02:01",
+        ): KayakFirstAdvertisingPlan {
+            require(Regex("^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$").matches(localAddress)) {
+                "invalid Bluetooth address"
+            }
+            val address = localAddress.split(':').map { it.toIntOrNull(16) }
+            require(address.size == 6 && address.all { it != null }) { "invalid Bluetooth address" }
+            val reversedAddress = address.map { requireNotNull(it).toByte() }.reversed().toByteArray()
+            val manufacturerPayload = byteArrayOf(0x88.toByte(), 0xA0.toByte()) + reversedAddress
+            val primary = byteArrayOf(
+                0x02, 0x01, 0x06,
+                0x05, 0x02, 0xE0.toByte(), 0xFF.toByte(), 0xE1.toByte(), 0xFF.toByte(),
+                0x0B, 0xFF.toByte(), 0x59, 0xA7.toByte(),
+            ) + manufacturerPayload
+            val nameBytes = localName.toByteArray(Charsets.UTF_8)
+            val scan = byteArrayOf((nameBytes.size + 1).toByte(), 0x09) + nameBytes + byteArrayOf(
+                0x05, 0x12, 0x08, 0x00, 0x08, 0x00,
+                0x02, 0x0A, 0x00,
+            )
+            return KayakFirstAdvertisingPlan(
+                localName = localName,
+                manufacturerId = 0xA759,
+                manufacturerPayload = manufacturerPayload,
+                advertisingBytes = primary.size,
+                scanResponseBytes = scan.size,
+                primaryPayload = primary,
+                scanResponsePayload = scan,
+            )
+        }
     }
 }
 
 internal object KayakFirstGattProfile {
     data class Characteristic(
         val uuid: java.util.UUID,
+        val writeWithResponse: Boolean,
         val writeWithoutResponse: Boolean,
         val notifiable: Boolean,
         val hasCccd: Boolean,
     )
 
     val characteristics = listOf(
-        Characteristic(BluetoothIds.UUID_KAYAK_FIRST_IO, true, true, true),
+        Characteristic(
+            uuid = BluetoothIds.UUID_KAYAK_FIRST_IO,
+            writeWithResponse = true,
+            writeWithoutResponse = true,
+            notifiable = true,
+            hasCccd = true,
+        ),
     )
 
     fun buildService(): BluetoothGattService = BluetoothGattService(
@@ -52,7 +81,10 @@ internal object KayakFirstGattProfile {
         service.addCharacteristic(
             BluetoothGattCharacteristic(
                 BluetoothIds.UUID_KAYAK_FIRST_IO,
-                BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
+                // Physical-console captures exercise Write Command. TMIW 2.2.1 instead uses its
+                // default Write Request mode, so the virtual compatibility surface accepts both.
+                BluetoothGattCharacteristic.PROPERTY_WRITE or
+                    BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
                     BluetoothGattCharacteristic.PROPERTY_NOTIFY,
                 BluetoothGattCharacteristic.PERMISSION_WRITE,
             ).also { io ->
