@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -91,9 +92,19 @@ class KayakFirstMeasurementTest {
             val expected = FixtureJson.string(case["expect"])
             if (expected.startsWith("accept-measurement")) {
                 assertTrue(FixtureJson.string(case["id"]), result is KayakFirstMeasurementDecodeResult.Decoded)
+                val reading = (result as KayakFirstMeasurementDecodeResult.Decoded).reading
                 if (case["expect_speed_kmh"] != null) {
-                    val reading = (result as KayakFirstMeasurementDecodeResult.Decoded).reading
                     assertEquals(FixtureJson.double(case["expect_speed_kmh"]), reading.speedKph, 1e-9)
+                }
+                if (case["expect_coverage_window_seconds"] != null) {
+                    assertEquals(
+                        FixtureJson.string(case["id"]),
+                        FixtureJson.int(case["expect_coverage_window_seconds"]).toLong(),
+                        reading.coverageWindowSeconds,
+                    )
+                }
+                if (case["expect_coverage_window_null"] != null) {
+                    assertNull(FixtureJson.string(case["id"]), reading.coverageWindowSeconds)
                 }
             } else {
                 val rejected = result as KayakFirstMeasurementDecodeResult.Rejected
@@ -277,6 +288,9 @@ class KayakFirstMeasurementTest {
         "reject-empty-field" -> KayakFirstMeasurementRejection.EMPTY_FIELD
         "reject-signed-value" -> KayakFirstMeasurementRejection.SIGNED_VALUE
         "reject-numeric-grammar" -> KayakFirstMeasurementRejection.INVALID_NUMBER
+        // A flag outside its domain is the same rejection as bad grammar; the corpus names it
+        // separately so the case documents which rule it breaks.
+        "reject-flag-domain" -> KayakFirstMeasurementRejection.INVALID_NUMBER
         "reject-numeric-overflow" -> KayakFirstMeasurementRejection.NUMERIC_OVERFLOW
         "reject-plausibility-speed" -> KayakFirstMeasurementRejection.SPEED_OUT_OF_RANGE
         "reject-plausibility-cadence" -> KayakFirstMeasurementRejection.CADENCE_OUT_OF_RANGE

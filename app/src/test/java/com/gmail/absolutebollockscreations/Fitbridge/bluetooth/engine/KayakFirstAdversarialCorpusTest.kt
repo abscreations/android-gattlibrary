@@ -17,7 +17,7 @@ class KayakFirstAdversarialCorpusTest {
         val fixture = load()
 
         assertEquals(1, FixtureJson.int(fixture["schema_version"]))
-        assertEquals(3, FixtureJson.int(fixture["corpus_revision"]))
+        assertEquals(4, FixtureJson.int(fixture["corpus_revision"]))
         assertEquals("kayak-first-paddle", FixtureJson.string(fixture["family"]))
         assertEquals(
             "fitbridge-authored-language-neutral-adversarial-oracle",
@@ -30,9 +30,10 @@ class KayakFirstAdversarialCorpusTest {
         assertTrue(FixtureJson.string(fixture["source_precedence"]).contains("TMIW is normative"))
         assertTrue(FixtureJson.string(fixture["independence"]).contains("before a production"))
         val history = strings(fixture["revision_history"])
-        assertEquals(2, history.size)
+        assertEquals(3, history.size)
         assertTrue(history.any { it.contains("zero-field empty line") })
         assertTrue(history.any { it.contains("force_newtons") })
+        assertTrue(history.any { it.contains("seventeen are consumed") })
 
         val transport = FixtureJson.obj(fixture["transport_contract"])
         assertEquals(20, FixtureJson.int(transport["maximum_outbound_chunk_bytes"]))
@@ -151,10 +152,24 @@ class KayakFirstAdversarialCorpusTest {
         val contract = FixtureJson.obj(fixture["measurement_contract"])
         val consumed = FixtureJson.obj(contract["consumed_fields"])
         val consumedIndexes = consumed.values.mapTo(linkedSetOf(), FixtureJson::int)
-        assertEquals(setOf(9, 11, 13, 21, 22), consumedIndexes)
-        assertEquals(setOf(9, 11), ints(contract["decimal_field_indexes"]).toSet())
-        assertEquals(setOf(13, 21, 22), ints(contract["integer_field_indexes"]).toSet())
-        assertEquals(18, ints(contract["ignored_field_indexes_within_first_24"]).size)
+        // Seventeen consumed fields, not the five this corpus claimed until revision 4. The
+        // decoder reads everything the KayakFit convergence resolved; only 2-6 and 8 stay unread.
+        assertEquals(
+            setOf(1, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23),
+            consumedIndexes,
+        )
+        assertEquals(setOf(9, 10, 11, 20, 21), ints(contract["decimal_field_indexes"]).toSet())
+        assertEquals(
+            setOf(1, 7, 12, 13, 14, 15, 16, 17, 18, 19, 22),
+            ints(contract["integer_field_indexes"]).toSet(),
+        )
+        // Field 23 is consumed but can never reject a frame, so it belongs to neither grammar set.
+        assertEquals(setOf(23), ints(contract["lenient_field_indexes"]).toSet())
+        assertEquals(setOf(2, 3, 4, 5, 6, 8), ints(contract["ignored_field_indexes_within_first_24"]).toSet())
+        val semantics = FixtureJson.obj(contract["field_semantics"])
+        (0..23).forEach { index ->
+            assertTrue("field_semantics missing $index", semantics.containsKey(index.toString()))
+        }
 
         val truncation = FixtureJson.obj(fixture["truncation_matrix"])
         assertEquals((0..23).toList(), ints(truncation["prefix_field_counts"]))
@@ -165,7 +180,7 @@ class KayakFirstAdversarialCorpusTest {
         )
 
         val mutations = FixtureJson.array(fixture["measurement_mutation_cases"]).map(FixtureJson::obj)
-        assertEquals(39, mutations.size)
+        assertEquals(92, mutations.size)
         assertEquals(mutations.size, mutations.map { FixtureJson.string(it["id"]) }.toSet().size)
         val baselineFields = FixtureJson.string(
             FixtureJson.obj(fixture["baseline_measurement"])["frame_ascii"],
@@ -360,7 +375,7 @@ class KayakFirstAdversarialCorpusTest {
         assertEquals(9, strings(privacy["forbidden_data_classes"]).size)
         assertTrue(strings(privacy["allowed_protocol_constants"]).contains("neutral weight 80 from TMIW"))
         assertTrue(FixtureJson.string(privacy["ordinary_log_policy"]).contains("BLECAP"))
-        assertEquals(17, strings(fixture["coverage_manifest"]).size)
+        assertEquals(20, strings(fixture["coverage_manifest"]).size)
         assertFalse("fixture must not contain a Bluetooth address", MAC_ADDRESS.containsMatchIn(text))
         assertFalse("fixture must not contain known private keys", PRIVATE_KEY.containsMatchIn(text))
         assertFalse("fixture must not name raw capture paths", text.contains("CaptureLogs", ignoreCase = true))
