@@ -7,8 +7,6 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirst
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstMeasurement
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstMeasurementDecodeResult
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeCommand
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeFrameEvent
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeLineAssembler
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeResponse
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeResponseParser
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeSession
@@ -18,7 +16,6 @@ import com.gmail.absolutebollockscreations.Fitbridge.simulatorPersonaOptions
 import com.gmail.absolutebollockscreations.Fitbridge.simulatorAdvertisedNameLine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -148,114 +145,6 @@ class KayakFirstSimulatorTest {
         assertTrue(decoded is KayakFirstOrangeResponse.Timing)
         assertEquals(438L, (decoded as KayakFirstOrangeResponse.Timing).value.sequence)
         assertEquals(65_008L, decoded.value.timingMicroseconds)
-    }
-
-    @Test
-    fun orange_offers_only_faults_its_protocol_can_produce() {
-        val supported = KayakFirstOrangeSimulatorProtocol.SUPPORTED_SCENARIOS
-        // Blue-only faults have no Orange meaning: there is no command 6, no display
-        // configuration and no binary reset acknowledgement on this protocol.
-        listOf(
-            KayakFirstSimulatorScenario.BINARY_RESET_RESPONSE,
-            KayakFirstSimulatorScenario.ROGUE_COMMAND_6,
-            KayakFirstSimulatorScenario.CONCATENATED_61,
-        ).forEach { assertFalse(KayakFirstOrangeSimulatorProtocol.supports(it)) }
-        assertTrue(KayakFirstOrangeSimulatorProtocol.supports(KayakFirstSimulatorScenario.HAPPY_PATH))
-        assertEquals(supported.size, supported.distinct().size)
-        assertTrue(supported.size > 10)
-    }
-
-    @Test
-    fun every_orange_fault_reaches_the_central_as_its_intended_failure() {
-        fun drive(scenario: KayakFirstSimulatorScenario): Pair<List<KayakFirstOrangeFrameEvent>, List<KayakFirstOrangeResponse>> {
-            val bytes = KayakFirstOrangeSimulatorProtocol.renderResponse(
-                scenario,
-                KayakFirstOrangeCommand.T_MIN,
-                438L,
-                65_008L,
-            ) ?: return emptyList<KayakFirstOrangeFrameEvent>() to emptyList()
-            val assembler = KayakFirstOrangeLineAssembler()
-            val parser = KayakFirstOrangeResponseParser()
-            val events = assembler.accept(bytes)
-            val responses = events.filterIsInstance<KayakFirstOrangeFrameEvent.Line>()
-                .mapNotNull { parser.accept(it.value) }
-            return events to responses
-        }
-
-        // Silence: nothing to render at all.
-        assertNull(
-            KayakFirstOrangeSimulatorProtocol.renderResponse(
-                KayakFirstSimulatorScenario.MISSING_RESPONSE,
-                KayakFirstOrangeCommand.T_MIN,
-                438L,
-                65_008L,
-            ),
-        )
-
-        // Framing faults must surface as frame events, never as decoded values.
-        listOf(
-            KayakFirstSimulatorScenario.MALFORMED_UTF8,
-            KayakFirstSimulatorScenario.NUL_BYTE,
-        ).forEach { scenario ->
-            val (events, responses) = drive(scenario)
-            assertTrue("$scenario", events.any { it is KayakFirstOrangeFrameEvent.InvalidAscii })
-            assertTrue("$scenario", responses.none { it is KayakFirstOrangeResponse.Timing })
-        }
-        val (overlongEvents, overlongResponses) = drive(KayakFirstSimulatorScenario.OVERLONG_LINE)
-        assertTrue(overlongEvents.any { it is KayakFirstOrangeFrameEvent.TooLong })
-        assertTrue(overlongResponses.none { it is KayakFirstOrangeResponse.Timing })
-
-        // A truncated triple is held, not emitted: two lines cannot complete a response.
-        val (shortEvents, shortResponses) = drive(KayakFirstSimulatorScenario.SHORT_RESPONSE)
-        assertEquals(2, shortEvents.filterIsInstance<KayakFirstOrangeFrameEvent.Line>().size)
-        assertTrue(shortResponses.isEmpty())
-
-        // The grammar fault is rejected by value, not by framing.
-        val (_, implausible) = drive(KayakFirstSimulatorScenario.IMPLAUSIBLE_METRICS)
-        assertTrue(implausible.any { it is KayakFirstOrangeResponse.Rejected })
-        assertTrue(implausible.none { it is KayakFirstOrangeResponse.Timing })
-
-        // A stray delimiter is rejected without eating the well-formed triple behind it.
-        val (_, empty) = drive(KayakFirstSimulatorScenario.EMPTY_LINE)
-        assertTrue(empty.any { it is KayakFirstOrangeResponse.Rejected })
-        assertTrue(empty.any { it is KayakFirstOrangeResponse.Timing })
-
-        // The happy path still decodes exactly.
-        val (_, happy) = drive(KayakFirstSimulatorScenario.HAPPY_PATH)
-        val timing = happy.filterIsInstance<KayakFirstOrangeResponse.Timing>().single()
-        assertEquals(438L, timing.value.sequence)
-        assertEquals(65_008L, timing.value.timingMicroseconds)
-    }
-
-    @Test
-    fun orange_counter_faults_hold_or_regress_the_stroke_sequence() {
-        // FROZEN_METRICS repeats a tuple the central must suppress downstream.
-        assertEquals(
-            7L,
-            KayakFirstOrangeSimulatorProtocol.scenarioSequence(
-                KayakFirstSimulatorScenario.FROZEN_METRICS,
-                naturalSequence = 12L,
-                frozenSequence = 7L,
-            ),
-        )
-        // RESET_METRICS is the regression the session must reject outright.
-        assertEquals(
-            0L,
-            KayakFirstOrangeSimulatorProtocol.scenarioSequence(
-                KayakFirstSimulatorScenario.RESET_METRICS,
-                naturalSequence = 12L,
-                frozenSequence = 7L,
-            ),
-        )
-        // Everything else leaves the stroke counter alone.
-        assertEquals(
-            12L,
-            KayakFirstOrangeSimulatorProtocol.scenarioSequence(
-                KayakFirstSimulatorScenario.HAPPY_PATH,
-                naturalSequence = 12L,
-                frozenSequence = 7L,
-            ),
-        )
     }
 
     @Test
@@ -424,68 +313,6 @@ class KayakFirstSimulatorTest {
     }
 
     @Test
-    fun captured_replay_preserves_observed_four_and_five_chunk_boundaries() {
-        val idle = KayakFirstSimulatorTelemetryEncoder.captured(0)
-        val active = KayakFirstSimulatorTelemetryEncoder.captured(1)
-        assertEquals(4, idle.asList().chunked(20).size)
-        assertEquals(5, active.asList().chunked(20).size)
-        assertFalse(idle.contentEquals(active))
-    }
-
-    @Test
-    fun captured_replay_keeps_cumulative_fields_monotonic_across_loop_boundary() {
-        fun fields(index: Int) = KayakFirstSimulatorTelemetryEncoder.captured(index)
-            .toString(Charsets.UTF_8).trim().split(';')
-
-        val last = fields(2)
-        val wrappedIdle = fields(3)
-        val wrappedActive = fields(4)
-
-        assertEquals(20L, last[22].toLong())
-        assertEquals(30L, wrappedIdle[22].toLong())
-        assertEquals(40L, wrappedActive[22].toLong())
-        assertTrue(wrappedIdle[1].toLong() >= last[1].toLong())
-        assertTrue(wrappedIdle[9].toLong() >= last[9].toLong())
-        assertEquals(4, KayakFirstSimulatorTelemetryEncoder.captured(3).asList().chunked(20).size)
-        assertEquals(5, KayakFirstSimulatorTelemetryEncoder.captured(4).asList().chunked(20).size)
-        assertEquals("0", fields(0)[22])
-    }
-
-    @Test
-    fun captured_replay_idle_poll_stays_zero_without_consuming_cursor() {
-        val firstRunning = kayakFirstCapturedPoll(cursor = 0, running = true, elapsedSeconds = 0)
-        val idle = kayakFirstCapturedPoll(cursor = 7, running = false, elapsedSeconds = 70)
-        val started = kayakFirstCapturedPoll(
-            cursor = idle.nextCursor,
-            running = true,
-            elapsedSeconds = 70,
-        )
-
-        assertEquals(1, firstRunning.nextCursor)
-        assertEquals("0", firstRunning.frame.toString(Charsets.UTF_8).trim().split(';')[22])
-        assertEquals(7, idle.nextCursor)
-        assertEquals("0", idle.frame.toString(Charsets.UTF_8).trim().split(';')[22])
-        assertEquals(8, started.nextCursor)
-        assertEquals("70", started.frame.toString(Charsets.UTF_8).trim().split(';')[22])
-    }
-
-    @Test
-    fun captured_replay_uses_workout_time_instead_of_poll_count() {
-        fun elapsed(atSeconds: Int) = kayakFirstCapturedPoll(
-            cursor = 0,
-            running = true,
-            elapsedSeconds = atSeconds,
-        ).frame.toString(Charsets.UTF_8).trim().split(';')[22].toLong()
-
-        assertEquals(0L, elapsed(0))
-        assertEquals(0L, elapsed(9))
-        assertEquals(10L, elapsed(10))
-        assertEquals(10L, elapsed(19))
-        assertEquals(20L, elapsed(20))
-        assertEquals(30L, elapsed(30))
-    }
-
-    @Test
     fun panel_has_five_rows_defaults_duplicates_and_safe_missing_values() {
         val rows = KayakFirstPanelPresenter.rows(KayakFirstDisplayConfiguration.DEFAULT, sample())
         assertEquals(5, rows.size)
@@ -511,18 +338,6 @@ class KayakFirstSimulatorTest {
             val rows = KayakFirstPanelPresenter.rows(config, sample())
             assertEquals(5, rows.size)
             assertTrue(rows.none { it.value.contains("NaN") || it.value.contains("Infinity") })
-        }
-    }
-
-    @Test
-    fun every_fault_scenario_has_a_deterministic_name_and_renderer_is_stable() {
-        assertEquals(KayakFirstSimulatorScenario.entries.size, KayakFirstSimulatorScenario.entries.map { it.name }.distinct().size)
-        val normal = KayakFirstSimulatorTelemetryEncoder.captured(1)
-        KayakFirstSimulatorScenario.entries.forEach { scenario ->
-            assertTrue(
-                KayakFirstScenarioRenderer.render(scenario, normal)
-                    .contentEquals(KayakFirstScenarioRenderer.render(scenario, normal)),
-            )
         }
     }
 

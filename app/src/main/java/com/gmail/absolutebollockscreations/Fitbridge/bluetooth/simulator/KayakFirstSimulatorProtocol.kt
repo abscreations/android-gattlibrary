@@ -9,8 +9,6 @@ import java.nio.charset.CodingErrorAction
 import java.util.Locale
 import kotlin.math.roundToInt
 
-enum class KayakFirstTelemetryMode { GENERATED_WORKOUT, CAPTURED_REPLAY }
-
 internal fun kayakFirstIdleSample() = FtmsMockSample(
     elapsedSeconds = 0,
     heartRate = 0,
@@ -26,44 +24,6 @@ internal fun kayakFirstIdleSample() = FtmsMockSample(
     averagePowerWatts = 0,
     movementCount = 0,
 )
-
-enum class KayakFirstSimulatorScenario {
-    HAPPY_PATH,
-    CAPTURED_FRAGMENTATION,
-    CRLF_SPLIT,
-    TWO_LINES_ONE_NOTIFICATION,
-    BINARY_RESET_RESPONSE,
-    SHORT_RESPONSE,
-    ROGUE_COMMAND_6,
-    CONCATENATED_61,
-    MALFORMED_UTF8,
-    NUL_BYTE,
-    EMPTY_LINE,
-    OVERLONG_LINE,
-    DELAYED_RESPONSE,
-    MISSING_RESPONSE,
-    FROZEN_METRICS,
-    RESET_METRICS,
-    IMPLAUSIBLE_METRICS,
-    BACKPRESSURE,
-}
-
-/** Deterministic fault payloads; transport timing and disconnect faults remain controller-owned. */
-internal object KayakFirstScenarioRenderer {
-    fun render(scenario: KayakFirstSimulatorScenario, normal: ByteArray): ByteArray = when (scenario) {
-        KayakFirstSimulatorScenario.TWO_LINES_ONE_NOTIFICATION -> normal + normal
-        KayakFirstSimulatorScenario.ROGUE_COMMAND_6 -> "6\r\n".toByteArray()
-        KayakFirstSimulatorScenario.CONCATENATED_61 -> "61\r\n".toByteArray()
-        KayakFirstSimulatorScenario.MALFORMED_UTF8 -> byteArrayOf(0xC3.toByte(), 0x28, 13, 10)
-        KayakFirstSimulatorScenario.NUL_BYTE -> byteArrayOf('6'.code.toByte(), 0, 13, 10)
-        KayakFirstSimulatorScenario.EMPTY_LINE -> "\r\n".toByteArray()
-        KayakFirstSimulatorScenario.OVERLONG_LINE -> ByteArray(300) { '9'.code.toByte() } + byteArrayOf(13, 10)
-        KayakFirstSimulatorScenario.IMPLAUSIBLE_METRICS ->
-            "6;900000000000;0;0;0;0.00;0;1;0;0;0.00;99.00;0;999;0;0;0;0;0;0;0;9999;0;1\r\n".toByteArray()
-        KayakFirstSimulatorScenario.RESET_METRICS -> KayakFirstSimulatorTelemetryEncoder.captured(0)
-        else -> normal
-    }
-}
 
 internal sealed interface KayakFirstSimulatorCommand {
     data object Reset : KayakFirstSimulatorCommand
@@ -226,63 +186,7 @@ internal object KayakFirstSimulatorTelemetryEncoder {
         val force = watts * 60.0 / (KayakFirstDerivedMetrics.DEFAULT_PULL_LENGTH_M * cadence)
         return force.roundToInt().coerceAtLeast(0).toString()
     }
-
-    val capturedFrames: List<ByteArray> = listOf(
-        "6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;0;0\r\n",
-        "6;900000010449;0;0;0;0.00;0;1;0;11;0.94;2.75;98;76;229;72;573;180;1147;360;96;82;10;1\r\n",
-        "6;900000020101;0;0;0;0.00;0;1;0;38;1.94;3.26;84;90;103;61;258;152;516;305;85;102;20;1\r\n",
-    ).map { it.toByteArray(Charsets.UTF_8) }
-
-    fun captured(index: Int): ByteArray {
-        val safeIndex = index.coerceAtLeast(0)
-        val loop = safeIndex / capturedFrames.size
-        val fields = capturedFrames[safeIndex % capturedFrames.size]
-            .toString(Charsets.UTF_8)
-            .trimEnd('\r', '\n')
-            .split(';')
-            .toMutableList()
-        if (loop > 0) {
-            fields[1] = (fields[1].toLong() + loop * CAPTURE_TIMESTAMP_SPAN_MS).toString()
-            fields[9] = (fields[9].toLong() + loop * CAPTURE_DISTANCE_SPAN).toString()
-            fields[22] = (fields[22].toLong() + loop * CAPTURE_ELAPSED_SPAN_SECONDS).toString()
-        }
-        return (fields.joinToString(";") + "\r\n").toByteArray(Charsets.UTF_8)
-    }
-
-    /**
-     * Selects the captured observation whose original ten-second timestamp is at or before the
-     * simulator workout clock. Poll frequency must not change the replay clock.
-     */
-    fun capturedAtElapsedSeconds(elapsedSeconds: Int): ByteArray =
-        captured(elapsedSeconds.coerceAtLeast(0) / CAPTURE_SAMPLE_PERIOD_SECONDS)
-
-    private const val CAPTURE_SAMPLE_PERIOD_SECONDS = 10
-    private const val CAPTURE_TIMESTAMP_SPAN_MS = 30_000L
-    private const val CAPTURE_DISTANCE_SPAN = 38L
-    private const val CAPTURE_ELAPSED_SPAN_SECONDS = 30L
 }
-
-internal data class KayakFirstCapturedPoll(
-    val frame: ByteArray,
-    val nextCursor: Int,
-)
-
-internal fun kayakFirstCapturedPoll(
-    cursor: Int,
-    running: Boolean,
-    elapsedSeconds: Int,
-): KayakFirstCapturedPoll =
-    if (running) {
-        KayakFirstCapturedPoll(
-            frame = KayakFirstSimulatorTelemetryEncoder.capturedAtElapsedSeconds(elapsedSeconds),
-            nextCursor = maxOf(cursor, elapsedSeconds.coerceAtLeast(0) / 10 + 1),
-        )
-    } else {
-        KayakFirstCapturedPoll(
-            frame = KayakFirstSimulatorTelemetryEncoder.captured(0),
-            nextCursor = cursor,
-        )
-    }
 
 internal data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric, val value: String)
 

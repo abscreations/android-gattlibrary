@@ -83,8 +83,6 @@ class FtmsSimulator(
         /** Update the snapshot returned by the KayakFirst console on its next command-6 poll. */
         fun publishKayakFirst(sample: FtmsMockSample) {}
 
-        fun configureKayakFirst(mode: KayakFirstTelemetryMode, scenario: KayakFirstSimulatorScenario) {}
-
         /**
          * Publish one running-footpod tick: RSC measurement, Cycling Power measurement and, on
          * its own slower tick, battery level. The peripheral renders all three from one gait
@@ -275,9 +273,6 @@ class FtmsSimulator(
 
     fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
         FtmsMockControlProfile.forMachine(machine).any
-
-    fun configureKayakFirst(mode: KayakFirstTelemetryMode, scenario: KayakFirstSimulatorScenario) =
-        peripheral.configureKayakFirst(mode, scenario)
 
     /** UI entry point for the simulator's Zwift Click section. */
     fun sendZwiftClickShift(

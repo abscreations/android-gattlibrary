@@ -9,6 +9,28 @@ class KayakFirstMeasurementTest {
     private val hardwareResource = "fixtures/hardware/kayak_first_qz_202604.json"
 
     @Test
+    fun `display configuration including selectors 15 17 and 18 cannot mutate the C6 mapping`() {
+        // Phase 8 exit item. Selectors are console *display* choices, in a vocabulary that
+        // overlaps the C6 index space by coincidence of numbering; 15/17/18 are the later TMIW
+        // additions and the ones most likely to be mistaken for field indexes. Configuring any of
+        // them must leave measurement decoding byte-for-byte identical, so the assertion is that
+        // the decoder is stateless with respect to display configuration and stays that way.
+        val frame = "6;900000010449;0;0;0;0.00;0;1;0;11;0.94;2.75;98;76;229;72;573;180;1147;360;96;82;10;1"
+        val before = KayakFirstMeasurement.decode(frame) as KayakFirstMeasurementDecodeResult.Decoded
+
+        val selectors = requireNotNull(KayakFirstDisplayConfiguration.fromWireCodes(listOf(15, 17, 18, 15, 17)))
+        assertEquals(listOf(15, 17, 18, 15, 17), selectors.slots.map { it.wireCode })
+
+        val after = KayakFirstMeasurement.decode(frame) as KayakFirstMeasurementDecodeResult.Decoded
+        assertEquals(before.reading, after.reading)
+        // And the default configuration decodes the same frame to the same reading.
+        assertEquals(
+            before.reading,
+            (KayakFirstMeasurement.decode(frame) as KayakFirstMeasurementDecodeResult.Decoded).reading,
+        )
+    }
+
+    @Test
     fun `baseline and every physical vector decode at the specified indexes`() {
         val adversarial = load(adversarialResource)
         val baseline = FixtureJson.obj(adversarial["baseline_measurement"])

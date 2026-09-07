@@ -30,14 +30,10 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FtmsMoc
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstSimulatorCommand
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstSimulatorCommandAssembler
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstSimulatorInput
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstSimulatorScenario
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstOrangeSimulatorProtocol
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstScenarioRenderer
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstSimulatorTelemetryEncoder
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KayakFirstTelemetryMode
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.kayakFirstGenerationState
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.kayakFirstCapturedPoll
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -55,14 +51,10 @@ internal class KayakFirstPeripheralController(
         val advertisedName: String? = null,
         val setupStage: String = "waiting",
         val lastCommand: String? = null,
-        val telemetryMode: KayakFirstTelemetryMode = KayakFirstTelemetryMode.GENERATED_WORKOUT,
-        val scenario: KayakFirstSimulatorScenario = KayakFirstSimulatorScenario.HAPPY_PATH,
         val displayConfiguration: KayakFirstDisplayConfiguration = KayakFirstDisplayConfiguration.DEFAULT,
         val pollRequests: Long = 0,
         val completeRecords: Long = 0,
-        val shortRecords: Long = 0,
         val malformedCommands: Long = 0,
-        val missingResponses: Long = 0,
         val queuedFragments: Int = 0,
         val droppedRecords: Long = 0,
         val packetsSent: Long = 0,
@@ -79,16 +71,11 @@ internal class KayakFirstPeripheralController(
         var boatWeightKg = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG.toDouble()
         var display = KayakFirstDisplayConfiguration.DEFAULT
         var running = false
-        var replayCursor = 0
         var lastGeneratedEventKey: Long? = null
         var polls = 0L
         var orangeSequence = 0L
         /** Monotonic instant of the last accepted Orange RESET; the stroke counter's origin. */
         var orangeResetAtMs: Long = 0L
-        /** First stroke-counter value of the run; FROZEN_METRICS holds every response at it. */
-        var orangeFrozenSequence: Long? = null
-        var frozenFrame: ByteArray? = null
-        val delayed = mutableListOf<Runnable>()
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -99,8 +86,6 @@ internal class KayakFirstPeripheralController(
     private var advertiseCallback: AdvertiseCallback? = null
     private var startResult: ((Result<Unit>) -> Unit)? = null
     private var latestSample: FtmsMockSample? = null
-    private var desiredMode = KayakFirstTelemetryMode.GENERATED_WORKOUT
-    private var desiredScenario = KayakFirstSimulatorScenario.HAPPY_PATH
     private var activePersona: SimulatorPersona = SimulatorPersona.KayakFirstBlue
     private var status = Status()
     @Volatile var isAdvertising = false
@@ -132,13 +117,6 @@ internal class KayakFirstPeripheralController(
 
     fun publish(sample: FtmsMockSample) { latestSample = sample }
 
-    fun configure(mode: KayakFirstTelemetryMode, scenario: KayakFirstSimulatorScenario) {
-        desiredMode = mode
-        desiredScenario = scenario
-        status = status.copy(telemetryMode = mode, scenario = scenario)
-        publishStatus()
-    }
-
     @SuppressLint("MissingPermission")
     fun start(persona: SimulatorPersona, onResult: (Result<Unit>) -> Unit) {
         require(
@@ -153,11 +131,7 @@ internal class KayakFirstPeripheralController(
             publishStatus(); onResult(Result.failure(error)); return
         }
         stopResources(restoreName = false)
-        status = Status(
-            advertisedName = persona.advertisedName,
-            telemetryMode = desiredMode,
-            scenario = desiredScenario,
-        )
+        status = Status(advertisedName = persona.advertisedName)
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = manager?.adapter
         if (manager == null || adapter == null || !adapter.isEnabled) {
@@ -196,7 +170,6 @@ internal class KayakFirstPeripheralController(
         advertiseCallback = null
         isAdvertising = false
         clients.values.forEach { client ->
-            client.delayed.forEach(main::removeCallbacks)
             client.assembler.reset(); client.queue.clear()
             runCatching { server?.cancelConnection(client.device) }
         }
@@ -225,10 +198,7 @@ internal class KayakFirstPeripheralController(
                 }
             }
             if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                clients.remove(key)?.also {
-                    it.delayed.forEach(main::removeCallbacks)
-                    it.assembler.reset(); it.queue.clear()
-                }
+                clients.remove(key)?.also { it.assembler.reset(); it.queue.clear() }
                 if (advertisingGate.onDisconnected(key) == ConnectableAdvertisingGate.Action.RESUME) {
                     resumeAdvertising(callbackEpoch)
                 }
@@ -315,9 +285,7 @@ internal class KayakFirstPeripheralController(
             KayakFirstSimulatorCommand.Reset -> {
                 client.setupStage = "reset"; client.running = false
                 client.lastGeneratedEventKey = null
-                if (status.scenario == KayakFirstSimulatorScenario.BINARY_RESET_RESPONSE) {
-                    enqueueRecord(client, byteArrayOf(1))
-                } else enqueueLine(client, "1;1\r\n")
+                enqueueLine(client, "1;1\r\n")
             }
             is KayakFirstSimulatorCommand.Handshake -> {
                 // A console answers under the token it was addressed with, so a command-21
@@ -345,41 +313,11 @@ internal class KayakFirstPeripheralController(
             KayakFirstSimulatorCommand.Poll -> {
                 client.polls++
                 status = status.copy(pollRequests = status.pollRequests + 1)
-                if (status.scenario == KayakFirstSimulatorScenario.MISSING_RESPONSE) {
-                    status = status.copy(missingResponses = status.missingResponses + 1)
-                    return
-                }
-                if (status.scenario == KayakFirstSimulatorScenario.SHORT_RESPONSE) {
-                    status = status.copy(shortRecords = status.shortRecords + 1)
-                    enqueueLine(client, "6;1\r\n"); return
-                }
-                var frame = if (status.telemetryMode == KayakFirstTelemetryMode.CAPTURED_REPLAY) {
-                    val replay = kayakFirstCapturedPoll(
-                        cursor = client.replayCursor,
-                        running = client.running,
-                        elapsedSeconds = latestSample?.elapsedSeconds ?: 0,
-                    )
-                    client.replayCursor = replay.nextCursor
-                    replay.frame
-                } else {
-                    val sample = latestSample ?: return
-                    val eventKey = sample.movementCount?.toLong() ?: sample.elapsedSeconds.toLong()
-                    val fresh = client.running && client.lastGeneratedEventKey != eventKey
-                    if (fresh) client.lastGeneratedEventKey = eventKey
-                    KayakFirstSimulatorTelemetryEncoder.generated(sample, client.running, fresh)
-                }
-                if (status.scenario == KayakFirstSimulatorScenario.FROZEN_METRICS) {
-                    frame = client.frozenFrame?.copyOf() ?: frame.also { client.frozenFrame = it.copyOf() }
-                }
-                frame = KayakFirstScenarioRenderer.render(status.scenario, frame)
-                if (status.scenario == KayakFirstSimulatorScenario.DELAYED_RESPONSE) {
-                    val task = Runnable {
-                        if (clients[client.device.address.lowercase()] === client) enqueueRecord(client, frame)
-                    }
-                    client.delayed += task
-                    main.postDelayed(task, DELAYED_RESPONSE_MS)
-                    return
-                }
+                val sample = latestSample ?: return
+                val eventKey = sample.movementCount?.toLong() ?: sample.elapsedSeconds.toLong()
+                val fresh = client.running && client.lastGeneratedEventKey != eventKey
+                if (fresh) client.lastGeneratedEventKey = eventKey
+                val frame = KayakFirstSimulatorTelemetryEncoder.generated(sample, client.running, fresh)
                 if (enqueueRecord(client, frame)) status = status.copy(completeRecords = status.completeRecords + 1)
             }
         }
@@ -390,29 +328,18 @@ internal class KayakFirstPeripheralController(
         command: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeCommand,
     ) {
         status = status.copy(lastCommand = command.name.lowercase())
-        if (status.scenario == KayakFirstSimulatorScenario.MISSING_RESPONSE) {
-            // Silence covers RESET too: the central's bounded reset timeout must advance to
-            // command 1 without ever claiming an acknowledgement it did not receive.
-            status = status.copy(missingResponses = status.missingResponses + 1)
-            return
-        }
         if (command == com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeCommand.RESET) {
             client.orangeSequence = 0L
             client.orangeResetAtMs = SystemClock.elapsedRealtime()
-            client.orangeFrozenSequence = null
             client.setupStage = "reset"
             enqueueRecord(client, KayakFirstOrangeSimulatorProtocol.resetResponse())
             return
         }
         val sample = latestSample
-        val tuple = if (status.telemetryMode == KayakFirstTelemetryMode.CAPTURED_REPLAY) {
-            KayakFirstOrangeSimulatorProtocol.capturedTuple()
-        } else {
-            KayakFirstOrangeSimulatorProtocol.dynamicTuple(
-                powerWatts = sample?.powerWatts?.toDouble() ?: 0.0,
-                cadenceSpm = sample?.cadence?.takeIf { it > 0.0 } ?: 60.0,
-            ) ?: return
-        }
+        val tuple = KayakFirstOrangeSimulatorProtocol.dynamicTuple(
+            powerWatts = sample?.powerWatts?.toDouble() ?: 0.0,
+            cadenceSpm = sample?.cadence?.takeIf { it > 0.0 } ?: 60.0,
+        ) ?: return
         val timing = KayakFirstOrangeSimulatorProtocol.timingMicroseconds(
             command,
             tuple,
@@ -422,42 +349,15 @@ internal class KayakFirstPeripheralController(
         // inside one stroke period share a value, and values are skipped when a stroke completes
         // between polls. See KayakFirstOrangeSimulatorProtocol.sequenceFor.
         if (client.orangeResetAtMs == 0L) client.orangeResetAtMs = SystemClock.elapsedRealtime()
-        client.orangeSequence = KayakFirstOrangeSimulatorProtocol.sequenceFor(
+        val sequence = KayakFirstOrangeSimulatorProtocol.sequenceFor(
             tuple,
             SystemClock.elapsedRealtime() - client.orangeResetAtMs,
-        )
-        if (client.orangeFrozenSequence == null) client.orangeFrozenSequence = client.orangeSequence
-        val sequence = KayakFirstOrangeSimulatorProtocol.scenarioSequence(
-            status.scenario,
-            client.orangeSequence,
-            client.orangeFrozenSequence,
         )
         client.orangeSequence = sequence
         client.setupStage = "ready"
         client.polls += 1L
         status = status.copy(pollRequests = status.pollRequests + 1)
-        val record = KayakFirstOrangeSimulatorProtocol.renderResponse(
-            status.scenario,
-            command,
-            sequence,
-            timing,
-        ) ?: run {
-            status = status.copy(missingResponses = status.missingResponses + 1)
-            return
-        }
-        if (status.scenario == KayakFirstSimulatorScenario.SHORT_RESPONSE) {
-            status = status.copy(shortRecords = status.shortRecords + 1)
-        }
-        if (status.scenario == KayakFirstSimulatorScenario.DELAYED_RESPONSE) {
-            val task = Runnable {
-                if (clients[client.device.address.lowercase()] === client) {
-                    enqueueRecord(client, record)
-                }
-            }
-            client.delayed += task
-            main.postDelayed(task, DELAYED_RESPONSE_MS)
-            return
-        }
+        val record = KayakFirstOrangeSimulatorProtocol.response(command, sequence, timing)
         if (enqueueRecord(client, record)) {
             status = status.copy(completeRecords = status.completeRecords + 1)
         }
@@ -467,11 +367,11 @@ internal class KayakFirstPeripheralController(
 
     private fun enqueueRecord(client: Client, record: ByteArray): Boolean {
         if (!client.subscribed) return false
-        val fragments = when (status.scenario) {
-            KayakFirstSimulatorScenario.CAPTURED_FRAGMENTATION -> record.asList().chunked(20).map { it.toByteArray() }
-            KayakFirstSimulatorScenario.CRLF_SPLIT -> if (record.size >= 2) listOf(record.copyOf(record.size - 1), record.copyOfRange(record.size - 1, record.size)) else listOf(record)
-            else -> record.asList().chunked(20).map { it.toByteArray() }
-        }
+        // Real consoles never put a whole record in one notification; they fill the 20-byte
+        // ATT payload and continue in the next. This is wire behavior, not a fault mode, so it
+        // is unconditional — and when a record's CR LF straddles a boundary it reproduces the
+        // split-delimiter framing the central's assembler has to tolerate.
+        val fragments = record.asList().chunked(20).map { it.toByteArray() }
         synchronized(client) {
             if (client.queue.size + fragments.size > MAX_QUEUED_FRAGMENTS) {
                 status = status.copy(droppedRecords = status.droppedRecords + 1)
@@ -596,7 +496,6 @@ internal class KayakFirstPeripheralController(
 
     companion object {
         private const val MAX_QUEUED_FRAGMENTS = 16
-        private const val DELAYED_RESPONSE_MS = 1_500L
         private const val PREFS = "com.gmail.absolutebollockscreations.Fitbridge.peripheral"
         private const val KEY_ORIGINAL_NAME = "original_adapter_name"
     }

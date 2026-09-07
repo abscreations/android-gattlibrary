@@ -11,6 +11,12 @@ import kotlin.math.roundToLong
 
 internal object KayakFirstOrangeSimulatorProtocol {
     const val ADVERTISED_NAME = "17100001"
+
+    /**
+     * The one captured hardware tuple, kept as the generator's calibration point rather than as
+     * replayable data: T_MAX is used verbatim, and T_H/T_V set the pull fraction every generated
+     * tuple is shaped by. Deleting these would leave nothing to calibrate generation against.
+     */
     const val CAPTURED_T_MIN_US = 65_008L
     const val CAPTURED_T_H_US = 335_046L
     const val CAPTURED_T_MAX_US = 70_009L
@@ -23,6 +29,7 @@ internal object KayakFirstOrangeSimulatorProtocol {
         return KayakFirstOrangeCommand.entries.firstOrNull { it.wire == value[0] }
     }
 
+    /** The calibration tuple itself, as a reference vector. Not a replay mode. */
     fun capturedTuple(): KayakFirstOrangeTimingTuple = KayakFirstOrangeTimingTuple(
         tMinSeconds = CAPTURED_T_MIN_US / 1_000_000.0,
         tHSeconds = CAPTURED_T_H_US / 1_000_000.0,
@@ -94,92 +101,6 @@ internal object KayakFirstOrangeSimulatorProtocol {
     }
 
     fun resetResponse(): ByteArray = "OK\n".toByteArray(Charsets.US_ASCII)
-
-    /**
-     * Fault scenarios that mean something on the Orange wire.
-     *
-     * Orange is LF-delimited three-line triples with no command 6, no display configuration and no
-     * binary reset acknowledgement, so the Blue-only faults are deliberately absent rather than
-     * silently rendered as a happy path.
-     */
-    val SUPPORTED_SCENARIOS: List<KayakFirstSimulatorScenario> = listOf(
-        KayakFirstSimulatorScenario.HAPPY_PATH,
-        KayakFirstSimulatorScenario.CAPTURED_FRAGMENTATION,
-        KayakFirstSimulatorScenario.CRLF_SPLIT,
-        KayakFirstSimulatorScenario.SHORT_RESPONSE,
-        KayakFirstSimulatorScenario.MALFORMED_UTF8,
-        KayakFirstSimulatorScenario.NUL_BYTE,
-        KayakFirstSimulatorScenario.EMPTY_LINE,
-        KayakFirstSimulatorScenario.OVERLONG_LINE,
-        KayakFirstSimulatorScenario.DELAYED_RESPONSE,
-        KayakFirstSimulatorScenario.MISSING_RESPONSE,
-        KayakFirstSimulatorScenario.FROZEN_METRICS,
-        KayakFirstSimulatorScenario.RESET_METRICS,
-        KayakFirstSimulatorScenario.IMPLAUSIBLE_METRICS,
-        KayakFirstSimulatorScenario.BACKPRESSURE,
-    )
-
-    fun supports(scenario: KayakFirstSimulatorScenario): Boolean = scenario in SUPPORTED_SCENARIOS
-
-    /**
-     * Counter faults: the bytes stay well formed and the *sequence* is what misbehaves.
-     *
-     * FROZEN_METRICS holds the stroke counter still, so the central sees a repeating tuple and must
-     * suppress it downstream. RESET_METRICS drives it back to zero, which is the regression the
-     * session must reject outright — the one sequence fault the transcript proves is not normal.
-     */
-    fun scenarioSequence(
-        scenario: KayakFirstSimulatorScenario,
-        naturalSequence: Long,
-        frozenSequence: Long?,
-    ): Long = when (scenario) {
-        KayakFirstSimulatorScenario.FROZEN_METRICS -> frozenSequence ?: naturalSequence
-        KayakFirstSimulatorScenario.RESET_METRICS -> 0L
-        else -> naturalSequence
-    }
-
-    /**
-     * Byte-level faults. Returns null when the scenario is "answer nothing at all".
-     *
-     * Each fault targets one documented rule of the Orange framing or numeric grammar so a central
-     * regression names the rule it broke.
-     */
-    fun renderResponse(
-        scenario: KayakFirstSimulatorScenario,
-        command: KayakFirstOrangeCommand,
-        sequence: Long,
-        timingMicroseconds: Long,
-    ): ByteArray? {
-        val commandLine = command.wire.toInt().toChar()
-        val sequenceLine = sequence.toString().padStart(SEQUENCE_DIGITS, '0')
-        val timingLine = timingMicroseconds.toString().padStart(TIMING_DIGITS, '0')
-        return when (scenario) {
-            KayakFirstSimulatorScenario.MISSING_RESPONSE -> null
-            // Truncated triple: the assembler must hold the partial response, not emit it.
-            KayakFirstSimulatorScenario.SHORT_RESPONSE ->
-                "$commandLine\n$sequenceLine\n".toByteArray(Charsets.US_ASCII)
-            // Non-ASCII in a line the assembler must reject rather than decode.
-            KayakFirstSimulatorScenario.MALFORMED_UTF8 ->
-                byteArrayOf(command.wire, LF, 0xC3.toByte(), 0x28, LF) +
-                    "$timingLine\n".toByteArray(Charsets.US_ASCII)
-            KayakFirstSimulatorScenario.NUL_BYTE ->
-                byteArrayOf(command.wire, LF, 0x00, LF) +
-                    "$timingLine\n".toByteArray(Charsets.US_ASCII)
-            // A bare delimiter ahead of a well-formed triple: rejected without consuming it.
-            KayakFirstSimulatorScenario.EMPTY_LINE ->
-                "\n$commandLine\n$sequenceLine\n$timingLine\n".toByteArray(Charsets.US_ASCII)
-            KayakFirstSimulatorScenario.OVERLONG_LINE ->
-                "$commandLine\n${"9".repeat(OVERLONG_LINE_DIGITS)}\n$timingLine\n"
-                    .toByteArray(Charsets.US_ASCII)
-            // Eleven digits exceeds the ten-digit microsecond grammar.
-            KayakFirstSimulatorScenario.IMPLAUSIBLE_METRICS ->
-                "$commandLine\n$sequenceLine\n99999999999\n".toByteArray(Charsets.US_ASCII)
-            else -> response(command, sequence, timingMicroseconds)
-        }
-    }
-
-    private const val OVERLONG_LINE_DIGITS = 48
-    private val LF = '\n'.code.toByte()
 
     fun oracle(
         tuple: KayakFirstOrangeTimingTuple,
