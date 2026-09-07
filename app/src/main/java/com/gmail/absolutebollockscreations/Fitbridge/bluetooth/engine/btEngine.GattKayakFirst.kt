@@ -577,7 +577,9 @@ internal class KayakFirstProtocolHandler(
                 quality = sample.quality,
             )
         }
-        energyEstimator.sample(elapsed.toLong(), physics.powerWatts).let { estimate ->
+        // The weight is what this tuple represents, not the cumulative session clock: passing
+        // `elapsed` here integrated power against the whole session on every frame.
+        energyEstimator.sample(reading.representedSeconds, physics.powerWatts).let { estimate ->
             kayakFirstEstimatedEnergySamples(estimate).forEach { sample ->
                 emitter.emit(
                     metric = sample.metric,

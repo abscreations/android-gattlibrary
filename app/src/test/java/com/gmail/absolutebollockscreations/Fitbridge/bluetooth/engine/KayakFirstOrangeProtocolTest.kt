@@ -180,6 +180,54 @@ class KayakFirstOrangeProtocolTest {
     }
 
     @Test
+    fun `orange tuples represent the interval since the previous tuple not the session clock`() {
+        val session = KayakFirstOrangeSession { 80.0 }
+        session.onResponse(KayakFirstOrangeResponse.ResetOk, 0L)
+        fun response(command: KayakFirstOrangeCommand, sequence: Long, timing: Long) =
+            KayakFirstOrangeResponse.Timing(
+                KayakFirstOrangeTimingResponse(command, sequence, timing),
+            )
+        fun tuple(base: Long, at: Long): KayakFirstOrangeReading? {
+            session.onResponse(response(KayakFirstOrangeCommand.T_MIN, base, 65_008), at)
+            session.onResponse(response(KayakFirstOrangeCommand.T_H, base + 1, 335_046), at)
+            session.onResponse(response(KayakFirstOrangeCommand.T_MAX, base + 2, 70_009), at)
+            return session.onResponse(response(KayakFirstOrangeCommand.T_V, base + 3, 340_048), at).second
+        }
+        // The first tuple has no previous instant to measure from, so it represents nothing.
+        assertEquals(0.0, requireNotNull(tuple(1, 1_000)).representedSeconds, 0.0)
+        assertEquals(1.0, requireNotNull(tuple(5, 2_000)).representedSeconds, 1e-9)
+        // A missed poll represents the real gap, not one nominal period.
+        val third = requireNotNull(tuple(9, 4_500))
+        assertEquals(2.5, third.representedSeconds, 1e-9)
+        // ...and never the cumulative clock, which is what energy was previously weighted by.
+        assertEquals(3.5, third.elapsedSeconds, 1e-9)
+
+        // Energy must integrate the represented interval. Weighting by the cumulative clock, as
+        // the handler previously did, integrates power against the whole session on every frame
+        // and grows the total without bound. Minutes rather than seconds here so the comparison
+        // survives the estimator's kcal rounding.
+        val power = third.physics.powerWatts
+        val frames = listOf(0.0 to 0.0, 600.0 to 600.0, 900.0 to 1_500.0)
+        val correct = KayakFirstEnergyEstimator()
+        val defective = KayakFirstEnergyEstimator()
+        var byRepresented = 0.0
+        var byElapsed = 0.0
+        frames.forEach { (represented, elapsed) ->
+            byRepresented = correct.sample(represented, power).totalKilocalories
+            byElapsed = defective.sample(elapsed, power).totalKilocalories
+        }
+        assertEquals(
+            kotlin.math.round(
+                power * 1_500.0 / (KayakFirstEnergyEstimator.JOULES_PER_KILOCALORIE *
+                    KayakFirstEnergyEstimator.METABOLIC_EFFICIENCY),
+            ),
+            byRepresented,
+            0.0,
+        )
+        assertTrue(byElapsed > byRepresented)
+    }
+
+    @Test
     fun `silent reset can advance once without fabricating an acknowledgement`() {
         val session = KayakFirstOrangeSession { 80.0 }
         assertEquals(KayakFirstOrangeCommand.T_MIN, session.assumeResetComplete())

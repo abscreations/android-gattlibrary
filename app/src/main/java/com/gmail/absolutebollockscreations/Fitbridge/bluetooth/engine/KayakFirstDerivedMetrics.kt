@@ -170,23 +170,31 @@ internal class KayakFirstActivityGate(
 internal class KayakFirstAveragePowerAccumulator {
     private var previousPowerWatts = 0.0
     private var workWattSeconds = 0.0
-    private var activeSeconds = 0L
+    private var activeSeconds = 0.0
 
-    fun sample(representedSeconds: Long, powerWatts: Double, active: Boolean = true): Double {
-        require(representedSeconds >= 0L)
+    /**
+     * Seconds are a [Double] because not every KayakFirst persona has an integer window: Blue
+     * resolves whole seconds from fields 22/23, while Orange has no window field at all and its
+     * central integrates over the real interval between accepted tuples.
+     */
+    fun sample(representedSeconds: Double, powerWatts: Double, active: Boolean = true): Double {
+        require(representedSeconds.isFinite() && representedSeconds >= 0.0)
         require(powerWatts.isFinite() && powerWatts >= 0.0)
-        if (active && representedSeconds > 0L) {
+        if (active && representedSeconds > 0.0) {
             workWattSeconds += (previousPowerWatts + powerWatts) * 0.5 * representedSeconds
             activeSeconds += representedSeconds
         }
         previousPowerWatts = if (active) powerWatts else 0.0
-        return if (activeSeconds == 0L) powerWatts else workWattSeconds / activeSeconds
+        return if (activeSeconds <= 0.0) powerWatts else workWattSeconds / activeSeconds
     }
+
+    fun sample(representedSeconds: Long, powerWatts: Double, active: Boolean = true): Double =
+        sample(representedSeconds.toDouble(), powerWatts, active)
 
     fun reset() {
         previousPowerWatts = 0.0
         workWattSeconds = 0.0
-        activeSeconds = 0L
+        activeSeconds = 0.0
     }
 }
 
@@ -205,10 +213,21 @@ internal class KayakFirstEnergyEstimator {
         representedSeconds: Long,
         powerWatts: Double,
         active: Boolean = true,
+    ): KayakFirstEnergyEstimate = sample(representedSeconds.toDouble(), powerWatts, active)
+
+    /**
+     * The weight is the duration this frame represents, never the cumulative session clock.
+     * Passing elapsed time here integrates power against the whole session on every frame and
+     * grows energy quadratically.
+     */
+    fun sample(
+        representedSeconds: Double,
+        powerWatts: Double,
+        active: Boolean = true,
     ): KayakFirstEnergyEstimate {
-        require(representedSeconds >= 0L)
+        require(representedSeconds.isFinite() && representedSeconds >= 0.0)
         require(powerWatts.isFinite() && powerWatts >= 0.0)
-        if (active && representedSeconds > 0L) {
+        if (active && representedSeconds > 0.0) {
             val averagePowerWatts = (previousPowerWatts + powerWatts) * 0.5
             energyKilocalories += averagePowerWatts * representedSeconds /
                 (JOULES_PER_KILOCALORIE * METABOLIC_EFFICIENCY)

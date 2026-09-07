@@ -24,15 +24,38 @@ class KayakFirstDerivedMetricsTest {
     fun `average power is protocol time weighted and resettable`() {
         val average = KayakFirstAveragePowerAccumulator()
         // The weight is the represented window, not the frame count.
-        assertEquals(0.0, average.sample(0, 0.0), 0.0)
-        assertEquals(50.0, average.sample(10, 100.0), 1e-9)
-        assertEquals(75.0, average.sample(10, 100.0), 1e-9)
+        assertEquals(0.0, average.sample(0L, 0.0), 0.0)
+        assertEquals(50.0, average.sample(10L, 100.0), 1e-9)
+        assertEquals(75.0, average.sample(10L, 100.0), 1e-9)
         // A duplicate covering zero seconds must not move the average.
-        assertEquals(75.0, average.sample(0, 500.0), 1e-9)
+        assertEquals(75.0, average.sample(0L, 500.0), 1e-9)
         // Inactive time is excluded, so a pause cannot drag the average down.
-        assertEquals(75.0, average.sample(60, 0.0, active = false), 1e-9)
+        assertEquals(75.0, average.sample(60L, 0.0, active = false), 1e-9)
         average.reset()
-        assertEquals(200.0, average.sample(0, 200.0), 0.0)
+        assertEquals(200.0, average.sample(0L, 200.0), 0.0)
+    }
+
+    @Test
+    fun `time weighting accepts fractional seconds for personas without a window field`() {
+        // Orange declares no coverage window; its central weights by the real interval between
+        // accepted tuples, which is not a whole number of seconds.
+        val average = KayakFirstAveragePowerAccumulator()
+        assertEquals(0.0, average.sample(0.0, 0.0), 0.0)
+        assertEquals(50.0, average.sample(2.5, 100.0), 1e-9)
+        // A second fractional frame at the same power: 375 W.s over 5.0 s.
+        assertEquals(75.0, average.sample(2.5, 100.0), 1e-9)
+
+        val estimator = KayakFirstEnergyEstimator()
+        assertEquals(0.0, estimator.sample(0.0, 100.0).totalKilocalories, 0.0)
+        val quarterMinute = estimator.sample(15.5, 100.0)
+        assertEquals(
+            kotlin.math.round(
+                100.0 * 15.5 / (KayakFirstEnergyEstimator.JOULES_PER_KILOCALORIE *
+                    KayakFirstEnergyEstimator.METABOLIC_EFFICIENCY),
+            ),
+            quarterMinute.totalKilocalories,
+            0.0,
+        )
     }
 
     @Test
@@ -46,21 +69,21 @@ class KayakFirstDerivedMetricsTest {
     @Test
     fun `energy integrates protocol time pauses and resets`() {
         val estimator = KayakFirstEnergyEstimator()
-        val start = estimator.sample(0, 100.0)
+        val start = estimator.sample(0L, 100.0)
         assertEquals(0.0, start.totalKilocalories, 0.0)
         assertTrue(start.kilocaloriesPerHour in 374.0..375.0)
 
-        val tenSeconds = estimator.sample(10, 100.0)
+        val tenSeconds = estimator.sample(10L, 100.0)
         assertEquals(1.0, tenSeconds.totalKilocalories, 0.0)
         // A zero-coverage repeat integrates nothing.
-        val held = estimator.sample(0, 100.0)
+        val held = estimator.sample(0L, 100.0)
         assertEquals(tenSeconds.totalKilocalories, held.totalKilocalories, 0.0)
-        assertEquals(2.0, estimator.sample(10, 100.0).totalKilocalories, 0.0)
+        assertEquals(2.0, estimator.sample(10L, 100.0).totalKilocalories, 0.0)
         // Paused seconds are not integrated.
-        assertEquals(2.0, estimator.sample(60, 100.0, active = false).totalKilocalories, 0.0)
+        assertEquals(2.0, estimator.sample(60L, 100.0, active = false).totalKilocalories, 0.0)
 
         estimator.reset()
-        assertEquals(0.0, estimator.sample(0, 200.0).totalKilocalories, 0.0)
+        assertEquals(0.0, estimator.sample(0L, 200.0).totalKilocalories, 0.0)
     }
 
     @Test

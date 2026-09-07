@@ -210,6 +210,16 @@ internal object KayakFirstOrangePhysics {
 internal data class KayakFirstOrangeReading(
     val sequence: Long,
     val elapsedSeconds: Double,
+    /**
+     * Seconds this tuple represents, not the cumulative clock.
+     *
+     * Orange has no coverage field: the timing protocol reports one flywheel stroke period per
+     * command and says nothing about how much time a tuple covers, so the represented duration is
+     * the real interval since the previous accepted tuple, which is also the basis this session
+     * already integrates distance, strokes and work on. The first tuple of a session represents
+     * nothing, because there is no previous instant to measure from.
+     */
+    val representedSeconds: Double,
     val distanceMetres: Double,
     val strokeCount: Double,
     val averagePowerWatts: Double,
@@ -285,9 +295,11 @@ internal class KayakFirstOrangeSession(
             ),
             athleteWeightKg(),
         ) ?: return expected to null
+        var representedSeconds = 0.0
         lastReadingAtMs?.let { previous ->
             if (nowMs > previous) {
                 val dt = (nowMs - previous) / 1_000.0
+                representedSeconds = dt
                 distanceMetres += physics.speedMetresPerSecond * dt
                 strokeCount += physics.strokeRateSpm * dt / 60.0
                 workWattSeconds += physics.powerWatts * dt
@@ -298,6 +310,7 @@ internal class KayakFirstOrangeSession(
         return expected to KayakFirstOrangeReading(
             sequence = key.maxOrNull() ?: 0L,
             elapsedSeconds = elapsedSeconds,
+            representedSeconds = representedSeconds,
             distanceMetres = distanceMetres,
             strokeCount = strokeCount,
             averagePowerWatts = if (elapsedSeconds > 0.0) workWattSeconds / elapsedSeconds else physics.powerWatts,
