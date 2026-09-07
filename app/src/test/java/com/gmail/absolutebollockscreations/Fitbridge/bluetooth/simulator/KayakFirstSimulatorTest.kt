@@ -376,6 +376,12 @@ class KayakFirstSimulatorTest {
         assertEquals(67L, reading.instantaneous200mPaceSeconds)
         assertEquals(167L, reading.instantaneous500mPaceSeconds)
         assertEquals(333L, reading.instantaneous1000mPaceSeconds)
+        // Force must be a whole newton on the wire. Consoles emit integer force, and a client that
+        // types fields 20/21 as integers drops any frame carrying a decimal point — which is how a
+        // real KayakFit session failed while FitBridge's own decimal-tolerant parser accepted it.
+        val wire = frame.toString(Charsets.UTF_8).trim().split(';')
+        assertFalse("avg force ${wire[20]}", wire[20].contains('.'))
+        assertFalse("force ${wire[21]}", wire[21].contains('.'))
         // Force is inverted from the snapshot's watts through the same relation the central uses,
         // so decoding it back reproduces the snapshot power rather than a second force model.
         assertEquals(

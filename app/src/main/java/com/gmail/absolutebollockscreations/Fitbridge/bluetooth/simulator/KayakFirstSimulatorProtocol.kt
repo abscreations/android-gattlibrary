@@ -210,13 +210,21 @@ internal object KayakFirstSimulatorTelemetryEncoder {
         return (fields.joinToString(";") + "\r\n").toByteArray(Charsets.UTF_8)
     }
 
-    /** Inverts `P = F x L x cadence / 60` so generated force stays consistent with generated power. */
+    /**
+     * Inverts `P = F x L x cadence / 60` so generated force stays consistent with generated power.
+     *
+     * The result is a whole newton because that is what consoles put on the wire: every captured
+     * command-6 frame carries integer force, and the shipping KayakFit client types fields 20/21
+     * as integers and drops any frame whose force contains a decimal point. Emitting `"%.2f"` here
+     * made that client reject five consecutive packets and time out, while FitBridge's own
+     * decimal-tolerant parser accepted them — a divergence only a second client could find.
+     */
     private fun forceNewtons(powerWatts: Int?, cadenceSpm: Double?): String {
         val watts = (powerWatts ?: 0).coerceAtLeast(0).toDouble()
         val cadence = (cadenceSpm ?: 0.0).coerceAtLeast(0.0)
         if (watts <= 0.0 || cadence <= 0.0) return "0"
         val force = watts * 60.0 / (KayakFirstDerivedMetrics.DEFAULT_PULL_LENGTH_M * cadence)
-        return "%.2f".format(Locale.US, force)
+        return force.roundToInt().coerceAtLeast(0).toString()
     }
 
     val capturedFrames: List<ByteArray> = listOf(
