@@ -268,7 +268,7 @@ class KayakFirstMeasurementTest {
         assertEquals(FixtureJson.double(expected["speed_mps"]), reading.speedMetresPerSecond, 1e-9)
         assertEquals(FixtureJson.double(expected["speed_kmh"]), reading.speedKph, 1e-9)
         assertEquals(FixtureJson.int(expected["cadence_spm"]), reading.cadenceSpm)
-        assertEquals(FixtureJson.int(expected["power_watts"]).toDouble(), reading.forceNewtons, 0.0)
+        assertEquals(FixtureJson.int(expected["force_newtons"]).toDouble(), reading.forceNewtons, 0.0)
         assertEquals(FixtureJson.int(expected["elapsed_seconds"]).toLong(), reading.elapsedSeconds)
     }
 

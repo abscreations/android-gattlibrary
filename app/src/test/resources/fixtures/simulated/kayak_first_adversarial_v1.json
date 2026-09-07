@@ -3,8 +3,9 @@
   "family": "kayak-first-paddle",
   "corpus_kind": "fitbridge-authored-language-neutral-adversarial-oracle",
   "authored": "2026-09-04",
-  "corpus_revision": 2,
+  "corpus_revision": 3,
   "revision_history": [
+    "Revision 3 renames the command-6 field-21 expectation key from power_watts to force_newtons. Field 21 is instantaneous pull force in newtons, never power; the old key encoded the superseded mapping that Phase 1 was supposed to remove everywhere, and it survived in this corpus and in the hardware corpus after production code had been corrected. No value changed - only the label. Found by the section 22.5 phase audit.",
     "Revision 2 distinguishes the zero-field empty line as reject-empty-line while retaining reject-too-few-fields for counts 1 through 23. Revision 1 called all 0 through 23 too-few despite its own stream case and wire specification giving empty lines a distinct rejection. This correction was made during Phase 8.3 before production parser verification; no captured or decoded metric expectation changed."
   ],
   "normative_source": "docs/kayak-first-wire-protocol-spec.md",
@@ -29,7 +30,7 @@
       "distance_m": 9,
       "speed_mps": 11,
       "cadence_spm": 13,
-      "power_watts": 21,
+      "force_newtons": 21,
       "elapsed_seconds": 22
     },
     "decimal_field_indexes": [9, 11],
@@ -54,7 +55,7 @@
       "speed_mps": 3.36,
       "speed_kmh": 12.096,
       "cadence_spm": 99,
-      "power_watts": 103,
+      "force_newtons": 103,
       "elapsed_seconds": 69
     }
   },

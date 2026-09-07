@@ -140,7 +140,7 @@ class KayakFirstHardwareCorpusTest {
         assertEquals(152, expected.maxOf { FixtureJson.int(it["distance_m"]) })
         assertEquals(3.36, expected.maxOf { FixtureJson.double(it["speed_mps"]) }, 1e-9)
         assertEquals(99, expected.maxOf { FixtureJson.int(it["cadence_spm"]) })
-        assertEquals(103, expected.maxOf { FixtureJson.int(it["power_watts"]) })
+        assertEquals(103, expected.maxOf { FixtureJson.int(it["force_newtons"]) })
         assertEquals(69, expected.maxOf { FixtureJson.int(it["elapsed_seconds"]) })
         assertEquals(setOf(1, 2, 3), cases.mapTo(linkedSetOf()) { FixtureJson.int(it["session"]) })
     }
@@ -173,7 +173,7 @@ class KayakFirstHardwareCorpusTest {
         assertEquals(FixtureJson.double(expected["speed_mps"]), fields[11].toDouble(), 1e-9)
         assertEquals(FixtureJson.double(expected["speed_kmh"]), fields[11].toDouble() * 3.6, 1e-9)
         assertEquals(FixtureJson.int(expected["cadence_spm"]), fields[13].toInt())
-        assertEquals(FixtureJson.int(expected["power_watts"]), fields[21].toInt())
+        assertEquals(FixtureJson.int(expected["force_newtons"]), fields[21].toInt())
         assertEquals(FixtureJson.int(expected["elapsed_seconds"]), fields[22].toInt())
     }
 

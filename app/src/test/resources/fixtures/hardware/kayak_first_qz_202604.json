@@ -1,5 +1,8 @@
 {
   "schema_version": 1,
+  "label_corrections": [
+    "2026-09-07: the command-6 field-21 expectation key was renamed from power_watts to force_newtons, and max_power_watts to max_force_newtons. Field 21 is instantaneous pull force in newtons, never power. No captured value changed - only the label, which still encoded the superseded mapping after production code had been corrected. Found by the section 22.5 phase audit."
+  ],
   "family": "kayak-first-paddle",
   "acquisition": "sanitized-user-submitted-qz-application-debug-logs",
   "extracted": "2026-09-04",
@@ -245,7 +248,7 @@
         "speed_mps": 0.0,
         "speed_kmh": 0.0,
         "cadence_spm": 0,
-        "power_watts": 0,
+        "force_newtons": 0,
         "elapsed_seconds": 0
       }
     },
@@ -266,7 +269,7 @@
         "speed_mps": 1.15,
         "speed_kmh": 4.14,
         "cadence_spm": 80,
-        "power_watts": 60,
+        "force_newtons": 60,
         "elapsed_seconds": 6
       }
     }
@@ -302,37 +305,37 @@
       "speed_mps": [0.0, 3.36],
       "speed_kmh": [0.0, 12.096],
       "cadence_spm": [0, 99],
-      "power_watts": [0, 103],
+      "force_newtons": [0, 103],
       "elapsed_seconds": [5, 69]
     },
     "workout_sessions": [
-      {"session": 1, "frames": 144, "elapsed_range": [5, 69], "max_distance_m": 152, "max_speed_mps": 3.36, "max_cadence_spm": 99, "max_power_watts": 103},
-      {"session": 2, "frames": 31, "elapsed_range": [5, 33], "max_distance_m": 50, "max_speed_mps": 3.03, "max_cadence_spm": 86, "max_power_watts": 94},
-      {"session": 3, "frames": 22, "elapsed_range": [7, 30], "max_distance_m": 37, "max_speed_mps": 3.02, "max_cadence_spm": 89, "max_power_watts": 94}
+      {"session": 1, "frames": 144, "elapsed_range": [5, 69], "max_distance_m": 152, "max_speed_mps": 3.36, "max_cadence_spm": 99, "max_force_newtons": 103},
+      {"session": 2, "frames": 31, "elapsed_range": [5, 33], "max_distance_m": 50, "max_speed_mps": 3.03, "max_cadence_spm": 86, "max_force_newtons": 94},
+      {"session": 3, "frames": 22, "elapsed_range": [7, 30], "max_distance_m": 37, "max_speed_mps": 3.02, "max_cadence_spm": 89, "max_force_newtons": 94}
     ]
   },
   "measurement_cases": [
-    {"id":"s1-start-idle","session":1,"t_ms":83392,"frame_ascii":"6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;5;5","expect":{"distance_m":0,"speed_mps":0.0,"speed_kmh":0.0,"cadence_spm":0,"power_watts":0,"elapsed_seconds":5}},
-    {"id":"s1-10s","session":1,"t_ms":88895,"frame_ascii":"6;900000010449;0;0;0;0.00;0;1;0;11;0.94;2.75;98;76;229;72;573;180;1147;360;96;82;10;1","expect":{"distance_m":11,"speed_mps":2.75,"speed_kmh":9.9,"cadence_spm":76,"power_watts":82,"elapsed_seconds":10}},
-    {"id":"s1-20s","session":1,"t_ms":98896,"frame_ascii":"6;900000020101;0;0;0;0.00;0;1;0;38;1.94;3.26;84;90;103;61;258;152;516;305;85;102;20;1","expect":{"distance_m":38,"speed_mps":3.26,"speed_kmh":11.736,"cadence_spm":90,"power_watts":102,"elapsed_seconds":20}},
-    {"id":"s1-30s","session":1,"t_ms":108897,"frame_ascii":"6;900000030430;0;0;0;0.00;0;1;0;67;2.26;2.82;86;87;88;71;220;177;441;355;86;88;30;1","expect":{"distance_m":67,"speed_mps":2.82,"speed_kmh":10.152,"cadence_spm":87,"power_watts":88,"elapsed_seconds":30}},
-    {"id":"s1-40s","session":1,"t_ms":118898,"frame_ascii":"6;900000040098;0;0;0;0.00;0;1;0;94;2.39;2.74;86;86;83;73;209;182;418;365;86;84;40;1","expect":{"distance_m":94,"speed_mps":2.74,"speed_kmh":9.864,"cadence_spm":86,"power_watts":84,"elapsed_seconds":40}},
-    {"id":"s1-50s","session":1,"t_ms":128896,"frame_ascii":"6;900000050461;0;0;0;0.00;0;1;0;123;2.47;2.88;86;86;81;69;202;172;405;345;85;89;50;1","expect":{"distance_m":123,"speed_mps":2.88,"speed_kmh":10.368,"cadence_spm":86,"power_watts":89,"elapsed_seconds":50}},
-    {"id":"s1-max-speed-power","session":1,"t_ms":133894,"frame_ascii":"6;900000055527;0;0;0;0.00;0;1;0;139;2.53;3.36;87;97;79;59;197;147;395;295;86;103;55;1","expect":{"distance_m":139,"speed_mps":3.36,"speed_kmh":12.096,"cadence_spm":97,"power_watts":103,"elapsed_seconds":55}},
-    {"id":"s1-max-cadence","session":1,"t_ms":134895,"frame_ascii":"6;900000056105;0;0;0;0.00;0;1;0;141;2.54;3.30;87;99;78;60;197;150;394;300;87;101;56;1","expect":{"distance_m":141,"speed_mps":3.3,"speed_kmh":11.88,"cadence_spm":99,"power_watts":101,"elapsed_seconds":56}},
-    {"id":"s1-max-distance","session":1,"t_ms":138896,"frame_ascii":"6;900000059855;0;0;0;0.00;0;1;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;60;1","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"power_watts":90,"elapsed_seconds":60}},
-    {"id":"s1-coast-frozen-distance","session":1,"t_ms":147895,"frame_ascii":"6;900000059855;0;0;0;0.00;0;0;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;69;1","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"power_watts":90,"elapsed_seconds":69}},
-    {"id":"s1-stopped-status-zero","session":1,"t_ms":252896,"frame_ascii":"6;900000059855;0;0;0;0.00;0;0;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;53;0","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"power_watts":90,"elapsed_seconds":53}},
-    {"id":"s2-start-idle","session":2,"t_ms":258976,"frame_ascii":"6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;5;5","expect":{"distance_m":0,"speed_mps":0.0,"speed_kmh":0.0,"cadence_spm":0,"power_watts":0,"elapsed_seconds":5}},
-    {"id":"s2-10s","session":2,"t_ms":263893,"frame_ascii":"6;900000009457;0;0;0;0.00;0;1;0;13;1.09;3.03;80;81;193;66;483;165;967;330;96;92;10;1","expect":{"distance_m":13,"speed_mps":3.03,"speed_kmh":10.908,"cadence_spm":81,"power_watts":92,"elapsed_seconds":10}},
-    {"id":"s2-20s","session":2,"t_ms":273896,"frame_ascii":"6;900000019910;0;0;0;0.00;0;1;0;39;1.96;2.54;84;86;101;78;254;195;509;390;80;74;20;1","expect":{"distance_m":39,"speed_mps":2.54,"speed_kmh":9.144,"cadence_spm":86,"power_watts":74,"elapsed_seconds":20}},
-    {"id":"s2-25s-max-distance","session":2,"t_ms":278892,"frame_ascii":"6;900000024192;0;0;0;0.00;0;1;0;50;2.07;2.51;84;83;96;80;241;200;483;400;78;73;25;1","expect":{"distance_m":50,"speed_mps":2.51,"speed_kmh":9.036,"cadence_spm":83,"power_watts":73,"elapsed_seconds":25}},
-    {"id":"s2-stopped-status-zero","session":2,"t_ms":296894,"frame_ascii":"6;900000024192;0;0;0;0.00;0;0;0;50;2.07;2.51;84;83;96;80;241;200;483;400;78;73;19;0","expect":{"distance_m":50,"speed_mps":2.51,"speed_kmh":9.036,"cadence_spm":83,"power_watts":73,"elapsed_seconds":19}},
-    {"id":"s3-first-active","session":3,"t_ms":303896,"frame_ascii":"6;900000000000;0;0;0;0.00;0;1;0;4;0.33;1.45;36;38;337;72;843;180;1686;360;37;48;7;1","expect":{"distance_m":4,"speed_mps":1.45,"speed_kmh":5.22,"cadence_spm":38,"power_watts":48,"elapsed_seconds":7}},
-    {"id":"s3-10s-max-speed-power","session":3,"t_ms":306895,"frame_ascii":"6;900000002981;0;0;0;0.00;0;1;0;13;1.12;3.02;63;76;189;66;474;165;949;330;79;94;10;1","expect":{"distance_m":13,"speed_mps":3.02,"speed_kmh":10.872,"cadence_spm":76,"power_watts":94,"elapsed_seconds":10}},
-    {"id":"s3-15s-max-cadence","session":3,"t_ms":311899,"frame_ascii":"6;900000007703;0;0;0;0.00;0;1;0;26;1.79;2.66;77;89;111;75;279;187;559;375;84;79;15;1","expect":{"distance_m":26,"speed_mps":2.66,"speed_kmh":9.576,"cadence_spm":89,"power_watts":79,"elapsed_seconds":15}},
-    {"id":"s3-19s-max-distance","session":3,"t_ms":315897,"frame_ascii":"6;900000011797;0;0;0;0.00;0;1;0;37;2.01;2.68;81;88;99;74;248;185;497;370;82;78;19;1","expect":{"distance_m":37,"speed_mps":2.68,"speed_kmh":9.648,"cadence_spm":88,"power_watts":78,"elapsed_seconds":19}},
-    {"id":"s3-frozen-after-effort","session":3,"t_ms":326892,"frame_ascii":"6;900000011797;0;0;0;0.00;0;0;0;37;2.01;2.68;81;88;99;74;248;185;497;370;82;78;30;1","expect":{"distance_m":37,"speed_mps":2.68,"speed_kmh":9.648,"cadence_spm":88,"power_watts":78,"elapsed_seconds":30}}
+    {"id":"s1-start-idle","session":1,"t_ms":83392,"frame_ascii":"6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;5;5","expect":{"distance_m":0,"speed_mps":0.0,"speed_kmh":0.0,"cadence_spm":0,"force_newtons":0,"elapsed_seconds":5}},
+    {"id":"s1-10s","session":1,"t_ms":88895,"frame_ascii":"6;900000010449;0;0;0;0.00;0;1;0;11;0.94;2.75;98;76;229;72;573;180;1147;360;96;82;10;1","expect":{"distance_m":11,"speed_mps":2.75,"speed_kmh":9.9,"cadence_spm":76,"force_newtons":82,"elapsed_seconds":10}},
+    {"id":"s1-20s","session":1,"t_ms":98896,"frame_ascii":"6;900000020101;0;0;0;0.00;0;1;0;38;1.94;3.26;84;90;103;61;258;152;516;305;85;102;20;1","expect":{"distance_m":38,"speed_mps":3.26,"speed_kmh":11.736,"cadence_spm":90,"force_newtons":102,"elapsed_seconds":20}},
+    {"id":"s1-30s","session":1,"t_ms":108897,"frame_ascii":"6;900000030430;0;0;0;0.00;0;1;0;67;2.26;2.82;86;87;88;71;220;177;441;355;86;88;30;1","expect":{"distance_m":67,"speed_mps":2.82,"speed_kmh":10.152,"cadence_spm":87,"force_newtons":88,"elapsed_seconds":30}},
+    {"id":"s1-40s","session":1,"t_ms":118898,"frame_ascii":"6;900000040098;0;0;0;0.00;0;1;0;94;2.39;2.74;86;86;83;73;209;182;418;365;86;84;40;1","expect":{"distance_m":94,"speed_mps":2.74,"speed_kmh":9.864,"cadence_spm":86,"force_newtons":84,"elapsed_seconds":40}},
+    {"id":"s1-50s","session":1,"t_ms":128896,"frame_ascii":"6;900000050461;0;0;0;0.00;0;1;0;123;2.47;2.88;86;86;81;69;202;172;405;345;85;89;50;1","expect":{"distance_m":123,"speed_mps":2.88,"speed_kmh":10.368,"cadence_spm":86,"force_newtons":89,"elapsed_seconds":50}},
+    {"id":"s1-max-speed-power","session":1,"t_ms":133894,"frame_ascii":"6;900000055527;0;0;0;0.00;0;1;0;139;2.53;3.36;87;97;79;59;197;147;395;295;86;103;55;1","expect":{"distance_m":139,"speed_mps":3.36,"speed_kmh":12.096,"cadence_spm":97,"force_newtons":103,"elapsed_seconds":55}},
+    {"id":"s1-max-cadence","session":1,"t_ms":134895,"frame_ascii":"6;900000056105;0;0;0;0.00;0;1;0;141;2.54;3.30;87;99;78;60;197;150;394;300;87;101;56;1","expect":{"distance_m":141,"speed_mps":3.3,"speed_kmh":11.88,"cadence_spm":99,"force_newtons":101,"elapsed_seconds":56}},
+    {"id":"s1-max-distance","session":1,"t_ms":138896,"frame_ascii":"6;900000059855;0;0;0;0.00;0;1;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;60;1","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"force_newtons":90,"elapsed_seconds":60}},
+    {"id":"s1-coast-frozen-distance","session":1,"t_ms":147895,"frame_ascii":"6;900000059855;0;0;0;0.00;0;0;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;69;1","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"force_newtons":90,"elapsed_seconds":69}},
+    {"id":"s1-stopped-status-zero","session":1,"t_ms":252896,"frame_ascii":"6;900000059855;0;0;0;0.00;0;0;0;152;2.57;2.94;87;95;77;68;194;170;389;340;87;90;53;0","expect":{"distance_m":152,"speed_mps":2.94,"speed_kmh":10.584,"cadence_spm":95,"force_newtons":90,"elapsed_seconds":53}},
+    {"id":"s2-start-idle","session":2,"t_ms":258976,"frame_ascii":"6;900000000000;0;0;0;0.00;0;0;0;0;0.00;0.00;0;0;0;0;0;0;0;0;0;0;5;5","expect":{"distance_m":0,"speed_mps":0.0,"speed_kmh":0.0,"cadence_spm":0,"force_newtons":0,"elapsed_seconds":5}},
+    {"id":"s2-10s","session":2,"t_ms":263893,"frame_ascii":"6;900000009457;0;0;0;0.00;0;1;0;13;1.09;3.03;80;81;193;66;483;165;967;330;96;92;10;1","expect":{"distance_m":13,"speed_mps":3.03,"speed_kmh":10.908,"cadence_spm":81,"force_newtons":92,"elapsed_seconds":10}},
+    {"id":"s2-20s","session":2,"t_ms":273896,"frame_ascii":"6;900000019910;0;0;0;0.00;0;1;0;39;1.96;2.54;84;86;101;78;254;195;509;390;80;74;20;1","expect":{"distance_m":39,"speed_mps":2.54,"speed_kmh":9.144,"cadence_spm":86,"force_newtons":74,"elapsed_seconds":20}},
+    {"id":"s2-25s-max-distance","session":2,"t_ms":278892,"frame_ascii":"6;900000024192;0;0;0;0.00;0;1;0;50;2.07;2.51;84;83;96;80;241;200;483;400;78;73;25;1","expect":{"distance_m":50,"speed_mps":2.51,"speed_kmh":9.036,"cadence_spm":83,"force_newtons":73,"elapsed_seconds":25}},
+    {"id":"s2-stopped-status-zero","session":2,"t_ms":296894,"frame_ascii":"6;900000024192;0;0;0;0.00;0;0;0;50;2.07;2.51;84;83;96;80;241;200;483;400;78;73;19;0","expect":{"distance_m":50,"speed_mps":2.51,"speed_kmh":9.036,"cadence_spm":83,"force_newtons":73,"elapsed_seconds":19}},
+    {"id":"s3-first-active","session":3,"t_ms":303896,"frame_ascii":"6;900000000000;0;0;0;0.00;0;1;0;4;0.33;1.45;36;38;337;72;843;180;1686;360;37;48;7;1","expect":{"distance_m":4,"speed_mps":1.45,"speed_kmh":5.22,"cadence_spm":38,"force_newtons":48,"elapsed_seconds":7}},
+    {"id":"s3-10s-max-speed-power","session":3,"t_ms":306895,"frame_ascii":"6;900000002981;0;0;0;0.00;0;1;0;13;1.12;3.02;63;76;189;66;474;165;949;330;79;94;10;1","expect":{"distance_m":13,"speed_mps":3.02,"speed_kmh":10.872,"cadence_spm":76,"force_newtons":94,"elapsed_seconds":10}},
+    {"id":"s3-15s-max-cadence","session":3,"t_ms":311899,"frame_ascii":"6;900000007703;0;0;0;0.00;0;1;0;26;1.79;2.66;77;89;111;75;279;187;559;375;84;79;15;1","expect":{"distance_m":26,"speed_mps":2.66,"speed_kmh":9.576,"cadence_spm":89,"force_newtons":79,"elapsed_seconds":15}},
+    {"id":"s3-19s-max-distance","session":3,"t_ms":315897,"frame_ascii":"6;900000011797;0;0;0;0.00;0;1;0;37;2.01;2.68;81;88;99;74;248;185;497;370;82;78;19;1","expect":{"distance_m":37,"speed_mps":2.68,"speed_kmh":9.648,"cadence_spm":88,"force_newtons":78,"elapsed_seconds":19}},
+    {"id":"s3-frozen-after-effort","session":3,"t_ms":326892,"frame_ascii":"6;900000011797;0;0;0;0.00;0;0;0;37;2.01;2.68;81;88;99;74;248;185;497;370;82;78;30;1","expect":{"distance_m":37,"speed_mps":2.68,"speed_kmh":9.648,"cadence_spm":88,"force_newtons":78,"elapsed_seconds":30}}
   ],
   "short_measurement_cases": [
     {"id":"ack-like-1","frame_ascii":"6;1","observed_count":5,"expect":"reject-too-few-fields"},
