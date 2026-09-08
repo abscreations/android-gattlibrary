@@ -101,4 +101,46 @@ class KayakFirstEmissionTest {
         assertEquals(15.0, counter.sample(reading(110, 90), 10).value, 0.0)
     }
 
+    /**
+     * Field 7 gates the instantaneous metrics, and the session gate deliberately does not.
+     *
+     * These look like the same question and are not. `KayakFirstActivityGate` answers "is the
+     * session under way", and holds through a five-second gap so a brief pause does not fragment
+     * an effort — which is why average power and energy integrate against it. Field 7 answers
+     * "are this frame's instantaneous fields live", and the physical console makes that a separate
+     * question: on a coast or stop frame it clears field 7 while **holding the previous
+     * instantaneous cadence, speed and force verbatim** rather than zeroing them
+     * (`s1-max-distance` and `s1-coast-frozen-distance` in the QZ hardware corpus both read
+     * cadence 95, speed 2.94, force 90).
+     *
+     * So publishing speed and cadence through the session gate would emit up to five seconds of
+     * stale values as live, and integrating strokes through it would invent strokes from a frozen
+     * cadence. The raw bit is the correct, fail-closed test here, and this test exists to stop a
+     * future reader from "fixing" the apparent inconsistency.
+     */
+    @Test
+    fun `instantaneous metrics are suppressed on a held frame even mid-session`() {
+        val held = KayakFirstMeasurement.Reading(
+            distanceMetres = 152.0,
+            speedMetresPerSecond = 2.94,
+            cadenceSpm = 95,
+            forceNewtons = 90.0,
+            elapsedSeconds = 69,
+            diagnosticStatusRaw = "1",
+            fieldCount = 24,
+        ).copy(activePaddling = false)
+
+        val metrics = kayakFirstSamples(held).map { it.metric }
+        assertTrue(MetricKind.SPEED !in metrics)
+        assertTrue(MetricKind.CADENCE !in metrics)
+        // Cumulative and average fields stay: they are not invalidated by an inactive frame.
+        assertTrue(MetricKind.DISTANCE in metrics)
+        assertTrue(MetricKind.ELAPSED in metrics)
+        assertTrue(MetricKind.AVERAGE_SPEED in metrics)
+        assertTrue(MetricKind.AVERAGE_CADENCE in metrics)
+
+        // And the stroke counter must not integrate a frozen cadence.
+        val counter = KayakFirstDerivedStrokeCounter()
+        assertEquals(0.0, counter.sample(held, 10).value, 0.0)
+    }
 }

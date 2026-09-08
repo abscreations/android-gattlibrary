@@ -133,10 +133,25 @@ internal class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int
 internal object KayakFirstSimulatorTelemetryEncoder {
     const val PERIOD_MS = 1_000L
 
+    /**
+     * Renders one command-6 record.
+     *
+     * [activePaddling] is field 7 and means *the paddler is working*, a session state the console
+     * holds at 1 for the whole of an effort and clears for coast and stop frames. It is not a
+     * per-stroke edge: a caller that raises it only when a new stroke lands turns a continuous
+     * effort into a flag that toggles at the stroke period, and every consumer that gates on
+     * field 7 — instantaneous speed, instantaneous cadence, and the derived stroke count — then
+     * loses whatever fraction of frames fall between strokes.
+     *
+     * [coverageSeconds] is field 23 and is the separate, correct place to say that a frame carries
+     * nothing new. A repeated datapoint covers zero seconds and is weighed as zero; it is not
+     * inactive.
+     */
     fun generated(
         sample: FtmsMockSample,
         running: Boolean,
         activePaddling: Boolean = running,
+        coverageSeconds: Int = if (running) 1 else 0,
     ): ByteArray {
         val fields = MutableList(24) { "0" }
         fields[0] = "6"
@@ -165,8 +180,10 @@ internal object KayakFirstSimulatorTelemetryEncoder {
         fields[20] = forceNewtons(sample.averagePowerWatts, sample.averageCadence ?: sample.cadence)
         fields[21] = forceNewtons(sample.powerWatts, sample.cadence)
         fields[22] = sample.elapsedSeconds.coerceAtLeast(0).toString()
-        // C6[23] is the coverage window in seconds for this datapoint, matching the 1 Hz poll.
-        fields[23] = if (running) "1" else "0"
+        // C6[23] is the coverage window in seconds for this datapoint. It is the span of session
+        // time this record newly accounts for, so a poll that re-reads a datapoint already sent
+        // declares zero rather than repeating the previous window's width.
+        fields[23] = coverageSeconds.coerceAtLeast(0).toString()
         return (fields.joinToString(";") + "\r\n").toByteArray(Charsets.UTF_8)
     }
 

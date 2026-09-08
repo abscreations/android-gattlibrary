@@ -1018,7 +1018,8 @@ private fun BtEngine.completeQueueCallback(
     failureReason: String?,
 ): Boolean {
     val head = context.queue.head()
-    if (!context.queue.isBusy || !queueCompletionMatches(
+    val idle = !context.queue.isBusy
+    if (idle || !queueCompletionMatches(
             context.gatt,
             callbackGatt,
             head,
@@ -1028,16 +1029,39 @@ private fun BtEngine.completeQueueCallback(
             callbackDescriptorIdentity,
         )
     ) {
-        Timber.tag(BtEngineState.TAG).w(
-            "Ignoring mismatched GATT completion context=%s callbackOp=%s callbackChar=%s " +
-                "callbackDesc=%s headOp=%s headChar=%s",
-            context.connectionId,
-            callbackOp,
-            callbackCharUuid,
-            callbackDescriptorUuid,
-            head?.op,
-            head?.charUuid,
-        )
+        // Two different situations reach this branch and only one of them is a fault.
+        //
+        // An idle queue means the stack delivered a completion for work this queue is not
+        // tracking. Write Without Response is the ordinary source: it is acknowledged at the
+        // controller, so the queue never holds a slot for it, yet Android still raises
+        // onCharacteristicWrite. A Kayak First Orange session polls at about 45 ms and would
+        // otherwise emit roughly 1,300 warnings a minute — enough noise to bury a real diagnostic
+        // in exactly the captures used to find one. That case is expected and logs at debug.
+        //
+        // A busy queue whose head does not match is a genuine correlation failure: some other
+        // operation completed while this one was in flight, and the queue is about to be blocked
+        // until its own timeout. That stays a warning.
+        if (idle) {
+            Timber.tag(BtEngineState.TAG).d(
+                "Untracked GATT completion on idle queue context=%s callbackOp=%s callbackChar=%s " +
+                    "callbackDesc=%s",
+                context.connectionId,
+                callbackOp,
+                callbackCharUuid,
+                callbackDescriptorUuid,
+            )
+        } else {
+            Timber.tag(BtEngineState.TAG).w(
+                "Ignoring mismatched GATT completion context=%s callbackOp=%s callbackChar=%s " +
+                    "callbackDesc=%s headOp=%s headChar=%s",
+                context.connectionId,
+                callbackOp,
+                callbackCharUuid,
+                callbackDescriptorUuid,
+                head?.op,
+                head?.charUuid,
+            )
+        }
         return false
     }
 

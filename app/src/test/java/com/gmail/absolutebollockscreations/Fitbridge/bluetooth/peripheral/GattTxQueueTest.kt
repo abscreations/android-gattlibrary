@@ -12,6 +12,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -168,4 +169,108 @@ class GattTxQueueTest {
             assertTrue(data.await())
             scope.cancel()
         }
+
+    /**
+     * Pins the deliberate decision documented in [GattTxQueue]: there is no "swallow the next
+     * acknowledgement after a timeout" guard, so a confirmation that arrives after the queue gave
+     * up is applied to whatever payload is in flight when it lands.
+     *
+     * This is characterisation, not endorsement. Android's `onNotificationSent` carries only a
+     * device and a status, nothing that correlates it to the operation that caused it, so the queue
+     * cannot tell a late confirmation from the current payload's. The alternative — discarding the
+     * next acknowledgement — makes the next payload time out too, which is worse for the blackout
+     * this queue exists to bound. If that trade is ever revisited, this test is what must change,
+     * and changing it should be a decision rather than an accident.
+     *
+     * No capture has yet shown a post-timeout confirmation actually occurring: the 2026-08-05
+     * client never confirmed at all, and the 2026-09-07 and three-persona clients both confirmed
+     * inside the bounded window. The behaviour is pinned because it is unobserved, not because it
+     * is known to be benign.
+     */
+    @Test
+    fun `a confirmation arriving after the timeout is applied to the next payload in flight`() =
+        runBlocking {
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
+            val queue = GattTxQueue(
+                scope,
+                dataTimeoutMs = 5_000,
+                controlTimeoutMs = 120,
+            ) { posted.trySend(it).isSuccess }
+
+            // A control indication the client never confirms in time.
+            val abandoned = async {
+                queue.send(
+                    1,
+                    "AA",
+                    characteristic,
+                    byteArrayOf(1),
+                    true,
+                    GattTxQueue.Priority.CONTROL,
+                    "abandoned-control",
+                )
+            }
+            assertTrue(posted.receive().purpose == "abandoned-control")
+            assertFalse(abandoned.await())
+
+            // The next payload goes out and is never acknowledged on its own behalf.
+            val next = async {
+                queue.send(
+                    1,
+                    "AA",
+                    characteristic,
+                    byteArrayOf(2),
+                    false,
+                    GattTxQueue.Priority.DATA,
+                    "payload-after-abandoned-control",
+                )
+            }
+            assertTrue(posted.receive().purpose == "payload-after-abandoned-control")
+
+            // The abandoned indication's confirmation finally arrives. It completes the payload
+            // now in flight, which reports delivered without the client having confirmed it.
+            queue.onNotificationSent("AA", true)
+            assertTrue(next.await())
+
+            val stats = queue.stats()
+            assertEquals(1L, stats.failed)
+            assertEquals(1L, stats.delivered)
+            scope.cancel()
+        }
+
+    /**
+     * The out-of-phase state above does not accumulate: the queue is one payload behind, and the
+     * following payload is acknowledged normally rather than inheriting another stray.
+     */
+    @Test
+    fun `the queue does not stay out of phase after a misattributed confirmation`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
+        val queue = GattTxQueue(
+            scope,
+            dataTimeoutMs = 5_000,
+            controlTimeoutMs = 120,
+        ) { posted.trySend(it).isSuccess }
+
+        val abandoned = async {
+            queue.send(1, "AA", characteristic, byteArrayOf(1), true, GattTxQueue.Priority.CONTROL, "abandoned")
+        }
+        assertTrue(posted.receive().purpose == "abandoned")
+        assertFalse(abandoned.await())
+
+        val first = async {
+            queue.send(1, "AA", characteristic, byteArrayOf(2), false, GattTxQueue.Priority.DATA, "first")
+        }
+        assertTrue(posted.receive().purpose == "first")
+        queue.onNotificationSent("AA", true)
+        assertTrue(first.await())
+
+        val second = async {
+            queue.send(1, "AA", characteristic, byteArrayOf(3), false, GattTxQueue.Priority.DATA, "second")
+        }
+        assertTrue(posted.receive().purpose == "second")
+        queue.onNotificationSent("AA", true)
+        assertTrue(second.await())
+        scope.cancel()
+    }
 }

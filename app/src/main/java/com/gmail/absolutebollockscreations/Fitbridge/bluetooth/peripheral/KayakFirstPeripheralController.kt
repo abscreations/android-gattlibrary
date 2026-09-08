@@ -72,6 +72,8 @@ internal class KayakFirstPeripheralController(
         var display = KayakFirstDisplayConfiguration.DEFAULT
         var running = false
         var lastGeneratedEventKey: Long? = null
+        /** Session elapsed of the last datapoint actually put on the wire, for field 23. */
+        var lastCoveredElapsedSeconds: Int? = null
         var polls = 0L
         var orangeSequence = 0L
         /** Monotonic instant of the last accepted Orange RESET; the stroke counter's origin. */
@@ -285,6 +287,7 @@ internal class KayakFirstPeripheralController(
             KayakFirstSimulatorCommand.Reset -> {
                 client.setupStage = "reset"; client.running = false
                 client.lastGeneratedEventKey = null
+                client.lastCoveredElapsedSeconds = null
                 enqueueLine(client, "1;1\r\n")
             }
             is KayakFirstSimulatorCommand.Handshake -> {
@@ -305,6 +308,7 @@ internal class KayakFirstPeripheralController(
             }
             KayakFirstSimulatorCommand.Start -> {
                 client.running = true; client.lastGeneratedEventKey = null
+                client.lastCoveredElapsedSeconds = null
                 enqueueLine(client, "9;1\r\n")
             }
             KayakFirstSimulatorCommand.Stop -> {
@@ -314,10 +318,35 @@ internal class KayakFirstPeripheralController(
                 client.polls++
                 status = status.copy(pollRequests = status.pollRequests + 1)
                 val sample = latestSample ?: return
+                // Field 7 is the session's activity state, held for the whole of an effort the way
+                // the physical console holds it, so it is derived from whether the generated
+                // workout is producing movement — never from whether a new stroke happened to land
+                // between two polls. Keying it on stroke arrival made it toggle at the stroke
+                // period and cost every field-7-gated consumer that fraction of its samples.
+                val working = client.running &&
+                    ((sample.cadence ?: 0.0) > 0.0 || (sample.speedKph ?: 0.0) > 0.0)
+                // Field 23 carries the "nothing new here" case instead. A poll that re-reads a
+                // datapoint already sent covers zero further seconds; otherwise the frame covers
+                // the session time since the last datapoint that went out.
                 val eventKey = sample.movementCount?.toLong() ?: sample.elapsedSeconds.toLong()
                 val fresh = client.running && client.lastGeneratedEventKey != eventKey
-                if (fresh) client.lastGeneratedEventKey = eventKey
-                val frame = KayakFirstSimulatorTelemetryEncoder.generated(sample, client.running, fresh)
+                val coverageSeconds = when {
+                    !client.running -> 0
+                    !fresh -> 0
+                    else -> client.lastCoveredElapsedSeconds
+                        ?.let { (sample.elapsedSeconds - it).coerceAtLeast(0) }
+                        ?: sample.elapsedSeconds.coerceAtLeast(0)
+                }
+                if (fresh) {
+                    client.lastGeneratedEventKey = eventKey
+                    client.lastCoveredElapsedSeconds = sample.elapsedSeconds
+                }
+                val frame = KayakFirstSimulatorTelemetryEncoder.generated(
+                    sample,
+                    client.running,
+                    working,
+                    coverageSeconds,
+                )
                 if (enqueueRecord(client, frame)) status = status.copy(completeRecords = status.completeRecords + 1)
             }
         }

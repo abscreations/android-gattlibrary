@@ -295,21 +295,66 @@ class KayakFirstSimulatorTest {
     }
 
     @Test
-    fun generated_held_frame_clears_only_the_fresh_measurement_flag() {
-        val fresh = KayakFirstSimulatorTelemetryEncoder.generated(
+    fun generated_activity_flag_is_the_only_field_7_difference() {
+        val working = KayakFirstSimulatorTelemetryEncoder.generated(
             sample(),
             running = true,
             activePaddling = true,
         ).toString(Charsets.UTF_8).trim().split(';')
-        val held = KayakFirstSimulatorTelemetryEncoder.generated(
+        val coasting = KayakFirstSimulatorTelemetryEncoder.generated(
             sample(),
             running = true,
             activePaddling = false,
         ).toString(Charsets.UTF_8).trim().split(';')
 
-        assertEquals("1", fresh[7])
-        assertEquals("0", held[7])
-        assertEquals(fresh.filterIndexed { index, _ -> index != 7 }, held.filterIndexed { index, _ -> index != 7 })
+        assertEquals("1", working[7])
+        assertEquals("0", coasting[7])
+        assertEquals(
+            working.filterIndexed { index, _ -> index != 7 },
+            coasting.filterIndexed { index, _ -> index != 7 },
+        )
+    }
+
+    /**
+     * Field 7 says whether the paddler is working; field 23 says how much new session time this
+     * record accounts for. They are independent, and conflating them is what made the simulator
+     * emit a stroke-period square wave on field 7: a record that repeats a datapoint already sent
+     * covers no further seconds, but the paddler is still working.
+     */
+    @Test
+    fun generated_repeated_datapoint_declares_zero_coverage_while_still_active() {
+        val firstSend = KayakFirstSimulatorTelemetryEncoder.generated(
+            sample(),
+            running = true,
+            activePaddling = true,
+            coverageSeconds = 2,
+        ).toString(Charsets.UTF_8).trim().split(';')
+        val repeated = KayakFirstSimulatorTelemetryEncoder.generated(
+            sample(),
+            running = true,
+            activePaddling = true,
+            coverageSeconds = 0,
+        ).toString(Charsets.UTF_8).trim().split(';')
+
+        assertEquals("1", firstSend[7])
+        assertEquals("2", firstSend[23])
+        assertEquals("1", repeated[7])
+        assertEquals("0", repeated[23])
+        assertEquals(
+            firstSend.filterIndexed { index, _ -> index != 23 },
+            repeated.filterIndexed { index, _ -> index != 23 },
+        )
+    }
+
+    @Test
+    fun generated_coverage_defaults_to_one_second_while_running_and_zero_when_stopped() {
+        val running = KayakFirstSimulatorTelemetryEncoder.generated(sample(), running = true)
+            .toString(Charsets.UTF_8).trim().split(';')
+        val stopped = KayakFirstSimulatorTelemetryEncoder.generated(sample(), running = false)
+            .toString(Charsets.UTF_8).trim().split(';')
+
+        assertEquals("1", running[23])
+        assertEquals("0", stopped[23])
     }
 
     @Test
