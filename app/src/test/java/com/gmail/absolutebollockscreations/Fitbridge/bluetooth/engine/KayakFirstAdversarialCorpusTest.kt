@@ -17,7 +17,7 @@ class KayakFirstAdversarialCorpusTest {
         val fixture = load()
 
         assertEquals(1, FixtureJson.int(fixture["schema_version"]))
-        assertEquals(4, FixtureJson.int(fixture["corpus_revision"]))
+        assertEquals(5, FixtureJson.int(fixture["corpus_revision"]))
         assertEquals("kayak-first-paddle", FixtureJson.string(fixture["family"]))
         assertEquals(
             "fitbridge-authored-language-neutral-adversarial-oracle",
@@ -30,10 +30,11 @@ class KayakFirstAdversarialCorpusTest {
         assertTrue(FixtureJson.string(fixture["source_precedence"]).contains("TMIW is normative"))
         assertTrue(FixtureJson.string(fixture["independence"]).contains("before a production"))
         val history = strings(fixture["revision_history"])
-        assertEquals(3, history.size)
+        assertEquals(4, history.size)
         assertTrue(history.any { it.contains("zero-field empty line") })
         assertTrue(history.any { it.contains("force_newtons") })
         assertTrue(history.any { it.contains("seventeen are consumed") })
+        assertTrue(history.any { it.contains("retained on the wire and in captures") })
 
         val transport = FixtureJson.obj(fixture["transport_contract"])
         assertEquals(20, FixtureJson.int(transport["maximum_outbound_chunk_bytes"]))
