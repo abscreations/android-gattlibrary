@@ -130,8 +130,12 @@ internal object SensitiveCharacteristics {
         UUID.fromString("00002a80-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
         UUID.fromString("00002a8c-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
         UUID.fromString("00002aa2-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
-        UUID.fromString("00002a98-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
-        UUID.fromString("00002a8e-0000-1000-8000-00805f9b34fb") to RedactionReason.USER_PROFILE,
+
+        // Weight (2A98) and height (2A8E) are deliberately absent under D102. They are model
+        // inputs rather than identifiers, a capture that hides them cannot diagnose a wrong power
+        // figure, and captures are armed and shared by the user rather than collected. See
+        // BluetoothIds.DIAGNOSTICALLY_RETAINED_CHARACTERISTICS for the reasoning and the test that
+        // pins it. Everything above identifies a person and stays registered.
     )
 
     fun reasonFor(characteristic: UUID): RedactionReason? = byUuid[characteristic]

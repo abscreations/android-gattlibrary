@@ -507,6 +507,27 @@ object BluetoothIds {
         UUID_USER_HEIGHT,
     )
 
+    /**
+     * Body metrics that are deliberately **not** redaction-registered (D102).
+     *
+     * Weight and height are personal data, and until 2026-09-08 they were redacted with the rest
+     * of the profile. Two things changed that. They are load-bearing inputs to several vendor
+     * power and energy models rather than identifiers, so a capture that hides them cannot be used
+     * to diagnose a wrong power figure — the single most common thing these captures are exported
+     * to investigate. And a capture is only ever produced by a user who armed it and only ever
+     * leaves the device through a share sheet the user drives, so disclosure is consented rather
+     * than incidental.
+     *
+     * The identifying fields are a different question and stay registered: a name, an email
+     * address, an age or a gender diagnoses nothing, so retaining them would buy no troubleshooting
+     * value at real cost. Keep that asymmetry when adding to this list — the test is whether the
+     * value would appear in a bug report's *explanation*, not merely in its data.
+     */
+    val DIAGNOSTICALLY_RETAINED_CHARACTERISTICS: List<UUID> = listOf(
+        UUID_USER_WEIGHT,
+        UUID_USER_HEIGHT,
+    )
+
     // ─────────────────────────────────────────────────────────────
     // Life Fitness proprietary setup (plan §6, D54)
     // ─────────────────────────────────────────────────────────────

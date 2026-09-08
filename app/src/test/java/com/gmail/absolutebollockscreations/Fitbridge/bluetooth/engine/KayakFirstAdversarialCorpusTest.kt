@@ -372,9 +372,27 @@ class KayakFirstAdversarialCorpusTest {
         val fixture = FixtureJson.obj(FixtureJson.parse(text))
         val privacy = FixtureJson.obj(fixture["privacy_expectations"])
 
-        assertEquals(9, strings(privacy["forbidden_data_classes"]).size)
-        assertTrue(strings(privacy["allowed_protocol_constants"]).contains("neutral weight 80 from TMIW"))
+        assertEquals(8, strings(privacy["forbidden_data_classes"]).size)
+        assertTrue(
+            strings(privacy["allowed_protocol_constants"])
+                .contains("neutral weight 80 from TMIW, as the unconfigured fallback only"),
+        )
         assertTrue(FixtureJson.string(privacy["ordinary_log_policy"]).contains("BLECAP"))
+
+        // D102 rescinded the athlete-weight restriction: weight and height are retained on the
+        // wire and in captures because vendor power and energy models take mass as an input. The
+        // identifying values are the ones that must stay forbidden, so assert both directions —
+        // a future edit that quietly re-adds weight, or quietly drops a name, fails here.
+        val forbidden = strings(privacy["forbidden_data_classes"])
+        assertFalse(
+            "athlete weight is retained by D102 and must not be listed as forbidden",
+            forbidden.any { it.contains("weight", ignoreCase = true) },
+        )
+        assertTrue(
+            "identifying profile values must stay forbidden",
+            forbidden.any { it.contains("identifying profile value", ignoreCase = true) },
+        )
+        assertEquals(2, strings(privacy["retained_by_decision"]).size)
         assertEquals(20, strings(fixture["coverage_manifest"]).size)
         assertFalse("fixture must not contain a Bluetooth address", MAC_ADDRESS.containsMatchIn(text))
         assertFalse("fixture must not contain known private keys", PRIVATE_KEY.containsMatchIn(text))

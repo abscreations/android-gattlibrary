@@ -3,11 +3,16 @@
   "family": "kayak-first-paddle",
   "corpus_kind": "fitbridge-authored-language-neutral-adversarial-oracle",
   "authored": "2026-09-04",
-  "corpus_revision": 4,
+  "corpus_revision": 5,
   "revision_history": [
     "Revision 4 re-derives the measurement contract against the field map established by the KayakFit convergence and the decompiled official applications. Revision 3 and earlier described five consumed command-6 fields; seventeen are consumed. Fields 1, 7, 10, 12, 14-20 and 23 moved from ignored to consumed, field 23 is consumed leniently and can never reject a frame, and fields 20/21 are unsigned decimal on receive rather than integer. Adds empty, signed, grammar, overflow, bound and leniency cases for every newly consumed index, and a field_semantics block naming the evidence class of all 24 fields. No previously authored expectation was weakened; the corpus had under-claimed what production consumes, so its mutation matrix never exercised twelve indexes.",
     "Revision 3 renames the command-6 field-21 expectation key from power_watts to force_newtons. Field 21 is instantaneous pull force in newtons, never power; the old key encoded the superseded mapping that Phase 1 was supposed to remove everywhere, and it survived in this corpus and in the hardware corpus after production code had been corrected. No value changed - only the label. Found by the section 22.5 phase audit.",
-    "Revision 2 distinguishes the zero-field empty line as reject-empty-line while retaining reject-too-few-fields for counts 1 through 23. Revision 1 called all 0 through 23 too-few despite its own stream case and wire specification giving empty lines a distinct rejection. This correction was made during Phase 8.3 before production parser verification; no captured or decoded metric expectation changed."
+    "Revision 2 distinguishes the zero-field empty line as reject-empty-line while retaining reject-too-few-fields for counts 1 through 23. Revision 1 called all 0 through 23 too-few despite its own stream case and wire specification giving empty lines a distinct rejection. This correction was made during Phase 8.3 before production parser verification; no captured or decoded metric expectation changed.",
+    {
+      "revision": 5,
+      "date": "2026-09-08",
+      "change": "Privacy expectations updated for D102/D103: athlete weight and height are retained on the wire and in captures by explicit decision, because vendor power and energy models take mass as an input and a capture that hides it cannot diagnose a wrong power figure. Identifying profile values and vendor tokens stay forbidden. No mutation case, contract or field-semantics entry changed."
+    }
   ],
   "normative_source": "docs/kayak-first-wire-protocol-spec.md",
   "source_precedence": "Pinned Apache-2.0 TMIW is normative for transmitted behavior under D99. Sanitized QZ debug-ticket traffic is physical-console observation and simulator compatibility evidence, not the command authority.",
@@ -46,19 +51,61 @@
       "elapsed_seconds": 22,
       "coverage_window_seconds": 23
     },
-    "decimal_field_indexes": [9, 10, 11, 20, 21],
-    "integer_field_indexes": [1, 7, 12, 13, 14, 15, 16, 17, 18, 19, 22],
-    "lenient_field_indexes": [23],
+    "decimal_field_indexes": [
+      9,
+      10,
+      11,
+      20,
+      21
+    ],
+    "integer_field_indexes": [
+      1,
+      7,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      22
+    ],
+    "lenient_field_indexes": [
+      23
+    ],
     "lenient_field_rule": "Field 23 is a time weight, not a gate. It is consumed, but an empty, signed, non-numeric or absent value yields no window rather than a rejection, and the caller falls back to the elapsed delta. Nothing in field 23 can cost a frame.",
-    "ignored_field_indexes_within_first_24": [2, 3, 4, 5, 6, 8],
+    "ignored_field_indexes_within_first_24": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
     "unsigned_integer_grammar": "DIGIT+",
     "unsigned_decimal_grammar": "DIGIT+(DOT DIGIT+)?",
     "bounds": {
-      "speed_kmh_inclusive": [0.0, 40.0],
-      "average_speed_kmh_inclusive": [0.0, 40.0],
-      "cadence_spm_inclusive": [0, 120],
-      "average_cadence_spm_inclusive": [0, 120],
-      "active_paddling_domain": [0, 1],
+      "speed_kmh_inclusive": [
+        0.0,
+        40.0
+      ],
+      "average_speed_kmh_inclusive": [
+        0.0,
+        40.0
+      ],
+      "cadence_spm_inclusive": [
+        0,
+        120
+      ],
+      "average_cadence_spm_inclusive": [
+        0,
+        120
+      ],
+      "active_paddling_domain": [
+        0,
+        1
+      ],
       "force_newtons": "no ceiling is asserted. A newton bound would be invented: no capture, decompilation or third-party client states one, and section 19's degeneracy caveat means the unit itself is a converged interpretation rather than a proven one.",
       "coverage_window_seconds": "unbounded on receive; clamped to 3600 downstream when used as an integration weight",
       "distance_m": "non-negative finite decimal; no fixed ceiling; continuity growth gate",
@@ -66,30 +113,130 @@
     },
     "field_semantics": {
       "note": "Evidence class per field, so a reader can tell what is observed from what is interpreted. OBSERVED = seen in a physical-console capture or pinned TMIW source. CONVERGED = agreed by FitBridge and the shipping KayakFit Bull client against real hardware, but not proven against console ground truth. UNRESOLVED = present on the wire, meaning unknown, deliberately not consumed.",
-      "0": { "name": "command", "value": "6", "class": "OBSERVED" },
-      "1": { "name": "event timestamp (ms)", "class": "OBSERVED", "consumed": true },
-      "2": { "name": "unknown", "class": "UNRESOLVED", "consumed": false },
-      "3": { "name": "unknown", "class": "UNRESOLVED", "consumed": false },
-      "4": { "name": "unknown", "class": "UNRESOLVED", "consumed": false },
-      "5": { "name": "unknown decimal", "class": "UNRESOLVED", "consumed": false },
-      "6": { "name": "unknown", "class": "UNRESOLVED", "consumed": false },
-      "7": { "name": "active paddling flag", "class": "CONVERGED", "consumed": true, "note": "KayakFit D002 makes this the session activity signal, not a freshness flag" },
-      "8": { "name": "unknown", "class": "UNRESOLVED", "consumed": false },
-      "9": { "name": "total distance (m)", "class": "OBSERVED", "consumed": true },
-      "10": { "name": "average speed (m/s)", "class": "OBSERVED", "consumed": true },
-      "11": { "name": "instantaneous speed (m/s)", "class": "OBSERVED", "consumed": true },
-      "12": { "name": "average stroke rate (spm)", "class": "OBSERVED", "consumed": true },
-      "13": { "name": "instantaneous stroke rate (spm)", "class": "OBSERVED", "consumed": true },
-      "14": { "name": "average 200m pace (s)", "class": "OBSERVED", "consumed": true },
-      "15": { "name": "instantaneous 200m pace (s)", "class": "OBSERVED", "consumed": true },
-      "16": { "name": "average 500m pace (s)", "class": "OBSERVED", "consumed": true },
-      "17": { "name": "instantaneous 500m pace (s)", "class": "OBSERVED", "consumed": true },
-      "18": { "name": "average 1000m pace (s)", "class": "OBSERVED", "consumed": true },
-      "19": { "name": "instantaneous 1000m pace (s)", "class": "OBSERVED", "consumed": true },
-      "20": { "name": "average pull force (N)", "class": "CONVERGED", "consumed": true, "note": "newton typing is shared with KayakFit; section 19 records that a proportional raw unit would fit the same evidence" },
-      "21": { "name": "instantaneous pull force (N)", "class": "CONVERGED", "consumed": true, "note": "never power. Decimal-tolerant on receive, integer on transmit: KayakFit types it as an integer and drops any frame carrying a decimal point" },
-      "22": { "name": "elapsed session time (s)", "class": "OBSERVED", "consumed": true },
-      "23": { "name": "coverage window (s)", "class": "CONVERGED", "consumed": true, "note": "KayakFit D005. Explains the captured 0/1/5 values exactly, but is an interpretation from field behaviour rather than decompiled proof, and KayakFit's own documentation hedges it" }
+      "0": {
+        "name": "command",
+        "value": "6",
+        "class": "OBSERVED"
+      },
+      "1": {
+        "name": "event timestamp (ms)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "2": {
+        "name": "unknown",
+        "class": "UNRESOLVED",
+        "consumed": false
+      },
+      "3": {
+        "name": "unknown",
+        "class": "UNRESOLVED",
+        "consumed": false
+      },
+      "4": {
+        "name": "unknown",
+        "class": "UNRESOLVED",
+        "consumed": false
+      },
+      "5": {
+        "name": "unknown decimal",
+        "class": "UNRESOLVED",
+        "consumed": false
+      },
+      "6": {
+        "name": "unknown",
+        "class": "UNRESOLVED",
+        "consumed": false
+      },
+      "7": {
+        "name": "active paddling flag",
+        "class": "CONVERGED",
+        "consumed": true,
+        "note": "KayakFit D002 makes this the session activity signal, not a freshness flag"
+      },
+      "8": {
+        "name": "unknown",
+        "class": "UNRESOLVED",
+        "consumed": false
+      },
+      "9": {
+        "name": "total distance (m)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "10": {
+        "name": "average speed (m/s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "11": {
+        "name": "instantaneous speed (m/s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "12": {
+        "name": "average stroke rate (spm)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "13": {
+        "name": "instantaneous stroke rate (spm)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "14": {
+        "name": "average 200m pace (s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "15": {
+        "name": "instantaneous 200m pace (s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "16": {
+        "name": "average 500m pace (s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "17": {
+        "name": "instantaneous 500m pace (s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "18": {
+        "name": "average 1000m pace (s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "19": {
+        "name": "instantaneous 1000m pace (s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "20": {
+        "name": "average pull force (N)",
+        "class": "CONVERGED",
+        "consumed": true,
+        "note": "newton typing is shared with KayakFit; section 19 records that a proportional raw unit would fit the same evidence"
+      },
+      "21": {
+        "name": "instantaneous pull force (N)",
+        "class": "CONVERGED",
+        "consumed": true,
+        "note": "never power. Decimal-tolerant on receive, integer on transmit: KayakFit types it as an integer and drops any frame carrying a decimal point"
+      },
+      "22": {
+        "name": "elapsed session time (s)",
+        "class": "OBSERVED",
+        "consumed": true
+      },
+      "23": {
+        "name": "coverage window (s)",
+        "class": "CONVERGED",
+        "consumed": true,
+        "note": "KayakFit D005. Explains the captured 0/1/5 values exactly, but is an interpretation from field behaviour rather than decompiled proof, and KayakFit's own documentation hedges it"
+      }
     }
   },
   "baseline_measurement": {
@@ -109,7 +256,97 @@
     {
       "id": "baseline-every-two-chunk-split",
       "source": "baseline_measurement.frame_ascii",
-      "split_offsets_bytes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89],
+      "split_offsets_bytes": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
       "expect_each": {
         "emitted_frames": 1,
         "frame_source": "baseline_measurement.frame_ascii without CRLF",
@@ -129,7 +366,13 @@
     {
       "id": "baseline-twenty-byte-notifications",
       "source": "baseline_measurement.frame_ascii",
-      "chunk_sizes": [20, 20, 20, 20, 10],
+      "chunk_sizes": [
+        20,
+        20,
+        20,
+        20,
+        10
+      ],
       "expect": {
         "emitted_frames": 1,
         "frame_source": "baseline_measurement.frame_ascii without CRLF",
@@ -139,7 +382,9 @@
     {
       "id": "baseline-cr-lf-split",
       "source": "baseline_measurement.frame_ascii",
-      "split_offsets_bytes": [89],
+      "split_offsets_bytes": [
+        89
+      ],
       "expect_each": {
         "first_chunk_emitted_frames": 0,
         "first_chunk_pending_bytes": 89,
@@ -151,220 +396,1218 @@
   "stream_cases": [
     {
       "id": "two-complete-lines-coalesced",
-      "chunks_ascii": ["1;1;900000000\r\n5;1\r\n"],
-      "expect_frames_ascii": ["1;1;900000000", "5;1"],
+      "chunks_ascii": [
+        "1;1;900000000\r\n5;1\r\n"
+      ],
+      "expect_frames_ascii": [
+        "1;1;900000000",
+        "5;1"
+      ],
       "expect_pending_ascii": ""
     },
     {
       "id": "complete-line-plus-partial-suffix",
-      "chunks_ascii": ["5;1\r\n6;900"],
-      "expect_frames_ascii": ["5;1"],
+      "chunks_ascii": [
+        "5;1\r\n6;900"
+      ],
+      "expect_frames_ascii": [
+        "5;1"
+      ],
       "expect_pending_ascii": "6;900"
     },
     {
       "id": "partial-prefix-completed-before-coalesced-line-and-suffix",
-      "chunks_ascii": ["1;1;900", "000000\r\n5;1\r\n6;"],
-      "expect_frames_ascii": ["1;1;900000000", "5;1"],
+      "chunks_ascii": [
+        "1;1;900",
+        "000000\r\n5;1\r\n6;"
+      ],
+      "expect_frames_ascii": [
+        "1;1;900000000",
+        "5;1"
+      ],
       "expect_pending_ascii": "6;"
     },
     {
       "id": "cr-without-lf-remains-pending",
-      "chunks_ascii": ["5;1\r", "\n"],
-      "expect_frames_ascii": ["5;1"],
+      "chunks_ascii": [
+        "5;1\r",
+        "\n"
+      ],
+      "expect_frames_ascii": [
+        "5;1"
+      ],
       "expect_pending_ascii": ""
     },
     {
       "id": "lf-without-cr-is-not-a-delimiter",
-      "chunks_ascii": ["5;1\n"],
+      "chunks_ascii": [
+        "5;1\n"
+      ],
       "expect_frames_ascii": [],
       "expect_pending_ascii": "5;1\n"
     },
     {
       "id": "empty-crlf-line",
-      "chunks_ascii": ["\r\n"],
-      "expect_frames_ascii": [""],
-      "expect_frame_results": ["reject-empty-line"],
+      "chunks_ascii": [
+        "\r\n"
+      ],
+      "expect_frames_ascii": [
+        ""
+      ],
+      "expect_frame_results": [
+        "reject-empty-line"
+      ],
       "expect_pending_ascii": ""
     },
     {
       "id": "valid-line-after-unknown-line",
-      "chunks_ascii": ["x;1\r\n5;1\r\n"],
-      "expect_frames_ascii": ["x;1", "5;1"],
-      "expect_frame_results": ["reject-unknown-command", "display-success"],
+      "chunks_ascii": [
+        "x;1\r\n5;1\r\n"
+      ],
+      "expect_frames_ascii": [
+        "x;1",
+        "5;1"
+      ],
+      "expect_frame_results": [
+        "reject-unknown-command",
+        "display-success"
+      ],
       "expect_pending_ascii": ""
     }
   ],
   "binary_and_encoding_cases": [
     {
       "id": "tmiw-two-byte-reset",
-      "chunks_hex": ["3101"],
+      "chunks_hex": [
+        "3101"
+      ],
       "expect": "reset-success"
     },
     {
       "id": "captured-three-byte-reset",
-      "chunks_hex": ["310100"],
+      "chunks_hex": [
+        "310100"
+      ],
       "expect": "reset-success"
     },
     {
       "id": "wrong-reset-trailer",
-      "chunks_hex": ["310102"],
+      "chunks_hex": [
+        "310102"
+      ],
       "expect": "reject-binary-frame"
     },
     {
       "id": "all-zero-noise",
-      "chunks_hex": ["00000000"],
+      "chunks_hex": [
+        "00000000"
+      ],
       "expect": "ignore-transport-noise"
     },
     {
       "id": "all-one-noise",
-      "chunks_hex": ["01010101"],
+      "chunks_hex": [
+        "01010101"
+      ],
       "expect": "ignore-transport-noise"
     },
     {
       "id": "embedded-nul-in-text",
-      "chunks_hex": ["353B31000D0A"],
+      "chunks_hex": [
+        "353B31000D0A"
+      ],
       "expect": "reject-embedded-nul"
     },
     {
       "id": "invalid-two-byte-utf8",
-      "chunks_hex": ["363BC3280D0A"],
+      "chunks_hex": [
+        "363BC3280D0A"
+      ],
       "expect": "reject-invalid-utf8"
     },
     {
       "id": "truncated-three-byte-utf8-before-delimiter",
-      "chunks_hex": ["363BE2820D0A"],
+      "chunks_hex": [
+        "363BE2820D0A"
+      ],
       "expect": "reject-invalid-utf8"
     }
   ],
   "buffer_limit_cases": [
     {
       "id": "exactly-512-bytes-remains-bounded",
-      "generated_chunks": [{ "repeat_hex": "41", "count": 512 }],
-      "expect": { "pending_bytes": 512, "rejections": [] }
+      "generated_chunks": [
+        {
+          "repeat_hex": "41",
+          "count": 512
+        }
+      ],
+      "expect": {
+        "pending_bytes": 512,
+        "rejections": []
+      }
     },
     {
       "id": "delimiter-after-exactly-512-bytes",
-      "generated_chunks": [{ "repeat_hex": "41", "count": 512 }, { "hex": "0D0A" }],
-      "expect": { "emitted_frames": 1, "emitted_frame_bytes": 512, "pending_bytes": 0 }
+      "generated_chunks": [
+        {
+          "repeat_hex": "41",
+          "count": 512
+        },
+        {
+          "hex": "0D0A"
+        }
+      ],
+      "expect": {
+        "emitted_frames": 1,
+        "emitted_frame_bytes": 512,
+        "pending_bytes": 0
+      }
     },
     {
       "id": "byte-513-overflows-and-clears",
-      "generated_chunks": [{ "repeat_hex": "41", "count": 513 }],
-      "expect": { "rejections": ["line-too-long"], "pending_bytes": 0 }
+      "generated_chunks": [
+        {
+          "repeat_hex": "41",
+          "count": 513
+        }
+      ],
+      "expect": {
+        "rejections": [
+          "line-too-long"
+        ],
+        "pending_bytes": 0
+      }
     },
     {
       "id": "valid-frame-after-overflow",
-      "generated_chunks": [{ "repeat_hex": "41", "count": 513 }, { "hex": "353B310D0A" }],
-      "expect": { "rejections": ["line-too-long"], "frames_ascii": ["5;1"], "pending_bytes": 0 }
+      "generated_chunks": [
+        {
+          "repeat_hex": "41",
+          "count": 513
+        },
+        {
+          "hex": "353B310D0A"
+        }
+      ],
+      "expect": {
+        "rejections": [
+          "line-too-long"
+        ],
+        "frames_ascii": [
+          "5;1"
+        ],
+        "pending_bytes": 0
+      }
     }
   ],
   "truncation_matrix": {
     "source": "baseline_measurement.frame_ascii without CRLF",
-    "prefix_field_counts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
+    "prefix_field_counts": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
     "expect_count_0": "reject-empty-line",
     "expect_counts_1_through_23": "reject-too-few-fields"
   },
   "measurement_mutation_cases": [
-    { "id": "wrong-command", "mutations": [{ "index": 0, "value": "7" }], "expect": "reject-wrong-command" },
-    { "id": "empty-distance", "mutations": [{ "index": 9, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-speed", "mutations": [{ "index": 11, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-cadence", "mutations": [{ "index": 13, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-force", "mutations": [{ "index": 21, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-elapsed", "mutations": [{ "index": 22, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "negative-distance", "mutations": [{ "index": 9, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-speed", "mutations": [{ "index": 11, "value": "-0.1" }], "expect": "reject-signed-value" },
-    { "id": "negative-cadence", "mutations": [{ "index": 13, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-force", "mutations": [{ "index": 21, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-elapsed", "mutations": [{ "index": 22, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "plus-distance", "mutations": [{ "index": 9, "value": "+1" }], "expect": "reject-signed-value" },
-    { "id": "leading-space-speed", "mutations": [{ "index": 11, "value": " 1.0" }], "expect": "reject-numeric-grammar" },
-    { "id": "trailing-space-force", "mutations": [{ "index": 21, "value": "1 " }], "expect": "reject-numeric-grammar" },
-    { "id": "locale-comma-distance", "mutations": [{ "index": 9, "value": "1,5" }], "expect": "reject-numeric-grammar" },
-    { "id": "locale-comma-speed", "mutations": [{ "index": 11, "value": "3,36" }], "expect": "reject-numeric-grammar" },
-    { "id": "exponent-distance", "mutations": [{ "index": 9, "value": "1e3" }], "expect": "reject-numeric-grammar" },
-    { "id": "exponent-speed", "mutations": [{ "index": 11, "value": "1E1" }], "expect": "reject-numeric-grammar" },
-    { "id": "missing-integer-before-dot", "mutations": [{ "index": 11, "value": ".5" }], "expect": "reject-numeric-grammar" },
-    { "id": "missing-fraction-after-dot", "mutations": [{ "index": 9, "value": "1." }], "expect": "reject-numeric-grammar" },
-    { "id": "decimal-cadence", "mutations": [{ "index": 13, "value": "99.0" }], "expect": "reject-numeric-grammar" },
-    { "id": "decimal-force", "mutations": [{ "index": 21, "value": "103.0" }], "expect": "accept-measurement" },
-    { "id": "decimal-elapsed", "mutations": [{ "index": 22, "value": "69.0" }], "expect": "reject-numeric-grammar" },
-    { "id": "nan-speed", "mutations": [{ "index": 11, "value": "NaN" }], "expect": "reject-numeric-grammar" },
-    { "id": "infinity-distance", "mutations": [{ "index": 9, "value": "Infinity" }], "expect": "reject-numeric-grammar" },
-    { "id": "distance-double-overflow", "mutations": [{ "index": 9, "value": "999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999" }], "expect": "reject-numeric-overflow" },
-    { "id": "cadence-int-overflow", "mutations": [{ "index": 13, "value": "2147483648" }], "expect": "reject-numeric-overflow" },
-    { "id": "force-above-int-range", "mutations": [{ "index": 21, "value": "2147483648" }], "expect": "accept-measurement" },
-    { "id": "elapsed-long-overflow", "mutations": [{ "index": 22, "value": "9223372036854775808" }], "expect": "reject-numeric-overflow" },
-    { "id": "zero-lower-bounds", "mutations": [{ "index": 9, "value": "0" }, { "index": 11, "value": "0" }, { "index": 13, "value": "0" }, { "index": 21, "value": "0" }, { "index": 22, "value": "0" }], "expect": "accept-measurement" },
-    { "id": "leading-zeroes", "mutations": [{ "index": 9, "value": "000152.0" }, { "index": 11, "value": "003.36" }, { "index": 13, "value": "099" }, { "index": 21, "value": "0103" }, { "index": 22, "value": "0069" }], "expect": "accept-measurement" },
-    { "id": "cadence-upper-bound", "mutations": [{ "index": 13, "value": "120" }], "expect": "accept-measurement" },
-    { "id": "cadence-above-bound", "mutations": [{ "index": 13, "value": "121" }], "expect": "reject-plausibility-cadence" },
-    { "id": "force-at-3000", "mutations": [{ "index": 21, "value": "3000" }], "expect": "accept-measurement" },
-    { "id": "force-has-no-invented-watt-bound", "mutations": [{ "index": 21, "value": "3001" }], "expect": "accept-measurement" },
-    { "id": "speed-below-upper-bound", "mutations": [{ "index": 11, "value": "11.111" }], "expect": "accept-measurement", "expect_speed_kmh": 39.9996 },
-    { "id": "speed-above-upper-bound", "mutations": [{ "index": 11, "value": "11.112" }], "expect": "reject-plausibility-speed", "derived_speed_kmh": 40.0032 },
-    { "id": "empty-event-timestamp", "mutations": [{ "index": 1, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-active-flag", "mutations": [{ "index": 7, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-average-speed", "mutations": [{ "index": 10, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-average-cadence", "mutations": [{ "index": 12, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-average-200m-pace", "mutations": [{ "index": 14, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-instant-200m-pace", "mutations": [{ "index": 15, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-average-500m-pace", "mutations": [{ "index": 16, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-instant-500m-pace", "mutations": [{ "index": 17, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-average-1000m-pace", "mutations": [{ "index": 18, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-instant-1000m-pace", "mutations": [{ "index": 19, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-average-force", "mutations": [{ "index": 20, "value": "" }], "expect": "reject-empty-field" },
-    { "id": "empty-coverage-window", "mutations": [{ "index": 23, "value": "" }], "expect": "accept-measurement", "expect_coverage_window_null": true },
-    { "id": "negative-event-timestamp", "mutations": [{ "index": 1, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-active-flag", "mutations": [{ "index": 7, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-average-speed", "mutations": [{ "index": 10, "value": "-0.1" }], "expect": "reject-signed-value" },
-    { "id": "negative-average-cadence", "mutations": [{ "index": 12, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-average-200m-pace", "mutations": [{ "index": 14, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-instant-200m-pace", "mutations": [{ "index": 15, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-average-500m-pace", "mutations": [{ "index": 16, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-instant-500m-pace", "mutations": [{ "index": 17, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-average-1000m-pace", "mutations": [{ "index": 18, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-instant-1000m-pace", "mutations": [{ "index": 19, "value": "-1" }], "expect": "reject-signed-value" },
-    { "id": "negative-average-force", "mutations": [{ "index": 20, "value": "-0.1" }], "expect": "reject-signed-value" },
-    { "id": "negative-coverage-window", "mutations": [{ "index": 23, "value": "-1" }], "expect": "accept-measurement", "expect_coverage_window_null": true },
-    { "id": "grammar-alpha-event-timestamp", "mutations": [{ "index": 1, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-active-flag", "mutations": [{ "index": 7, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-average-speed", "mutations": [{ "index": 10, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-average-cadence", "mutations": [{ "index": 12, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-average-200m-pace", "mutations": [{ "index": 14, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-instant-200m-pace", "mutations": [{ "index": 15, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-average-500m-pace", "mutations": [{ "index": 16, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-instant-500m-pace", "mutations": [{ "index": 17, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-average-1000m-pace", "mutations": [{ "index": 18, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-instant-1000m-pace", "mutations": [{ "index": 19, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "grammar-alpha-average-force", "mutations": [{ "index": 20, "value": "x" }], "expect": "reject-numeric-grammar" },
-    { "id": "decimal-event-timestamp", "mutations": [{ "index": 1, "value": "1.5" }], "expect": "reject-numeric-grammar" },
-    { "id": "decimal-average-cadence", "mutations": [{ "index": 12, "value": "1.5" }], "expect": "reject-numeric-grammar" },
-    { "id": "decimal-average-200m-pace", "mutations": [{ "index": 14, "value": "1.5" }], "expect": "reject-numeric-grammar" },
-    { "id": "active-flag-held", "mutations": [{ "index": 7, "value": "0" }], "expect": "accept-measurement", "note": "a held frame is a valid measurement; field 7 gates integration, not decoding" },
-    { "id": "active-flag-out-of-domain", "mutations": [{ "index": 7, "value": "2" }], "expect": "reject-flag-domain" },
-    { "id": "average-speed-below-upper-bound", "mutations": [{ "index": 10, "value": "11.111" }], "expect": "accept-measurement" },
-    { "id": "average-speed-above-upper-bound", "mutations": [{ "index": 10, "value": "11.112" }], "expect": "reject-plausibility-speed" },
-    { "id": "average-cadence-upper-bound", "mutations": [{ "index": 12, "value": "120" }], "expect": "accept-measurement" },
-    { "id": "average-cadence-above-bound", "mutations": [{ "index": 12, "value": "121" }], "expect": "reject-plausibility-cadence" },
-    { "id": "decimal-average-force", "mutations": [{ "index": 20, "value": "60.25" }], "expect": "accept-measurement", "note": "decimal-tolerant on receive; FitBridge transmits integers because KayakFit drops decimal force" },
-    { "id": "average-force-double-overflow", "mutations": [{ "index": 20, "value": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999" }], "expect": "reject-numeric-overflow" },
-    { "id": "event-timestamp-long-overflow", "mutations": [{ "index": 1, "value": "9223372036854775808" }], "expect": "reject-numeric-overflow" },
-    { "id": "pace-long-overflow", "mutations": [{ "index": 16, "value": "9223372036854775808" }], "expect": "reject-numeric-overflow" },
-    { "id": "average-cadence-int-overflow", "mutations": [{ "index": 12, "value": "2147483648" }], "expect": "reject-numeric-overflow" },
-    { "id": "coverage-window-non-numeric", "mutations": [{ "index": 23, "value": "x" }], "expect": "accept-measurement", "expect_coverage_window_null": true },
-    { "id": "coverage-window-zero", "mutations": [{ "index": 23, "value": "0" }], "expect": "accept-measurement", "expect_coverage_window_null": true, "note": "a declared zero window is no window, not a zero-length one" },
-    { "id": "coverage-window-two-seconds", "mutations": [{ "index": 23, "value": "2" }], "expect": "accept-measurement", "expect_coverage_window_seconds": 2 },
-    { "id": "coverage-window-clamped", "mutations": [{ "index": 23, "value": "99999" }], "expect": "accept-measurement", "expect_coverage_window_seconds": 3600, "note": "a wild window is clamped rather than allowed to inject an enormous integration weight" },
-    { "id": "one-extra-field", "append_fields": ["extra"], "expect": "accept-measurement-ignore-extra-fields" },
-    { "id": "four-extra-fields", "append_fields": ["0", "1", "ignored", "999"], "expect": "accept-measurement-ignore-extra-fields" }
+    {
+      "id": "wrong-command",
+      "mutations": [
+        {
+          "index": 0,
+          "value": "7"
+        }
+      ],
+      "expect": "reject-wrong-command"
+    },
+    {
+      "id": "empty-distance",
+      "mutations": [
+        {
+          "index": 9,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-speed",
+      "mutations": [
+        {
+          "index": 11,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-cadence",
+      "mutations": [
+        {
+          "index": 13,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-force",
+      "mutations": [
+        {
+          "index": 21,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-elapsed",
+      "mutations": [
+        {
+          "index": 22,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "negative-distance",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-speed",
+      "mutations": [
+        {
+          "index": 11,
+          "value": "-0.1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-cadence",
+      "mutations": [
+        {
+          "index": 13,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-force",
+      "mutations": [
+        {
+          "index": 21,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-elapsed",
+      "mutations": [
+        {
+          "index": 22,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "plus-distance",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "+1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "leading-space-speed",
+      "mutations": [
+        {
+          "index": 11,
+          "value": " 1.0"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "trailing-space-force",
+      "mutations": [
+        {
+          "index": 21,
+          "value": "1 "
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "locale-comma-distance",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "1,5"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "locale-comma-speed",
+      "mutations": [
+        {
+          "index": 11,
+          "value": "3,36"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "exponent-distance",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "1e3"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "exponent-speed",
+      "mutations": [
+        {
+          "index": 11,
+          "value": "1E1"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "missing-integer-before-dot",
+      "mutations": [
+        {
+          "index": 11,
+          "value": ".5"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "missing-fraction-after-dot",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "1."
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "decimal-cadence",
+      "mutations": [
+        {
+          "index": 13,
+          "value": "99.0"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "decimal-force",
+      "mutations": [
+        {
+          "index": 21,
+          "value": "103.0"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "decimal-elapsed",
+      "mutations": [
+        {
+          "index": 22,
+          "value": "69.0"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "nan-speed",
+      "mutations": [
+        {
+          "index": 11,
+          "value": "NaN"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "infinity-distance",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "Infinity"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "distance-double-overflow",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ],
+      "expect": "reject-numeric-overflow"
+    },
+    {
+      "id": "cadence-int-overflow",
+      "mutations": [
+        {
+          "index": 13,
+          "value": "2147483648"
+        }
+      ],
+      "expect": "reject-numeric-overflow"
+    },
+    {
+      "id": "force-above-int-range",
+      "mutations": [
+        {
+          "index": 21,
+          "value": "2147483648"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "elapsed-long-overflow",
+      "mutations": [
+        {
+          "index": 22,
+          "value": "9223372036854775808"
+        }
+      ],
+      "expect": "reject-numeric-overflow"
+    },
+    {
+      "id": "zero-lower-bounds",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "0"
+        },
+        {
+          "index": 11,
+          "value": "0"
+        },
+        {
+          "index": 13,
+          "value": "0"
+        },
+        {
+          "index": 21,
+          "value": "0"
+        },
+        {
+          "index": 22,
+          "value": "0"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "leading-zeroes",
+      "mutations": [
+        {
+          "index": 9,
+          "value": "000152.0"
+        },
+        {
+          "index": 11,
+          "value": "003.36"
+        },
+        {
+          "index": 13,
+          "value": "099"
+        },
+        {
+          "index": 21,
+          "value": "0103"
+        },
+        {
+          "index": 22,
+          "value": "0069"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "cadence-upper-bound",
+      "mutations": [
+        {
+          "index": 13,
+          "value": "120"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "cadence-above-bound",
+      "mutations": [
+        {
+          "index": 13,
+          "value": "121"
+        }
+      ],
+      "expect": "reject-plausibility-cadence"
+    },
+    {
+      "id": "force-at-3000",
+      "mutations": [
+        {
+          "index": 21,
+          "value": "3000"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "force-has-no-invented-watt-bound",
+      "mutations": [
+        {
+          "index": 21,
+          "value": "3001"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "speed-below-upper-bound",
+      "mutations": [
+        {
+          "index": 11,
+          "value": "11.111"
+        }
+      ],
+      "expect": "accept-measurement",
+      "expect_speed_kmh": 39.9996
+    },
+    {
+      "id": "speed-above-upper-bound",
+      "mutations": [
+        {
+          "index": 11,
+          "value": "11.112"
+        }
+      ],
+      "expect": "reject-plausibility-speed",
+      "derived_speed_kmh": 40.0032
+    },
+    {
+      "id": "empty-event-timestamp",
+      "mutations": [
+        {
+          "index": 1,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-active-flag",
+      "mutations": [
+        {
+          "index": 7,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-average-speed",
+      "mutations": [
+        {
+          "index": 10,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-average-cadence",
+      "mutations": [
+        {
+          "index": 12,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-average-200m-pace",
+      "mutations": [
+        {
+          "index": 14,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-instant-200m-pace",
+      "mutations": [
+        {
+          "index": 15,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-average-500m-pace",
+      "mutations": [
+        {
+          "index": 16,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-instant-500m-pace",
+      "mutations": [
+        {
+          "index": 17,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-average-1000m-pace",
+      "mutations": [
+        {
+          "index": 18,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-instant-1000m-pace",
+      "mutations": [
+        {
+          "index": 19,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-average-force",
+      "mutations": [
+        {
+          "index": 20,
+          "value": ""
+        }
+      ],
+      "expect": "reject-empty-field"
+    },
+    {
+      "id": "empty-coverage-window",
+      "mutations": [
+        {
+          "index": 23,
+          "value": ""
+        }
+      ],
+      "expect": "accept-measurement",
+      "expect_coverage_window_null": true
+    },
+    {
+      "id": "negative-event-timestamp",
+      "mutations": [
+        {
+          "index": 1,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-active-flag",
+      "mutations": [
+        {
+          "index": 7,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-average-speed",
+      "mutations": [
+        {
+          "index": 10,
+          "value": "-0.1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-average-cadence",
+      "mutations": [
+        {
+          "index": 12,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-average-200m-pace",
+      "mutations": [
+        {
+          "index": 14,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-instant-200m-pace",
+      "mutations": [
+        {
+          "index": 15,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-average-500m-pace",
+      "mutations": [
+        {
+          "index": 16,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-instant-500m-pace",
+      "mutations": [
+        {
+          "index": 17,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-average-1000m-pace",
+      "mutations": [
+        {
+          "index": 18,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-instant-1000m-pace",
+      "mutations": [
+        {
+          "index": 19,
+          "value": "-1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-average-force",
+      "mutations": [
+        {
+          "index": 20,
+          "value": "-0.1"
+        }
+      ],
+      "expect": "reject-signed-value"
+    },
+    {
+      "id": "negative-coverage-window",
+      "mutations": [
+        {
+          "index": 23,
+          "value": "-1"
+        }
+      ],
+      "expect": "accept-measurement",
+      "expect_coverage_window_null": true
+    },
+    {
+      "id": "grammar-alpha-event-timestamp",
+      "mutations": [
+        {
+          "index": 1,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-active-flag",
+      "mutations": [
+        {
+          "index": 7,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-average-speed",
+      "mutations": [
+        {
+          "index": 10,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-average-cadence",
+      "mutations": [
+        {
+          "index": 12,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-average-200m-pace",
+      "mutations": [
+        {
+          "index": 14,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-instant-200m-pace",
+      "mutations": [
+        {
+          "index": 15,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-average-500m-pace",
+      "mutations": [
+        {
+          "index": 16,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-instant-500m-pace",
+      "mutations": [
+        {
+          "index": 17,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-average-1000m-pace",
+      "mutations": [
+        {
+          "index": 18,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-instant-1000m-pace",
+      "mutations": [
+        {
+          "index": 19,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "grammar-alpha-average-force",
+      "mutations": [
+        {
+          "index": 20,
+          "value": "x"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "decimal-event-timestamp",
+      "mutations": [
+        {
+          "index": 1,
+          "value": "1.5"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "decimal-average-cadence",
+      "mutations": [
+        {
+          "index": 12,
+          "value": "1.5"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "decimal-average-200m-pace",
+      "mutations": [
+        {
+          "index": 14,
+          "value": "1.5"
+        }
+      ],
+      "expect": "reject-numeric-grammar"
+    },
+    {
+      "id": "active-flag-held",
+      "mutations": [
+        {
+          "index": 7,
+          "value": "0"
+        }
+      ],
+      "expect": "accept-measurement",
+      "note": "a held frame is a valid measurement; field 7 gates integration, not decoding"
+    },
+    {
+      "id": "active-flag-out-of-domain",
+      "mutations": [
+        {
+          "index": 7,
+          "value": "2"
+        }
+      ],
+      "expect": "reject-flag-domain"
+    },
+    {
+      "id": "average-speed-below-upper-bound",
+      "mutations": [
+        {
+          "index": 10,
+          "value": "11.111"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "average-speed-above-upper-bound",
+      "mutations": [
+        {
+          "index": 10,
+          "value": "11.112"
+        }
+      ],
+      "expect": "reject-plausibility-speed"
+    },
+    {
+      "id": "average-cadence-upper-bound",
+      "mutations": [
+        {
+          "index": 12,
+          "value": "120"
+        }
+      ],
+      "expect": "accept-measurement"
+    },
+    {
+      "id": "average-cadence-above-bound",
+      "mutations": [
+        {
+          "index": 12,
+          "value": "121"
+        }
+      ],
+      "expect": "reject-plausibility-cadence"
+    },
+    {
+      "id": "decimal-average-force",
+      "mutations": [
+        {
+          "index": 20,
+          "value": "60.25"
+        }
+      ],
+      "expect": "accept-measurement",
+      "note": "decimal-tolerant on receive; FitBridge transmits integers because KayakFit drops decimal force"
+    },
+    {
+      "id": "average-force-double-overflow",
+      "mutations": [
+        {
+          "index": 20,
+          "value": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ],
+      "expect": "reject-numeric-overflow"
+    },
+    {
+      "id": "event-timestamp-long-overflow",
+      "mutations": [
+        {
+          "index": 1,
+          "value": "9223372036854775808"
+        }
+      ],
+      "expect": "reject-numeric-overflow"
+    },
+    {
+      "id": "pace-long-overflow",
+      "mutations": [
+        {
+          "index": 16,
+          "value": "9223372036854775808"
+        }
+      ],
+      "expect": "reject-numeric-overflow"
+    },
+    {
+      "id": "average-cadence-int-overflow",
+      "mutations": [
+        {
+          "index": 12,
+          "value": "2147483648"
+        }
+      ],
+      "expect": "reject-numeric-overflow"
+    },
+    {
+      "id": "coverage-window-non-numeric",
+      "mutations": [
+        {
+          "index": 23,
+          "value": "x"
+        }
+      ],
+      "expect": "accept-measurement",
+      "expect_coverage_window_null": true
+    },
+    {
+      "id": "coverage-window-zero",
+      "mutations": [
+        {
+          "index": 23,
+          "value": "0"
+        }
+      ],
+      "expect": "accept-measurement",
+      "expect_coverage_window_null": true,
+      "note": "a declared zero window is no window, not a zero-length one"
+    },
+    {
+      "id": "coverage-window-two-seconds",
+      "mutations": [
+        {
+          "index": 23,
+          "value": "2"
+        }
+      ],
+      "expect": "accept-measurement",
+      "expect_coverage_window_seconds": 2
+    },
+    {
+      "id": "coverage-window-clamped",
+      "mutations": [
+        {
+          "index": 23,
+          "value": "99999"
+        }
+      ],
+      "expect": "accept-measurement",
+      "expect_coverage_window_seconds": 3600,
+      "note": "a wild window is clamped rather than allowed to inject an enormous integration weight"
+    },
+    {
+      "id": "one-extra-field",
+      "append_fields": [
+        "extra"
+      ],
+      "expect": "accept-measurement-ignore-extra-fields"
+    },
+    {
+      "id": "four-extra-fields",
+      "append_fields": [
+        "0",
+        "1",
+        "ignored",
+        "999"
+      ],
+      "expect": "accept-measurement-ignore-extra-fields"
+    }
   ],
   "continuity_cases": [
     {
       "id": "ordinary-monotonic-update",
       "generation": 1,
       "session": 1,
-      "previous": { "distance_m": 152.0, "elapsed_seconds": 69 },
-      "next": { "distance_m": 153.0, "elapsed_seconds": 70 },
+      "previous": {
+        "distance_m": 152.0,
+        "elapsed_seconds": 69
+      },
+      "next": {
+        "distance_m": 153.0,
+        "elapsed_seconds": 70
+      },
       "arrival_delta_ms": 500,
       "expect": "accept"
     },
@@ -372,8 +1615,14 @@
       "id": "distance-decrease-same-session",
       "generation": 1,
       "session": 1,
-      "previous": { "distance_m": 152.0, "elapsed_seconds": 69 },
-      "next": { "distance_m": 10.0, "elapsed_seconds": 70 },
+      "previous": {
+        "distance_m": 152.0,
+        "elapsed_seconds": 69
+      },
+      "next": {
+        "distance_m": 10.0,
+        "elapsed_seconds": 70
+      },
       "arrival_delta_ms": 500,
       "expect": "reject-counter-decrease"
     },
@@ -381,8 +1630,14 @@
       "id": "elapsed-decrease-same-session",
       "generation": 1,
       "session": 1,
-      "previous": { "distance_m": 152.0, "elapsed_seconds": 69 },
-      "next": { "distance_m": 153.0, "elapsed_seconds": 5 },
+      "previous": {
+        "distance_m": 152.0,
+        "elapsed_seconds": 69
+      },
+      "next": {
+        "distance_m": 153.0,
+        "elapsed_seconds": 5
+      },
       "arrival_delta_ms": 500,
       "expect": "reject-counter-decrease"
     },
@@ -392,8 +1647,14 @@
       "previous_session": 1,
       "session": 2,
       "boundary": "accepted-local-start",
-      "previous": { "distance_m": 152.0, "elapsed_seconds": 69 },
-      "next": { "distance_m": 0.0, "elapsed_seconds": 0 },
+      "previous": {
+        "distance_m": 152.0,
+        "elapsed_seconds": 69
+      },
+      "next": {
+        "distance_m": 0.0,
+        "elapsed_seconds": 0
+      },
       "expect": "accept-new-baseline"
     },
     {
@@ -401,8 +1662,14 @@
       "previous_generation": 1,
       "generation": 2,
       "boundary": "new-link-generation",
-      "previous": { "distance_m": 152.0, "elapsed_seconds": 69 },
-      "next": { "distance_m": 0.0, "elapsed_seconds": 0 },
+      "previous": {
+        "distance_m": 152.0,
+        "elapsed_seconds": 69
+      },
+      "next": {
+        "distance_m": 0.0,
+        "elapsed_seconds": 0
+      },
       "expect": "accept-new-baseline"
     }
   ],
@@ -411,137 +1678,528 @@
       "id": "tmiw-complete-legacy-handshake",
       "authority": "central-normative",
       "command_ascii": "2;1700000000;120;80;1\r\n",
-      "expected_chunks_ascii": ["2;1700000000;120;80;", "1\r\n"]
+      "expected_chunks_ascii": [
+        "2;1700000000;120;80;",
+        "1\r\n"
+      ]
     },
-    { "id": "tmiw-reset", "authority": "central-normative", "command_ascii": "1\r\n", "expected_chunks_ascii": ["1\r\n"] },
-    { "id": "tmiw-display-default", "authority": "central-normative", "command_ascii": "5;0;2;5;11;15\r\n", "expected_chunks_ascii": ["5;0;2;5;11;15\r\n"] },
-    { "id": "tmiw-poll", "authority": "central-normative", "command_ascii": "6\r\n", "expected_chunks_ascii": ["6\r\n"] },
-    { "id": "tmiw-start-short", "authority": "central-normative", "command_ascii": "9;1\r\n", "expected_chunks_ascii": ["9;1\r\n"] },
-    { "id": "tmiw-stop-short", "authority": "central-normative", "command_ascii": "9;3\r\n", "expected_chunks_ascii": ["9;3\r\n"] },
-    { "id": "captured-handshake-truncated", "authority": "simulator-compatibility-only", "command_ascii": "2;1700000000;120;70;", "expected_simulator_result": "accept-observed-dialect-unconfirmed" },
-    { "id": "captured-start-extended", "authority": "simulator-compatibility-only", "command_ascii": "9;1;1;900000000000\r\n", "expected_simulator_result": "accept-observed-dialect-extra-fields-uninterpreted" },
-    { "id": "captured-stop-extended", "authority": "simulator-compatibility-only", "command_ascii": "9;3;1\r\n", "expected_simulator_result": "accept-observed-dialect-extra-field-uninterpreted" },
-    { "id": "unsupported-new-handshake", "authority": "known-token-out-of-profile", "command_ascii": "21;1700000000;120;80;12\r\n", "expected_simulator_result": "reject-unsupported-command" },
-    { "id": "unsupported-configuration", "authority": "known-token-out-of-profile", "command_ascii": "3\r\n", "expected_simulator_result": "reject-unsupported-command" },
-    { "id": "unsupported-parameters", "authority": "known-token-out-of-profile", "command_ascii": "8\r\n", "expected_simulator_result": "reject-unsupported-command" }
+    {
+      "id": "tmiw-reset",
+      "authority": "central-normative",
+      "command_ascii": "1\r\n",
+      "expected_chunks_ascii": [
+        "1\r\n"
+      ]
+    },
+    {
+      "id": "tmiw-display-default",
+      "authority": "central-normative",
+      "command_ascii": "5;0;2;5;11;15\r\n",
+      "expected_chunks_ascii": [
+        "5;0;2;5;11;15\r\n"
+      ]
+    },
+    {
+      "id": "tmiw-poll",
+      "authority": "central-normative",
+      "command_ascii": "6\r\n",
+      "expected_chunks_ascii": [
+        "6\r\n"
+      ]
+    },
+    {
+      "id": "tmiw-start-short",
+      "authority": "central-normative",
+      "command_ascii": "9;1\r\n",
+      "expected_chunks_ascii": [
+        "9;1\r\n"
+      ]
+    },
+    {
+      "id": "tmiw-stop-short",
+      "authority": "central-normative",
+      "command_ascii": "9;3\r\n",
+      "expected_chunks_ascii": [
+        "9;3\r\n"
+      ]
+    },
+    {
+      "id": "captured-handshake-truncated",
+      "authority": "simulator-compatibility-only",
+      "command_ascii": "2;1700000000;120;70;",
+      "expected_simulator_result": "accept-observed-dialect-unconfirmed"
+    },
+    {
+      "id": "captured-start-extended",
+      "authority": "simulator-compatibility-only",
+      "command_ascii": "9;1;1;900000000000\r\n",
+      "expected_simulator_result": "accept-observed-dialect-extra-fields-uninterpreted"
+    },
+    {
+      "id": "captured-stop-extended",
+      "authority": "simulator-compatibility-only",
+      "command_ascii": "9;3;1\r\n",
+      "expected_simulator_result": "accept-observed-dialect-extra-field-uninterpreted"
+    },
+    {
+      "id": "unsupported-new-handshake",
+      "authority": "known-token-out-of-profile",
+      "command_ascii": "21;1700000000;120;80;12\r\n",
+      "expected_simulator_result": "reject-unsupported-command"
+    },
+    {
+      "id": "unsupported-configuration",
+      "authority": "known-token-out-of-profile",
+      "command_ascii": "3\r\n",
+      "expected_simulator_result": "reject-unsupported-command"
+    },
+    {
+      "id": "unsupported-parameters",
+      "authority": "known-token-out-of-profile",
+      "command_ascii": "8\r\n",
+      "expected_simulator_result": "reject-unsupported-command"
+    }
   ],
   "response_cases": [
-    { "id": "reset-text", "response_ascii": "1;1;900000000\r\n", "expect": "reset-success" },
-    { "id": "handshake-generic-positive", "response_ascii": "2;1\r\n", "expect": "handshake-success" },
-    { "id": "display-positive", "response_ascii": "5;1\r\n", "expect": "display-success" },
-    { "id": "display-negative", "response_ascii": "5;0\r\n", "expect": "display-failure" },
-    { "id": "poll-empty", "response_ascii": "6\r\n", "expect": "poll-response-not-measurement" },
-    { "id": "start-short", "response_ascii": "9;1\r\n", "expect": "session-start-response" },
-    { "id": "stop-short", "response_ascii": "9;3\r\n", "expect": "session-stop-response" },
-    { "id": "stop-with-mode", "response_ascii": "9;3;1\r\n", "expect": "session-stop-response-observed-dialect" },
-    { "id": "unknown-command", "response_ascii": "7;1\r\n", "expect": "reject-unknown-command" }
+    {
+      "id": "reset-text",
+      "response_ascii": "1;1;900000000\r\n",
+      "expect": "reset-success"
+    },
+    {
+      "id": "handshake-generic-positive",
+      "response_ascii": "2;1\r\n",
+      "expect": "handshake-success"
+    },
+    {
+      "id": "display-positive",
+      "response_ascii": "5;1\r\n",
+      "expect": "display-success"
+    },
+    {
+      "id": "display-negative",
+      "response_ascii": "5;0\r\n",
+      "expect": "display-failure"
+    },
+    {
+      "id": "poll-empty",
+      "response_ascii": "6\r\n",
+      "expect": "poll-response-not-measurement"
+    },
+    {
+      "id": "start-short",
+      "response_ascii": "9;1\r\n",
+      "expect": "session-start-response"
+    },
+    {
+      "id": "stop-short",
+      "response_ascii": "9;3\r\n",
+      "expect": "session-stop-response"
+    },
+    {
+      "id": "stop-with-mode",
+      "response_ascii": "9;3;1\r\n",
+      "expect": "session-stop-response-observed-dialect"
+    },
+    {
+      "id": "unknown-command",
+      "response_ascii": "7;1\r\n",
+      "expect": "reject-unknown-command"
+    }
   ],
   "setup_timeline_cases": [
     {
       "id": "wrong-response-does-not-complete-reset",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "reset", "attempt": 1 },
-        { "t_ms": 100, "generation": 1, "event": "response", "token": "5", "disposition": "ignore-wrong-token" },
-        { "t_ms": 200, "generation": 1, "event": "response", "token": "1", "disposition": "complete-current-attempt" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 100,
+          "generation": 1,
+          "event": "response",
+          "token": "5",
+          "disposition": "ignore-wrong-token"
+        },
+        {
+          "t_ms": 200,
+          "generation": 1,
+          "event": "response",
+          "token": "1",
+          "disposition": "complete-current-attempt"
+        }
       ],
       "expect_terminal": "reset-success"
     },
     {
       "id": "late-reset-response-between-attempts-is-ignored",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "reset", "attempt": 1 },
-        { "t_ms": 1000, "generation": 1, "event": "deadline", "command": "reset", "attempt": 1 },
-        { "t_ms": 1500, "generation": 1, "event": "response", "token": "1", "disposition": "ignore-no-in-flight-attempt" },
-        { "t_ms": 2000, "generation": 1, "event": "send", "command": "reset", "attempt": 2 },
-        { "t_ms": 2100, "generation": 1, "event": "response", "token": "1", "disposition": "complete-current-attempt" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 1000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 1500,
+          "generation": 1,
+          "event": "response",
+          "token": "1",
+          "disposition": "ignore-no-in-flight-attempt"
+        },
+        {
+          "t_ms": 2000,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 2
+        },
+        {
+          "t_ms": 2100,
+          "generation": 1,
+          "event": "response",
+          "token": "1",
+          "disposition": "complete-current-attempt"
+        }
       ],
       "expect_terminal": "reset-success-on-attempt-2"
     },
     {
       "id": "reset-exhaustion-fails-closed",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "reset", "attempt": 1 },
-        { "t_ms": 1000, "generation": 1, "event": "deadline", "command": "reset", "attempt": 1 },
-        { "t_ms": 2000, "generation": 1, "event": "send", "command": "reset", "attempt": 2 },
-        { "t_ms": 3000, "generation": 1, "event": "deadline", "command": "reset", "attempt": 2 },
-        { "t_ms": 4000, "generation": 1, "event": "send", "command": "reset", "attempt": 3 },
-        { "t_ms": 5000, "generation": 1, "event": "deadline", "command": "reset", "attempt": 3 }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 1000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 2000,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 2
+        },
+        {
+          "t_ms": 3000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "reset",
+          "attempt": 2
+        },
+        {
+          "t_ms": 4000,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 3
+        },
+        {
+          "t_ms": 5000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "reset",
+          "attempt": 3
+        }
       ],
       "expect_terminal": "setup-failed-reset-exhausted"
     },
     {
       "id": "handshake-exhaustion-proceeds-unconfirmed",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "handshake", "attempt": 1 },
-        { "t_ms": 1000, "generation": 1, "event": "deadline", "command": "handshake", "attempt": 1 },
-        { "t_ms": 2000, "generation": 1, "event": "send", "command": "handshake", "attempt": 2 },
-        { "t_ms": 3000, "generation": 1, "event": "deadline", "command": "handshake", "attempt": 2 },
-        { "t_ms": 4000, "generation": 1, "event": "send", "command": "handshake", "attempt": 3 },
-        { "t_ms": 5000, "generation": 1, "event": "deadline", "command": "handshake", "attempt": 3 },
-        { "t_ms": 10000, "generation": 1, "event": "transition", "state": "display", "handshake": "unconfirmed" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "handshake",
+          "attempt": 1
+        },
+        {
+          "t_ms": 1000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "handshake",
+          "attempt": 1
+        },
+        {
+          "t_ms": 2000,
+          "generation": 1,
+          "event": "send",
+          "command": "handshake",
+          "attempt": 2
+        },
+        {
+          "t_ms": 3000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "handshake",
+          "attempt": 2
+        },
+        {
+          "t_ms": 4000,
+          "generation": 1,
+          "event": "send",
+          "command": "handshake",
+          "attempt": 3
+        },
+        {
+          "t_ms": 5000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "handshake",
+          "attempt": 3
+        },
+        {
+          "t_ms": 10000,
+          "generation": 1,
+          "event": "transition",
+          "state": "display",
+          "handshake": "unconfirmed"
+        }
       ],
       "expect_terminal": "display-pending-handshake-unconfirmed"
     },
     {
       "id": "out-of-order-display-response-does-not-complete-handshake",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "handshake", "attempt": 1 },
-        { "t_ms": 100, "generation": 1, "event": "response", "token": "5", "disposition": "ignore-wrong-token" },
-        { "t_ms": 200, "generation": 1, "event": "response", "token": "2", "disposition": "complete-current-attempt" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "handshake",
+          "attempt": 1
+        },
+        {
+          "t_ms": 100,
+          "generation": 1,
+          "event": "response",
+          "token": "5",
+          "disposition": "ignore-wrong-token"
+        },
+        {
+          "t_ms": 200,
+          "generation": 1,
+          "event": "response",
+          "token": "2",
+          "disposition": "complete-current-attempt"
+        }
       ],
       "expect_terminal": "handshake-success"
     },
     {
       "id": "display-negative-response-fails-attempt-and-retries",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "display", "attempt": 1 },
-        { "t_ms": 100, "generation": 1, "event": "response", "token": "5", "status": "0", "disposition": "fail-current-attempt" },
-        { "t_ms": 1100, "generation": 1, "event": "send", "command": "display", "attempt": 2 },
-        { "t_ms": 1200, "generation": 1, "event": "response", "token": "5", "status": "1", "disposition": "complete-current-attempt" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "display",
+          "attempt": 1
+        },
+        {
+          "t_ms": 100,
+          "generation": 1,
+          "event": "response",
+          "token": "5",
+          "status": "0",
+          "disposition": "fail-current-attempt"
+        },
+        {
+          "t_ms": 1100,
+          "generation": 1,
+          "event": "send",
+          "command": "display",
+          "attempt": 2
+        },
+        {
+          "t_ms": 1200,
+          "generation": 1,
+          "event": "response",
+          "token": "5",
+          "status": "1",
+          "disposition": "complete-current-attempt"
+        }
       ],
       "expect_terminal": "display-success-on-attempt-2"
     },
     {
       "id": "display-exhaustion-fails-closed",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "display", "attempt": 1 },
-        { "t_ms": 1000, "generation": 1, "event": "deadline", "command": "display", "attempt": 1 },
-        { "t_ms": 2000, "generation": 1, "event": "send", "command": "display", "attempt": 2 },
-        { "t_ms": 3000, "generation": 1, "event": "deadline", "command": "display", "attempt": 2 },
-        { "t_ms": 4000, "generation": 1, "event": "send", "command": "display", "attempt": 3 },
-        { "t_ms": 5000, "generation": 1, "event": "deadline", "command": "display", "attempt": 3 }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "display",
+          "attempt": 1
+        },
+        {
+          "t_ms": 1000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "display",
+          "attempt": 1
+        },
+        {
+          "t_ms": 2000,
+          "generation": 1,
+          "event": "send",
+          "command": "display",
+          "attempt": 2
+        },
+        {
+          "t_ms": 3000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "display",
+          "attempt": 2
+        },
+        {
+          "t_ms": 4000,
+          "generation": 1,
+          "event": "send",
+          "command": "display",
+          "attempt": 3
+        },
+        {
+          "t_ms": 5000,
+          "generation": 1,
+          "event": "deadline",
+          "command": "display",
+          "attempt": 3
+        }
       ],
       "expect_terminal": "setup-failed-display-exhausted-no-capabilities"
     },
     {
       "id": "disconnect-cancels-attempt-and-retry",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "reset", "attempt": 1 },
-        { "t_ms": 500, "generation": 1, "event": "disconnect", "disposition": "cancel-generation" },
-        { "t_ms": 700, "generation": 1, "event": "response", "token": "1", "disposition": "ignore-stale-generation" },
-        { "t_ms": 2000, "generation": 1, "event": "retry-due", "disposition": "cancelled-no-write" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 500,
+          "generation": 1,
+          "event": "disconnect",
+          "disposition": "cancel-generation"
+        },
+        {
+          "t_ms": 700,
+          "generation": 1,
+          "event": "response",
+          "token": "1",
+          "disposition": "ignore-stale-generation"
+        },
+        {
+          "t_ms": 2000,
+          "generation": 1,
+          "event": "retry-due",
+          "disposition": "cancelled-no-write"
+        }
       ],
       "expect_terminal": "disconnected-no-pending-work"
     },
     {
       "id": "reconnect-owns-fresh-state",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "reset", "attempt": 1 },
-        { "t_ms": 500, "generation": 1, "event": "disconnect", "disposition": "cancel-generation" },
-        { "t_ms": 1000, "generation": 2, "event": "send", "command": "reset", "attempt": 1 },
-        { "t_ms": 1100, "generation": 1, "event": "response", "token": "1", "disposition": "ignore-stale-generation" },
-        { "t_ms": 1200, "generation": 2, "event": "response", "token": "1", "disposition": "complete-current-attempt" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 500,
+          "generation": 1,
+          "event": "disconnect",
+          "disposition": "cancel-generation"
+        },
+        {
+          "t_ms": 1000,
+          "generation": 2,
+          "event": "send",
+          "command": "reset",
+          "attempt": 1
+        },
+        {
+          "t_ms": 1100,
+          "generation": 1,
+          "event": "response",
+          "token": "1",
+          "disposition": "ignore-stale-generation"
+        },
+        {
+          "t_ms": 1200,
+          "generation": 2,
+          "event": "response",
+          "token": "1",
+          "disposition": "complete-current-attempt"
+        }
       ],
       "expect_terminal": "generation-2-reset-success"
     },
     {
       "id": "unconfirmed-handshake-plus-display-ack-reaches-ready-after-settle",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "state", "state": "display", "handshake": "unconfirmed" },
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "display", "attempt": 1 },
-        { "t_ms": 60, "generation": 1, "event": "response", "token": "5", "status": "1", "disposition": "complete-current-attempt" },
-        { "t_ms": 5060, "generation": 1, "event": "transition", "state": "ready" },
-        { "t_ms": 5060, "generation": 1, "event": "send", "command": "poll", "attempt": 1 }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "state",
+          "state": "display",
+          "handshake": "unconfirmed"
+        },
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "display",
+          "attempt": 1
+        },
+        {
+          "t_ms": 60,
+          "generation": 1,
+          "event": "response",
+          "token": "5",
+          "status": "1",
+          "disposition": "complete-current-attempt"
+        },
+        {
+          "t_ms": 5060,
+          "generation": 1,
+          "event": "transition",
+          "state": "ready"
+        },
+        {
+          "t_ms": 5060,
+          "generation": 1,
+          "event": "send",
+          "command": "poll",
+          "attempt": 1
+        }
       ],
       "expect_terminal": "ready-handshake-unconfirmed"
     }
@@ -550,32 +2208,115 @@
     {
       "id": "start-silence-never-auto-retries",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "local-action", "action": "start" },
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "start", "attempt": 1 },
-        { "t_ms": 1000, "generation": 1, "event": "observation-window-ended", "command": "start", "disposition": "no-automatic-retry" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "local-action",
+          "action": "start"
+        },
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "start",
+          "attempt": 1
+        },
+        {
+          "t_ms": 1000,
+          "generation": 1,
+          "event": "observation-window-ended",
+          "command": "start",
+          "disposition": "no-automatic-retry"
+        }
       ],
       "expect_terminal": "start-write-complete-unconfirmed"
     },
     {
       "id": "stop-wrong-response-never-auto-retries",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "local-action", "action": "stop" },
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "stop", "attempt": 1 },
-        { "t_ms": 100, "generation": 1, "event": "response", "token": "9", "status": "1", "disposition": "ignore-wrong-session-response" },
-        { "t_ms": 1000, "generation": 1, "event": "observation-window-ended", "command": "stop", "disposition": "no-automatic-retry" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "local-action",
+          "action": "stop"
+        },
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "stop",
+          "attempt": 1
+        },
+        {
+          "t_ms": 100,
+          "generation": 1,
+          "event": "response",
+          "token": "9",
+          "status": "1",
+          "disposition": "ignore-wrong-session-response"
+        },
+        {
+          "t_ms": 1000,
+          "generation": 1,
+          "event": "observation-window-ended",
+          "command": "stop",
+          "disposition": "no-automatic-retry"
+        }
       ],
       "expect_terminal": "stop-write-complete-unconfirmed"
     },
     {
       "id": "missing-polls-advance-schedule-without-retry-then-go-stale",
       "events": [
-        { "t_ms": 0, "generation": 1, "event": "send", "command": "poll", "sequence": 1 },
-        { "t_ms": 500, "generation": 1, "event": "send", "command": "poll", "sequence": 2 },
-        { "t_ms": 1000, "generation": 1, "event": "send", "command": "poll", "sequence": 3 },
-        { "t_ms": 1500, "generation": 1, "event": "send", "command": "poll", "sequence": 4 },
-        { "t_ms": 2000, "generation": 1, "event": "send", "command": "poll", "sequence": 5 },
-        { "t_ms": 2500, "generation": 1, "event": "send", "command": "poll", "sequence": 6 },
-        { "t_ms": 3000, "generation": 1, "event": "liveness", "state": "stale", "disposition": "no-burst-retry" }
+        {
+          "t_ms": 0,
+          "generation": 1,
+          "event": "send",
+          "command": "poll",
+          "sequence": 1
+        },
+        {
+          "t_ms": 500,
+          "generation": 1,
+          "event": "send",
+          "command": "poll",
+          "sequence": 2
+        },
+        {
+          "t_ms": 1000,
+          "generation": 1,
+          "event": "send",
+          "command": "poll",
+          "sequence": 3
+        },
+        {
+          "t_ms": 1500,
+          "generation": 1,
+          "event": "send",
+          "command": "poll",
+          "sequence": 4
+        },
+        {
+          "t_ms": 2000,
+          "generation": 1,
+          "event": "send",
+          "command": "poll",
+          "sequence": 5
+        },
+        {
+          "t_ms": 2500,
+          "generation": 1,
+          "event": "send",
+          "command": "poll",
+          "sequence": 6
+        },
+        {
+          "t_ms": 3000,
+          "generation": 1,
+          "event": "liveness",
+          "state": "stale",
+          "disposition": "no-burst-retry"
+        }
       ],
       "expect_terminal": "stale-no-capabilities-until-valid-measurement"
     }
@@ -584,19 +2325,54 @@
     {
       "id": "disconnect-discards-partial-line",
       "events": [
-        { "generation": 1, "event": "notification-ascii", "value": "6;stale-partial", "expect_pending_ascii": "6;stale-partial" },
-        { "generation": 1, "event": "disconnect", "expect_pending_ascii": "" },
-        { "generation": 2, "event": "notification-ascii", "value": "5;1\r\n", "expect_frames_ascii": ["5;1"], "expect_pending_ascii": "" }
+        {
+          "generation": 1,
+          "event": "notification-ascii",
+          "value": "6;stale-partial",
+          "expect_pending_ascii": "6;stale-partial"
+        },
+        {
+          "generation": 1,
+          "event": "disconnect",
+          "expect_pending_ascii": ""
+        },
+        {
+          "generation": 2,
+          "event": "notification-ascii",
+          "value": "5;1\r\n",
+          "expect_frames_ascii": [
+            "5;1"
+          ],
+          "expect_pending_ascii": ""
+        }
       ],
       "expect": "generation-2-has-fresh-empty-assembler"
     },
     {
       "id": "stale-notification-cannot-enter-new-generation",
       "events": [
-        { "generation": 1, "event": "disconnect" },
-        { "generation": 2, "event": "connect" },
-        { "generation": 1, "event": "notification-ascii", "value": "5;1\r\n", "disposition": "ignore-stale-generation" },
-        { "generation": 2, "event": "notification-ascii", "value": "1;1;900000000\r\n", "expect_frames_ascii": ["1;1;900000000"] }
+        {
+          "generation": 1,
+          "event": "disconnect"
+        },
+        {
+          "generation": 2,
+          "event": "connect"
+        },
+        {
+          "generation": 1,
+          "event": "notification-ascii",
+          "value": "5;1\r\n",
+          "disposition": "ignore-stale-generation"
+        },
+        {
+          "generation": 2,
+          "event": "notification-ascii",
+          "value": "1;1;900000000\r\n",
+          "expect_frames_ascii": [
+            "1;1;900000000"
+          ]
+        }
       ],
       "expect": "only-generation-2-frame-emitted"
     }
@@ -607,19 +2383,22 @@
       "real console identifier",
       "absolute capture wall-clock timestamp",
       "real device epoch",
-      "real user or athlete weight",
       "account identifier",
-      "profile or health value",
+      "identifying profile value (name, email, age, gender)",
       "store or product token",
       "unrelated scanned device"
     ],
     "allowed_protocol_constants": [
       "normalized epoch values",
-      "neutral weight 80 from TMIW",
+      "neutral weight 80 from TMIW, as the unconfigured fallback only",
       "relative milliseconds",
       "pseudonymous fixture identifiers"
     ],
-    "ordinary_log_policy": "state, command name, byte length, relative timing, evidence label, and rejection code only; raw protocol payloads require an armed structurally redacted BLECAP session"
+    "ordinary_log_policy": "state, command name, byte length, relative timing, evidence label, and rejection code only; raw protocol payloads require an armed structurally redacted BLECAP session. Under D102 that redaction covers identifying profile values and vendor tokens, not athlete weight or height.",
+    "retained_by_decision": [
+      "athlete weight on the wire and in captures (D102)",
+      "athlete height in captures (D102)"
+    ]
   },
   "coverage_manifest": [
     "every byte split of one representative 24-field measurement",
