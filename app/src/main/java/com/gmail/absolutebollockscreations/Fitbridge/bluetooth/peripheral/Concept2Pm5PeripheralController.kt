@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Pm5Snapshot
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2WorkoutProgram
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
 import java.util.concurrent.atomic.AtomicLong
 
@@ -65,6 +66,8 @@ class Concept2Pm5PeripheralController(
         get() = advertiser.hasWorkoutMeasurementSubscription()
     fun currentStatus(): Status = status
     fun publish(snapshot: Concept2Pm5Snapshot) = advertiser.publish(snapshot)
+    fun workoutProgram(): Concept2WorkoutProgram? = advertiser.workoutProgram()
+    fun resetWorkoutState() = advertiser.resetWorkoutState()
 
     @SuppressLint("MissingPermission")
     fun start(persona: SimulatorPersona.Concept2Pm5, onResult: (Result<Unit>) -> Unit) {
@@ -87,7 +90,7 @@ class Concept2Pm5PeripheralController(
                                 FtmsForegroundService.start(
                                     context,
                                     "Sharing as ${persona.advertisedName}",
-                                    "Simulated Concept2 PM5; C2a MyWhoosh CSAFE handshake enabled",
+                                    "Simulated Concept2 PM5; ErgData-compatible identity and CSAFE response notifications",
                                 ) { foreground ->
                                     foreground.fold(
                                         onSuccess = {

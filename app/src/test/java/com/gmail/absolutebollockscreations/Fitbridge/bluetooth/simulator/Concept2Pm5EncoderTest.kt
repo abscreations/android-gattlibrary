@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.Concept2Measurement
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.Concept2Pm5PeripheralAdvertiser
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.Concept2Pm5Session
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,7 +12,7 @@ import org.junit.Test
 
 class Concept2Pm5EncoderTest {
     private val sample = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG).run {
-        beginFirstPull()
+        startWorkout()
         tick(15.34)
     }
 
@@ -224,7 +225,11 @@ class Concept2Pm5EncoderTest {
 
     @Test
     fun `PM5 holds physical idle then prepares the first pull before becoming active`() {
-        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, Concept2Scenario.FINISH)
+        val engine = Concept2Pm5MockEngine(
+            Concept2Machine.ROW_ERG,
+            Concept2Scenario.FINISH,
+            startsPaused = true,
+        )
         val initial = engine.snapshot()
         assertEquals(0, initial.elapsedCentiseconds)
         assertEquals(0, initial.distanceDecimetres)
@@ -247,11 +252,14 @@ class Concept2Pm5EncoderTest {
             Concept2Pm5Encoder.multiplexed(0x3E, initial)!!.map { it.toInt() and 0xFF },
         )
 
-        repeat(20) { assertEquals(0, engine.tick(0.5, workoutRequested = false).elapsedCentiseconds) }
+        repeat(20) { assertEquals(0, engine.tick(0.5).elapsedCentiseconds) }
         assertEquals(Concept2Pm5StartupPhase.IDLE, engine.startupPhase)
+        assertFalse(engine.isWorkoutRunning)
+
+        assertTrue(engine.startWorkout())
 
         repeat(4) {
-            val held = engine.tick(0.5, workoutRequested = true)
+            val held = engine.tick(0.5)
             assertEquals(Concept2Pm5StartupPhase.SUBSCRIBED_IDLE, engine.startupPhase)
             assertEquals(0, held.elapsedCentiseconds)
             assertEquals(0, held.distanceDecimetres)
@@ -288,7 +296,7 @@ class Concept2Pm5EncoderTest {
     @Test
     fun `autonomous PM5 carries a time weighted average cadence for generated metrics`() {
         val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG)
-        engine.beginFirstPull()
+        engine.startWorkout()
         engine.tick(3.5)
         val first = engine.tick(10.0)
         val second = engine.tick(20.0)
@@ -296,6 +304,246 @@ class Concept2Pm5EncoderTest {
         assertTrue(second.averageCadence in 18.0..34.0)
         assertTrue(second.averageCadence != first.averageCadence)
         assertTrue(second.averagePowerWatts > 0)
+    }
+
+    @Test
+    fun `pause freezes an active PM5 workout and resume continues without reset`() {
+        val engine = Concept2Pm5MockEngine(
+            Concept2Machine.ROW_ERG,
+            startsPaused = true,
+        )
+        assertTrue(engine.startWorkout())
+        engine.tick(4.0)
+        val beforePause = engine.snapshot()
+
+        assertTrue(engine.pauseWorkout())
+        assertFalse(engine.isWorkoutRunning)
+        val paused = engine.tick(30.0)
+        assertEquals(beforePause.elapsedCentiseconds, paused.elapsedCentiseconds)
+        assertEquals(beforePause.distanceDecimetres, paused.distanceDecimetres)
+        assertEquals(beforePause.strokeCount, paused.strokeCount)
+        assertEquals(beforePause.forceCurveSequence, paused.forceCurveSequence)
+
+        val wirePaused = engine.wireSnapshot()
+        assertEquals(beforePause.elapsedCentiseconds, wirePaused.elapsedCentiseconds)
+        assertEquals(beforePause.distanceDecimetres, wirePaused.distanceDecimetres)
+        assertEquals(beforePause.strokeCount, wirePaused.strokeCount)
+        assertEquals(0, wirePaused.speedMillimetresPerSecond)
+        assertEquals(0, wirePaused.strokeRate)
+        assertEquals(0, wirePaused.currentPaceCentiseconds)
+        assertEquals(0, wirePaused.currentPowerWatts)
+        assertEquals(0, wirePaused.averagePowerWatts)
+        assertEquals(0, wirePaused.strokeState)
+        assertEquals(0, wirePaused.driveLengthCentimetres)
+        assertEquals(0, wirePaused.peakForceTenthsPound)
+        assertFalse(wirePaused.strokeDataAvailable)
+        assertFalse(0x35 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(wirePaused))
+        assertFalse(0x36 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(wirePaused))
+
+        assertTrue(engine.startWorkout())
+        val resumed = engine.tick(0.5)
+        assertTrue(resumed.elapsedCentiseconds > paused.elapsedCentiseconds)
+        assertTrue(resumed.distanceDecimetres >= paused.distanceDecimetres)
+        assertTrue(resumed.strokeDataAvailable)
+        assertTrue(0x35 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(resumed))
+        assertTrue(0x36 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(resumed))
+    }
+
+    @Test
+    fun `PM5 producer matches ErgData sample rate two cadence`() {
+        assertEquals(250L, FtmsSimulator.CONCEPT2_PERIOD_MS)
+    }
+
+    @Test
+    fun `single CSAFE goal finishes without resetting accumulated workout totals`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.configureWorkout(
+            Concept2WorkoutProgram(4, Concept2WorkoutGoalKind.TIME, goalValue = 400),
+        )
+        assertFalse(engine.isWorkoutRunning)
+        assertTrue(engine.startWorkout())
+
+        engine.tick(7.0)
+        val completed = engine.tick(2.0)
+
+        assertFalse(engine.isWorkoutRunning)
+        assertEquals(Concept2ProgramPhase.COMPLETE, engine.programProgress()?.phase)
+        assertEquals(10, completed.workoutState)
+        assertEquals(1, completed.summarySequence)
+        assertTrue(completed.elapsedCentiseconds >= 400)
+        assertTrue(completed.distanceDecimetres > 0)
+        assertEquals(0, completed.speedMillimetresPerSecond)
+        assertFalse(completed.strokeDataAvailable)
+    }
+
+    @Test
+    fun `manual end preserves Just Row totals and enters the summary state`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.startWorkout()
+        engine.tick(7.0)
+        val beforeEnd = engine.snapshot()
+
+        assertTrue(engine.endWorkout())
+        val ended = engine.snapshot()
+
+        assertFalse(engine.isWorkoutRunning)
+        assertEquals(beforeEnd.elapsedCentiseconds, ended.elapsedCentiseconds)
+        assertEquals(beforeEnd.distanceDecimetres, ended.distanceDecimetres)
+        assertEquals(beforeEnd.strokeCount, ended.strokeCount)
+        assertEquals(10, ended.workoutState)
+        assertEquals(1, ended.summarySequence)
+        assertFalse(ended.strokeDataAvailable)
+        assertFalse(engine.startWorkout())
+        assertFalse(engine.endWorkout())
+    }
+
+    @Test
+    fun `constant intervals alternate active work and motionless countdown rest`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.configureWorkout(
+            Concept2WorkoutProgram(
+                workoutType = 6,
+                goalKind = Concept2WorkoutGoalKind.TIME,
+                goalValue = 100,
+                restSeconds = 2,
+            ),
+        )
+        engine.startWorkout()
+
+        val rest = engine.tick(7.0)
+        assertTrue(engine.isWorkoutRunning)
+        assertEquals(Concept2ProgramPhase.REST, engine.programProgress()?.phase)
+        assertEquals(2, engine.programProgress()?.remaining)
+        assertEquals(0, rest.strokeRate)
+        assertEquals(0, rest.currentPowerWatts)
+        assertFalse(rest.strokeDataAvailable)
+
+        engine.tick(1.0)
+        assertEquals(1, engine.programProgress()?.remaining)
+        val active = engine.tick(1.0)
+        assertEquals(Concept2ProgramPhase.ACTIVE, engine.programProgress()?.phase)
+        assertEquals(2, engine.programProgress()?.intervalNumber)
+        assertTrue(active.strokeDataAvailable)
+        assertTrue(engine.isWorkoutRunning)
+    }
+
+    @Test
+    fun `variable intervals apply entry targets in order and finish after the final entry`() {
+        val intervals = listOf(
+            Concept2WorkoutInterval(
+                Concept2WorkoutGoalKind.TIME,
+                goalValue = 100,
+                restSeconds = 1,
+                targetStrokeRate = 30,
+            ),
+            Concept2WorkoutInterval(
+                Concept2WorkoutGoalKind.TIME,
+                goalValue = 100,
+                restSeconds = 0,
+                targetPowerWatts = 240,
+                targetHeartRateBpm = 150,
+            ),
+        )
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.configureWorkout(
+            Concept2WorkoutProgram(
+                workoutType = 8,
+                goalKind = intervals.first().goalKind,
+                goalValue = intervals.first().goalValue,
+                intervals = intervals,
+            ),
+        )
+        engine.startWorkout()
+
+        val firstRest = engine.tick(7.0)
+        assertEquals(Concept2ProgramPhase.REST, engine.programProgress()?.phase)
+        assertEquals(0, firstRest.strokeRate)
+        assertFalse(firstRest.strokeDataAvailable)
+
+        val second = engine.tick(1.0)
+        assertEquals(2, engine.programProgress()?.intervalNumber)
+        assertEquals(240, second.currentPowerWatts)
+        assertTrue(second.heartRate in 135..165)
+
+        val completed = engine.tick(1.0)
+        assertEquals(Concept2ProgramPhase.COMPLETE, engine.programProgress()?.phase)
+        assertFalse(engine.isWorkoutRunning)
+        assertEquals(10, completed.workoutState)
+        assertEquals(1, completed.summarySequence)
+    }
+
+    @Test
+    fun `undefined variable rest waits motionless until Start advances to the next entry`() {
+        val intervals = listOf(
+            Concept2WorkoutInterval(Concept2WorkoutGoalKind.TIME, 100, restSeconds = null),
+            Concept2WorkoutInterval(Concept2WorkoutGoalKind.TIME, 100, restSeconds = 0),
+        )
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.configureWorkout(
+            Concept2WorkoutProgram(8, intervals[0].goalKind, intervals[0].goalValue, intervals = intervals),
+        )
+        engine.startWorkout()
+        val rest = engine.tick(7.0)
+
+        assertFalse(engine.isWorkoutRunning)
+        assertEquals(Concept2ProgramPhase.REST, engine.programProgress()?.phase)
+        assertEquals(-1, engine.programProgress()?.remaining)
+        assertEquals(rest, engine.tick(60.0))
+
+        assertTrue(engine.startWorkout())
+        assertEquals(Concept2ProgramPhase.ACTIVE, engine.programProgress()?.phase)
+        assertEquals(2, engine.programProgress()?.intervalNumber)
+    }
+
+    @Test
+    fun `CSAFE targets bound generated cadence and heart rate and override finish scenario`() {
+        val engine = Concept2Pm5MockEngine(
+            Concept2Machine.ROW_ERG,
+            scenario = Concept2Scenario.FINISH,
+            startsPaused = true,
+        )
+        engine.configureWorkout(
+            Concept2WorkoutProgram(
+                workoutType = 2,
+                goalKind = Concept2WorkoutGoalKind.DISTANCE,
+                goalValue = 10_000,
+                targetStrokeRate = 30,
+                targetHeartRateBpm = 150,
+            ),
+        )
+        engine.startWorkout()
+        engine.tick(7.0)
+
+        repeat(180) {
+            val active = engine.tick(0.5)
+            assertTrue(active.strokeRate in 27..33)
+            assertTrue(active.heartRate in 135..165)
+            assertTrue(active.currentPowerWatts > 0)
+            assertTrue(engine.isWorkoutRunning)
+        }
+    }
+
+    @Test
+    fun `reset clears an active workout and returns to paused idle`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.startWorkout()
+        engine.tick(8.0)
+        assertTrue(engine.snapshot().distanceDecimetres > 0)
+
+        engine.resetWorkout()
+        val reset = engine.snapshot()
+
+        assertFalse(engine.isWorkoutRunning)
+        assertEquals(Concept2Pm5StartupPhase.IDLE, engine.startupPhase)
+        assertEquals(Concept2Pm5OperationalState.IDLE, reset.operationalState)
+        assertEquals(0, reset.elapsedCentiseconds)
+        assertEquals(0, reset.distanceDecimetres)
+        assertEquals(0, reset.totalCalories)
+        assertEquals(0, reset.strokeCount)
+        assertEquals(0, reset.splitSequence)
+        assertEquals(0, reset.summarySequence)
+        assertEquals(0, reset.forceCurveSequence)
+        assertEquals(reset, engine.tick(60.0))
     }
 
     @Test
@@ -318,7 +566,7 @@ class Concept2Pm5EncoderTest {
     fun `every PM5 persona remains coherent for thirty simulated minutes`() {
         Concept2Machine.entries.forEach { machine ->
             val engine = Concept2Pm5MockEngine(machine, Concept2Scenario.INTERVALS)
-            engine.beginFirstPull()
+            engine.startWorkout()
             repeat(6) { engine.tick(0.5) }
             var previous = engine.snapshot()
             repeat(3_600) {

@@ -71,8 +71,11 @@ class FtmsSimulator(
         /** Publish the latest rich PM5 snapshot to the PM5 measurement scheduler. */
         fun publishConcept2(snapshot: Concept2Pm5Snapshot) {}
 
-        /** True only after a client enables a PM5 workout-data CCCD, not status alone. */
-        val concept2WorkoutRequested: Boolean get() = false
+        /** Clear PM5 CSAFE workout state without changing its connection or CCCD state. */
+        fun resetConcept2WorkoutState() {}
+
+        /** Latest complete CSAFE workout program accepted from the connected PM5 client. */
+        val concept2WorkoutProgram: Concept2WorkoutProgram? get() = null
 
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
@@ -143,6 +146,9 @@ class FtmsSimulator(
         val running: Boolean = false,
         val persona: SimulatorPersona? = null,
         val concept2Scenario: Concept2Scenario? = null,
+        val concept2WorkoutRunning: Boolean = false,
+        val concept2WorkoutComplete: Boolean = false,
+        val concept2ProgramProgress: Concept2ProgramProgress? = null,
         val machine: FtmsMachineProfile? = null,
         val controlsEnabled: Boolean = false,
         val controlsAvailable: Boolean = false,
@@ -278,6 +284,60 @@ class FtmsSimulator(
     fun sendZwiftClickShift(
         direction: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.ZwiftClickDirection,
     ): Boolean = peripheral.sendZwiftClickShift(direction)
+
+    /** Begin or resume only the PM5 workout model; advertising and GATT already remain active. */
+    fun startConcept2Workout(): Boolean {
+        val active = concept2Engine ?: return false
+        if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
+        active.startWorkout()
+        _state.value = _state.value.copy(
+            concept2WorkoutRunning = active.isWorkoutRunning,
+            concept2WorkoutComplete = active.isWorkoutComplete,
+            concept2ProgramProgress = active.programProgress(),
+        )
+        return true
+    }
+
+    /** Freeze only PM5 metric advancement. The existing [stop] remains the teardown operation. */
+    fun pauseConcept2Workout(): Boolean {
+        val active = concept2Engine ?: return false
+        if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
+        active.pauseWorkout()
+        publishConcept2(active.wireSnapshot())
+        _state.value = _state.value.copy(
+            concept2WorkoutRunning = active.isWorkoutRunning,
+            concept2WorkoutComplete = active.isWorkoutComplete,
+        )
+        return true
+    }
+
+    /** Finish PM5 telemetry and emit its summary state without clearing accumulated totals. */
+    fun endConcept2Workout(): Boolean {
+        val active = concept2Engine ?: return false
+        if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
+        val changed = active.endWorkout()
+        publishConcept2(active.snapshot())
+        _state.value = _state.value.copy(
+            concept2WorkoutRunning = false,
+            concept2WorkoutComplete = true,
+            concept2ProgramProgress = active.programProgress(),
+        )
+        return changed
+    }
+
+    /** Reset PM5 workout metrics without touching advertising, GATT, CCCDs or CSAFE state. */
+    fun resetConcept2Workout(): Boolean {
+        val active = concept2Engine ?: return false
+        if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
+        active.resetWorkout()
+        peripheral.resetConcept2WorkoutState()
+        publishConcept2(active.snapshot())
+        _state.value = _state.value.copy(
+            concept2WorkoutRunning = false,
+            concept2WorkoutComplete = false,
+        )
+        return true
+    }
 
     /**
      * Start generating data for [machine] and advertise as that machine.
@@ -454,7 +514,7 @@ class FtmsSimulator(
             return
         }
         if (_state.value.running) stop()
-        val pm5 = Concept2Pm5MockEngine(persona.machine, scenario)
+        val pm5 = Concept2Pm5MockEngine(persona.machine, scenario, startsPaused = true)
         concept2Engine = pm5
         peripheral.setControlOverride(null)
         val started = runCatching {
@@ -471,6 +531,8 @@ class FtmsSimulator(
             running = true,
             persona = persona,
             concept2Scenario = scenario,
+            concept2WorkoutRunning = false,
+            concept2WorkoutComplete = false,
             controlsEnabled = false,
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
@@ -478,13 +540,28 @@ class FtmsSimulator(
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
             publishConcept2(pm5.snapshot())
+            var appliedProgram: Concept2WorkoutProgram? = null
             while (isActive) {
-                delay(PERIOD_MS)
+                delay(CONCEPT2_PERIOD_MS)
                 val active = concept2Engine ?: break
-                publishConcept2(active.tick(PERIOD_MS / 1000.0, peripheral.concept2WorkoutRequested))
+                val receivedProgram = peripheral.concept2WorkoutProgram
+                if (receivedProgram == null) {
+                    appliedProgram = null
+                } else if (receivedProgram != appliedProgram) {
+                    active.configureWorkout(receivedProgram)
+                    appliedProgram = receivedProgram
+                    publishConcept2(active.snapshot())
+                }
+                if (active.isWorkoutRunning) {
+                    publishConcept2(active.tick(CONCEPT2_PERIOD_MS / 1000.0))
+                }
             }
         }
-        Timber.tag(TAG).i("PM5 simulator started machine=%s firmware=%s", persona.machine, persona.firmware)
+        Timber.tag(TAG).i(
+            "PM5 simulator started machine=%s compatibility=%s",
+            persona.machine,
+            persona.compatibility,
+        )
     }
 
     private fun startPrecor() {
@@ -1156,6 +1233,11 @@ class FtmsSimulator(
         _state.value = s.copy(
             samplesGenerated = s.samplesGenerated + 1,
             elapsedSeconds = sample.elapsedSeconds,
+            concept2WorkoutRunning = concept2Engine?.isWorkoutRunning
+                ?: s.concept2WorkoutRunning,
+            concept2WorkoutComplete = concept2Engine?.isWorkoutComplete
+                ?: s.concept2WorkoutComplete,
+            concept2ProgramProgress = concept2Engine?.programProgress(),
             advertising = peripheral.isAdvertising,
             lastSample = sample,
         )
@@ -1172,6 +1254,9 @@ class FtmsSimulator(
          * machine delivers records irregularly.
          */
         const val PERIOD_MS = 500L
+
+        /** ErgData sample-rate value 2 requests one PM5 sample every 250 ms. */
+        const val CONCEPT2_PERIOD_MS = 250L
 
         /** Capture corpus median is 1.02 seconds; one second preserves the physical cadence. */
         const val LIFE_FITNESS_PERIOD_MS = 1_000L

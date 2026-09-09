@@ -260,7 +260,7 @@ object BluetoothIds {
 
     val UUID_C2_PM_CONTROL_SERVICE: UUID   = concept2Uuid(0x0020)
     val UUID_C2_CSAFE_REQUEST: UUID        = concept2Uuid(0x0021) // write, up to 20 B
-    val UUID_C2_CSAFE_RESPONSE: UUID       = concept2Uuid(0x0022) // read, up to 20 B
+    val UUID_C2_CSAFE_RESPONSE: UUID       = concept2Uuid(0x0022) // read + notify for ErgData compatibility
 
     val UUID_C2_ERG_SERVICE: UUID          = concept2Uuid(0x0030)
     val C2_ERG_SERVICE_PARCEL: ParcelUuid  = ParcelUuid(UUID_C2_ERG_SERVICE)

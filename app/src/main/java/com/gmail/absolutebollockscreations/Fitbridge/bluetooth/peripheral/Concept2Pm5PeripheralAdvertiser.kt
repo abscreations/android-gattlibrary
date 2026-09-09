@@ -23,6 +23,7 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Pm5Encoder
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Pm5Snapshot
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2WorkoutProgram
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
@@ -76,13 +77,41 @@ class Concept2Pm5PeripheralAdvertiser(
     private var startResult: ((Result<Unit>) -> Unit)? = null
 
     @Volatile private var latest: Concept2Pm5Snapshot? = null
+    @Volatile private var latestWorkoutProgram: Concept2WorkoutProgram? = null
     @Volatile var isAdvertising: Boolean = false
         private set
 
-    fun publish(snapshot: Concept2Pm5Snapshot) { latest = snapshot }
+    fun publish(snapshot: Concept2Pm5Snapshot) {
+        latest = snapshot
+        if (!snapshot.strokeDataAvailable) {
+            clients.values.forEach { client ->
+                synchronized(client) { client.pending.removeIf(::isStrokeFrame) }
+            }
+        }
+    }
+
+    private fun isStrokeFrame(frame: Frame): Boolean =
+        frame.uuid == BluetoothIds.UUID_C2_STROKE_DATA ||
+            frame.uuid == BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA ||
+            frame.uuid == BluetoothIds.UUID_C2_FORCE_CURVE_DATA ||
+            (frame.uuid == BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION &&
+                frame.value.firstOrNull()?.let { (it.toInt() and 0xFF) in STROKE_IDS } == true)
 
     fun hasWorkoutMeasurementSubscription(): Boolean =
         clients.values.any { it.session.hasWorkoutMeasurementSubscription }
+
+    fun workoutProgram(): Concept2WorkoutProgram? = latestWorkoutProgram
+
+    /** Reset CSAFE workout state for connected clients while retaining their subscriptions. */
+    fun resetWorkoutState() {
+        latestWorkoutProgram = null
+        clients.values.forEach { client ->
+            client.session.resetCsafeWorkoutState()
+            synchronized(client) {
+                client.pending.removeIf { it.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE }
+            }
+        }
+    }
 
     @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE])
     fun start(persona: SimulatorPersona.Concept2Pm5, onResult: (Result<Unit>) -> Unit) {
@@ -121,6 +150,7 @@ class Concept2Pm5PeripheralAdvertiser(
         isAdvertising = false
         clients.values.forEach { runCatching { server?.cancelConnection(it.device) } }
         clients.clear()
+        latestWorkoutProgram = null
         advertisingGate.reset()
         connectionRetention.clear()
         runCatching { server?.clearServices() }
@@ -274,6 +304,7 @@ class Concept2Pm5PeripheralAdvertiser(
         ) {
             val client = clients[device.address.lowercase()] ?: Client(device).also { clients[device.address.lowercase()] = it }
             val structurallyWritable = !preparedWrite && offset == 0
+            var csafeNotification: ByteArray? = null
             val status = when (characteristic.uuid) {
                 BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE -> {
                     val ok = structurallyWritable && value.size == 1 &&
@@ -299,7 +330,11 @@ class Concept2Pm5PeripheralAdvertiser(
                             value,
                             android.os.SystemClock.elapsedRealtime(),
                         )) {
-                            is Concept2CsafeLink.RequestResult.Accepted -> BluetoothGatt.GATT_SUCCESS
+                            is Concept2CsafeLink.RequestResult.Accepted -> {
+                                csafeNotification = client.session.notificationForAcceptedCsafe(result)
+                                latestWorkoutProgram = client.session.csafeWorkoutProgram
+                                BluetoothGatt.GATT_SUCCESS
+                            }
                             is Concept2CsafeLink.RequestResult.Rejected -> when (result.reason) {
                                 Concept2CsafeLink.RejectionReason.UNSUPPORTED ->
                                     BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
@@ -318,6 +353,9 @@ class Concept2Pm5PeripheralAdvertiser(
                 0,
                 null,
             )
+            csafeNotification?.let {
+                enqueue(client, Frame(BluetoothIds.UUID_C2_CSAFE_RESPONSE, it, false))
+            }
         }
 
         override fun onDescriptorReadRequest(device: BluetoothDevice, requestId: Int, offset: Int, descriptor: BluetoothGattDescriptor) {
@@ -402,7 +440,8 @@ class Concept2Pm5PeripheralAdvertiser(
     }
 
     private fun enqueueLive(client: Client, snapshot: Concept2Pm5Snapshot) {
-        LIVE_IDS.forEach { id ->
+        val liveIds = liveIdsFor(snapshot)
+        liveIds.forEach { id ->
             val uuid = Concept2Pm5Session.uuidForId(id) ?: return@forEach
             if (id != ADDITIONAL_STATUS_3_ID && client.session.isSubscribed(uuid)) {
                 Concept2Pm5Encoder.individual(uuid, snapshot)?.let {
@@ -410,7 +449,7 @@ class Concept2Pm5PeripheralAdvertiser(
                 }
             }
         }
-        client.session.nextMuxId(LIVE_IDS)?.let { id ->
+        client.session.nextMuxId(liveIds)?.let { id ->
             Concept2Pm5Encoder.multiplexed(id, snapshot)?.let {
                 enqueue(client, Frame(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, it, true))
             }
@@ -423,7 +462,8 @@ class Concept2Pm5PeripheralAdvertiser(
             client.lastSummarySequence = snapshot.summarySequence
             enqueueEventIds(client, snapshot, listOf(0x39, 0x3A, 0x3C))
         }
-        if (snapshot.forceCurveSequence > client.lastForceCurveSequence &&
+        if (snapshot.strokeDataAvailable &&
+            snapshot.forceCurveSequence > client.lastForceCurveSequence &&
             client.session.isSubscribed(BluetoothIds.UUID_C2_FORCE_CURVE_DATA)
         ) {
             client.lastForceCurveSequence = snapshot.forceCurveSequence
@@ -496,7 +536,12 @@ class Concept2Pm5PeripheralAdvertiser(
             if (client.inFlight) return
             client.pending.pollFirst()?.also { client.inFlight = true }
         } ?: return
-        val characteristic = server?.getService(BluetoothIds.UUID_C2_ERG_SERVICE)?.getCharacteristic(frame.uuid)
+        val serviceUuid = if (frame.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE) {
+            BluetoothIds.UUID_C2_PM_CONTROL_SERVICE
+        } else {
+            BluetoothIds.UUID_C2_ERG_SERVICE
+        }
+        val characteristic = server?.getService(serviceUuid)?.getCharacteristic(frame.uuid)
         if (characteristic == null || !notify(client.device, characteristic, frame.value)) {
             synchronized(client) { client.inFlight = false }
         }
@@ -523,5 +568,9 @@ class Concept2Pm5PeripheralAdvertiser(
         private const val MAX_PENDING = 24
         private const val ADDITIONAL_STATUS_3_ID = 0x3E
         private val LIVE_IDS = listOf(0x31, 0x32, 0x33, 0x35, 0x36, 0x3B, ADDITIONAL_STATUS_3_ID)
+        private val STROKE_IDS = setOf(0x35, 0x36)
+
+        internal fun liveIdsFor(snapshot: Concept2Pm5Snapshot): List<Int> =
+            if (snapshot.strokeDataAvailable) LIVE_IDS else LIVE_IDS.filterNot(STROKE_IDS::contains)
     }
 }

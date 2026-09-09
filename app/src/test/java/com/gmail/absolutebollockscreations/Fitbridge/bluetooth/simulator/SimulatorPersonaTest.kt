@@ -71,22 +71,52 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `physical PM5 personas have stable valid identities`() {
+    fun `synthetic PM5 personas have stable coherent compatibility identities`() {
         assertEquals(listOf(0, 128, 192), Concept2Machine.entries.map { it.wireMachineType })
         Concept2Machine.entries.forEach { machine ->
             val persona = SimulatorPersona.Concept2Pm5(machine)
-            assertEquals(9, persona.serialNumber.length)
-            assertTrue(persona.serialNumber.all(Char::isDigit))
-            assertEquals("PM5 ${persona.serialNumber}", persona.advertisedName)
+            assertEquals(machine, persona.compatibility.machine)
+            assertEquals(9, persona.compatibility.serialNumber.length)
+            assertTrue(persona.compatibility.serialNumber.all(Char::isDigit))
+            assertEquals("PM5 ${persona.compatibility.serialNumber}", persona.advertisedName)
+            assertEquals(20, persona.compatibility.firmwareIdentity.toByteArray(Charsets.US_ASCII).size)
+            assertEquals(Concept2StatusPayloadRevision.LEGACY_12_BYTE, persona.compatibility.statusPayloadRevision)
         }
+        assertEquals(listOf(178.028f, 878.028f, 336.028f), Concept2Machine.entries.map {
+            SimulatorPersona.Concept2Pm5(it).compatibility.parsedFirmwareNumber
+        })
     }
 
     @Test
     fun `baseline manifest includes measurement services and no controls`() {
-        val uuids = Concept2FirmwareProfile.PM5_V1_30.characteristics.map { it.uuid }.toSet()
+        val uuids = Concept2Pm5CompatibilityProfile.ERGDATA_V2_ROW.characteristics.map { it.uuid }.toSet()
         assertTrue(BluetoothIds.UUID_C2_GENERAL_STATUS in uuids)
         assertTrue(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION in uuids)
         assertFalse(uuids.any { it.toString().startsWith("ce06002") })
+    }
+
+    @Test
+    fun `the selector lists six distinct PM5 entries, modern before pre-FTMS`() {
+        // Six entries rather than three with a surface toggle: the two surfaces expose
+        // different characteristics, so they are different devices to a client, and a tester
+        // choosing a target should see that in the list instead of remembering a mode.
+        val pm5 = simulatorPersonaOptions(includeKickr = false)
+            .filterIsInstance<SimulatorPersona.Concept2Pm5>()
+        assertEquals(6, pm5.size)
+        assertEquals(
+            listOf(
+                Concept2Pm5CompatibilityProfile.ERGDATA_V2_ROW,
+                Concept2Pm5CompatibilityProfile.ERGDATA_V2_SKI,
+                Concept2Pm5CompatibilityProfile.ERGDATA_V2_BIKE,
+                Concept2Pm5CompatibilityProfile.PRE_FTMS_ROW,
+                Concept2Pm5CompatibilityProfile.PRE_FTMS_SKI,
+                Concept2Pm5CompatibilityProfile.PRE_FTMS_BIKE,
+            ),
+            pm5.map { it.compatibility },
+        )
+        assertEquals(6, pm5.map { it.advertisedName }.distinct().size)
+        assertEquals(6, pm5.distinct().size)
+        pm5.forEach { assertTrue(it.advertisedName.startsWith("PM5 ")) }
     }
 
     @Test

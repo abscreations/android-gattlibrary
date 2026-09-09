@@ -1,12 +1,164 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2WorkoutGoalKind
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Concept2CsafeCodecTest {
+    @Test
+    fun `captured ErgData envelope and compound single profiles are accepted atomically`() {
+        val distance = Concept2CsafeLink()
+        assertAccepted(
+            hex("01 F1 01 76 05 01 03 05 14 13 72 F2"),
+            distance.accept(
+                hex("01 F1 76 18 01 01 03 03 05 80 00 00 03 E8 05 05 80 00 00 00 C8 14 01 01 13 02 01 01 4D F2"),
+                100,
+            ),
+        )
+        assertEquals(Concept2WorkoutGoalKind.DISTANCE, distance.handshakeState.workoutProgram?.goalKind)
+        assertEquals(1_000, distance.handshakeState.workoutProgram?.goalValue)
+
+        val time = Concept2CsafeLink()
+        assertTrue(time.accept(
+            hex("01 F1 76 18 01 01 05 03 05 00 00 00 17 70 05 05 00 00 00 17 70 14 01 01 13 02 01 01 68 F2"),
+            100,
+        ) is Concept2CsafeLink.RequestResult.Accepted)
+        assertEquals(Concept2WorkoutGoalKind.TIME, time.handshakeState.workoutProgram?.goalKind)
+        assertEquals(6_000, time.handshakeState.workoutProgram?.goalValue)
+
+        val calories = Concept2CsafeLink()
+        assertTrue(calories.accept(
+            hex("F1 76 18 01 01 0A 03 05 40 00 00 00 64 05 05 40 00 00 00 14 14 01 01 13 02 01 01 17 F2"),
+            100,
+        ) is Concept2CsafeLink.RequestResult.Accepted)
+        assertEquals(Concept2WorkoutGoalKind.CALORIES, calories.handshakeState.workoutProgram?.goalKind)
+        assertEquals(100, calories.handshakeState.workoutProgram?.goalValue)
+    }
+
+    @Test
+    fun `fixed interval profile retains work goal and rest duration`() {
+        val link = Concept2CsafeLink()
+        assertTrue(link.accept(
+            hex("F1 76 15 01 01 06 03 05 00 00 00 2E E0 04 02 00 1E 14 01 01 13 02 01 01 B0 F2"),
+            100,
+        ) is Concept2CsafeLink.RequestResult.Accepted)
+
+        val program = link.handshakeState.workoutProgram!!
+        assertTrue(program.isInterval)
+        assertEquals(Concept2WorkoutGoalKind.TIME, program.goalKind)
+        assertEquals(12_000, program.goalValue)
+        assertEquals(30, program.restSeconds)
+    }
+
+    @Test
+    fun `target heart rate and PM game target stroke rate are retained by a profile`() {
+        val link = Concept2CsafeLink()
+        val heartRate = Concept2CsafeCodec.encodeStandard(hex("30 01 96"))!!
+        assertTrue(link.accept(heartRate, 100) is Concept2CsafeLink.RequestResult.Accepted)
+
+        val gameParams = ByteArray(22).also { it[21] = 30 }
+        val targetStroke = Concept2CsafeCodec.encodeStandard(
+            byteArrayOf(0x77, 24, 0x38, 22) + gameParams,
+        )!!
+        assertTrue(link.accept(targetStroke, 150) is Concept2CsafeLink.RequestResult.Accepted)
+
+        assertTrue(link.accept(
+            hex("F1 76 18 01 01 05 03 05 00 00 00 17 70 05 05 00 00 00 17 70 14 01 01 13 02 01 01 68 F2"),
+            200,
+        ) is Concept2CsafeLink.RequestResult.Accepted)
+
+        assertEquals(30, link.handshakeState.workoutProgram?.targetStrokeRate)
+        assertEquals(150, link.handshakeState.workoutProgram?.targetHeartRateBpm)
+    }
+
+    @Test
+    fun `variable intervals retain ordered mixed goals and entry-local targets`() {
+        val link = Concept2CsafeLink()
+        assertTrue(link.accept(configuration(
+            0x18, 1, 0,
+            0x01, 1, 8,
+            0x17, 1, 1,
+            0x03, 5, 0x80, 0, 0, 1, 0xF4,
+            0x04, 2, 0, 10,
+            0x06, 4, 0, 0, 0x27, 0x10,
+            0x15, 2, 0, 250,
+            0x14, 1, 1,
+        ), 100) is Concept2CsafeLink.RequestResult.Accepted)
+        assertNull(link.handshakeState.workoutProgram)
+
+        assertTrue(link.accept(configuration(
+            0x18, 1, 1,
+            0x17, 1, 0,
+            0x03, 5, 0, 0, 0, 0, 200,
+            0x04, 2, 0, 0,
+            0x16, 2, 1, 0xF4,
+            0x14, 1, 1,
+            0x13, 2, 1, 1,
+        ), 150) is Concept2CsafeLink.RequestResult.Accepted)
+
+        val program = link.handshakeState.workoutProgram!!
+        assertTrue(program.isVariableInterval)
+        assertEquals(2, program.intervals.size)
+        assertEquals(Concept2WorkoutGoalKind.DISTANCE, program.intervals[0].goalKind)
+        assertEquals(500, program.intervals[0].goalValue)
+        assertEquals(10_000, program.intervals[0].targetPaceCentiseconds)
+        assertEquals(250, program.intervals[0].targetPowerWatts)
+        assertEquals(Concept2WorkoutGoalKind.TIME, program.intervals[1].goalKind)
+        assertEquals(200, program.intervals[1].goalValue)
+        assertEquals(500, program.intervals[1].targetCaloriesPerHour)
+        assertNull(program.intervals[1].targetPaceCentiseconds)
+        assertNull(program.intervals[1].targetPowerWatts)
+    }
+
+    @Test
+    fun `variable interval list accepts fifty contiguous entries and rejects index fifty`() {
+        val link = Concept2CsafeLink()
+        repeat(50) { index ->
+            val commands = mutableListOf(
+                0x18, 1, index,
+                0x17, 1, 0,
+                0x03, 5, 0, 0, 0, 0, 100,
+                0x04, 2, 0, 0,
+                0x14, 1, 1,
+            )
+            if (index == 0) commands.addAll(3, listOf(0x01, 1, 8))
+            if (index == 49) commands.addAll(listOf(0x13, 2, 1, 1))
+            assertTrue(
+                link.accept(configuration(*commands.toIntArray()), 100L + index * 50L)
+                    is Concept2CsafeLink.RequestResult.Accepted,
+            )
+        }
+        assertEquals(50, link.handshakeState.workoutProgram?.intervals?.size)
+
+        assertRejected(
+            Concept2CsafeLink.RejectionReason.UNSUPPORTED,
+            link.accept(configuration(0x18, 1, 50), 2_600),
+        )
+        assertEquals(50, link.handshakeState.workoutProgram?.intervals?.size)
+    }
+
+    @Test
+    fun `gapped variable interval configuration stays incomplete`() {
+        val link = Concept2CsafeLink()
+        assertTrue(link.accept(configuration(
+            0x18, 1, 1,
+            0x01, 1, 8,
+            0x17, 1, 0,
+            0x03, 5, 0, 0, 0, 0, 100,
+            0x04, 2, 0, 0,
+            0x14, 1, 1,
+            0x13, 2, 1, 1,
+        ), 100) is Concept2CsafeLink.RequestResult.Accepted)
+
+        assertNull(link.handshakeState.workoutProgram)
+        assertEquals(setOf(1), link.handshakeState.configuredIntervals.keys)
+    }
+
     @Test
     fun `captured terminate and Just Row frames produce documented alternating responses`() {
         val link = Concept2CsafeLink()
@@ -127,6 +279,45 @@ class Concept2CsafeCodecTest {
         assertAccepted(hex("F1 01 76 01 13 65 F2"), first.acceptCsafeRequest(terminate, 101))
     }
 
+    @Test
+    fun `accepted response is notified only for that subscribed client and reset clears readiness`() {
+        val subscribed = Concept2Pm5Session()
+        val other = Concept2Pm5Session()
+        val terminate = hex("F1 76 04 13 02 01 02 60 F2")
+        subscribed.setSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE, true)
+
+        val result = subscribed.acceptCsafeRequest(terminate, 100)
+
+        assertArrayEquals(
+            hex("F1 01 76 01 13 65 F2"),
+            subscribed.notificationForAcceptedCsafe(result),
+        )
+        assertNull(other.notificationForAcceptedCsafe(result))
+        subscribed.reset()
+        assertFalse(subscribed.isSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE))
+        assertNull(subscribed.csafeResponse)
+    }
+
+    @Test
+    fun `workout reset clears CSAFE configuration but retains response subscription`() {
+        val session = Concept2Pm5Session()
+        val terminate = hex("F1 76 04 13 02 01 02 60 F2")
+        session.setSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE, true)
+        assertTrue(session.acceptCsafeRequest(terminate, 100) is Concept2CsafeLink.RequestResult.Accepted)
+
+        session.resetCsafeWorkoutState()
+
+        assertTrue(session.isSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE))
+        assertNull(session.csafeResponse)
+        assertNull(session.csafeHandshakeState.workoutType)
+        assertNull(session.csafeHandshakeState.screenType)
+        assertNull(session.csafeHandshakeState.screenValue)
+        assertAccepted(
+            hex("F1 01 76 01 13 65 F2"),
+            session.acceptCsafeRequest(terminate, 100),
+        )
+    }
+
     private fun assertAccepted(expected: ByteArray, result: Concept2CsafeLink.RequestResult) {
         assertTrue(result is Concept2CsafeLink.RequestResult.Accepted)
         assertArrayEquals(expected, (result as Concept2CsafeLink.RequestResult.Accepted).response)
@@ -151,4 +342,9 @@ class Concept2CsafeCodecTest {
     private fun hex(value: String): ByteArray = value.trim().split(Regex("\\s+")).map {
         it.toInt(16).toByte()
     }.toByteArray()
+
+    private fun configuration(vararg commands: Int): ByteArray {
+        val nested = commands.map { it.toByte() }.toByteArray()
+        return Concept2CsafeCodec.encodeStandard(byteArrayOf(0x76, nested.size.toByte()) + nested)!!
+    }
 }

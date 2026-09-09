@@ -36,16 +36,19 @@ sealed interface SimulatorPersona {
 
     data class Concept2Pm5(
         val machine: Concept2Machine,
-        val firmware: Concept2FirmwareProfile = Concept2FirmwareProfile.PM5_V1_30,
-        val serialNumber: String = machine.syntheticSerial,
+        val compatibility: Concept2Pm5CompatibilityProfile =
+            Concept2Pm5CompatibilityProfile.forMachine(machine),
     ) : SimulatorPersona {
         init {
-            require(serialNumber.length == 9 && serialNumber.all(Char::isDigit)) {
+            require(compatibility.machine == machine) {
+                "A PM5 simulator persona and compatibility profile must describe the same machine"
+            }
+            require(compatibility.serialNumber.length == 9 && compatibility.serialNumber.all(Char::isDigit)) {
                 "A PM5 simulator serial number must contain exactly nine digits"
             }
         }
 
-        override val advertisedName: String = "PM5 $serialNumber"
+        override val advertisedName: String = compatibility.advertisedName
     }
 
     /** Best-effort Android host for one M-series validation identity. */
@@ -355,41 +358,279 @@ data class Concept2CharacteristicManifest(
     val notifiable: Boolean = false,
 )
 
-/** Immutable PM5 GATT surface for one evidence-backed firmware profile. */
-enum class Concept2FirmwareProfile(
+enum class Concept2StatusPayloadRevision {
+    LEGACY_12_BYTE,
+}
+
+/**
+ * Which physical PM5 generation's attribute surface a persona reproduces.
+ *
+ * The QZ hardware captures in `fixtures/hardware/concept2_pm5_qz_debug.json` contain two
+ * physically distinct PM5 units whose GATT differs by more than firmware values:
+ *
+ * | | `PM5 430392046` | `PM5 530382227 Row` |
+ * |---|---|---|
+ * | advertised services | `CE060000` only | `0x1826` FTMS + `CE060000` |
+ * | Device Information | `0x0012`-`0x0015` | + `0x0011`, `0x0016`, `0x0017`, `0x0018` |
+ * | erg service | `0x0031`-`0x003B`, `0x0080` | + `0x003D`, `0x003E`, `0x003F` |
+ * | `CE060040` heart-rate receive | absent | present |
+ *
+ * [PRE_FTMS] reproduces the first column, octet for octet, because that unit is the one an
+ * old-style interoperability test is meant to stand in for. A client that succeeds against
+ * this persona should succeed against that hardware, and — the part a superset surface
+ * breaks — a client that needs a characteristic the hardware lacks should fail here too.
+ */
+enum class Concept2Pm5GattSurface(val displayName: String) {
+    /** Attested by `PM5 430392046`: no FTMS, no `0x0016`, no `CE060040`, erg service ends at `0x003B`. */
+    PRE_FTMS("Pre-FTMS PM5"),
+
+    /**
+     * Attested by `PM5 530382227 Row`, and the surface an official ErgData 2.16.0 client
+     * completed initialization against on 2026-09-08 (`docs/evidence/phase-5/`). Adds
+     * `0x0011`, `0x0016`-`0x0018`, `0x003C`-`0x003F` and `CE060040`.
+     *
+     * FitBridge never publishes FTMS on a PM5 persona on either surface — a PM5 advertises
+     * the C2 discovery UUID alone here, and the modern unit's own `0x1826` service is a
+     * separate concern already served by the FTMS personas.
+     */
+    MODERN("Modern PM5"),
+}
+
+/**
+ * Coherent, deliberately synthetic identity and GATT contract for one ErgData-compatible persona.
+ *
+ * The numeric families are parser compatibility values, not claims of released Concept2 builds.
+ * They select ErgData's V2 Row/Ski/Bike families while remaining below the thresholds that make
+ * Additional Status 3 require fields beyond FitBridge's evidenced 12-byte payload.
+ */
+enum class Concept2Pm5CompatibilityProfile(
+    val machine: Concept2Machine,
+    val advertisedName: String,
+    val serialNumber: String,
     val displayName: String,
     val hardwareRevision: String,
-    val firmwareRevision: String,
+    val firmwareIdentity: String,
+    val statusPayloadRevision: Concept2StatusPayloadRevision,
+    val gattSurface: Concept2Pm5GattSurface,
+    val deviceInformation: List<UUID>,
+    val exposesHeartRateReceive: Boolean,
     val characteristics: List<Concept2CharacteristicManifest>,
 ) {
-    PM5_V1_30(
-        displayName = "PM5 Bluetooth 1.30 baseline (simulated)",
+    ERGDATA_V2_ROW(
+        machine = Concept2Machine.ROW_ERG,
+        advertisedName = "PM5 900000001",
+        serialNumber = "900000001",
+        displayName = "Synthetic ErgData V2 RowErg compatibility",
         hardwareRevision = "001",
-        firmwareRevision = "V199.99",
-        characteristics = listOf(
-            c2Notify(BluetoothIds.UUID_C2_GENERAL_STATUS),
-            c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
-            c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
-            Concept2CharacteristicManifest(
-                BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE,
-                readable = true,
-                writable = true,
-            ),
-            c2Notify(BluetoothIds.UUID_C2_STROKE_DATA),
-            c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
-            c2Notify(BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA),
-            c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL),
-            c2Notify(BluetoothIds.UUID_C2_WORKOUT_SUMMARY),
-            c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
-            c2Notify(BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO),
-            c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2),
-            c2Notify(BluetoothIds.UUID_C2_FORCE_CURVE_DATA),
-            c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3),
-            c2Notify(BluetoothIds.UUID_C2_LOGGED_WORKOUT),
-            c2Notify(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
-        ),
+        firmwareIdentity = "PM5SIMULATOR178.028 ",
+        statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
+        gattSurface = Concept2Pm5GattSurface.MODERN,
+        deviceInformation = modernDeviceInformation(),
+        exposesHeartRateReceive = true,
+        characteristics = modernErgCharacteristics(),
+    ),
+    ERGDATA_V2_SKI(
+        machine = Concept2Machine.SKI_ERG,
+        advertisedName = "PM5 900000002",
+        serialNumber = "900000002",
+        displayName = "Synthetic ErgData V2 SkiErg compatibility",
+        hardwareRevision = "001",
+        firmwareIdentity = "PM5SIMULATOR878.028 ",
+        statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
+        gattSurface = Concept2Pm5GattSurface.MODERN,
+        deviceInformation = modernDeviceInformation(),
+        exposesHeartRateReceive = true,
+        characteristics = modernErgCharacteristics(),
+    ),
+    ERGDATA_V2_BIKE(
+        machine = Concept2Machine.BIKE_ERG,
+        advertisedName = "PM5 900000003",
+        serialNumber = "900000003",
+        displayName = "Synthetic ErgData V2 BikeErg compatibility",
+        hardwareRevision = "001",
+        firmwareIdentity = "PM5SIMULATOR336.028 ",
+        statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
+        gattSurface = Concept2Pm5GattSurface.MODERN,
+        deviceInformation = modernDeviceInformation(),
+        exposesHeartRateReceive = true,
+        characteristics = modernErgCharacteristics(),
+    ),
+
+    // The pre-FTMS set. Same synthetic firmware families as their modern counterparts,
+    // because the generations differ by attribute surface rather than by ErgData's
+    // classification number; the serial is what tells the two personas apart on air.
+    PRE_FTMS_ROW(
+        machine = Concept2Machine.ROW_ERG,
+        advertisedName = "PM5 900000101",
+        serialNumber = "900000101",
+        displayName = "Pre-FTMS RowErg (C2DataField target)",
+        hardwareRevision = "001",
+        firmwareIdentity = "PM5SIMULATOR178.028 ",
+        statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
+        gattSurface = Concept2Pm5GattSurface.PRE_FTMS,
+        deviceInformation = preFtmsDeviceInformation(),
+        exposesHeartRateReceive = false,
+        characteristics = preFtmsErgCharacteristics(),
+    ),
+    PRE_FTMS_SKI(
+        machine = Concept2Machine.SKI_ERG,
+        advertisedName = "PM5 900000102",
+        serialNumber = "900000102",
+        displayName = "Pre-FTMS SkiErg (C2DataField target)",
+        hardwareRevision = "001",
+        firmwareIdentity = "PM5SIMULATOR878.028 ",
+        statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
+        gattSurface = Concept2Pm5GattSurface.PRE_FTMS,
+        deviceInformation = preFtmsDeviceInformation(),
+        exposesHeartRateReceive = false,
+        characteristics = preFtmsErgCharacteristics(),
+    ),
+    PRE_FTMS_BIKE(
+        machine = Concept2Machine.BIKE_ERG,
+        advertisedName = "PM5 900000103",
+        serialNumber = "900000103",
+        displayName = "Pre-FTMS BikeErg (C2DataField target)",
+        hardwareRevision = "001",
+        firmwareIdentity = "PM5SIMULATOR336.028 ",
+        statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
+        gattSurface = Concept2Pm5GattSurface.PRE_FTMS,
+        deviceInformation = preFtmsDeviceInformation(),
+        exposesHeartRateReceive = false,
+        characteristics = preFtmsErgCharacteristics(),
     );
+
+    val parsedFirmwareNumber: Float
+        get() = firmwareIdentity.substring(12, 15).toFloat() +
+            firmwareIdentity.substring(16).filter { it.isDigit() || it == ' ' }.toFloat() * 0.001f
+
+    init {
+        require(advertisedName.startsWith("PM"))
+        require(firmwareIdentity.toByteArray(Charsets.US_ASCII).size == 20)
+        require(parsedFirmwareNumber in concept2ErgDataV2Range(machine))
+        require(parsedFirmwareNumber < concept2ExtendedStatus3Threshold(machine))
+    }
+
+    companion object {
+        /** The modern surface stays the default, so existing callers keep the ErgData-proven persona. */
+        fun forMachine(machine: Concept2Machine): Concept2Pm5CompatibilityProfile =
+            forMachine(machine, Concept2Pm5GattSurface.MODERN)
+
+        fun forMachine(
+            machine: Concept2Machine,
+            surface: Concept2Pm5GattSurface,
+        ): Concept2Pm5CompatibilityProfile = entries.single {
+            it.machine == machine && it.gattSurface == surface
+        }
+
+    }
 }
+
+private fun concept2ErgDataV2Range(machine: Concept2Machine): ClosedFloatingPointRange<Float> = when (machine) {
+    Concept2Machine.ROW_ERG -> 150f..199.9999f
+    Concept2Machine.SKI_ERG -> 850f..899.9999f
+    Concept2Machine.BIKE_ERG -> 300f..349.9999f
+}
+
+private fun concept2ExtendedStatus3Threshold(machine: Concept2Machine): Float = when (machine) {
+    Concept2Machine.ROW_ERG -> 178.050f
+    Concept2Machine.SKI_ERG -> 878.050f
+    Concept2Machine.BIKE_ERG -> 336.050f
+}
+
+/**
+ * Device Information as `PM5 530382227 Row` exposes it: the pre-FTMS four plus the model
+ * number, erg machine type and the two transport-hint characteristics.
+ */
+private fun modernDeviceInformation(): List<UUID> = listOf(
+    BluetoothIds.UUID_C2_MODEL_NUMBER,
+    BluetoothIds.UUID_C2_SERIAL_NUMBER,
+    BluetoothIds.UUID_C2_HARDWARE_REVISION,
+    BluetoothIds.UUID_C2_FIRMWARE_REVISION,
+    BluetoothIds.UUID_C2_MANUFACTURER_NAME,
+    BluetoothIds.UUID_C2_MACHINE_TYPE,
+    BluetoothIds.UUID_C2_ATT_RECEIVE_MTU,
+    BluetoothIds.UUID_C2_LL_MAX_TX_RX_BYTES,
+)
+
+/**
+ * The erg service as `PM5 530382227 Row` exposes it, and the surface an ErgData 2.16.0
+ * client initialized against successfully: the pre-FTMS twelve plus `0x003C`-`0x003F`.
+ *
+ * ErgData subscribes to `0x003D` and `0x003E` when it finds them, so this surface must keep
+ * the firmware number below [concept2ExtendedStatus3Threshold] — on this path the Additional
+ * Status 3 payload contract is live rather than avoided.
+ *
+ * Written out in full rather than derived from [preFtmsErgCharacteristics]. This list is the
+ * one an official client is known to have initialized against, so a later edit to the
+ * pre-FTMS list must not be able to reshape it silently.
+ */
+private fun modernErgCharacteristics() = listOf(
+    c2Notify(BluetoothIds.UUID_C2_GENERAL_STATUS),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
+    Concept2CharacteristicManifest(
+        BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE,
+        readable = true,
+        writable = true,
+    ),
+    c2Notify(BluetoothIds.UUID_C2_STROKE_DATA),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
+    c2Notify(BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL),
+    c2Notify(BluetoothIds.UUID_C2_WORKOUT_SUMMARY),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
+    c2Notify(BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2),
+    c2Notify(BluetoothIds.UUID_C2_FORCE_CURVE_DATA),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3),
+    c2Notify(BluetoothIds.UUID_C2_LOGGED_WORKOUT),
+    c2Notify(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
+)
+
+/**
+ * Device Information as `PM5 430392046` exposes it: serial, hardware revision, firmware
+ * revision and manufacturer name, and nothing else.
+ *
+ * `0x0011` model number, `0x0016` erg machine type and the `0x0017`/`0x0018` transport hints
+ * are omitted because that unit does not have them. Dropping `0x0016` costs nothing for
+ * ErgData, which derives Row/Ski/Bike from the firmware number and never reads `0x0016` — and
+ * the hardware makes the same point more forcefully by not implementing it at all.
+ */
+private fun preFtmsDeviceInformation(): List<UUID> = listOf(
+    BluetoothIds.UUID_C2_SERIAL_NUMBER,
+    BluetoothIds.UUID_C2_HARDWARE_REVISION,
+    BluetoothIds.UUID_C2_FIRMWARE_REVISION,
+    BluetoothIds.UUID_C2_MANUFACTURER_NAME,
+)
+
+/**
+ * The erg service as `PM5 430392046` exposes it: `0x0031` through `0x003B`, plus `0x0080`.
+ *
+ * `0x003C`-`0x003F` are deliberately absent. Beyond matching the hardware, this closes the
+ * one difference with a demonstrated failure path: ErgData treats `0x003D` force curve and
+ * `0x003E` Additional Status 3 as optional at discovery but subscribes to whichever it finds,
+ * and a failed subscription still fails its initialization. Publishing neither removes that
+ * branch instead of relying on firmware numbers staying below the version thresholds that
+ * make `0x003E` require offsets past our 12-octet payload.
+ */
+private fun preFtmsErgCharacteristics() = listOf(
+    c2Notify(BluetoothIds.UUID_C2_GENERAL_STATUS),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
+    Concept2CharacteristicManifest(
+        BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE,
+        readable = true,
+        writable = true,
+    ),
+    c2Notify(BluetoothIds.UUID_C2_STROKE_DATA),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
+    c2Notify(BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL),
+    c2Notify(BluetoothIds.UUID_C2_WORKOUT_SUMMARY),
+    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
+    c2Notify(BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO),
+    c2Notify(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
+)
 
 private fun c2Notify(uuid: UUID) = Concept2CharacteristicManifest(uuid, notifiable = true)
 

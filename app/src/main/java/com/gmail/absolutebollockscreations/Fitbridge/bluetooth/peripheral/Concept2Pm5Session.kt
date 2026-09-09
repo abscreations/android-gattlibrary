@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2WorkoutProgram
 import java.util.UUID
 
 /** Pure per-link PM5 state: subscriptions, rate and deterministic mux position. */
@@ -18,9 +19,17 @@ class Concept2Pm5Session {
 
     val csafeResponse: ByteArray? get() = csafe.response
     val csafeHandshakeState: Concept2CsafeLink.HandshakeState get() = csafe.handshakeState
+    val csafeWorkoutProgram: Concept2WorkoutProgram? get() = csafe.handshakeState.workoutProgram
 
     fun acceptCsafeRequest(value: ByteArray, nowMs: Long): Concept2CsafeLink.RequestResult =
         csafe.accept(value, nowMs)
+
+    fun notificationForAcceptedCsafe(result: Concept2CsafeLink.RequestResult): ByteArray? =
+        (result as? Concept2CsafeLink.RequestResult.Accepted)?.response
+            ?.takeIf { isSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE) }
+
+    /** Clear workout configuration/response state without dropping this client's CCCDs. */
+    fun resetCsafeWorkoutState() = csafe.reset()
 
     fun setSampleRate(value: Int): Boolean {
         if (value !in PERIODS_MS) return false

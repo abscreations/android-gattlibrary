@@ -92,7 +92,7 @@ fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     SimulatorPersona.IndoorBikeSpeedAndPower -> describeIndoorBikeSpeedAndPower()
     SimulatorPersona.StrydFootpod -> describeStrydFootpod()
     is SimulatorPersona.Ftms -> describeFtms(profile)
-    is SimulatorPersona.Concept2Pm5 -> describeConcept2(machine)
+    is SimulatorPersona.Concept2Pm5 -> describeConcept2(machine, compatibility)
     is SimulatorPersona.KeiserMSeries -> describeKeiserMSeries(profile)
     SimulatorPersona.PrecorChrono -> describePrecorChrono()
     SimulatorPersona.FlywheelSports -> describeFlywheelSports()
@@ -181,9 +181,17 @@ private fun describeFtms(profile: FtmsMachineProfile): SimulatorPersonaDescripto
     )
 }
 
-private fun describeConcept2(machine: Concept2Machine) = SimulatorPersonaDescriptor(
-    title = "Concept2 PM5 · ${machine.displayName}",
-    protocol = "Concept2 PM5 0x0030 · machine type ${machine.wireMachineType}",
+private fun describeConcept2(
+    machine: Concept2Machine,
+    compatibility: Concept2Pm5CompatibilityProfile,
+) = SimulatorPersonaDescriptor(
+    title = "Concept2 PM5 · ${machine.displayName} · ${compatibility.gattSurface.displayName}",
+    protocol = when (compatibility.gattSurface) {
+        Concept2Pm5GattSurface.PRE_FTMS ->
+            "Concept2 PM5 0x0030 · 0x0031-0x003B + 0x0080 · no 0x0016, no CE060040"
+        Concept2Pm5GattSurface.MODERN ->
+            "Concept2 PM5 0x0030 · 0x0031-0x003F + 0x0080 · machine type ${machine.wireMachineType}"
+    },
     controlModes = emptyList(),
     rangeKind = SimulatorRangeKind.RIDE,
     ranges = emptyList(),
