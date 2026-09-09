@@ -137,6 +137,8 @@ class Concept2CsafeLink {
         val screenValue: Int? = null,
         val workoutDurationType: Int? = null,
         val workoutDuration: Int? = null,
+        val splitDurationType: Int? = null,
+        val splitDuration: Int? = null,
         val restDurationSeconds: Int? = null,
         val intervalType: Int? = null,
         val programmingEnabled: Boolean = false,
@@ -261,21 +263,50 @@ class Concept2CsafeLink {
         return when (command.identifier) {
         SET_WORKOUT_TYPE -> {
             val type = command.data.singleOrNull()?.u8() ?: return null
-            if (type !in SUPPORTED_WORKOUT_TYPES) null else state.copy(
+            if (type !in SUPPORTED_WORKOUT_TYPES) null
+            else if (type == state.workoutType) state
+            else if (type in VARIABLE_WORKOUT_TYPES && state.workoutType in VARIABLE_WORKOUT_TYPES) {
+                state.copy(workoutType = type)
+            }
+            else if (type in VARIABLE_WORKOUT_TYPES && state.selectedIntervalIndex != null) {
+                // The PM5 examples select interval zero before declaring type 8. Keep that active
+                // draft intact; clearing the selector here makes the later Configure unreachable.
+                state.copy(workoutType = type, configuredIntervals = emptyMap(), workoutProgram = null)
+            }
+            else state.copy(
                 workoutType = type,
-                configuredIntervals = if (type == state.workoutType) state.configuredIntervals else emptyMap(),
+                workoutDurationType = null,
+                workoutDuration = null,
+                splitDurationType = null,
+                splitDuration = null,
+                restDurationSeconds = null,
+                intervalType = null,
+                programmingEnabled = false,
+                selectedIntervalIndex = null,
+                configuredIntervals = emptyMap(),
+                workoutProgram = null,
             )
         }
         SET_WORKOUT_DURATION -> {
             if (command.data.size != 5) return null
             val durationType = command.data[0].u8()
             val duration = u32be(command.data, 1) ?: return null
-            if (durationType !in SUPPORTED_DURATION_TYPES || duration == 0) null
+            if (durationType !in SUPPORTED_DURATION_TYPES || duration == 0 ||
+                state.splitDurationType?.let { it != durationType } == true
+            ) null
             else state.copy(workoutDurationType = durationType, workoutDuration = duration)
         }
         SET_SPLIT_DURATION -> {
-            if (command.data.size != 5 || command.data[0].u8() !in SUPPORTED_DURATION_TYPES) null
-            else state
+            if (command.data.size != 5) return null
+            val durationType = command.data[0].u8()
+            val duration = u32be(command.data, 1) ?: return null
+            val undefinedVariableSentinel = state.workoutType == WORKOUT_TYPE_VARIABLE_UNDEFINED_REST &&
+                duration == 0
+            if (durationType !in SUPPORTED_DURATION_TYPES ||
+                (!undefinedVariableSentinel && duration == 0) ||
+                (!undefinedVariableSentinel && state.workoutDurationType?.let { it != durationType } == true)
+            ) null
+            else state.copy(splitDurationType = durationType, splitDuration = duration)
         }
         SET_REST_DURATION -> {
             if (command.data.size != 2) return null
@@ -316,6 +347,8 @@ class Concept2CsafeLink {
                 selectedIntervalIndex = index,
                 workoutDurationType = null,
                 workoutDuration = null,
+                splitDurationType = null,
+                splitDuration = null,
                 restDurationSeconds = null,
                 intervalType = null,
                 targetPaceCentiseconds = null,
@@ -358,12 +391,7 @@ class Concept2CsafeLink {
                 intervals = intervals,
             )
         }
-        val kind = when (state.workoutDurationType) {
-            DURATION_TIME -> Concept2WorkoutGoalKind.TIME
-            DURATION_DISTANCE -> Concept2WorkoutGoalKind.DISTANCE
-            DURATION_CALORIES -> Concept2WorkoutGoalKind.CALORIES
-            else -> return null
-        }
+        val kind = goalKind(state.workoutDurationType) ?: return null
         if (!workoutTypeMatches(type, kind)) return null
         val duration = state.workoutDuration ?: return null
         if (type in INTERVAL_WORKOUT_TYPES && state.restDurationSeconds == null) return null
@@ -377,6 +405,8 @@ class Concept2CsafeLink {
             targetCaloriesPerHour = state.targetCaloriesPerHour,
             targetStrokeRate = state.targetStrokeRate,
             targetHeartRateBpm = state.targetHeartRateBpm,
+            splitGoalKind = goalKind(state.splitDurationType),
+            splitGoalValue = state.splitDuration,
         )
     }
 
@@ -415,6 +445,13 @@ class Concept2CsafeLink {
         Concept2WorkoutGoalKind.CALORIES -> type in setOf(10, 12)
     }
 
+    private fun goalKind(durationType: Int?): Concept2WorkoutGoalKind? = when (durationType) {
+        DURATION_TIME -> Concept2WorkoutGoalKind.TIME
+        DURATION_DISTANCE -> Concept2WorkoutGoalKind.DISTANCE
+        DURATION_CALORIES -> Concept2WorkoutGoalKind.CALORIES
+        else -> null
+    }
+
     private fun u32be(bytes: ByteArray, offset: Int): Int? {
         var value = 0L
         repeat(4) { value = (value shl 8) or bytes[offset + it].u8().toLong() }
@@ -445,6 +482,7 @@ class Concept2CsafeLink {
         private const val SET_GAME_PARAMS = 0x38
         private const val SET_TARGET_HEART_RATE = 0x30
         private const val WORKOUT_TYPE_JUST_ROW_SPLITS = 0x01
+        private const val WORKOUT_TYPE_VARIABLE_UNDEFINED_REST = 0x09
         private const val SCREEN_TYPE_WORKOUT = 0x01
         private const val SCREEN_PREPARE_TO_ROW = 0x01
         private const val SCREEN_TERMINATE_WORKOUT = 0x02

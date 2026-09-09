@@ -27,6 +27,8 @@ data class Concept2WorkoutProgram(
     val targetCaloriesPerHour: Int? = null,
     val targetStrokeRate: Int? = null,
     val targetHeartRateBpm: Int? = null,
+    val splitGoalKind: Concept2WorkoutGoalKind? = null,
+    val splitGoalValue: Int? = null,
     val intervals: List<Concept2WorkoutInterval> = listOf(
         Concept2WorkoutInterval(
             goalKind = goalKind,

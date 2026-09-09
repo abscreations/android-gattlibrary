@@ -22,6 +22,8 @@ class Concept2CsafeCodecTest {
         )
         assertEquals(Concept2WorkoutGoalKind.DISTANCE, distance.handshakeState.workoutProgram?.goalKind)
         assertEquals(1_000, distance.handshakeState.workoutProgram?.goalValue)
+        assertEquals(Concept2WorkoutGoalKind.DISTANCE, distance.handshakeState.workoutProgram?.splitGoalKind)
+        assertEquals(200, distance.handshakeState.workoutProgram?.splitGoalValue)
 
         val time = Concept2CsafeLink()
         assertTrue(time.accept(
@@ -38,6 +40,24 @@ class Concept2CsafeCodecTest {
         ) is Concept2CsafeLink.RequestResult.Accepted)
         assertEquals(Concept2WorkoutGoalKind.CALORIES, calories.handshakeState.workoutProgram?.goalKind)
         assertEquals(100, calories.handshakeState.workoutProgram?.goalValue)
+        assertEquals(Concept2WorkoutGoalKind.CALORIES, calories.handshakeState.workoutProgram?.splitGoalKind)
+        assertEquals(20, calories.handshakeState.workoutProgram?.splitGoalValue)
+    }
+
+    @Test
+    fun `single profile rejects a split duration type that disagrees with its workout duration`() {
+        val link = Concept2CsafeLink()
+
+        assertRejected(
+            Concept2CsafeLink.RejectionReason.UNSUPPORTED,
+            link.accept(configuration(
+                0x01, 1, 3,
+                0x03, 5, 0x80, 0, 0, 3, 0xE8,
+                0x05, 5, 0x40, 0, 0, 0, 50,
+                0x14, 1, 1,
+                0x13, 2, 1, 1,
+            ), 100),
+        )
     }
 
     @Test
@@ -113,6 +133,36 @@ class Concept2CsafeCodecTest {
         assertEquals(500, program.intervals[1].targetCaloriesPerHour)
         assertNull(program.intervals[1].targetPaceCentiseconds)
         assertNull(program.intervals[1].targetPowerWatts)
+    }
+
+    @Test
+    fun `official variable undefined-rest profile sentinel is retained and recognized`() {
+        val link = Concept2CsafeLink()
+        assertTrue(link.accept(configuration(
+            0x18, 1, 0,
+            0x01, 1, 8,
+            0x17, 1, 4,
+            0x03, 5, 0x80, 0, 0, 0, 100,
+            0x04, 2, 0, 0,
+            0x14, 1, 1,
+        ), 100) is Concept2CsafeLink.RequestResult.Accepted)
+
+        assertTrue(link.accept(configuration(
+            0x18, 1, 1,
+            0x17, 1, 3,
+            0x03, 5, 0, 0, 0, 0x2E, 0xE0,
+            0x04, 2, 0, 0,
+            0x14, 1, 1,
+            0x01, 1, 9,
+            0x05, 5, 0x80, 0, 0, 0, 0,
+            0x13, 2, 1, 1,
+        ), 150) is Concept2CsafeLink.RequestResult.Accepted)
+
+        val program = link.handshakeState.workoutProgram!!
+        assertEquals(9, program.workoutType)
+        assertEquals(2, program.intervals.size)
+        assertTrue(program.intervals.all { it.restSeconds == null })
+        assertEquals(0, link.handshakeState.splitDuration)
     }
 
     @Test

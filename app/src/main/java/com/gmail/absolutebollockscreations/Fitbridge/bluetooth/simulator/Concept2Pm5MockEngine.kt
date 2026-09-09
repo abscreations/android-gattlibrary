@@ -5,7 +5,14 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-enum class Concept2Scenario { STEADY, INCREASING, RECOVERY, INTERVALS, FINISH }
+enum class Concept2Scenario {
+    STEADY,
+    INCREASING,
+    RECOVERY,
+    INTERVALS,
+    UNDEFINED_REST_INTERVALS,
+    FINISH,
+}
 
 internal object Concept2Pm5OperationalState {
     const val READY = 1
@@ -54,6 +61,9 @@ data class Concept2Pm5Snapshot(
     val restTimeCentiseconds: Int = 0,
     val projectedWorkTimeSeconds: Int = 1800,
     val projectedWorkDistanceMetres: Int = 7000,
+    val splitIntervalSize: Int = 7000,
+    /** Raw programmed target: centiseconds, metres, or calories according to workoutDurationType. */
+    val workoutDuration: Int = 180_000,
     val workoutDurationType: Int = 0,
     val operationalState: Int = Concept2Pm5OperationalState.IDLE,
     val workoutVerificationState: Int = 0,
@@ -68,6 +78,8 @@ data class Concept2Pm5Snapshot(
     val splitSequence: Int = 0,
     val summarySequence: Int = 0,
     val forceCurveSequence: Int = 0,
+    /** Force samples in whole pounds, held stable for the completed stroke. */
+    val forceCurvePounds: List<Int> = emptyList(),
     /** False when stroke-detail and force-curve characteristics must remain silent. */
     val strokeDataAvailable: Boolean = true,
 )
@@ -84,6 +96,7 @@ class Concept2Pm5MockEngine(
     private var powerIntegral = 0.0
     private var cadenceIntegral = 0.0
     private var strokeCount = 0.0
+    private var strokeMechanics: Concept2StrokeMechanics? = null
     private var subscribedIdleSeconds = 0.0
     private var workoutProgram: Concept2WorkoutProgram? = null
     @Volatile private var programPhase = Concept2ProgramPhase.ACTIVE
@@ -93,6 +106,8 @@ class Concept2Pm5MockEngine(
     private var intervalWorkSeconds = 0.0
     private var restRemainingSeconds = 0.0
     private var restIsUndefined = false
+    private var autonomousIntervalNumber = 1
+    private var autonomousRestRemainingSeconds: Double? = null
     @Volatile
     var isWorkoutRunning: Boolean = !startsPaused
         private set
@@ -105,9 +120,6 @@ class Concept2Pm5MockEngine(
     @Synchronized
     fun startWorkout(): Boolean {
         if (programPhase == Concept2ProgramPhase.COMPLETE) return false
-        if (programPhase == Concept2ProgramPhase.REST && restIsUndefined) {
-            advanceToNextVariableInterval()
-        }
         val changed = !isWorkoutRunning
         isWorkoutRunning = true
         beginFirstPull()
@@ -141,6 +153,7 @@ class Concept2Pm5MockEngine(
         powerIntegral = 0.0
         cadenceIntegral = 0.0
         strokeCount = 0.0
+        strokeMechanics = null
         subscribedIdleSeconds = 0.0
         workoutProgram = null
         programPhase = Concept2ProgramPhase.ACTIVE
@@ -150,6 +163,8 @@ class Concept2Pm5MockEngine(
         intervalWorkSeconds = 0.0
         restRemainingSeconds = 0.0
         restIsUndefined = false
+        autonomousIntervalNumber = 1
+        autonomousRestRemainingSeconds = null
         startupPhase = Concept2Pm5StartupPhase.IDLE
         isWorkoutRunning = false
     }
@@ -184,10 +199,14 @@ class Concept2Pm5MockEngine(
         Concept2Pm5StartupPhase.SUBSCRIBED_IDLE -> idleSnapshot()
         Concept2Pm5StartupPhase.WAITING_FOR_ACCELERATION -> preparationSnapshot(strokeState = 1)
         Concept2Pm5StartupPhase.ACCELERATING -> preparationSnapshot(strokeState = 2)
-        Concept2Pm5StartupPhase.ACTIVE -> when (programPhase) {
-            Concept2ProgramPhase.ACTIVE -> buildActiveSnapshot(0.0)
-            Concept2ProgramPhase.REST -> restSnapshot()
-            Concept2ProgramPhase.COMPLETE -> completedSnapshot()
+        Concept2Pm5StartupPhase.ACTIVE -> if (isAutonomousUndefinedRest()) {
+            restSnapshot(autonomousIntervalNumber)
+        } else {
+            when (programPhase) {
+                Concept2ProgramPhase.ACTIVE -> buildActiveSnapshot(0.0)
+                Concept2ProgramPhase.REST -> restSnapshot()
+                Concept2ProgramPhase.COMPLETE -> completedSnapshot()
+            }
         }
     }
 
@@ -231,12 +250,18 @@ class Concept2Pm5MockEngine(
         if (startupPhase == Concept2Pm5StartupPhase.IDLE) return idleSnapshot()
 
         if (startupPhase == Concept2Pm5StartupPhase.ACTIVE && programPhase == Concept2ProgramPhase.REST) {
-            if (restIsUndefined) return restSnapshot()
             restRemainingSeconds = (restRemainingSeconds - dtSeconds).coerceAtLeast(0.0)
             if (restRemainingSeconds == 0.0) {
                 advanceToNextVariableInterval()
             }
             return if (programPhase == Concept2ProgramPhase.REST) restSnapshot() else buildActiveSnapshot(0.0)
+        }
+        if (startupPhase == Concept2Pm5StartupPhase.ACTIVE && isAutonomousUndefinedRest()) {
+            val remaining = (autonomousRestRemainingSeconds!! - dtSeconds).coerceAtLeast(0.0)
+            autonomousRestRemainingSeconds = remaining.takeIf { it > 0.0 }
+            if (remaining > 0.0) return restSnapshot(autonomousIntervalNumber)
+            autonomousIntervalNumber++
+            return buildActiveSnapshot(0.0)
         }
 
         var transitionDtSeconds = dtSeconds
@@ -265,7 +290,8 @@ class Concept2Pm5MockEngine(
             else -> {
                 startupPhase = Concept2Pm5StartupPhase.ACTIVE
                 val active = buildActiveSnapshot(activeAfter - activeBefore)
-                applyProgramBoundary(active)
+                if (workoutProgram != null) applyProgramBoundary(active)
+                else applyAutonomousUndefinedRestBoundary(active)
             }
         }
     }
@@ -279,6 +305,7 @@ class Concept2Pm5MockEngine(
             Concept2Scenario.INCREASING -> (0.3 + activeElapsedSeconds / 300.0).coerceAtMost(0.95)
             Concept2Scenario.RECOVERY -> (0.85 - activeElapsedSeconds / 300.0).coerceAtLeast(0.25)
             Concept2Scenario.INTERVALS -> if ((activeElapsedSeconds.toInt() / 30) % 2 == 0) 0.82 else 0.28
+            Concept2Scenario.UNDEFINED_REST_INTERVALS -> 0.88
             Concept2Scenario.FINISH -> if (activeElapsedSeconds < 60.0) 0.6 else 0.0
         }
         val generatedSpeed = when (machine) {
@@ -292,9 +319,15 @@ class Concept2Pm5MockEngine(
             Concept2Machine.ROW_ERG -> 18.0 + 16.0 * scenarioEffort
             Concept2Machine.SKI_ERG -> 24.0 + 18.0 * scenarioEffort
         }
+        val highRateUndefinedRestProfile = scenario == Concept2Scenario.UNDEFINED_REST_INTERVALS ||
+            (workoutProgram != null && interval?.restSeconds == null)
         val rate = interval?.targetStrokeRate?.let { target ->
             target * (1.0 + 0.08 * sin(activeElapsedSeconds * 2.0 * PI / 12.0))
-        } ?: baseRate
+        } ?: if (highRateUndefinedRestProfile) {
+            45.0 + 5.0 * sin(activeElapsedSeconds * 2.0 * PI / 12.0)
+        } else {
+            baseRate
+        }
         val generatedPower = 65.0 + 290.0 * scenarioEffort
         val power = interval?.targetPowerWatts?.toDouble()
             ?: interval?.targetCaloriesPerHour?.let { it * 0.23 * 4184.0 / 3600.0 }
@@ -304,16 +337,30 @@ class Concept2Pm5MockEngine(
         cadenceIntegral += rate * dt
         energyKcal += power * dt / (0.23 * 4184.0)
         strokeCount += rate * dt / 60.0
+        val displayedRate = rate.roundToInt().coerceAtLeast(1)
+        val displayedPower = power.roundToInt().coerceAtLeast(1)
+        val completedStrokeIndex = strokeCount.toInt()
+        val mechanics = strokeMechanics
+            ?.takeIf { it.strokeIndex == completedStrokeIndex }
+            ?: Concept2StrokeMechanicsModel.generate(
+                machine = machine,
+                strokeIndex = completedStrokeIndex,
+                displayedStrokeRate = displayedRate,
+                displayedPowerWatts = displayedPower,
+                speedMetresPerSecond = speed,
+            ).also { strokeMechanics = it }
         if (workoutProgram != null) intervalWorkSeconds += dt
         val averagePower = if (activeElapsedSeconds > 0.0) powerIntegral / activeElapsedSeconds else power
         val paceCs = (500.0 / speed * 100.0).roundToInt()
         val averageSpeed = if (activeElapsedSeconds > 0.0) distanceMetres / activeElapsedSeconds else speed
         val avgPaceCs = (500.0 / averageSpeed * 100.0).roundToInt()
-        val cycle = if (rate > 0.0) (activeElapsedSeconds * rate / 60.0) % 1.0 else 0.0
+        val cycle = strokeCount % 1.0
+        val driveFraction = mechanics.driveTimeCentiseconds.toDouble() /
+            (mechanics.driveTimeCentiseconds + mechanics.recoveryTimeCentiseconds)
         val strokeState = when {
             workoutProgram == null && scenario == Concept2Scenario.FINISH && elapsedSeconds >= 60.0 -> 0
-            cycle < 0.35 -> 2 // driving
-            cycle < 0.45 -> 3 // dwelling
+            cycle < driveFraction -> 2 // driving
+            cycle < (driveFraction + 0.05).coerceAtMost(0.95) -> 3 // dwelling
             else -> 4 // recovery
         }
         val finished = workoutProgram == null && scenario == Concept2Scenario.FINISH && activeElapsedSeconds >= 60.0
@@ -323,17 +370,17 @@ class Concept2Pm5MockEngine(
             elapsedCentiseconds = (elapsedSeconds * 100.0).roundToInt(),
             distanceDecimetres = (distanceMetres * 10.0).roundToInt(),
             speedMillimetresPerSecond = (speed * 1000.0).roundToInt(),
-            strokeRate = rate.roundToInt(),
+            strokeRate = mechanics.strokeRate,
             heartRate = interval?.targetHeartRateBpm?.let { target ->
                 (target * (1.0 + 0.08 * sin(activeElapsedSeconds * 2.0 * PI / 17.0))).roundToInt()
             } ?: (96.0 + scenarioEffort * 76.0).roundToInt(),
             currentPaceCentiseconds = paceCs,
             averagePaceCentiseconds = avgPaceCs,
-            currentPowerWatts = power.roundToInt(),
+            currentPowerWatts = mechanics.powerWatts,
             averagePowerWatts = averagePower.roundToInt(),
             totalCalories = energyKcal.roundToInt(),
-            caloriesPerHour = (power / (0.23 * 4184.0) * 3600.0).roundToInt(),
-            dragFactor = if (machine == Concept2Machine.BIKE_ERG) 100 else 120,
+            caloriesPerHour = (mechanics.powerWatts / (0.23 * 4184.0) * 3600.0).roundToInt(),
+            dragFactor = mechanics.dragFactor,
             strokeCount = strokeCount.toInt(),
             averageCadence = if (activeElapsedSeconds > 0.0) cadenceIntegral / activeElapsedSeconds else rate,
             workoutType = workoutProgram?.workoutType ?: 0,
@@ -346,20 +393,45 @@ class Concept2Pm5MockEngine(
             },
             rowingState = if (finished || intervalRest) 0 else 1,
             strokeState = strokeState,
+            driveLengthCentimetres = mechanics.driveLengthCentimetres,
+            driveTimeCentiseconds = mechanics.driveTimeCentiseconds,
+            recoveryTimeCentiseconds = mechanics.recoveryTimeCentiseconds,
+            strokeDistanceCentimetres = mechanics.strokeDistanceCentimetres,
+            peakForceTenthsPound = mechanics.peakForceTenthsPound,
+            averageForceTenthsPound = mechanics.averageForceTenthsPound,
+            workPerStrokeTenthsJoule = mechanics.workPerStrokeTenthsJoule,
             intervalType = interval?.let { programIntervalType(it.goalKind) } ?: if (intervalRest) 3 else 1,
             intervalCount = workoutProgram?.let { intervalNumber }
-                ?: if (scenario == Concept2Scenario.INTERVALS) activeElapsedSeconds.toInt() / 60 + 1 else 1,
+                ?: when (scenario) {
+                    Concept2Scenario.INTERVALS -> activeElapsedSeconds.toInt() / 60 + 1
+                    Concept2Scenario.UNDEFINED_REST_INTERVALS -> autonomousIntervalNumber
+                    else -> 1
+                },
             restTimeCentiseconds = if (intervalRest) ((activeElapsedSeconds.toInt() % 30) * 100) else 0,
             projectedWorkTimeSeconds = interval?.takeIf { it.goalKind == Concept2WorkoutGoalKind.TIME }
                 ?.let { it.goalValue / 100 } ?: 1800,
             projectedWorkDistanceMetres = interval?.takeIf { it.goalKind == Concept2WorkoutGoalKind.DISTANCE }
                 ?.goalValue ?: (averageSpeed * 1800.0).roundToInt(),
+            splitIntervalSize = workoutProgram?.let { program ->
+                program.splitGoalValue ?: if (program.isInterval || program.isVariableInterval) {
+                    interval?.goalValue
+                } else {
+                    null
+                }
+            } ?: 7000,
+            workoutDuration = interval?.goalValue ?: 180_000,
             workoutDurationType = interval?.let { durationType(it.goalKind) } ?: 0,
             operationalState = if (finished) Concept2Pm5OperationalState.READY else Concept2Pm5OperationalState.WORKOUT,
             machineType = machine.wireMachineType,
-            splitSequence = if (scenario == Concept2Scenario.INTERVALS) activeElapsedSeconds.toInt() / 30 else 0,
+            splitSequence = workoutProgram?.let(::programmedSplitSequence)
+                ?: when (scenario) {
+                    Concept2Scenario.INTERVALS -> activeElapsedSeconds.toInt() / 30
+                    Concept2Scenario.UNDEFINED_REST_INTERVALS -> autonomousIntervalNumber - 1
+                    else -> 0
+                },
             summarySequence = if (finished) 1 else 0,
             forceCurveSequence = strokeCount.toInt(),
+            forceCurvePounds = mechanics.forceCurvePounds,
         )
     }
 
@@ -370,14 +442,29 @@ class Concept2Pm5MockEngine(
             programPhase = Concept2ProgramPhase.REST
             val rest = currentProgramInterval(program).restSeconds
             restIsUndefined = rest == null
-            restRemainingSeconds = rest?.toDouble() ?: 0.0
-            if (restIsUndefined) isWorkoutRunning = false
+            restRemainingSeconds = rest?.toDouble()
+                ?: simulatedUndefinedRestDurationSeconds(intervalNumber).toDouble()
             return restSnapshot(intervalNumber)
         }
         programPhase = Concept2ProgramPhase.COMPLETE
         isWorkoutRunning = false
         return completedSnapshot()
     }
+
+    private fun applyAutonomousUndefinedRestBoundary(active: Concept2Pm5Snapshot): Concept2Pm5Snapshot {
+        if (scenario != Concept2Scenario.UNDEFINED_REST_INTERVALS) return active
+        val activeElapsedSeconds = (elapsedSeconds - FIRST_PULL_PREPARATION_SECONDS).coerceAtLeast(0.0)
+        if (activeElapsedSeconds < autonomousIntervalNumber * AUTONOMOUS_INTERVAL_WORK_SECONDS) return active
+        autonomousRestRemainingSeconds = simulatedUndefinedRestDurationSeconds(autonomousIntervalNumber).toDouble()
+        return restSnapshot(autonomousIntervalNumber)
+    }
+
+    private fun isAutonomousUndefinedRest(): Boolean =
+        workoutProgram == null && scenario == Concept2Scenario.UNDEFINED_REST_INTERVALS &&
+            autonomousRestRemainingSeconds != null
+
+    private fun simulatedUndefinedRestDurationSeconds(interval: Int): Int =
+        AUTONOMOUS_REST_MIN_SECONDS + ((interval * 17 + 11) % AUTONOMOUS_REST_VARIATION_SECONDS)
 
     private fun goalReached(program: Concept2WorkoutProgram): Boolean = when (currentProgramInterval(program).goalKind) {
         Concept2WorkoutGoalKind.TIME ->
@@ -400,6 +487,21 @@ class Concept2Pm5MockEngine(
             interval.goalValue - (energyKcal - intervalStartCalories),
         ).toInt().coerceAtLeast(0)
         }
+    }
+
+    private fun programmedSplitSequence(program: Concept2WorkoutProgram): Int {
+        if (program.isInterval || program.isVariableInterval) return 0
+        val splitKind = program.splitGoalKind ?: return 0
+        val splitValue = program.splitGoalValue?.takeIf { it > 0 } ?: return 0
+        if (splitKind != currentProgramInterval(program).goalKind) return 0
+        val progress = when (splitKind) {
+            Concept2WorkoutGoalKind.TIME -> (intervalWorkSeconds * 100.0).toInt()
+            Concept2WorkoutGoalKind.DISTANCE ->
+                (distanceMetres - intervalStartDistanceMetres).toInt()
+            Concept2WorkoutGoalKind.CALORIES ->
+                (energyKcal - intervalStartCalories).toInt()
+        }
+        return (progress / splitValue).coerceAtLeast(0)
     }
 
     private fun restSnapshot(splitSequence: Int = intervalNumber): Concept2Pm5Snapshot =
@@ -446,6 +548,7 @@ class Concept2Pm5MockEngine(
         splitSequence = splitSequence,
         summarySequence = summarySequence,
         strokeDataAvailable = false,
+        forceCurvePounds = emptyList(),
     )
 
     private fun programIntervalType(kind: Concept2WorkoutGoalKind): Int = when (kind) {
@@ -464,6 +567,7 @@ class Concept2Pm5MockEngine(
         intervalStartCalories = energyKcal
         intervalWorkSeconds = 0.0
         restIsUndefined = false
+        strokeMechanics = null
     }
 
     private fun durationType(kind: Concept2WorkoutGoalKind): Int = when (kind) {
@@ -516,6 +620,8 @@ class Concept2Pm5MockEngine(
         strokeState = strokeState,
         projectedWorkTimeSeconds = 0,
         projectedWorkDistanceMetres = 0,
+        splitIntervalSize = 0,
+        workoutDuration = 0,
         workoutDurationType = workoutDurationType,
         operationalState = operationalState,
         machineType = machine.wireMachineType,
@@ -533,5 +639,8 @@ class Concept2Pm5MockEngine(
         private const val SUBSCRIBED_IDLE_SECONDS = 2.0
         private const val WAITING_FOR_ACCELERATION_SECONDS = 0.5
         private const val FIRST_PULL_PREPARATION_SECONDS = 1.0
+        private const val AUTONOMOUS_INTERVAL_WORK_SECONDS = 30.0
+        private const val AUTONOMOUS_REST_MIN_SECONDS = 30
+        private const val AUTONOMOUS_REST_VARIATION_SECONDS = 31
     }
 }

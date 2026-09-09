@@ -141,6 +141,18 @@ class Concept2Pm5EncoderTest {
         assertTrue(frames.all { it.size <= 20 })
         assertEquals(24, frames.sumOf { it[0].toInt() and 0x0F })
         assertTrue(frames.all { (it[0].toInt() ushr 4) == frames.size })
+        val encodedPoints = frames.flatMap { frame ->
+            (0 until (frame[0].toInt() and 0x0F)).map { index ->
+                val offset = 2 + index * 2
+                (frame[offset].toInt() and 0xFF) or ((frame[offset + 1].toInt() and 0xFF) shl 8)
+            }
+        }
+        assertEquals(sample.forceCurvePounds, encodedPoints)
+        assertEquals(sample.peakForceTenthsPound, encodedPoints.maxOrNull()!! * 10)
+        assertEquals(0, encodedPoints.first())
+        assertEquals(0, encodedPoints.last())
+        assertTrue(encodedPoints[1] > 0)
+        assertTrue(encodedPoints[encodedPoints.size - 2] > 0)
     }
 
     @Test
@@ -355,6 +367,45 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
+    fun `autonomous undefined rests stop strokes for reproducible thirty to sixty second windows`() {
+        fun firstRestDurationSeconds(): Int {
+            val engine = Concept2Pm5MockEngine(
+                Concept2Machine.ROW_ERG,
+                Concept2Scenario.UNDEFINED_REST_INTERVALS,
+            )
+            engine.startWorkout()
+            val active = engine.tick(3.5)
+            assertTrue(active.strokeRate in 40..50)
+
+            val rest = engine.tick(30.0)
+            assertEquals(0, rest.speedMillimetresPerSecond)
+            assertEquals(0, rest.strokeRate)
+            assertEquals(0, rest.currentPowerWatts)
+            assertEquals(0, rest.driveLengthCentimetres)
+            assertEquals(0, rest.peakForceTenthsPound)
+            assertFalse(rest.strokeDataAvailable)
+            val elapsedAtRest = rest.elapsedCentiseconds
+            val distanceAtRest = rest.distanceDecimetres
+
+            var restSeconds = 0
+            var current = rest
+            while (current.strokeRate == 0 && restSeconds <= 60) {
+                current = engine.tick(1.0)
+                restSeconds++
+                if (current.strokeRate == 0) {
+                    assertEquals(elapsedAtRest, current.elapsedCentiseconds)
+                    assertEquals(distanceAtRest, current.distanceDecimetres)
+                }
+            }
+            assertTrue(restSeconds in 30..60)
+            assertTrue(current.strokeRate in 40..50)
+            return restSeconds
+        }
+
+        assertEquals(firstRestDurationSeconds(), firstRestDurationSeconds())
+    }
+
+    @Test
     fun `single CSAFE goal finishes without resetting accumulated workout totals`() {
         val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
         engine.configureWorkout(
@@ -374,6 +425,58 @@ class Concept2Pm5EncoderTest {
         assertTrue(completed.distanceDecimetres > 0)
         assertEquals(0, completed.speedMillimetresPerSecond)
         assertFalse(completed.strokeDataAvailable)
+    }
+
+    @Test
+    fun `General Status encodes the raw programmed goal in the selected duration units`() {
+        listOf(
+            Triple(Concept2WorkoutGoalKind.TIME, 12_000, 0x00),
+            Triple(Concept2WorkoutGoalKind.DISTANCE, 1_000, 0x80),
+            Triple(Concept2WorkoutGoalKind.CALORIES, 500, 0x40),
+        ).forEach { (kind, goal, durationType) ->
+            val workoutType = when (kind) {
+                Concept2WorkoutGoalKind.TIME -> 5
+                Concept2WorkoutGoalKind.DISTANCE -> 3
+                Concept2WorkoutGoalKind.CALORIES -> 10
+            }
+            val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+            engine.configureWorkout(Concept2WorkoutProgram(workoutType, kind, goal))
+            engine.startWorkout()
+            val snapshot = engine.tick(7.0)
+            val general = Concept2Pm5Encoder.generalStatus(snapshot)
+            val additionalStroke = Concept2Pm5Encoder.multiplexed(0x36, snapshot)!!
+
+            assertEquals(goal, u24le(general, 14))
+            assertEquals(durationType, general[17].toInt() and 0xFF)
+            assertEquals(snapshot.projectedWorkTimeSeconds, u24le(additionalStroke, 10))
+            assertEquals(snapshot.projectedWorkDistanceMetres, u24le(additionalStroke, 13))
+        }
+    }
+
+    @Test
+    fun `configured single-workout split boundaries advance split telemetry`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.configureWorkout(
+            Concept2WorkoutProgram(
+                workoutType = 3,
+                goalKind = Concept2WorkoutGoalKind.DISTANCE,
+                goalValue = 100,
+                splitGoalKind = Concept2WorkoutGoalKind.DISTANCE,
+                splitGoalValue = 10,
+            ),
+        )
+        engine.startWorkout()
+
+        var snapshot = engine.tick(7.0)
+        while (snapshot.splitSequence == 0) snapshot = engine.tick(0.5)
+
+        assertEquals(1, snapshot.splitSequence)
+        assertTrue(snapshot.distanceDecimetres >= 100)
+        val summary = Concept2Pm5Encoder.individual(
+            BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY,
+            snapshot,
+        )!!
+        assertEquals(10, u16le(summary, 5))
     }
 
     @Test
@@ -473,26 +576,69 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
-    fun `undefined variable rest waits motionless until Start advances to the next entry`() {
+    fun `CSAFE undefined variable rest resumes automatically after thirty to sixty seconds`() {
         val intervals = listOf(
             Concept2WorkoutInterval(Concept2WorkoutGoalKind.TIME, 100, restSeconds = null),
-            Concept2WorkoutInterval(Concept2WorkoutGoalKind.TIME, 100, restSeconds = 0),
+            Concept2WorkoutInterval(Concept2WorkoutGoalKind.TIME, 100, restSeconds = null),
         )
         val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
         engine.configureWorkout(
-            Concept2WorkoutProgram(8, intervals[0].goalKind, intervals[0].goalValue, intervals = intervals),
+            Concept2WorkoutProgram(9, intervals[0].goalKind, intervals[0].goalValue, intervals = intervals),
         )
         engine.startWorkout()
         val rest = engine.tick(7.0)
 
-        assertFalse(engine.isWorkoutRunning)
+        assertTrue(engine.isWorkoutRunning)
         assertEquals(Concept2ProgramPhase.REST, engine.programProgress()?.phase)
         assertEquals(-1, engine.programProgress()?.remaining)
-        assertEquals(rest, engine.tick(60.0))
+        assertEquals(0, rest.strokeRate)
+        assertFalse(rest.strokeDataAvailable)
+        assertFalse(engine.startWorkout())
+        assertEquals(1, engine.programProgress()?.intervalNumber)
 
-        assertTrue(engine.startWorkout())
+        var seconds = 0
+        var current = rest
+        while (engine.programProgress()?.phase == Concept2ProgramPhase.REST && seconds <= 60) {
+            current = engine.tick(1.0)
+            seconds++
+            if (engine.programProgress()?.phase == Concept2ProgramPhase.REST) {
+                assertEquals(0, current.strokeRate)
+                assertFalse(current.strokeDataAvailable)
+            }
+        }
+
+        assertTrue(seconds in 30..60)
         assertEquals(Concept2ProgramPhase.ACTIVE, engine.programProgress()?.phase)
         assertEquals(2, engine.programProgress()?.intervalNumber)
+        assertTrue(current.strokeRate in 40..50)
+    }
+
+    @Test
+    fun `CSAFE fixed undefined rest repeats automatically without strokes`() {
+        val engine = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG, startsPaused = true)
+        engine.configureWorkout(
+            Concept2WorkoutProgram(
+                workoutType = 6,
+                goalKind = Concept2WorkoutGoalKind.TIME,
+                goalValue = 100,
+                restSeconds = null,
+            ),
+        )
+        engine.startWorkout()
+        val rest = engine.tick(7.0)
+
+        assertEquals(Concept2ProgramPhase.REST, engine.programProgress()?.phase)
+        assertEquals(0, rest.strokeRate)
+        assertFalse(rest.strokeDataAvailable)
+
+        var seconds = 0
+        while (engine.programProgress()?.phase == Concept2ProgramPhase.REST && seconds <= 60) {
+            engine.tick(1.0)
+            seconds++
+        }
+        assertTrue(seconds in 30..60)
+        assertEquals(2, engine.programProgress()?.intervalNumber)
+        assertTrue(engine.snapshot().strokeRate in 40..50)
     }
 
     @Test
@@ -561,6 +707,14 @@ class Concept2Pm5EncoderTest {
         first.reset()
         assertNull(first.heartRateInput)
     }
+
+    private fun u24le(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xFF) or
+            ((bytes[offset + 1].toInt() and 0xFF) shl 8) or
+            ((bytes[offset + 2].toInt() and 0xFF) shl 16)
+
+    private fun u16le(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
 
     @Test
     fun `every PM5 persona remains coherent for thirty simulated minutes`() {

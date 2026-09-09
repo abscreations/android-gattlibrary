@@ -46,7 +46,7 @@ object Concept2Pm5Encoder {
         u24(s.distanceDecimetres)
         u8(s.workoutType); u8(s.intervalType); u8(s.workoutState); u8(s.rowingState); u8(s.strokeState)
         u24(s.distanceDecimetres / 10)
-        u24(s.projectedWorkTimeSeconds * 100)
+        u24(s.workoutDuration)
         u8(s.workoutDurationType); u8(s.dragFactor)
     }
 
@@ -102,7 +102,7 @@ object Concept2Pm5Encoder {
     private fun additionalWorkoutSummary(s: Concept2Pm5Snapshot, multiplexed: Boolean) = packet {
         u16(0); u16(0)
         if (!multiplexed) u8(s.intervalType)
-        u16(s.projectedWorkDistanceMetres); u8(s.intervalCount); u16(s.totalCalories)
+        u16(s.splitIntervalSize); u8(s.intervalCount); u16(s.totalCalories)
         u16(s.averagePowerWatts); u24(s.restDistanceMetres); u16(s.restTimeCentiseconds / 100)
         u16(s.caloriesPerHour)
     }
@@ -125,7 +125,7 @@ object Concept2Pm5Encoder {
     /** One complete force curve, split into PM5 frames that always fit ATT MTU 23. */
     fun forceCurve(s: Concept2Pm5Snapshot): List<ByteArray> {
         val peak = (s.peakForceTenthsPound / 10).coerceAtLeast(1)
-        val points = (0 until 24).map { index ->
+        val points = s.forceCurvePounds.takeIf { it.isNotEmpty() } ?: (0 until 24).map { index ->
             val x = index / 23.0
             (peak * kotlin.math.sin(kotlin.math.PI * x)).toInt().coerceAtLeast(0)
         }
