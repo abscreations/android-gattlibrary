@@ -366,6 +366,7 @@ class Concept2Pm5MockEngine(
         val finished = workoutProgram == null && scenario == Concept2Scenario.FINISH && activeElapsedSeconds >= 60.0
         val intervalRest = workoutProgram == null && scenario == Concept2Scenario.INTERVALS &&
             (activeElapsedSeconds.toInt() / 30) % 2 == 1
+        val isBikeErg = machine == Concept2Machine.BIKE_ERG
         return Concept2Pm5Snapshot(
             elapsedCentiseconds = (elapsedSeconds * 100.0).roundToInt(),
             distanceDecimetres = (distanceMetres * 10.0).roundToInt(),
@@ -393,12 +394,15 @@ class Concept2Pm5MockEngine(
             },
             rowingState = if (finished || intervalRest) 0 else 1,
             strokeState = strokeState,
-            driveLengthCentimetres = mechanics.driveLengthCentimetres,
-            driveTimeCentiseconds = mechanics.driveTimeCentiseconds,
-            recoveryTimeCentiseconds = mechanics.recoveryTimeCentiseconds,
-            strokeDistanceCentimetres = mechanics.strokeDistanceCentimetres,
-            peakForceTenthsPound = mechanics.peakForceTenthsPound,
-            averageForceTenthsPound = mechanics.averageForceTenthsPound,
+            // The physical BikeErg multiplex corpus retains 0x35/0x36 but reports its
+            // rower-specific drive/recovery/distance/force fields as zero. Keep the records and
+            // their bike cadence/power/count data without fabricating handle mechanics.
+            driveLengthCentimetres = if (isBikeErg) 0 else mechanics.driveLengthCentimetres,
+            driveTimeCentiseconds = if (isBikeErg) 0 else mechanics.driveTimeCentiseconds,
+            recoveryTimeCentiseconds = if (isBikeErg) 0 else mechanics.recoveryTimeCentiseconds,
+            strokeDistanceCentimetres = if (isBikeErg) 0 else mechanics.strokeDistanceCentimetres,
+            peakForceTenthsPound = if (isBikeErg) 0 else mechanics.peakForceTenthsPound,
+            averageForceTenthsPound = if (isBikeErg) 0 else mechanics.averageForceTenthsPound,
             workPerStrokeTenthsJoule = mechanics.workPerStrokeTenthsJoule,
             intervalType = interval?.let { programIntervalType(it.goalKind) } ?: if (intervalRest) 3 else 1,
             intervalCount = workoutProgram?.let { intervalNumber }
@@ -431,7 +435,7 @@ class Concept2Pm5MockEngine(
                 },
             summarySequence = if (finished) 1 else 0,
             forceCurveSequence = strokeCount.toInt(),
-            forceCurvePounds = mechanics.forceCurvePounds,
+            forceCurvePounds = if (isBikeErg) emptyList() else mechanics.forceCurvePounds,
         )
     }
 

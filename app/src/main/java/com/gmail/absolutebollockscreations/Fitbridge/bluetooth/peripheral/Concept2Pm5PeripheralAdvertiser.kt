@@ -21,6 +21,7 @@ import android.os.Looper
 import android.os.ParcelUuid
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Machine
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Pm5Encoder
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Pm5Snapshot
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2WorkoutProgram
@@ -28,6 +29,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Simulat
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.max
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,7 +50,12 @@ class Concept2Pm5PeripheralAdvertiser(
         fun onPacketSent()
     }
 
-    private data class Frame(val uuid: java.util.UUID, val value: ByteArray, val conflatable: Boolean)
+    private data class Frame(
+        val uuid: java.util.UUID,
+        val value: ByteArray,
+        val conflatable: Boolean,
+        val transactional: Boolean = false,
+    )
 
     private class Client(val device: BluetoothDevice) {
         val session = Concept2Pm5Session()
@@ -59,7 +66,18 @@ class Concept2Pm5PeripheralAdvertiser(
         var lastSummarySequence = 0
         var lastForceCurveSequence = 0
         var inFlight = false
+        var postedAtMs = 0L
         val pending = ArrayDeque<Frame>()
+        val pacing = Concept2Pm5EmissionPacing()
+        var delivered = 0L
+        var superseded = 0L
+        var dropped = 0L
+        var failedPosts = 0L
+        var lastAckLatencyMs = 0L
+        var ackLatencyTotalMs = 0L
+        var ackLatencySamples = 0L
+        var maxAckLatencyMs = 0L
+        var maxPending = 0
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -75,6 +93,7 @@ class Concept2Pm5PeripheralAdvertiser(
     private var profile: Concept2Pm5GattProfile? = null
     private var pendingServices = ArrayDeque<BluetoothGattService>()
     private var startResult: ((Result<Unit>) -> Unit)? = null
+    private var nextDiagnosticsDueMs = 0L
 
     @Volatile private var latest: Concept2Pm5Snapshot? = null
     @Volatile private var latestWorkoutProgram: Concept2WorkoutProgram? = null
@@ -274,6 +293,59 @@ class Concept2Pm5PeripheralAdvertiser(
             listener.onState(isAdvertising, clients.isNotEmpty(), anySubscribed(), null)
         }
 
+        /*
+         * The API-36 public SDK stub does not declare this callback, so this intentionally has no
+         * `override` modifier. Samsung's runtime BluetoothGattServer already dispatches the exact
+         * platform signature (and logs it in the supplied capture). Normal JVM virtual dispatch
+         * reaches this method on such a runtime; on runtimes without the callback it is inert.
+         *
+         * Do not infer an interval when this hook is absent. The selected PM5 sample period remains
+         * authoritative until Android supplies an actual negotiated value.
+         */
+        @Suppress("unused")
+        fun onConnectionUpdated(
+            device: BluetoothDevice,
+            interval: Int,
+            latency: Int,
+            supervisionTimeout: Int,
+            status: Int,
+        ) {
+            if (epoch.get() != callbackEpoch) return
+            val client = clients[device.address.lowercase()] ?: return
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                Timber.w(
+                    "PM5 connection update failed status=%d; retaining selected sample period",
+                    status,
+                )
+                return
+            }
+            val now = android.os.SystemClock.elapsedRealtime()
+            val accepted = synchronized(client) {
+                client.pacing.recordNegotiated(interval, latency, supervisionTimeout).also {
+                    if (it) {
+                        client.nextDueMs = now +
+                            client.pacing.effectivePeriodMs(client.session.periodMs)
+                    }
+                }
+            }
+            if (accepted) {
+                Timber.i(
+                    "PM5 connection pacing measured interval=%dms latency=%d timeout=%dms effective=%dms",
+                    client.pacing.negotiatedIntervalMs,
+                    latency,
+                    client.pacing.supervisionTimeoutMs,
+                    client.pacing.effectivePeriodMs(client.session.periodMs),
+                )
+            } else {
+                Timber.w(
+                    "PM5 ignored invalid connection update intervalUnits=%d latency=%d timeoutUnits=%d",
+                    interval,
+                    latency,
+                    supervisionTimeout,
+                )
+            }
+        }
+
         override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
             clients[device.address.lowercase()]?.mtu = mtu.coerceIn(23, 517)
         }
@@ -354,7 +426,15 @@ class Concept2Pm5PeripheralAdvertiser(
                 null,
             )
             csafeNotification?.let {
-                enqueue(client, Frame(BluetoothIds.UUID_C2_CSAFE_RESPONSE, it, false))
+                enqueue(
+                    client,
+                    Frame(
+                        BluetoothIds.UUID_C2_CSAFE_RESPONSE,
+                        it,
+                        conflatable = false,
+                        transactional = true,
+                    ),
+                )
             }
         }
 
@@ -396,7 +476,15 @@ class Concept2Pm5PeripheralAdvertiser(
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
             val client = clients[device.address.lowercase()] ?: return
-            synchronized(client) { client.inFlight = false }
+            val now = android.os.SystemClock.elapsedRealtime()
+            synchronized(client) {
+                client.inFlight = false
+                client.lastAckLatencyMs = (now - client.postedAtMs).coerceAtLeast(0L)
+                client.ackLatencyTotalMs += client.lastAckLatencyMs
+                client.ackLatencySamples++
+                client.maxAckLatencyMs = max(client.maxAckLatencyMs, client.lastAckLatencyMs)
+                if (status == BluetoothGatt.GATT_SUCCESS) client.delivered++ else client.failedPosts++
+            }
             if (status == BluetoothGatt.GATT_SUCCESS) listener.onPacketSent()
             drain(client)
         }
@@ -418,6 +506,7 @@ class Concept2Pm5PeripheralAdvertiser(
 
     private fun startNotifier() {
         notifier?.cancel()
+        nextDiagnosticsDueMs = android.os.SystemClock.elapsedRealtime() + DIAGNOSTICS_PERIOD_MS
         notifier = scope.launch {
             while (isActive) {
                 val now = android.os.SystemClock.elapsedRealtime()
@@ -430,9 +519,14 @@ class Concept2Pm5PeripheralAdvertiser(
                         nowMs = now,
                     )
                     if (now >= client.nextDueMs) {
-                        client.nextDueMs = now + client.session.periodMs
+                        client.nextDueMs = now +
+                            client.pacing.effectivePeriodMs(client.session.periodMs)
                         enqueueLive(client, snapshot)
                     }
+                }
+                if (now >= nextDiagnosticsDueMs) {
+                    logDiagnostics()
+                    nextDiagnosticsDueMs = now + DIAGNOSTICS_PERIOD_MS
                 }
                 delay(25)
             }
@@ -462,7 +556,7 @@ class Concept2Pm5PeripheralAdvertiser(
             client.lastSummarySequence = snapshot.summarySequence
             enqueueEventIds(client, snapshot, listOf(0x39, 0x3A, 0x3C))
         }
-        if (snapshot.strokeDataAvailable &&
+        if (forceCurveAvailable(persona?.machine, snapshot) &&
             snapshot.forceCurveSequence > client.lastForceCurveSequence &&
             client.session.isSubscribed(BluetoothIds.UUID_C2_FORCE_CURVE_DATA)
         ) {
@@ -486,7 +580,8 @@ class Concept2Pm5PeripheralAdvertiser(
         if (!client.session.isSubscribed(uuid)) return
         val value = Concept2Pm5Encoder.individual(uuid, snapshot) ?: return
         if (client.session.shouldEmitAdditionalStatus3(value, force)) {
-            client.nextAdditionalStatus3DueMs = nowMs + client.session.periodMs
+            client.nextAdditionalStatus3DueMs = nowMs +
+                client.pacing.effectivePeriodMs(client.session.periodMs)
             enqueue(client, Frame(uuid, value, true))
         }
     }
@@ -507,12 +602,22 @@ class Concept2Pm5PeripheralAdvertiser(
 
     private fun enqueue(client: Client, frame: Frame) {
         synchronized(client) {
-            if (frame.conflatable) client.pending.removeIf { it.uuid == frame.uuid }
-            if (client.pending.size >= MAX_PENDING) {
-                val replaceable = client.pending.firstOrNull { it.conflatable } ?: return
-                client.pending.remove(replaceable)
+            if (frame.conflatable) {
+                val before = client.pending.size
+                client.pending.removeIf { it.uuid == frame.uuid }
+                client.superseded += before - client.pending.size
             }
-            client.pending.addLast(frame)
+            if (client.pending.size >= MAX_PENDING) {
+                val replaceable = client.pending.firstOrNull { it.conflatable }
+                if (replaceable == null) {
+                    client.dropped++
+                    return
+                }
+                client.pending.remove(replaceable)
+                client.dropped++
+            }
+            enqueuePm5ByPriority(client.pending, frame, frame.transactional)
+            client.maxPending = max(client.maxPending, client.pending.size)
         }
         drain(client)
     }
@@ -522,10 +627,16 @@ class Concept2Pm5PeripheralAdvertiser(
         if (frames.isEmpty() || frames.size > MAX_PENDING) return
         synchronized(client) {
             while (client.pending.size + frames.size > MAX_PENDING) {
-                val replaceable = client.pending.firstOrNull { it.conflatable } ?: return
+                val replaceable = client.pending.firstOrNull { it.conflatable }
+                if (replaceable == null) {
+                    client.dropped += frames.size
+                    return
+                }
                 client.pending.remove(replaceable)
+                client.dropped++
             }
             frames.forEach(client.pending::addLast)
+            client.maxPending = max(client.maxPending, client.pending.size)
         }
         drain(client)
     }
@@ -534,7 +645,10 @@ class Concept2Pm5PeripheralAdvertiser(
     private fun drain(client: Client) {
         val frame = synchronized(client) {
             if (client.inFlight) return
-            client.pending.pollFirst()?.also { client.inFlight = true }
+            client.pending.pollFirst()?.also {
+                client.inFlight = true
+                client.postedAtMs = android.os.SystemClock.elapsedRealtime()
+            }
         } ?: return
         val serviceUuid = if (frame.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE) {
             BluetoothIds.UUID_C2_PM_CONTROL_SERVICE
@@ -543,7 +657,30 @@ class Concept2Pm5PeripheralAdvertiser(
         }
         val characteristic = server?.getService(serviceUuid)?.getCharacteristic(frame.uuid)
         if (characteristic == null || !notify(client.device, characteristic, frame.value)) {
-            synchronized(client) { client.inFlight = false }
+            synchronized(client) {
+                client.inFlight = false
+                client.failedPosts++
+            }
+        }
+    }
+
+    private fun logDiagnostics() {
+        clients.values.forEach { client ->
+            val message = synchronized(client) {
+                val meanAck = if (client.ackLatencySamples == 0L) 0L
+                else client.ackLatencyTotalMs / client.ackLatencySamples
+                "PM5 pacing requested=${client.session.periodMs}ms " +
+                    "measured=${client.pacing.negotiatedIntervalMs}ms " +
+                    "effective=${client.pacing.effectivePeriodMs(client.session.periodMs)}ms " +
+                    "latency=${client.pacing.peripheralLatency} " +
+                    "timeout=${client.pacing.supervisionTimeoutMs}ms " +
+                    "delivered=${client.delivered} superseded=${client.superseded} " +
+                    "dropped=${client.dropped} failed=${client.failedPosts} " +
+                    "pending=${client.pending.size} maxPending=${client.maxPending} " +
+                    "ackLast=${client.lastAckLatencyMs}ms ackMean=${meanAck}ms " +
+                    "ackMax=${client.maxAckLatencyMs}ms"
+            }
+            Timber.i(message)
         }
     }
 
@@ -566,11 +703,19 @@ class Concept2Pm5PeripheralAdvertiser(
 
     companion object {
         private const val MAX_PENDING = 24
+        private const val DIAGNOSTICS_PERIOD_MS = 10_000L
         private const val ADDITIONAL_STATUS_3_ID = 0x3E
         private val LIVE_IDS = listOf(0x31, 0x32, 0x33, 0x35, 0x36, 0x3B, ADDITIONAL_STATUS_3_ID)
         private val STROKE_IDS = setOf(0x35, 0x36)
 
         internal fun liveIdsFor(snapshot: Concept2Pm5Snapshot): List<Int> =
             if (snapshot.strokeDataAvailable) LIVE_IDS else LIVE_IDS.filterNot(STROKE_IDS::contains)
+
+        /** BikeErg has captured 0x35/0x36 records but no physical handle-force curve. */
+        internal fun forceCurveAvailable(
+            machine: Concept2Machine?,
+            snapshot: Concept2Pm5Snapshot,
+        ): Boolean = snapshot.strokeDataAvailable &&
+            machine != Concept2Machine.BIKE_ERG
     }
 }

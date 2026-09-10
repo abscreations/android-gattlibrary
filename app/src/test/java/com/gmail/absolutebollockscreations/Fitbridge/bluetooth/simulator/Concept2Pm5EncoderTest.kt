@@ -17,6 +17,29 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
+    fun `BikeErg retains captured stroke records without inventing rower mechanics or force curve`() {
+        val bike = Concept2Pm5MockEngine(Concept2Machine.BIKE_ERG).run {
+            startWorkout()
+            tick(15.34)
+        }
+
+        // The pinned physical BikeErg multiplex capture contains 0x35 and 0x36, so those records
+        // remain available; their rower-specific mechanics are physically observed as zero.
+        assertTrue(bike.strokeDataAvailable)
+        assertEquals(0, bike.driveLengthCentimetres)
+        assertEquals(0, bike.driveTimeCentiseconds)
+        assertEquals(0, bike.recoveryTimeCentiseconds)
+        assertEquals(0, bike.strokeDistanceCentimetres)
+        assertEquals(0, bike.peakForceTenthsPound)
+        assertEquals(0, bike.averageForceTenthsPound)
+        assertTrue(bike.forceCurvePounds.isEmpty())
+        assertFalse(Concept2Pm5PeripheralAdvertiser.forceCurveAvailable(Concept2Machine.BIKE_ERG, bike))
+
+        assertTrue(Concept2Pm5Encoder.multiplexed(0x35, bike) != null)
+        assertTrue(Concept2Pm5Encoder.multiplexed(0x36, bike) != null)
+    }
+
+    @Test
     fun `core individual packets have exact baseline lengths and round trip`() {
         val general = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_GENERAL_STATUS, sample)!!
         val status1 = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1, sample)!!
