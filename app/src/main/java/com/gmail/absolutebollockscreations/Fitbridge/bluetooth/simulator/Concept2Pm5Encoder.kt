@@ -6,6 +6,36 @@ import java.util.UUID
 
 /** Bounds-safe PM5 1.30 measurement encoders. */
 object Concept2Pm5Encoder {
+    /**
+     * PM5 207.000's two-notification FTMS Rower Data report.
+     *
+     * The first notification deliberately sets More Data and omits current stroke rate/count;
+     * the second clears More Data and supplies those mandatory fields plus energy. Both are
+     * derived from the same snapshot, so FTMS and CE060080 cannot disagree.
+     */
+    fun ftmsRower(s: Concept2Pm5Snapshot): List<ByteArray> = listOf(
+        packet {
+            u16(0x0AFF)
+            u8(kotlin.math.round(s.averageCadence * 2.0).toInt())
+            u24(s.distanceDecimetres / 10)
+            u16(s.currentPaceCentiseconds / 100)
+            u16(s.averagePaceCentiseconds / 100)
+            u16(s.currentPowerWatts)
+            u16(s.averagePowerWatts)
+            u16(s.dragFactor)
+            u8(if (s.heartRate in 1..254) s.heartRate else 0)
+            u16(s.elapsedCentiseconds / 100)
+        },
+        packet {
+            u16(0x0100)
+            u8(s.strokeRate.coerceIn(0, 127) * 2)
+            u16(s.strokeCount)
+            u16(s.totalCalories)
+            u16(s.caloriesPerHour)
+            u8(0xFF)
+        },
+    )
+
     fun individual(uuid: UUID, s: Concept2Pm5Snapshot): ByteArray? = when (uuid) {
         BluetoothIds.UUID_C2_GENERAL_STATUS -> generalStatus(s)
         BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1 -> additionalStatus1(s, multiplexed = false)

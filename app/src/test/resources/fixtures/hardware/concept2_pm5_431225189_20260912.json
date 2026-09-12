@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "family": "concept2-pm5-modern",
+  "evidence_tier": "H",
+  "captured": "2026-09-12",
+  "capture_kind": "Android Bluetooth HCI btsnoop",
+  "sources": [
+    {
+      "source_file": "pm5-gym-btsnoop_hci-0.log",
+      "sha256": "9b0e9252a0d8aee7572b11f600858ebbc96f29413e2ab88d22a4458630f26d20"
+    },
+    {
+      "source_file": "pm5-gym-btsnoop_hci-1.log",
+      "sha256": "8c8314597954d3ea50e3f625184d626539db313921a5f1b5beef4924fedddb97"
+    }
+  ],
+  "hardware": {
+    "advertised_name": "PM5 431225189 Row",
+    "serial_number_ascii_hex": "343331323235313839",
+    "hardware_revision_ascii_hex": "393033",
+    "firmware_revision_ascii_hex": "383230302d3030303430392d3230372e30303000",
+    "manufacturer_ascii_hex": "436f6e63657074320000000000000000",
+    "machine_type_hex": "00"
+  },
+  "advertising": {
+    "address_redacted": true,
+    "connectable": true,
+    "scannable": true,
+    "legacy": true,
+    "primary_frame": 1298,
+    "primary_payload_hex": "03190000020106020a041209504d352034333132323531383920526f77",
+    "primary_structures": [
+      { "type": "appearance", "hex": "0000" },
+      { "type": "flags", "hex": "06" },
+      { "type": "tx_power", "hex": "04" },
+      { "type": "complete_local_name", "ascii": "PM5 431225189 Row" }
+    ],
+    "scan_response_frame": 1299,
+    "scan_response_payload_hex": "030326181107669a0c2000086c91e411e543000006ce06162618011000",
+    "scan_response_structures": [
+      { "type": "complete_uuid16", "uuids": ["1826"] },
+      { "type": "complete_uuid128", "uuids": ["ce060000-43e5-11e4-916c-0800200c9a66"] },
+      { "type": "service_data_uuid16", "uuid": "1826", "hex": "011000" }
+    ]
+  },
+  "gatt": {
+    "services": [
+      {
+        "uuid": "1800",
+        "handle_range": "0001-0009",
+        "characteristics": [
+          { "uuid": "2a00", "value_handle": "0003", "properties_hex": "0a" },
+          { "uuid": "2a01", "value_handle": "0005", "properties_hex": "02" },
+          { "uuid": "2a04", "value_handle": "0007", "properties_hex": "02" },
+          { "uuid": "2aa6", "value_handle": "0009", "properties_hex": "02" }
+        ]
+      },
+      {
+        "uuid": "1801",
+        "handle_range": "000a-000d",
+        "characteristics": [
+          { "uuid": "2a05", "value_handle": "000c", "properties_hex": "20", "cccd_handle": "000d" }
+        ]
+      },
+      {
+        "uuid": "ce060020-43e5-11e4-916c-0800200c9a66",
+        "handle_range": "000e-0013",
+        "characteristics": [
+          { "uuid": "ce060022-43e5-11e4-916c-0800200c9a66", "value_handle": "0010", "properties_hex": "10", "cccd_handle": "0011" },
+          { "uuid": "ce060021-43e5-11e4-916c-0800200c9a66", "value_handle": "0013", "properties_hex": "0c" }
+        ]
+      },
+      {
+        "uuid": "ce060010-43e5-11e4-916c-0800200c9a66",
+        "handle_range": "0014-0024",
+        "characteristics": [
+          { "uuid": "ce060012-43e5-11e4-916c-0800200c9a66", "value_handle": "0016", "properties_hex": "02" },
+          { "uuid": "ce060013-43e5-11e4-916c-0800200c9a66", "value_handle": "0018", "properties_hex": "02" },
+          { "uuid": "ce060014-43e5-11e4-916c-0800200c9a66", "value_handle": "001a", "properties_hex": "02" },
+          { "uuid": "ce060015-43e5-11e4-916c-0800200c9a66", "value_handle": "001c", "properties_hex": "02" },
+          { "uuid": "ce060011-43e5-11e4-916c-0800200c9a66", "value_handle": "001e", "properties_hex": "02" },
+          { "uuid": "ce060016-43e5-11e4-916c-0800200c9a66", "value_handle": "0020", "properties_hex": "02" },
+          { "uuid": "ce060017-43e5-11e4-916c-0800200c9a66", "value_handle": "0022", "properties_hex": "02" },
+          { "uuid": "ce060018-43e5-11e4-916c-0800200c9a66", "value_handle": "0024", "properties_hex": "02" }
+        ]
+      },
+      {
+        "uuid": "ce060030-43e5-11e4-916c-0800200c9a66",
+        "handle_range": "0025-004b",
+        "characteristics": [
+          { "uuid_suffix": "0031", "value_handle": "0027", "properties_hex": "12", "cccd_handle": "0028" },
+          { "uuid_suffix": "0032", "value_handle": "002a", "properties_hex": "12", "cccd_handle": "002b" },
+          { "uuid_suffix": "0033", "value_handle": "002d", "properties_hex": "12", "cccd_handle": "002e" },
+          { "uuid_suffix": "0034", "value_handle": "0030", "properties_hex": "0a" },
+          { "uuid_suffix": "0035", "value_handle": "0032", "properties_hex": "12", "cccd_handle": "0033" },
+          { "uuid_suffix": "0036", "value_handle": "0035", "properties_hex": "12", "cccd_handle": "0036" },
+          { "uuid_suffix": "0037", "value_handle": "0038", "properties_hex": "12", "cccd_handle": "0039" },
+          { "uuid_suffix": "0038", "value_handle": "003b", "properties_hex": "12", "cccd_handle": "003c" },
+          { "uuid_suffix": "0039", "value_handle": "003e", "properties_hex": "12", "cccd_handle": "003f" },
+          { "uuid_suffix": "003a", "value_handle": "0041", "properties_hex": "12", "cccd_handle": "0042" },
+          { "uuid_suffix": "003b", "value_handle": "0044", "properties_hex": "12", "cccd_handle": "0045" },
+          { "uuid_suffix": "0080", "value_handle": "0047", "properties_hex": "12", "cccd_handle": "0048" },
+          { "uuid_suffix": "003d", "value_handle": "004a", "properties_hex": "12", "cccd_handle": "004b" }
+        ]
+      },
+      {
+        "uuid": "1826",
+        "handle_range": "004c-0051",
+        "characteristics": [
+          { "uuid": "2acc", "value_handle": "004e", "properties_hex": "02", "value_hex": "a656000000000000" },
+          { "uuid": "2ad1", "value_handle": "0050", "properties_hex": "10", "cccd_handle": "0051" }
+        ]
+      }
+    ]
+  },
+  "five_minute_workout_end": {
+    "multiplexed_summary_notifications": [
+      { "frame": 20781, "hex": "39c9340f093075005028001e740000007b0005" },
+      { "frame": 20782, "hex": "3ac9340f093c0005380072000000000000b402" },
+      { "frame": 20783, "hex": "3cc9340f09ad0500000000" }
+    ],
+    "decoded_observation": {
+      "elapsed_seconds": 300,
+      "distance_metres": 1032,
+      "stroke_rate_spm": 30,
+      "heart_rate_bpm": 116,
+      "drag_factor": 123,
+      "workout_type": 5,
+      "total_calories": 56,
+      "average_power_watts": 114,
+      "average_pace_seconds_per_500m": 145.3
+    },
+    "log_address_query": {
+      "request_frame": 20790,
+      "request_hex": "01f17e0199e6f2",
+      "response_frame": 20792,
+      "response_hex": "f1897e0899060009e2a200d2fbf2",
+      "start_address_hex": "0009e2a2",
+      "length_bytes": 210
+    },
+    "log_memory_reads": [
+      { "request_frame": 20801, "request_hex": "02f17e076a050009e2a2401ff2", "response_frame": 20806, "response_hex": "f1897e436a41409505001019b3f96534c9090f00af0009e250960000000bb8000004081e05025800007a00000000380000000000001b2d358000d16b21796b5e4e000000000000b6f2" },
+      { "request_frame": 20807, "request_hex": "02f17e076a050009e2e2405ff2", "response_frame": 20814, "response_hex": "f1097e436a4140000000000021000b0000000000001b2d358000d4741e7a74716b00000000000000000000001e000c0000000000001b2d358000cb771e7977757300000000000067f2" },
+      { "request_frame": 20815, "request_hex": "02f17e076a050009e322409ef2", "response_frame": 20822, "response_hex": "f1897e436a414000000000001e000b0000000000001b2d358000cf771e7a79767400000000000000000000001e000b0000000000001b2d358000ca7a1e797b7877000000000000dbf2" },
+      { "request_frame": 20823, "request_hex": "02f17e076a050009e362128cf2", "response_frame": 20828, "response_hex": "f1097e436a411200000000001e000b0000000000001b2d358000cf771e7a79767400000000000000000000001e000b0000000000001b2d358000ca7a1e797b787700000000000009f2" }
+    ]
+  },
+  "ergdata_disconnect_pm5": {
+    "request_frame": 21007,
+    "request_hex": "01f176041302010260f2",
+    "decoded": {
+      "wrapper_command": "0x76 PM configuration",
+      "command": "0x13 set screen state",
+      "screen": "0x01 workout",
+      "state": "0x02 terminate"
+    },
+    "response_frame": 21012,
+    "response_hex": "f189760113edf2",
+    "link_disconnect_delay_seconds": 1.44
+  },
+  "representative_ftms_rower_notifications": [
+    "ff0a002a0c0000000000000000000000009803",
+    "000100b10100000000ff"
+  ],
+  "scope": {
+    "hardware_verified": ["modern RowErg advertisement", "modern RowErg scan response", "modern RowErg GATT", "captured RowErg exchanges"],
+    "synthetic_only": ["modern SkiErg name variant", "modern BikeErg name variant", "SkiErg/BikeErg FTMS service-data machine bits"]
+  }
+}

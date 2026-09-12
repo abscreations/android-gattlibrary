@@ -23,6 +23,10 @@ object Concept2Pm5GattRegistry {
                         properties = properties or BluetoothGattCharacteristic.PROPERTY_WRITE
                         permissions = permissions or BluetoothGattCharacteristic.PERMISSION_WRITE
                     }
+                    if (spec.writeWithoutResponse) {
+                        properties = properties or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE
+                        permissions = permissions or BluetoothGattCharacteristic.PERMISSION_WRITE
+                    }
                     if (spec.notifiable) {
                         properties = properties or BluetoothGattCharacteristic.PROPERTY_NOTIFY
                     }

@@ -77,6 +77,9 @@ class FtmsSimulator(
         /** Latest complete CSAFE workout program accepted from the connected PM5 client. */
         val concept2WorkoutProgram: Concept2WorkoutProgram? get() = null
 
+        /** Consume an acknowledged Workout/Terminate Workout command without dropping BLE. */
+        fun consumeConcept2WorkoutTerminationRequest(): Boolean = false
+
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
         fun publishPrecor(sample: FtmsMockSample) {}
 
@@ -544,6 +547,9 @@ class FtmsSimulator(
             while (isActive) {
                 delay(CONCEPT2_PERIOD_MS)
                 val active = concept2Engine ?: break
+                if (peripheral.consumeConcept2WorkoutTerminationRequest()) {
+                    endConcept2Workout()
+                }
                 val receivedProgram = peripheral.concept2WorkoutProgram
                 if (receivedProgram == null) {
                     appliedProgram = null

@@ -278,13 +278,16 @@ class AdapterNameCoordinatorTest {
 
     @Test
     fun `a stranded PM5 simulator name is never recorded as the user's original`() {
-        val gateway = FakeGateway("PM5 900000001")
-        val store = FakeStore()
-        val subject = coordinator(gateway, store)
+        listOf("PM5 900000001", "PM5 431225189 Row", "PM5 900000002 Ski", "PM5 900000003 Bike")
+            .forEach { pm5Name ->
+                val gateway = FakeGateway(pm5Name)
+                val store = FakeStore()
+                val subject = coordinator(gateway, store)
 
-        subject.apply("FBRG-Bike") {}
+                subject.apply("FBRG-Bike") {}
 
-        assertNull("must not save a PM5 session name as the original", store.value)
+                assertNull("must not save a PM5 session name as the original", store.value)
+            }
     }
 
     @Test

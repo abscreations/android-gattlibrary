@@ -162,6 +162,7 @@ class Concept2CsafeLink {
     private var responseBytes: ByteArray? = null
     private var toggle = false
     private var lastAcceptedAtMs: Long? = null
+    private var workoutTerminationPending = false
 
     var handshakeState = HandshakeState()
         private set
@@ -225,10 +226,23 @@ class Concept2CsafeLink {
         }
 
         nextState = nextState.copy(workoutProgram = buildProgram(nextState))
+        if (nextState.screenType == SCREEN_TYPE_WORKOUT &&
+            nextState.screenValue == SCREEN_TERMINATE_WORKOUT
+        ) {
+            responseContents[0] = (if (toggle) STATUS_WORKOUT_END_WITH_TOGGLE else STATUS_WORKOUT_END).toByte()
+        }
         val encodedFrame = Concept2CsafeCodec.encodeStandard(responseContents.toByteArray())
             ?: return RequestResult.Rejected(RejectionReason.MALFORMED)
-        val encoded = if (transportPrefix) byteArrayOf(ERGDATA_BLE_ENVELOPE.toByte()) + encodedFrame
-        else encodedFrame
+        // The leading 0x01 belongs to ErgData's request-side BLE envelope. Physical PM5 response
+        // notifications begin directly with the CSAFE F1 delimiter and never echo that envelope.
+        val encoded = encodedFrame
+        if (nextState.screenType == SCREEN_TYPE_WORKOUT &&
+            nextState.screenValue == SCREEN_TERMINATE_WORKOUT &&
+            (handshakeState.screenType != SCREEN_TYPE_WORKOUT ||
+                handshakeState.screenValue != SCREEN_TERMINATE_WORKOUT)
+        ) {
+            workoutTerminationPending = true
+        }
         handshakeState = nextState
         responseBytes = encoded
         lastAcceptedAtMs = nowMs
@@ -241,7 +255,16 @@ class Concept2CsafeLink {
         responseBytes = null
         toggle = false
         lastAcceptedAtMs = null
+        workoutTerminationPending = false
         handshakeState = HandshakeState()
+    }
+
+    /** Consume the accepted Workout/Terminate Workout command exactly once for this link. */
+    @Synchronized
+    fun consumeWorkoutTerminationRequest(): Boolean {
+        val pending = workoutTerminationPending
+        workoutTerminationPending = false
+        return pending
     }
 
     private fun applyCommand(
@@ -466,6 +489,8 @@ class Concept2CsafeLink {
         const val MIN_INTER_FRAME_MS = 50L
         private const val STATUS_READY = 0x01
         private const val STATUS_READY_WITH_TOGGLE = 0x81
+        private const val STATUS_WORKOUT_END = 0x09
+        private const val STATUS_WORKOUT_END_WITH_TOGGLE = 0x89
         private const val PM_CONFIGURATION_WRAPPER = 0x76
         private const val PM_DATA_WRAPPER = 0x77
         private const val SET_WORKOUT_TYPE = 0x01

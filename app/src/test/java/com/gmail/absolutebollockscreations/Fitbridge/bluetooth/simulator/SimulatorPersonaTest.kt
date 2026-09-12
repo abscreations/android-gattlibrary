@@ -71,18 +71,23 @@ class SimulatorPersonaTest {
     }
 
     @Test
-    fun `synthetic PM5 personas have stable coherent compatibility identities`() {
+    fun `PM5 personas have stable coherent capture or synthetic identities`() {
         assertEquals(listOf(0, 128, 192), Concept2Machine.entries.map { it.wireMachineType })
         Concept2Machine.entries.forEach { machine ->
             val persona = SimulatorPersona.Concept2Pm5(machine)
             assertEquals(machine, persona.compatibility.machine)
             assertEquals(9, persona.compatibility.serialNumber.length)
             assertTrue(persona.compatibility.serialNumber.all(Char::isDigit))
-            assertEquals("PM5 ${persona.compatibility.serialNumber}", persona.advertisedName)
+            val suffix = when (machine) {
+                Concept2Machine.ROW_ERG -> "Row"
+                Concept2Machine.SKI_ERG -> "Ski"
+                Concept2Machine.BIKE_ERG -> "Bike"
+            }
+            assertEquals("PM5 ${persona.compatibility.serialNumber} $suffix", persona.advertisedName)
             assertEquals(20, persona.compatibility.firmwareIdentity.toByteArray(Charsets.US_ASCII).size)
             assertEquals(Concept2StatusPayloadRevision.LEGACY_12_BYTE, persona.compatibility.statusPayloadRevision)
         }
-        assertEquals(listOf(178.028f, 878.028f, 336.028f), Concept2Machine.entries.map {
+        assertEquals(listOf(207.000f, 878.028f, 336.028f), Concept2Machine.entries.map {
             SimulatorPersona.Concept2Pm5(it).compatibility.parsedFirmwareNumber
         })
     }

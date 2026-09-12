@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FixtureJson
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2CharacteristicManifest
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Machine
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Pm5CompatibilityProfile
@@ -16,12 +17,47 @@ import org.junit.Test
 
 class Concept2Pm5IdentityTest {
     @Test
-    fun `advertisement and scan response fit legacy budgets for every PM5 persona`() {
+    fun `hardware corpus pins the modern RowErg discovery and disconnect exchange`() {
+        val text = requireNotNull(javaClass.classLoader?.getResource(
+            "fixtures/hardware/concept2_pm5_431225189_20260912.json",
+        )).readText()
+        val root = FixtureJson.obj(FixtureJson.parse(text))
+        val hardware = FixtureJson.obj(root["hardware"])
+        val advertising = FixtureJson.obj(root["advertising"])
+        val disconnect = FixtureJson.obj(root["ergdata_disconnect_pm5"])
+
+        assertEquals("H", FixtureJson.string(root["evidence_tier"]))
+        assertEquals("PM5 431225189 Row", FixtureJson.string(hardware["advertised_name"]))
+        assertEquals(
+            "03190000020106020a041209504d352034333132323531383920526f77",
+            FixtureJson.string(advertising["primary_payload_hex"]),
+        )
+        assertEquals(
+            "030326181107669a0c2000086c91e411e543000006ce06162618011000",
+            FixtureJson.string(advertising["scan_response_payload_hex"]),
+        )
+        assertEquals("01f176041302010260f2", FixtureJson.string(disconnect["request_hex"]))
+        assertEquals("f189760113edf2", FixtureJson.string(disconnect["response_hex"]))
+    }
+
+    @Test
+    fun `modern advertisement carries name while scan response carries both services and FTMS data`() {
         Concept2Machine.entries.forEach { machine ->
             val plan = Concept2Pm5AdvertisingPlan.forPersona(SimulatorPersona.Concept2Pm5(machine))
-            assertEquals(BluetoothIds.UUID_C2_DISCOVERY_SERVICE, plan.serviceUuid)
-            assertEquals(21, plan.advertisingBytes)
-            assertEquals(15, plan.scanResponseBytes)
+            assertTrue(plan.includeNameInAdvertisement)
+            assertTrue(plan.includeTxPowerInAdvertisement)
+            assertTrue(plan.advertisingServiceUuids.isEmpty())
+            assertEquals(
+                listOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_DISCOVERY_SERVICE),
+                plan.scanResponseServiceUuids,
+            )
+            assertArrayEquals(
+                if (machine == Concept2Machine.BIKE_ERG) byteArrayOf(0x01, 0x20, 0x00)
+                else byteArrayOf(0x01, 0x10, 0x00),
+                plan.scanResponseFtmsServiceData,
+            )
+            assertEquals(3 + 3 + 2 + plan.localName.length, plan.advertisingBytes)
+            assertEquals(29, plan.scanResponseBytes)
             assertTrue(plan.advertisingBytes <= 31)
             assertTrue(plan.scanResponseBytes <= 31)
         }
@@ -113,7 +149,7 @@ class Concept2Pm5IdentityTest {
     }
 
     @Test
-    fun `modern manifest keeps the surface an ErgData client initialized against`() {
+    fun `modern manifest mirrors the captured 207 RowErg surface`() {
         Concept2Machine.entries.forEach { machine ->
             val persona = SimulatorPersona.Concept2Pm5(
                 machine,
@@ -122,28 +158,32 @@ class Concept2Pm5IdentityTest {
             val services = Concept2Pm5GattProfile(persona).services
             assertEquals(
                 listOf(
-                    BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE,
                     BluetoothIds.UUID_C2_PM_CONTROL_SERVICE,
+                    BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE,
                     BluetoothIds.UUID_C2_ERG_SERVICE,
-                    BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE,
+                    BluetoothIds.UUID_FTMS_SERVICE,
                 ),
                 services.keys.toList(),
             )
             assertEquals(
                 listOf(0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B,
-                    0x3C, 0x3D, 0x3E, 0x3F, 0x80),
+                    0x80, 0x3D),
                 services.getValue(BluetoothIds.UUID_C2_ERG_SERVICE).map { it.lowByte() },
             )
             assertEquals(8, services.getValue(BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE).size)
+            assertFalse(services.containsKey(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE))
+            assertEquals(
+                listOf(
+                    BluetoothIds.UUID_FITNESS_MACHINE_FEATURE,
+                    if (machine == Concept2Machine.BIKE_ERG) BluetoothIds.UUID_BIKING_DATA
+                    else BluetoothIds.UUID_ROWING_MACHINE_DATA,
+                ),
+                services.getValue(BluetoothIds.UUID_FTMS_SERVICE).map { it.uuid },
+            )
         }
     }
 
-    /**
-     * The 2026-09-08 capture shows ErgData reading only 0x0012, 0x0013 and 0x0014, writing 02
-     * to 0x0034, then arming CCCDs on 0x003E, 0x003D, 0x0080 and 0x0022 — and skipping 0x0043
-     * because it is absent. Both surfaces must therefore keep the objects ErgData requires;
-     * only the optional pair may differ between them.
-     */
+    /** Both surfaces keep the identity, CSAFE transport, sample-rate control, and multiplex path. */
     @Test
     fun `both surfaces satisfy every ErgData-required object`() {
         Concept2Pm5CompatibilityProfile.entries.forEach { compatibility ->
@@ -160,7 +200,10 @@ class Concept2Pm5IdentityTest {
             ).forEach { assertTrue(it in info) }
             assertTrue(control.any { it.uuid == BluetoothIds.UUID_C2_CSAFE_REQUEST && it.writable })
             control.single { it.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE }.let {
-                assertTrue(it.readable)
+                assertEquals(
+                    compatibility.gattSurface == Concept2Pm5GattSurface.PRE_FTMS,
+                    it.readable,
+                )
                 assertTrue(it.notifiable)
             }
             assertTrue(erg.any { it.uuid == BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE && it.writable })
@@ -171,15 +214,37 @@ class Concept2Pm5IdentityTest {
     }
 
     @Test
-    fun `no PM5 persona advertises FTMS CSC or CPS`() {
+    fun `pre-FTMS advertises only Concept2 while modern scan response includes FTMS`() {
         Concept2Pm5CompatibilityProfile.entries.forEach { compatibility ->
             val persona = SimulatorPersona.Concept2Pm5(compatibility.machine, compatibility)
             val plan = Concept2Pm5AdvertisingPlan.forPersona(persona)
-            assertEquals(BluetoothIds.UUID_C2_DISCOVERY_SERVICE, plan.serviceUuid)
             assertTrue(plan.localName.startsWith("PM"))
-            assertEquals(3 + 18, plan.advertisingBytes)
-            assertEquals(2 + plan.localName.length, plan.scanResponseBytes)
+            if (compatibility.gattSurface == Concept2Pm5GattSurface.MODERN) {
+                assertTrue(BluetoothIds.UUID_FTMS_SERVICE in plan.scanResponseServiceUuids)
+                assertTrue(BluetoothIds.UUID_C2_DISCOVERY_SERVICE in plan.scanResponseServiceUuids)
+            } else {
+                assertEquals(listOf(BluetoothIds.UUID_C2_DISCOVERY_SERVICE), plan.advertisingServiceUuids)
+                assertEquals(3 + 18, plan.advertisingBytes)
+                assertEquals(2 + plan.localName.length, plan.scanResponseBytes)
+            }
         }
+    }
+
+    @Test
+    fun `modern RowErg identity and FTMS feature are capture exact`() {
+        val persona = SimulatorPersona.Concept2Pm5(Concept2Machine.ROW_ERG)
+        val profile = Concept2Pm5GattProfile(persona)
+        assertEquals("PM5 431225189 Row", persona.advertisedName)
+        assertArrayEquals("431225189".toByteArray(), profile.readDeviceInformation(BluetoothIds.UUID_C2_SERIAL_NUMBER, 0))
+        assertArrayEquals("903".toByteArray(), profile.readDeviceInformation(BluetoothIds.UUID_C2_HARDWARE_REVISION, 0))
+        assertArrayEquals(
+            "8200-000409-207.000\u0000".toByteArray(),
+            profile.readDeviceInformation(BluetoothIds.UUID_C2_FIRMWARE_REVISION, 0),
+        )
+        assertArrayEquals(
+            byteArrayOf(0xA6.toByte(), 0x56, 0, 0, 0, 0, 0, 0),
+            profile.readFtms(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE),
+        )
     }
 
     @Test

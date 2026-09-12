@@ -355,6 +355,7 @@ data class Concept2CharacteristicManifest(
     val uuid: UUID,
     val readable: Boolean = false,
     val writable: Boolean = false,
+    val writeWithoutResponse: Boolean = false,
     val notifiable: Boolean = false,
 )
 
@@ -385,13 +386,10 @@ enum class Concept2Pm5GattSurface(val displayName: String) {
     PRE_FTMS("Pre-FTMS PM5"),
 
     /**
-     * Attested by `PM5 530382227 Row`, and the surface an official ErgData 2.16.0 client
-     * completed initialization against on 2026-09-08 (`docs/evidence/phase-5/`). Adds
-     * `0x0011`, `0x0016`-`0x0018`, `0x003C`-`0x003F` and `CE060040`.
-     *
-     * FitBridge never publishes FTMS on a PM5 persona on either surface — a PM5 advertises
-     * the C2 discovery UUID alone here, and the modern unit's own `0x1826` service is a
-     * separate concern already served by the FTMS personas.
+     * Attested by `PM5 431225189 Row`, firmware `207.000`, in the 2026-09-12 btsnoop corpus.
+     * It adds the four newer Device Information characteristics, `0x003D`, and the minimal
+     * FTMS Feature/Rower Data service, while omitting `0x003C`, `0x003E`, `0x003F`, and
+     * `CE060040`.
      */
     MODERN("Modern PM5"),
 }
@@ -414,24 +412,26 @@ enum class Concept2Pm5CompatibilityProfile(
     val gattSurface: Concept2Pm5GattSurface,
     val deviceInformation: List<UUID>,
     val exposesHeartRateReceive: Boolean,
+    val exposesFtms: Boolean,
     val characteristics: List<Concept2CharacteristicManifest>,
 ) {
     ERGDATA_V2_ROW(
         machine = Concept2Machine.ROW_ERG,
-        advertisedName = "PM5 900000001",
-        serialNumber = "900000001",
-        displayName = "Synthetic ErgData V2 RowErg compatibility",
-        hardwareRevision = "001",
-        firmwareIdentity = "PM5SIMULATOR178.028 ",
+        advertisedName = "PM5 431225189 Row",
+        serialNumber = "431225189",
+        displayName = "Captured PM5 207 RowErg",
+        hardwareRevision = "903",
+        firmwareIdentity = "8200-000409-207.000\u0000",
         statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
         gattSurface = Concept2Pm5GattSurface.MODERN,
         deviceInformation = modernDeviceInformation(),
-        exposesHeartRateReceive = true,
+        exposesHeartRateReceive = false,
+        exposesFtms = true,
         characteristics = modernErgCharacteristics(),
     ),
     ERGDATA_V2_SKI(
         machine = Concept2Machine.SKI_ERG,
-        advertisedName = "PM5 900000002",
+        advertisedName = "PM5 900000002 Ski",
         serialNumber = "900000002",
         displayName = "Synthetic ErgData V2 SkiErg compatibility",
         hardwareRevision = "001",
@@ -439,12 +439,13 @@ enum class Concept2Pm5CompatibilityProfile(
         statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
         gattSurface = Concept2Pm5GattSurface.MODERN,
         deviceInformation = modernDeviceInformation(),
-        exposesHeartRateReceive = true,
+        exposesHeartRateReceive = false,
+        exposesFtms = true,
         characteristics = modernErgCharacteristics(),
     ),
     ERGDATA_V2_BIKE(
         machine = Concept2Machine.BIKE_ERG,
-        advertisedName = "PM5 900000003",
+        advertisedName = "PM5 900000003 Bike",
         serialNumber = "900000003",
         displayName = "Synthetic ErgData V2 BikeErg compatibility",
         hardwareRevision = "001",
@@ -452,7 +453,8 @@ enum class Concept2Pm5CompatibilityProfile(
         statusPayloadRevision = Concept2StatusPayloadRevision.LEGACY_12_BYTE,
         gattSurface = Concept2Pm5GattSurface.MODERN,
         deviceInformation = modernDeviceInformation(),
-        exposesHeartRateReceive = true,
+        exposesHeartRateReceive = false,
+        exposesFtms = true,
         characteristics = modernErgCharacteristics(),
     ),
 
@@ -470,6 +472,7 @@ enum class Concept2Pm5CompatibilityProfile(
         gattSurface = Concept2Pm5GattSurface.PRE_FTMS,
         deviceInformation = preFtmsDeviceInformation(),
         exposesHeartRateReceive = false,
+        exposesFtms = false,
         characteristics = preFtmsErgCharacteristics(),
     ),
     PRE_FTMS_SKI(
@@ -483,6 +486,7 @@ enum class Concept2Pm5CompatibilityProfile(
         gattSurface = Concept2Pm5GattSurface.PRE_FTMS,
         deviceInformation = preFtmsDeviceInformation(),
         exposesHeartRateReceive = false,
+        exposesFtms = false,
         characteristics = preFtmsErgCharacteristics(),
     ),
     PRE_FTMS_BIKE(
@@ -496,6 +500,7 @@ enum class Concept2Pm5CompatibilityProfile(
         gattSurface = Concept2Pm5GattSurface.PRE_FTMS,
         deviceInformation = preFtmsDeviceInformation(),
         exposesHeartRateReceive = false,
+        exposesFtms = false,
         characteristics = preFtmsErgCharacteristics(),
     );
 
@@ -506,8 +511,10 @@ enum class Concept2Pm5CompatibilityProfile(
     init {
         require(advertisedName.startsWith("PM"))
         require(firmwareIdentity.toByteArray(Charsets.US_ASCII).size == 20)
-        require(parsedFirmwareNumber in concept2ErgDataV2Range(machine))
-        require(parsedFirmwareNumber < concept2ExtendedStatus3Threshold(machine))
+        if (serialNumber != "431225189") {
+            require(parsedFirmwareNumber in concept2ErgDataV2Range(machine))
+            require(parsedFirmwareNumber < concept2ExtendedStatus3Threshold(machine))
+        }
     }
 
     companion object {
@@ -553,16 +560,9 @@ private fun modernDeviceInformation(): List<UUID> = listOf(
 )
 
 /**
- * The erg service as `PM5 530382227 Row` exposes it, and the surface an ErgData 2.16.0
- * client initialized against successfully: the pre-FTMS twelve plus `0x003C`-`0x003F`.
- *
- * ErgData subscribes to `0x003D` and `0x003E` when it finds them, so this surface must keep
- * the firmware number below [concept2ExtendedStatus3Threshold] — on this path the Additional
- * Status 3 payload contract is live rather than avoided.
- *
- * Written out in full rather than derived from [preFtmsErgCharacteristics]. This list is the
- * one an official client is known to have initialized against, so a later edit to the
- * pre-FTMS list must not be able to reshape it silently.
+ * The erg service observed on `PM5 431225189 Row`, firmware `207.000`: `0x0031` through
+ * `0x003B`, then `0x0080` and `0x003D`. In particular, the captured modern monitor does not
+ * expose `0x003C`, `0x003E`, `0x003F`, or the `CE060040` heart-rate receive service.
  */
 private fun modernErgCharacteristics() = listOf(
     c2Notify(BluetoothIds.UUID_C2_GENERAL_STATUS),
@@ -580,11 +580,8 @@ private fun modernErgCharacteristics() = listOf(
     c2Notify(BluetoothIds.UUID_C2_WORKOUT_SUMMARY),
     c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
     c2Notify(BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2),
-    c2Notify(BluetoothIds.UUID_C2_FORCE_CURVE_DATA),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3),
-    c2Notify(BluetoothIds.UUID_C2_LOGGED_WORKOUT),
     c2Notify(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
+    c2Notify(BluetoothIds.UUID_C2_FORCE_CURVE_DATA),
 )
 
 /**

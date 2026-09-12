@@ -28,6 +28,8 @@ class Concept2Pm5Session {
         (result as? Concept2CsafeLink.RequestResult.Accepted)?.response
             ?.takeIf { isSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE) }
 
+    fun consumeWorkoutTerminationRequest(): Boolean = csafe.consumeWorkoutTerminationRequest()
+
     /** Clear workout configuration/response state without dropping this client's CCCDs. */
     fun resetCsafeWorkoutState() = csafe.reset()
 
@@ -107,6 +109,7 @@ class Concept2Pm5Session {
             BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA,
             BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL,
             BluetoothIds.UUID_C2_FORCE_CURVE_DATA,
+            BluetoothIds.UUID_ROWING_MACHINE_DATA,
         )
 
         fun uuidForId(id: Int): UUID? = when (id) {

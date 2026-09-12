@@ -67,6 +67,7 @@ class Concept2Pm5PeripheralController(
     fun currentStatus(): Status = status
     fun publish(snapshot: Concept2Pm5Snapshot) = advertiser.publish(snapshot)
     fun workoutProgram(): Concept2WorkoutProgram? = advertiser.workoutProgram()
+    fun consumeWorkoutTerminationRequest(): Boolean = advertiser.consumeWorkoutTerminationRequest()
     fun resetWorkoutState() = advertiser.resetWorkoutState()
 
     @SuppressLint("MissingPermission")

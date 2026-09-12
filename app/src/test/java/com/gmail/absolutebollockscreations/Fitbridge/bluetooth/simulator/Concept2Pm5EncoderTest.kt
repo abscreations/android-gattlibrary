@@ -17,6 +17,83 @@ class Concept2Pm5EncoderTest {
     }
 
     @Test
+    fun `modern RowErg FTMS pair reproduces the captured active layout exactly`() {
+        val captured = sample.copy(
+            elapsedCentiseconds = 6_221,
+            distanceDecimetres = 1_830,
+            strokeRate = 53,
+            heartRate = 255,
+            currentPaceCentiseconds = 23_547,
+            averagePaceCentiseconds = 16_993,
+            currentPowerWatts = 27,
+            averagePowerWatts = 71,
+            totalCalories = 9,
+            caloriesPerHour = 393,
+            dragFactor = 119,
+            strokeCount = 25,
+            averageCadence = 24.0,
+        )
+
+        assertEquals(
+            listOf(
+                "ff0a30b70000eb00a9001b0047007700003e00",
+                "00016a190009008901ff",
+            ),
+            Concept2Pm5Encoder.ftmsRower(captured).map { it.hex() },
+        )
+    }
+
+    @Test
+    fun `FTMS rower pair stays coherent with Concept2 packets from one snapshot`() {
+        val general = Concept2Pm5Encoder.generalStatus(sample)
+        val status1 = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1, sample)!!
+        val stroke = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA, sample)!!
+        val (first, second) = Concept2Pm5Encoder.ftmsRower(sample)
+
+        assertEquals(u24(general, 3) / 10, u24(first, 3))
+        assertEquals(u16(status1, 7) / 100, u16(first, 6))
+        assertEquals(u16(status1, 9) / 100, u16(first, 8))
+        assertEquals(u16(stroke, 3), u16(first, 10))
+        assertEquals(sample.averagePowerWatts, u16(first, 12))
+        assertEquals(sample.dragFactor, u16(first, 14))
+        assertEquals(sample.elapsedCentiseconds / 100, u16(first, 17))
+        assertEquals(sample.strokeRate, (second[2].toInt() and 0xFF) / 2)
+        assertEquals(u16(stroke, 7), u16(second, 3))
+        assertEquals(sample.totalCalories, u16(second, 5))
+        assertEquals(sample.caloriesPerHour, u16(second, 7))
+    }
+
+    @Test
+    fun `FTMS rower unavailable heart rate and energy per minute use captured sentinels`() {
+        val (first, second) = Concept2Pm5Encoder.ftmsRower(sample.copy(heartRate = 255))
+        assertEquals(0, first[16].toInt() and 0xFF)
+        assertEquals(0xFF, second.last().toInt() and 0xFF)
+    }
+
+    @Test
+    fun `FTMS rower fields saturate instead of wrapping`() {
+        val (first, second) = Concept2Pm5Encoder.ftmsRower(
+            sample.copy(
+                elapsedCentiseconds = Int.MAX_VALUE,
+                distanceDecimetres = -1,
+                strokeRate = Int.MAX_VALUE,
+                currentPaceCentiseconds = Int.MAX_VALUE,
+                currentPowerWatts = -1,
+                dragFactor = Int.MAX_VALUE,
+                strokeCount = -1,
+            ),
+        )
+
+        assertEquals(0, u24(first, 3))
+        assertEquals(0xFFFF, u16(first, 6))
+        assertEquals(0, u16(first, 10))
+        assertEquals(0xFFFF, u16(first, 14))
+        assertEquals(0xFFFF, u16(first, 17))
+        assertEquals(254, second[2].toInt() and 0xFF)
+        assertEquals(0, u16(second, 3))
+    }
+
+    @Test
     fun `BikeErg retains captured stroke records without inventing rower mechanics or force curve`() {
         val bike = Concept2Pm5MockEngine(Concept2Machine.BIKE_ERG).run {
             startWorkout()
@@ -227,7 +304,18 @@ class Concept2Pm5EncoderTest {
         assertTrue(session.hasWorkoutMeasurementSubscription)
         session.reset()
         assertFalse(session.hasWorkoutMeasurementSubscription)
+
+        session.setSubscribed(BluetoothIds.UUID_ROWING_MACHINE_DATA, true)
+        assertTrue(session.hasWorkoutMeasurementSubscription)
     }
+
+    private fun ByteArray.hex(): String = joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+
+    private fun u16(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
+
+    private fun u24(bytes: ByteArray, offset: Int): Int =
+        u16(bytes, offset) or ((bytes[offset + 2].toInt() and 0xFF) shl 16)
 
     @Test
     fun `additional status 3 individual subscription suppresses its mux frame`() {
@@ -521,6 +609,28 @@ class Concept2Pm5EncoderTest {
         assertFalse(ended.strokeDataAvailable)
         assertFalse(engine.startWorkout())
         assertFalse(engine.endWorkout())
+    }
+
+    @Test
+    fun `every PM5 machine and autonomous scenario can enter one stable terminal summary`() {
+        Concept2Machine.entries.forEach { machine ->
+            Concept2Scenario.entries.forEach { scenario ->
+                val engine = Concept2Pm5MockEngine(machine, scenario, startsPaused = true)
+                engine.startWorkout()
+                engine.tick(1.0)
+                val beforeEnd = engine.snapshot()
+
+                assertTrue("$machine/$scenario must accept its first end", engine.endWorkout())
+                val ended = engine.snapshot()
+                assertEquals(beforeEnd.elapsedCentiseconds, ended.elapsedCentiseconds)
+                assertEquals(beforeEnd.distanceDecimetres, ended.distanceDecimetres)
+                assertEquals(1, ended.summarySequence)
+                assertEquals(10, ended.workoutState)
+                assertFalse(engine.isWorkoutRunning)
+                assertFalse("$machine/$scenario must not emit a second end", engine.endWorkout())
+                assertEquals(ended, engine.snapshot())
+            }
+        }
     }
 
     @Test

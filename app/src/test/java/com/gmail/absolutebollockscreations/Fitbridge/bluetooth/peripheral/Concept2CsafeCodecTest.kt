@@ -14,7 +14,7 @@ class Concept2CsafeCodecTest {
     fun `captured ErgData envelope and compound single profiles are accepted atomically`() {
         val distance = Concept2CsafeLink()
         assertAccepted(
-            hex("01 F1 01 76 05 01 03 05 14 13 72 F2"),
+            hex("F1 01 76 05 01 03 05 14 13 72 F2"),
             distance.accept(
                 hex("01 F1 76 18 01 01 03 03 05 80 00 00 03 E8 05 05 80 00 00 00 C8 14 01 01 13 02 01 01 4D F2"),
                 100,
@@ -214,7 +214,7 @@ class Concept2CsafeCodecTest {
         val link = Concept2CsafeLink()
 
         assertAccepted(
-            hex("F1 01 76 01 13 65 F2"),
+            hex("F1 09 76 01 13 6D F2"),
             link.accept(hex("F1 76 04 13 02 01 02 60 F2"), 1_000),
         )
         assertEquals(1, link.handshakeState.screenType)
@@ -228,6 +228,34 @@ class Concept2CsafeCodecTest {
         assertEquals(1, link.handshakeState.screenType)
         assertEquals(1, link.handshakeState.screenValue)
         assertArrayEquals(hex("F1 81 76 02 01 13 E7 F2"), link.response)
+    }
+
+    @Test
+    fun `accepted terminate command exposes one engine event while repeated command only acknowledges`() {
+        val link = Concept2CsafeLink()
+        val terminate = hex("F1 76 04 13 02 01 02 60 F2")
+
+        assertAccepted(hex("F1 09 76 01 13 6D F2"), link.accept(terminate, 1_000))
+        assertTrue(link.consumeWorkoutTerminationRequest())
+        assertFalse(link.consumeWorkoutTerminationRequest())
+
+        assertAccepted(hex("F1 89 76 01 13 ED F2"), link.accept(terminate, 1_050))
+        assertFalse(link.consumeWorkoutTerminationRequest())
+
+        link.reset()
+        assertAccepted(hex("F1 09 76 01 13 6D F2"), link.accept(terminate, 1_000))
+        assertTrue(link.consumeWorkoutTerminationRequest())
+    }
+
+    @Test
+    fun `captured ErgData disconnect envelope receives the physical PM5 response without an envelope`() {
+        val link = Concept2CsafeLink()
+
+        assertAccepted(
+            hex("F1 09 76 01 13 6D F2"),
+            link.accept(hex("01 F1 76 04 13 02 01 02 60 F2"), 1_000),
+        )
+        assertTrue(link.consumeWorkoutTerminationRequest())
     }
 
     @Test
@@ -326,7 +354,7 @@ class Concept2CsafeCodecTest {
         first.reset()
         assertNull(first.csafeResponse)
         assertNull(first.csafeHandshakeState.screenValue)
-        assertAccepted(hex("F1 01 76 01 13 65 F2"), first.acceptCsafeRequest(terminate, 101))
+        assertAccepted(hex("F1 09 76 01 13 6D F2"), first.acceptCsafeRequest(terminate, 101))
     }
 
     @Test
@@ -339,7 +367,7 @@ class Concept2CsafeCodecTest {
         val result = subscribed.acceptCsafeRequest(terminate, 100)
 
         assertArrayEquals(
-            hex("F1 01 76 01 13 65 F2"),
+            hex("F1 09 76 01 13 6D F2"),
             subscribed.notificationForAcceptedCsafe(result),
         )
         assertNull(other.notificationForAcceptedCsafe(result))
@@ -363,7 +391,7 @@ class Concept2CsafeCodecTest {
         assertNull(session.csafeHandshakeState.screenType)
         assertNull(session.csafeHandshakeState.screenValue)
         assertAccepted(
-            hex("F1 01 76 01 13 65 F2"),
+            hex("F1 09 76 01 13 6D F2"),
             session.acceptCsafeRequest(terminate, 100),
         )
     }

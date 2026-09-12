@@ -61,6 +61,7 @@ class Concept2Pm5PeripheralAdvertiser(
         val session = Concept2Pm5Session()
         var mtu = 23
         var nextDueMs = 0L
+        var nextFtmsDueMs = 0L
         var nextAdditionalStatus3DueMs = 0L
         var lastSplitSequence = 0
         var lastSummarySequence = 0
@@ -120,6 +121,12 @@ class Concept2Pm5PeripheralAdvertiser(
         clients.values.any { it.session.hasWorkoutMeasurementSubscription }
 
     fun workoutProgram(): Concept2WorkoutProgram? = latestWorkoutProgram
+
+    /** Returns accepted client termination as an edge; it never closes the GATT link. */
+    fun consumeWorkoutTerminationRequest(): Boolean =
+        clients.values.fold(false) { pending, client ->
+            client.session.consumeWorkoutTerminationRequest() || pending
+        }
 
     /** Reset CSAFE workout state for connected clients while retaining their subscriptions. */
     fun resetWorkoutState() {
@@ -224,10 +231,21 @@ class Concept2Pm5PeripheralAdvertiser(
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
             .build()
         val data = AdvertiseData.Builder()
-            .setIncludeDeviceName(false)
-            .addServiceUuid(ParcelUuid(plan.serviceUuid))
+            .setIncludeDeviceName(plan.includeNameInAdvertisement)
+            .setIncludeTxPowerLevel(plan.includeTxPowerInAdvertisement)
+            .also { builder ->
+                plan.advertisingServiceUuids.forEach { builder.addServiceUuid(ParcelUuid(it)) }
+            }
             .build()
-        val scan = AdvertiseData.Builder().setIncludeDeviceName(true).build()
+        val scan = AdvertiseData.Builder()
+            .setIncludeDeviceName(!plan.includeNameInAdvertisement)
+            .also { builder ->
+                plan.scanResponseServiceUuids.forEach { builder.addServiceUuid(ParcelUuid(it)) }
+                plan.scanResponseFtmsServiceData?.let {
+                    builder.addServiceData(ParcelUuid(BluetoothIds.UUID_FTMS_SERVICE), it)
+                }
+            }
+            .build()
         val callback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
                 if (epoch.get() != currentEpoch || advertiseCallback !== this) return
@@ -360,6 +378,7 @@ class Concept2Pm5PeripheralAdvertiser(
             val value = when (characteristic.uuid) {
                 BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE -> byteArrayOf(client.session.sampleRate.toByte())
                 BluetoothIds.UUID_C2_CSAFE_RESPONSE -> client.session.csafeResponse
+                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> profile?.readFtms(characteristic.uuid)
                 else -> profile?.readDeviceInformation(characteristic.uuid, 0, client.mtu)
             }
             respondRead(device, requestId, offset, value)
@@ -460,6 +479,12 @@ class Concept2Pm5PeripheralAdvertiser(
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
             val ok = descriptor.uuid == BluetoothIds.UUID_CCCD && !preparedWrite && offset == 0 && (enable || disable)
             if (ok) client.session.setSubscribed(descriptor.characteristic.uuid, enable)
+            if (ok && descriptor.characteristic.uuid == BluetoothIds.UUID_ROWING_MACHINE_DATA) {
+                client.nextFtmsDueMs = 0L
+                if (disable) synchronized(client) {
+                    client.pending.removeIf { it.uuid == BluetoothIds.UUID_ROWING_MACHINE_DATA }
+                }
+            }
             if (responseNeeded) server?.sendResponse(device, requestId, if (ok) BluetoothGatt.GATT_SUCCESS else BluetoothGatt.GATT_FAILURE, 0, null)
             if (ok && enable && descriptor.characteristic.uuid == BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3) {
                 latest?.let {
@@ -512,6 +537,12 @@ class Concept2Pm5PeripheralAdvertiser(
                 val now = android.os.SystemClock.elapsedRealtime()
                 val snapshot = latest
                 if (snapshot != null) clients.values.forEach { client ->
+                    if (now >= client.nextFtmsDueMs &&
+                        client.session.isSubscribed(BluetoothIds.UUID_ROWING_MACHINE_DATA)
+                    ) {
+                        client.nextFtmsDueMs = now + FTMS_ROWER_PERIOD_MS
+                        enqueueFtmsRower(client, snapshot)
+                    }
                     enqueueAdditionalStatus3(
                         client,
                         snapshot,
@@ -568,6 +599,17 @@ class Concept2Pm5PeripheralAdvertiser(
                 },
             )
         }
+    }
+
+    private fun enqueueFtmsRower(client: Client, snapshot: Concept2Pm5Snapshot) {
+        val selected = persona ?: return
+        if (!selected.compatibility.exposesFtms || selected.machine != Concept2Machine.ROW_ERG) return
+        enqueueSequence(
+            client,
+            Concept2Pm5Encoder.ftmsRower(snapshot).map {
+                Frame(BluetoothIds.UUID_ROWING_MACHINE_DATA, it, conflatable = false)
+            },
+        )
     }
 
     private fun enqueueAdditionalStatus3(
@@ -650,10 +692,11 @@ class Concept2Pm5PeripheralAdvertiser(
                 client.postedAtMs = android.os.SystemClock.elapsedRealtime()
             }
         } ?: return
-        val serviceUuid = if (frame.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE) {
-            BluetoothIds.UUID_C2_PM_CONTROL_SERVICE
-        } else {
-            BluetoothIds.UUID_C2_ERG_SERVICE
+        val serviceUuid = when (frame.uuid) {
+            BluetoothIds.UUID_C2_CSAFE_RESPONSE -> BluetoothIds.UUID_C2_PM_CONTROL_SERVICE
+            BluetoothIds.UUID_ROWING_MACHINE_DATA,
+            BluetoothIds.UUID_BIKING_DATA -> BluetoothIds.UUID_FTMS_SERVICE
+            else -> BluetoothIds.UUID_C2_ERG_SERVICE
         }
         val characteristic = server?.getService(serviceUuid)?.getCharacteristic(frame.uuid)
         if (characteristic == null || !notify(client.device, characteristic, frame.value)) {
@@ -702,6 +745,7 @@ class Concept2Pm5PeripheralAdvertiser(
     fun dispose() { stop(); scope.cancel() }
 
     companion object {
+        private const val FTMS_ROWER_PERIOD_MS = 1_000L
         private const val MAX_PENDING = 24
         private const val DIAGNOSTICS_PERIOD_MS = 10_000L
         private const val ADDITIONAL_STATUS_3_ID = 0x3E

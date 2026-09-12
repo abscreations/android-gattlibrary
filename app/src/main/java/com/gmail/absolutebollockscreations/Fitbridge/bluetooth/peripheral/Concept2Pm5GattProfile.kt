@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2CharacteristicManifest
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.Concept2Machine
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
 import java.util.UUID
 
@@ -16,16 +17,23 @@ import java.util.UUID
  */
 class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
     val services: Map<UUID, List<Concept2CharacteristicManifest>> = buildMap {
+        if (persona.compatibility.exposesFtms) {
+            // Registration order reproduces the captured post-GAP/GATT handle order.
+            put(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE, modernPmControlManifest)
+        }
         put(
             BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE,
             persona.compatibility.deviceInformation.map {
                 Concept2CharacteristicManifest(it, readable = true)
             },
         )
-        put(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE, pmControlManifest)
+        if (!persona.compatibility.exposesFtms) put(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE, pmControlManifest)
         put(BluetoothIds.UUID_C2_ERG_SERVICE, persona.compatibility.characteristics)
         if (persona.compatibility.exposesHeartRateReceive) {
             put(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE, heartRateReceiveManifest)
+        }
+        if (persona.compatibility.exposesFtms) {
+            put(BluetoothIds.UUID_FTMS_SERVICE, ftmsManifest(persona.machine))
         }
     }
 
@@ -56,6 +64,12 @@ class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
         return if (offset <= value.size) value.copyOfRange(offset, value.size) else null
     }
 
+    /** Read-only standard values captured from the modern RowErg's minimal FTMS service. */
+    fun readFtms(uuid: UUID): ByteArray? = when (uuid) {
+        BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> MODERN_ROW_FTMS_FEATURE.copyOf()
+        else -> null
+    }
+
     companion object {
         val pmControlManifest: List<Concept2CharacteristicManifest> = listOf(
             Concept2CharacteristicManifest(BluetoothIds.UUID_C2_CSAFE_REQUEST, writable = true),
@@ -66,8 +80,35 @@ class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
             ),
         )
 
+        /** Exact `0x0C` request and `0x10` response properties from PM5 431225189. */
+        val modernPmControlManifest: List<Concept2CharacteristicManifest> = listOf(
+            Concept2CharacteristicManifest(
+                BluetoothIds.UUID_C2_CSAFE_REQUEST,
+                writable = true,
+                writeWithoutResponse = true,
+            ),
+            Concept2CharacteristicManifest(
+                BluetoothIds.UUID_C2_CSAFE_RESPONSE,
+                notifiable = true,
+            ),
+        )
+
         val heartRateReceiveManifest: List<Concept2CharacteristicManifest> = listOf(
             Concept2CharacteristicManifest(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE, writable = true),
+        )
+
+        fun ftmsManifest(machine: Concept2Machine): List<Concept2CharacteristicManifest> = listOf(
+            Concept2CharacteristicManifest(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE, readable = true),
+            Concept2CharacteristicManifest(
+                if (machine == Concept2Machine.BIKE_ERG) BluetoothIds.UUID_BIKING_DATA
+                else BluetoothIds.UUID_ROWING_MACHINE_DATA,
+                notifiable = true,
+            ),
+        )
+
+        // 0x000056A6 machine features, no target-setting features (little endian).
+        private val MODERN_ROW_FTMS_FEATURE = byteArrayOf(
+            0xA6.toByte(), 0x56, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         )
 
         private fun fixedAscii(value: String, size: Int): ByteArray {

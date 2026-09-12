@@ -329,7 +329,7 @@ internal class AdapterNameCoordinator(
             }
         }
 
-        private val PM5_SESSION_NAME = Regex("PM5 [0-9]{9}")
+        private val PM5_SESSION_NAME = Regex("PM5 [0-9]{9}(?: Row| Ski| Bike)?")
         private val KEISER_SESSION_NAME = Regex("M3(?:i|m)?(?: .+)?")
         private val KICKR_SESSION_NAME = Regex("(?:Wahoo KICKR|KICKR CORE)(?: .+)?")
     }
