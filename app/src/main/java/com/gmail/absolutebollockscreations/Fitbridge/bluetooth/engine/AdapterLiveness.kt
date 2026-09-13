@@ -86,6 +86,8 @@ internal class AdapterLivenessCoordinator(
         val policy = synchronized(lock) { policies[connectionId] } ?: return
         val selectedAdapter = policy.snapshot().selected?.adapterId
         val creditedAdapter = when {
+            selectedAdapter == CONCEPT2_ADAPTER_ID && sample.protocol == MetricProtocol.VENDOR ->
+                CONCEPT2_ADAPTER_ID
             selectedAdapter == WAHOO_KICKR_ADAPTER_ID && sample.protocol == MetricProtocol.CPS -> {
                 // Legacy KICKR deliberately reuses the existing same-link CPS handler for telemetry.
                 // Crediting it here avoids a duplicate decoder/emitter in the Wahoo handler.
@@ -239,9 +241,8 @@ internal class AdapterLivenessCoordinator(
     /**
      * Which adapter is currently driving this link, or null when no candidate matched.
      *
-     * Visible for tests and diagnostics. Needed from Phase 5a onward because a link can now
-     * have more than one candidate: on a PM5 advertising both FTMS and the Concept2 Erg
-     * service, the state alone no longer says which path the data is coming from (D6).
+     * Visible for tests and diagnostics: other families may retain multiple D6 candidates,
+     * while Concept2's user-amended native-only policy keeps FTMS out of the candidate list.
      */
     fun selectedAdapterId(connectionId: ConnectionId): String? =
         synchronized(lock) { policies[connectionId]?.snapshot()?.selected?.adapterId }
@@ -252,21 +253,12 @@ internal class AdapterLivenessCoordinator(
      * The evidence is structural in every case — the device exposed a particular GATT service —
      * which is the kind of fact §0.7 says to prefer over a device-name guess.
      *
-     * ## Why a PM5 can produce two candidates (D6, plan §5a)
-     *
-     * A Concept2 PM5 may advertise both the standard Fitness Machine Service and its own Erg
-     * service. TMIW resolves this by hard-skipping its proprietary Concept2 descriptor whenever
-     * FTMS is advertised. D6 rejects that: **both** candidates are registered, FTMS ranked
-     * higher because older PM5 firmware genuinely serves usable FTMS Rower data, and the
-     * Concept2 candidate left live behind the §0.7a liveness timeout.
-     *
-     * The difference matters for a firmware revision that advertises FTMS and then sends
-     * nothing. Under a hard skip that is a dead session with no recovery. Here the FTMS
-     * candidate times out, §0.7a demotes once, and the proprietary path takes over
-     * automatically — which is the whole point of ranking candidates rather than choosing one.
+     * PM5 native-only exception (user decision 2026-09-12, plan §5a): the discovered Concept2
+     * Erg service excludes FTMS from candidacy and activation. Other families retain D6's
+     * ranked liveness fallback; a silent PM5 native stream is reported rather than using FTMS.
      */
     private fun candidatesFor(context: ConnectionContext): List<AdapterCandidate> {
-        val services = context.discoveredServiceUuids
+        val services = centralProtocolServiceUuids(context.discoveredServiceUuids)
         // **The one candidate property that is discovered rather than declared.** Life Fitness
         // machines advertise and serve ordinary FTMS and then send nothing until a proprietary
         // handshake completes, so `requiresSetup` cannot be a constant on the FTMS candidate the
@@ -328,17 +320,8 @@ internal class AdapterLivenessCoordinator(
                                     // published specification rather than a four-character
                                     // alias — see the Phase 5a evidence record.
                                     structuralValue = BluetoothIds.UUID_C2_ERG_SERVICE.toString(),
-                                    // Deliberately equal to the FTMS fact's weight, not higher.
-                                    //
-                                    // `MachineAdapterPolicy` orders candidates by evidence
-                                    // weight *before* rank, so a heavier fact wins outright and
-                                    // `rank` never gets a say. A 128-bit vendor UUID is arguably
-                                    // the stronger fingerprint, but both facts are certain
-                                    // structural identifications of a device that is present —
-                                    // there is no doubt to discriminate. Preference between two
-                                    // certain matches belongs in `rank`, which is where D6 puts
-                                    // it. Inflating this to 50 would silently invert D6 and put
-                                    // the proprietary path first.
+                                    // Keep the established evidence weight; the native-only
+                                    // policy is exclusion, not an artificial ranking boost.
                                     weight = 40,
                                     collisionRisk = CollisionRisk.LOW,
                                     note = "Concept2 Erg service present in the discovered GATT database",
@@ -530,15 +513,7 @@ internal class AdapterLivenessCoordinator(
         const val RIDEON_ADAPTER_ID = "wahoo.kickr.rideon"
         const val RANK_RIDEON = 90
 
-        /**
-         * Standard FTMS outranks the Concept2 proprietary path on a PM5 that advertises both.
-         *
-         * Not because FTMS is better evidence — the Concept2 Erg service is a full 128-bit
-         * vendor UUID and carries *more* weight as a fingerprint — but because a PM5 serving
-         * FTMS Rower data is serving a standard both ends already agree on, and older PM5
-         * firmware does so usably. The proprietary path is the richer one and stays available
-         * behind the liveness timeout; it is second choice, not a worse one.
-         */
+        /** Generic ranks; Concept2's native-only policy excludes FTMS before ranking. */
         const val RANK_FTMS = 100
         const val RANK_CONCEPT2 = 80
         const val RANK_WAHOO_KICKR = 80

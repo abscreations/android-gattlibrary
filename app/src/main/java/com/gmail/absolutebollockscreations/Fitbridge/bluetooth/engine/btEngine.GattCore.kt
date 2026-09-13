@@ -171,8 +171,9 @@ internal data class LegacyConnectionSlots<T>(
 internal fun matchingProtocolHandlers(
     handlers: List<BtEngineGattCore.ProtocolHandler>,
     discoveredServiceUuids: Set<UUID>,
-): List<BtEngineGattCore.ProtocolHandler> = handlers.filter { handler ->
-    handler.primaryServices.any(discoveredServiceUuids::contains)
+): List<BtEngineGattCore.ProtocolHandler> {
+    val eligibleServices = centralProtocolServiceUuids(discoveredServiceUuids)
+    return handlers.filter { handler -> handler.primaryServices.any(eligibleServices::contains) }
 }
 
 /** Pure identity lifecycle used by the Android callback and JVM characterization tests. */
@@ -362,7 +363,7 @@ internal object BtEngineGattCore {
             val gatt = activeGatt ?: context.gatt ?: return false
             if (!ownsGatt(gatt) ||
                 context.connectionState.value != LinkState.CONNECTED ||
-                context.discoveredServiceUuids.none(handler.primaryServices::contains)
+                centralProtocolServiceUuids(context.discoveredServiceUuids).none(handler.primaryServices::contains)
             ) {
                 return false
             }

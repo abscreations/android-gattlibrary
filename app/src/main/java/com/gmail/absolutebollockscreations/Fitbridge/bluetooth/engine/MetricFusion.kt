@@ -313,6 +313,7 @@ internal class MetricFusion(
     private val cumulativeTotals = mutableMapOf<MetricKind, Double>()
     private val cumulativeActiveSource = mutableMapOf<MetricKind, MetricSourceId>()
     private val cumulativeLastNative = mutableMapOf<MetricKind, Double>()
+    private val concept2DistanceOrigins = mutableMapOf<MetricOriginId, Concept2DistanceOrigin>()
     private val cumulativeDistanceRateAnchors = mutableMapOf<MetricKind, Pair<Long, Double>>()
     private val quarantinedCumulativeDistance = mutableSetOf<MetricKind>()
     private val cumulativeDistanceResetObserved = mutableSetOf<MetricKind>()
@@ -488,6 +489,7 @@ internal class MetricFusion(
         onOriginEnded(MetricOriginId.Gatt(connectionId), nowMs)
 
     fun onOriginEnded(originId: MetricOriginId, nowMs: Long = clock.nowMs()) = synchronized(lock) {
+        concept2DistanceOrigins.remove(originId)
         val affected = mutableSetOf<MetricKind>()
         candidates.forEach { (metric, bySource) ->
             if (bySource.keys.removeAll { it.sourceId.originId == originId }) affected += metric
@@ -552,6 +554,7 @@ internal class MetricFusion(
         cumulativeTotals.clear()
         cumulativeActiveSource.clear()
         cumulativeLastNative.clear()
+        concept2DistanceOrigins.clear()
         cumulativeDistanceRateAnchors.clear()
         quarantinedCumulativeDistance.clear()
         cumulativeDistanceResetObserved.clear()
@@ -794,7 +797,15 @@ internal class MetricFusion(
 
     private fun projectCumulative(sample: MetricSample, previousSource: MetricSourceId?) {
         val metric = sample.metric
-        val native = sample.nativeCumulative ?: return
+        val rawNative = sample.nativeCumulative ?: return
+        val native = if (metric == MetricKind.DISTANCE && sample.protocol == MetricProtocol.VENDOR &&
+            sample.sourceClass == MetricSourceClass.VENDOR_NATIVE &&
+            sample.sourceId.gattCharacteristicUuid in setOf(
+                BluetoothIds.UUID_C2_GENERAL_STATUS, BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
+            )
+        ) {
+            concept2DistanceOrigins.getOrPut(sample.originId) { Concept2DistanceOrigin() }.align(rawNative)
+        } else rawNative
         val totalBefore = cumulativeTotals[metric]
         val activeSource = cumulativeActiveSource[metric]
         val sourceChanged = activeSource != sample.sourceId || previousSource != sample.sourceId
@@ -1087,7 +1098,7 @@ internal class MetricFusion(
             MetricKind.CADENCE -> state.appendCadenceSpmSample(value, seriesAt)
             MetricKind.AVERAGE_CADENCE -> state.setAverageCadence(value)
             MetricKind.POWER -> {
-                val watts = adjustedPower(sample)
+                val watts = value.roundToInt()
                 state.appendPowerSample(watts, seriesAt)
                 state.setPeakPower(maxOf(state.peakPower.value ?: watts, watts))
             }
@@ -1226,20 +1237,6 @@ internal class MetricFusion(
             ratio < 0.90 -> 4
             else -> 5
         }
-    }
-
-    private fun adjustedPower(sample: MetricSample): Int {
-        val raw = sample.value.roundToInt()
-        if (sample.protocol != MetricProtocol.FTMS || sample.quality != MetricQuality.NATIVE) {
-            return raw
-        }
-        state.internalPowerSum += raw.toDouble()
-        state.internalPowerCount += 1
-        val reportedAverage = state.averagePower.value
-        if (state.internalPowerCount <= 10 || reportedAverage == null) return raw
-        val observedAverage = state.internalPowerSum / state.internalPowerCount.toDouble()
-        if (observedAverage <= 0.0 || observedAverage + 2.0 >= reportedAverage.toDouble()) return raw
-        return (raw * (reportedAverage.toDouble() / observedAverage)).toInt()
     }
 
     private fun updateLapDistance(totalMeters: Int) {

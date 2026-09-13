@@ -143,13 +143,10 @@ class AdapterLivenessCoordinatorTest {
         )
     }
 
-    // ── D6: a PM5 advertising both standards produces two candidates ─────────────
+    // Concept2 native-only exception to D6, user-authorized 2026-09-12.
 
     @Test
-    fun `a PM5 advertising FTMS and the Erg service registers both candidates`() {
-        // TMIW hard-skips its proprietary Concept2 descriptor whenever FTMS is advertised. D6
-        // rejects that: both are registered, FTMS ranked higher, and the proprietary path stays
-        // available rather than being discarded at discovery.
+    fun `a PM5 serving FTMS and the Erg service selects only Concept2`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
             services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
@@ -159,16 +156,14 @@ class AdapterLivenessCoordinatorTest {
 
         assertEquals(AdapterPolicyState.AWAITING_DATA, coordinator.stateOf(ctx.connectionId))
         assertEquals(
-            "FTMS is the first choice on a PM5 that serves it",
-            AdapterLivenessCoordinator.FTMS_ADAPTER_ID,
+            "the user-selected native-only policy must suppress FTMS",
+            AdapterLivenessCoordinator.CONCEPT2_ADAPTER_ID,
             coordinator.selectedAdapterId(ctx.connectionId),
         )
     }
 
     @Test
-    fun `a silent FTMS advertisement falls back to the Concept2 path instead of dying`() {
-        // The case D6 exists for: a firmware revision that advertises 0x1826 and then sends
-        // nothing. Under a hard skip this is a dead session with no recovery.
+    fun `a silent Concept2 stream never falls back to FTMS`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
             services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
@@ -177,12 +172,20 @@ class AdapterLivenessCoordinatorTest {
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
         coordinator.tick(1_000L)
 
-        assertEquals(
-            "the proprietary path must take over rather than the session going dead",
-            AdapterLivenessCoordinator.CONCEPT2_ADAPTER_ID,
-            coordinator.selectedAdapterId(ctx.connectionId),
-        )
-        assertTrue("the demotion is still the evidence that matters", BleCapture.isArmed())
+        assertEquals(AdapterPolicyState.CONNECTED_NO_DATA, coordinator.stateOf(ctx.connectionId))
+        assertFalse(AdapterLivenessCoordinator.FTMS_ADAPTER_ID == coordinator.selectedAdapterId(ctx.connectionId))
+        assertTrue(BleCapture.isArmed())
+    }
+
+    @Test
+    fun `an FTMS sample cannot satisfy native-only PM5 liveness`() {
+        val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
+        val ctx = context(services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE))
+        coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
+        coordinator.onSample(sample(ctx, atMs = 400L))
+        assertEquals(AdapterPolicyState.AWAITING_DATA, coordinator.stateOf(ctx.connectionId))
+        coordinator.tick(1_000L)
+        assertEquals(AdapterPolicyState.CONNECTED_NO_DATA, coordinator.stateOf(ctx.connectionId))
     }
 
     @Test
@@ -199,37 +202,36 @@ class AdapterLivenessCoordinatorTest {
     }
 
     @Test
-    fun `a working FTMS PM5 never demotes to the proprietary path`() {
+    fun `native Concept2 measurements satisfy PM5 liveness`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
             services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
         )
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
-        coordinator.onSample(sample(ctx, atMs = 400L))
+        coordinator.onSample(sample(ctx, atMs = 400L).copy(
+            sourceId = MetricSourceId(ctx.connectionId, MetricProtocol.VENDOR,
+                BluetoothIds.UUID_C2_GENERAL_STATUS),
+            protocol = MetricProtocol.VENDOR,
+            sourceClass = MetricSourceClass.VENDOR_NATIVE,
+        ))
         coordinator.tick(10_000L)
 
         assertEquals(AdapterPolicyState.READY, coordinator.stateOf(ctx.connectionId))
         assertEquals(
-            AdapterLivenessCoordinator.FTMS_ADAPTER_ID,
+            AdapterLivenessCoordinator.CONCEPT2_ADAPTER_ID,
             coordinator.selectedAdapterId(ctx.connectionId),
         )
         assertFalse(BleCapture.isArmed())
     }
 
     @Test
-    fun `FTMS outranks Concept2, and evidence weight must not override that`() {
+    fun `FTMS ranking cannot override the Concept2 exclusion policy`() {
         assertTrue(
             AdapterLivenessCoordinator.RANK_FTMS > AdapterLivenessCoordinator.RANK_CONCEPT2,
         )
 
-        // The rank constants alone do not settle the ordering. `MachineAdapterPolicy` sorts by
-        // evidence weight *first* and only then by rank, so a heavier Concept2 fact would win
-        // outright and D6 would be silently inverted while these constants still read correctly.
-        //
-        // This is the assertion that actually holds the ordering, and it is why the Concept2
-        // fact carries the same weight as the FTMS one rather than the larger weight a 128-bit
-        // vendor UUID might seem to deserve.
+        // The generic ranks remain unchanged, but FTMS is excluded before the policy ranks them.
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
             services = setOf(BluetoothIds.UUID_C2_ERG_SERVICE, BluetoothIds.UUID_FTMS_SERVICE),
@@ -237,8 +239,8 @@ class AdapterLivenessCoordinatorTest {
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
 
         assertEquals(
-            "evidence weight must not promote the proprietary path ahead of FTMS",
-            AdapterLivenessCoordinator.FTMS_ADAPTER_ID,
+            "FTMS must not be a candidate regardless of its rank",
+            AdapterLivenessCoordinator.CONCEPT2_ADAPTER_ID,
             coordinator.selectedAdapterId(ctx.connectionId),
         )
     }

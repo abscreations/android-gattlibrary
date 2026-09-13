@@ -41,6 +41,31 @@ class MetricFusionPolicyTest {
     )
 
     @Test
+    fun `FTMS instantaneous watts remain unchanged when reported average differs`() {
+        val state = BtEngineState()
+        val fusion = MetricFusion(state)
+        fusion.setPersona(FusionPersona.ROW_PADDLE, 0)
+        val ftms = source(ftmsConnection, MetricProtocol.FTMS, 99)
+
+        // Pass the old ten-sample correction gate with an independent workout average.
+        repeat(20) { index ->
+            val at = 1_000L + index * 100L
+            fusion.submit(sample(MetricKind.AVERAGE_POWER, 227.0, at, ftms, MetricSourceClass.FTMS))
+            fusion.submit(sample(MetricKind.POWER, 146.0, at + 1, ftms, MetricSourceClass.FTMS))
+            assertEquals(146, state.instantPower.value)
+            assertEquals(146.0, state.powerSeriesW.value.last().v, 0.0)
+            fusion.submit(sample(MetricKind.AVERAGE_POWER, 227.0, at + 2, ftms, MetricSourceClass.FTMS))
+            assertEquals(227, state.averagePower.value)
+        }
+
+        fusion.submit(sample(MetricKind.AVERAGE_POWER, 100.0, 4_000, ftms, MetricSourceClass.FTMS))
+        fusion.submit(sample(MetricKind.POWER, 155.0, 4_001, ftms, MetricSourceClass.FTMS))
+        assertEquals(155, state.instantPower.value)
+        fusion.submit(sample(MetricKind.POWER, 0.0, 4_002, ftms, MetricSourceClass.FTMS))
+        assertEquals(0, state.instantPower.value)
+    }
+
+    @Test
     fun `persona priority selects ride run and row defaults`() {
         val fusion = MetricFusion(BtEngineState())
         val ftms = source(ftmsConnection, MetricProtocol.FTMS, 1)

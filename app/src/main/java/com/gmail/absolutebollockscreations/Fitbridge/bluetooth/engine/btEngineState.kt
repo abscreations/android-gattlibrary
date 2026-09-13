@@ -811,10 +811,6 @@ class BtEngineState : HrmStateSink {
 
     /* ───────────────────────────── smoothing / running averages ───────────────────────────── */
 
-    // Power smoothing (existing)
-    var internalPowerSum = 0.0
-    var internalPowerCount = 0
-
     // Running mean accumulators for HR/speed/cadence/power (kph/spm/watts).
     private var hrSum = 0.0
     private var hrCount = 0

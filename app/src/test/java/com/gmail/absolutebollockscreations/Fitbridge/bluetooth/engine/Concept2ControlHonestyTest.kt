@@ -16,33 +16,25 @@ import org.junit.Test
  *
  * ## Why the peripheral CSAFE surface does not authorize upstream control
  *
- * D11 now permits `0x0020`-`0x0022` only in the downstream PM5 peripheral simulator. The
- * central-role Concept2 handler remains measurement-only, and no FTMS target capability follows
- * from simulator-local workout programming.
+ * D11's 2026-09-12 amendment permits one fixed Just Row/Prepare startup command centrally.
+ * It does not authorize forwarding simulator commands or expose FTMS target capabilities.
  */
 class Concept2ControlHonestyTest {
 
     // ── The central adapter still cannot reach the peripheral control transport ──
 
     @Test
-    fun `central Concept2 handler does not claim the CSAFE service or characteristics`() {
+    fun `central Concept2 handler claims only startup endpoints not the control service as an activation key`() {
         val handler = Concept2ProtocolHandler()
-        val claimed = handler.primaryServices + handler.extraCharacteristics
-        val peripheralOnly = setOf(
-            BluetoothIds.UUID_C2_PM_CONTROL_SERVICE,
-            BluetoothIds.UUID_C2_CSAFE_REQUEST,
-            BluetoothIds.UUID_C2_CSAFE_RESPONSE,
-        )
-
-        assertTrue(claimed.intersect(peripheralOnly).isEmpty())
+        assertFalse(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE in handler.primaryServices)
+        assertTrue(BluetoothIds.UUID_C2_CSAFE_REQUEST in handler.extraCharacteristics)
+        assertTrue(BluetoothIds.UUID_C2_CSAFE_RESPONSE in handler.extraCharacteristics)
     }
 
     @Test
-    fun `the handler owns no writable characteristic`() {
-        // Everything the handler claims is either a notification source or a read. The
-        // sample-rate characteristic is writable and is deliberately not claimed at all; the
-        // machine-type characteristic is read-only identification. Neither is a control
-        // endpoint, and no claimed characteristic accepts a write.
+    fun `the handler owns no writable configuration beyond the fixed startup endpoint`() {
+        // Apart from the single startup request, ownership is measurement/response notifications
+        // or read-only identification. Writable sample-rate configuration stays unclaimed.
         val handler = Concept2ProtocolHandler()
 
         assertTrue(
@@ -58,6 +50,8 @@ class Concept2ControlHonestyTest {
                 BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
                 // Read-only: the Erg Machine Type identification added for persona selection.
                 BluetoothIds.UUID_C2_MACHINE_TYPE,
+                BluetoothIds.UUID_C2_CSAFE_REQUEST,
+                BluetoothIds.UUID_C2_CSAFE_RESPONSE,
             ),
             handler.extraCharacteristics,
         )

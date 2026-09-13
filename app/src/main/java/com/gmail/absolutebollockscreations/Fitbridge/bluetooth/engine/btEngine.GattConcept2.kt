@@ -9,7 +9,7 @@ import timber.log.Timber
 import java.util.UUID
 
 /**
- * Concept2 PM protocol handler (plan §5a), measurement-only.
+ * Concept2 PM measurement handler with the user-authorized Just Row startup (plan §5a/D11).
  *
  * ## This class is wiring, on purpose
  *
@@ -23,10 +23,8 @@ import java.util.UUID
  *
  * ## Control
  *
- * None in the central-role adapter, per amended D11. The downstream peripheral simulator owns
- * its separate closed-loop CSAFE surface; there is no control seam here and no simulator request
- * may be forwarded through this handler. No downstream target-setting capability is advertised
- * for this family.
+ * Only one fixed Just Row/Prepare startup command is permitted by D11 (2026-09-12).
+ * No generic command forwarding, movement targets, or downstream target capabilities exist.
  */
 internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
@@ -40,8 +38,10 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
         // Read-only identification, not a notification source. Owned so the read callback
         // routes here rather than to whichever handler happens to claim the Device Info
-        // service; it is never subscribed. See `the handler owns no writable characteristic`.
+        // service; it is never subscribed.
         BluetoothIds.UUID_C2_MACHINE_TYPE,
+        BluetoothIds.UUID_C2_CSAFE_REQUEST,
+        BluetoothIds.UUID_C2_CSAFE_RESPONSE,
     )
 
     private var path: Concept2DeliveryPath? = null
@@ -49,6 +49,7 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
     private var cccdReadyAtMs: Long? = null
     private var fallbackApplied = false
     private var availableCharacteristics: Set<UUID> = emptySet()
+    @Volatile private var startup = Concept2StartupHandshake()
 
     /** Decoded `0x0016`, when the firmware exposes it. Null means "the machine did not say". */
     private var ergFamily: Concept2ErgFamily? = null
@@ -60,6 +61,7 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         fallbackApplied = false
         availableCharacteristics = emptySet()
         ergFamily = null
+        startup = Concept2StartupHandshake()
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -98,6 +100,27 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
             gatt.device?.address,
             plan.path,
         )
+        // Queue response CCCD before the one setup write, and setup before measurement CCCDs.
+        // Each operation stays on this physical context's serialized, generation-bound queue.
+        val control = services.firstOrNull { it.uuid == BluetoothIds.UUID_C2_PM_CONTROL_SERVICE }
+        val request = control?.getCharacteristic(BluetoothIds.UUID_C2_CSAFE_REQUEST)
+        val response = control?.getCharacteristic(BluetoothIds.UUID_C2_CSAFE_RESPONSE)
+        val mode = concept2StartupWriteMode(request?.properties ?: 0, response?.properties ?: 0,
+            response?.getDescriptor(BluetoothIds.UUID_CCCD) != null)
+        if (request != null && response != null && mode != null) {
+            engine.enableNotifications(context, response)
+            val issuedStartup = startup
+            issuedStartup.issue(MonotonicMetricClock.SYSTEM.nowMs())?.let { command ->
+                engine.pushWrite(context, command, request.uuid, mode) { success ->
+                    if (context.isActive && startup === issuedStartup) {
+                        issuedStartup.writeCompleted(success)
+                        if (!success) Timber.tag(BtEngineState.TAG).w("Concept2 Just Row startup write failed; not retried")
+                    }
+                }
+            }
+        } else {
+            Timber.tag(BtEngineState.TAG).w("Concept2 startup unavailable: no usable CSAFE request/response surface")
+        }
         plan.operations.forEach { operation ->
             characteristics[operation.characteristicUuid]?.let {
                 engine.enableNotifications(context, it)
@@ -136,6 +159,13 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
+        if (ch.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE) {
+            startup.tick(MonotonicMetricClock.SYSTEM.nowMs())
+            if (startup.acceptAcknowledgement(value)) {
+                Timber.tag(BtEngineState.TAG).i("Concept2 Just Row startup acknowledged")
+            }
+            return
+        }
         val reading = when (ch.uuid) {
             BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION -> Concept2Measurement.multiplexed(value)
             BluetoothIds.UUID_C2_GENERAL_STATUS ->
@@ -268,6 +298,11 @@ internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun onLivenessTick(engine: BtEngine, gatt: BluetoothGatt) {
+        val startupBefore = startup.state
+        startup.tick(MonotonicMetricClock.SYSTEM.nowMs())
+        if (startupBefore != startup.state && startup.state == Concept2StartupHandshake.State.TIMED_OUT) {
+            Timber.tag(BtEngineState.TAG).w("Concept2 Just Row startup acknowledgement timed out; not retried")
+        }
         if (fallbackApplied) return
         val activePath = path ?: return
         val readyAt = cccdReadyAtMs ?: return

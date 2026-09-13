@@ -53,7 +53,7 @@ class Concept2ProductionPlumbingTest {
             setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
             offer = { true },
         )
-        assertEquals("a PM5 may serve both services on one physical link", 2, active.size)
+        assertEquals("PM5 uses native Concept2 even when FTMS is served", listOf(concept2), active)
 
         // Every Concept2 characteristic routes to the Concept2 handler and to nothing else,
         // including the multiplexed one, which carries other handlers' data on no other device.
@@ -74,9 +74,9 @@ class Concept2ProductionPlumbingTest {
             assertEquals(HandlerOwnership.EXPLICIT_CHARACTERISTIC, route.ownership)
         }
 
-        // And an FTMS characteristic on the same link still routes to FTMS.
+        // An unsolicited FTMS packet has no active owner on this PM5 link.
         assertEquals(
-            listOf(ftms),
+            emptyList<BtEngineGattCore.ProtocolHandler>(),
             resolveProtocolHandlerRoute(
                 active,
                 BluetoothIds.UUID_ROWING_MACHINE_DATA,
@@ -209,6 +209,8 @@ class Concept2ProductionPlumbingTest {
 
         emit(generation = 1L, distanceMetres = 2_500.0, elapsedCs = 12_171, arrivalMs = 1_000L)
         assertEquals(2_500.0, fusion.latestSample(MetricKind.DISTANCE)!!.value, 1e-9)
+        assertEquals("retained initial native counters establish a zero activity floor", 0,
+            state.totalDistanceMeters.value)
 
         // Reconnect: new generation, counters back near zero.
         emit(generation = 2L, distanceMetres = 5.0, elapsedCs = 50, arrivalMs = 60_000L)

@@ -55,8 +55,8 @@ internal data class ProtocolKey(val value: String) {
          * activated only when the Erg service is actually present. Before that it was
          * registered and buildable but never constructed — see [MACHINE_PROTOCOLS].
          *
-         * Which adapter drives a PM5 advertising both this and FTMS remains the D6 conflict
-         * rule, answered by `MachineAdapterPolicy` rather than by the handler registry.
+         * The user-amended native-only rule (2026-09-12) excludes FTMS when the discovered
+         * Erg service is present, before activation or adapter ranking.
          */
         val CONCEPT2 = ProtocolKey("concept2")
 
@@ -151,8 +151,8 @@ internal fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): Protoc
  * is one short-lived object per connection; the cost of a forgotten one is a family that
  * silently produces nothing.
  *
- * Order is FTMS first for readability only. Which adapter *drives* a link that matches more
- * than one is D6's question and `MachineAdapterPolicy`'s answer, not this list's.
+ * Order is FTMS first for readability only. D6 governs multi-adapter ranking except for the
+ * Concept2 native-only exclusion in [centralProtocolServiceUuids].
  */
 internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FTMS,
@@ -220,15 +220,21 @@ internal class HandlerFactory(
     }
 }
 
-/** Offer discovery to every matching candidate and retain every successful activation. */
+/** Concept2's native Erg service excludes FTMS on this link, without mutating its inventory. */
+internal fun centralProtocolServiceUuids(discoveredServiceUuids: Set<UUID>): Set<UUID> =
+    if (BluetoothIds.UUID_C2_ERG_SERVICE in discoveredServiceUuids) {
+        discoveredServiceUuids - BluetoothIds.UUID_FTMS_SERVICE
+    } else {
+        discoveredServiceUuids
+    }
+
+/** Offer discovery to eligible candidates and retain every successful activation. */
 internal fun activateMatchingProtocolHandlers(
     candidates: List<BtEngineGattCore.ProtocolHandler>,
     discoveredServiceUuids: Set<UUID>,
     offer: (BtEngineGattCore.ProtocolHandler) -> Boolean,
 ): List<BtEngineGattCore.ProtocolHandler> =
-    candidates.filter { candidate ->
-        candidate.primaryServices.any(discoveredServiceUuids::contains) && offer(candidate)
-    }
+    matchingProtocolHandlers(candidates, discoveredServiceUuids).filter(offer)
 
 internal enum class HandlerOwnership {
     EXPLICIT_CHARACTERISTIC,

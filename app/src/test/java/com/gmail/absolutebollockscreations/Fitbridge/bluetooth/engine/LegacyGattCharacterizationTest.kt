@@ -14,6 +14,23 @@ import java.util.UUID
 
 class LegacyGattCharacterizationTest {
 
+    @Test
+    fun `Concept2 discovery excludes FTMS activation but preserves native and sensor handlers`() {
+        val ftms = RecordingHandler(setOf(BluetoothIds.UUID_FTMS_SERVICE))
+        val concept2 = RecordingHandler(setOf(BluetoothIds.UUID_C2_ERG_SERVICE))
+        val hrm = RecordingHandler(setOf(BluetoothIds.UUID_HRM_SERVICE))
+        val services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE,
+            BluetoothIds.UUID_HRM_SERVICE)
+        val offered = mutableListOf<BtEngineGattCore.ProtocolHandler>()
+
+        assertEquals(listOf(concept2, hrm), matchingProtocolHandlers(listOf(ftms, concept2, hrm), services))
+        assertEquals(listOf(concept2, hrm), activateMatchingProtocolHandlers(
+            listOf(ftms, concept2, hrm), services,
+        ) { offered += it; true })
+        assertEquals(listOf(concept2, hrm), offered)
+        assertTrue("diagnostic inventory must retain FTMS", BluetoothIds.UUID_FTMS_SERVICE in services)
+    }
+
     private class RecordingHandler(
         override val primaryServices: Set<UUID>,
     ) : BtEngineGattCore.ProtocolHandler {
