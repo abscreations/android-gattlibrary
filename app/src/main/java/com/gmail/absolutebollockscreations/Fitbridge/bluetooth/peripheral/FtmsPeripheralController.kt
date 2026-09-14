@@ -44,8 +44,26 @@ internal class FtmsPeripheralStatusRelay(
 
     @Synchronized
     fun publish(next: FtmsPeripheralController.PeripheralStatus) {
-        current = next
-        onStatus(enrich(next))
+        current = next.copy(
+            clientEverConnected = current.clientEverConnected || next.clientEverConnected || next.clientLinkConnected,
+            clientControlReceived = current.clientControlReceived || next.clientControlReceived,
+        )
+        onStatus(enrich(current))
+    }
+
+    @Synchronized
+    fun recordClientControl() {
+        publish(current.copy(clientControlReceived = true))
+    }
+
+    @Synchronized
+    fun resetClientHistory() {
+        current = current.copy(
+            advertising = false, connected = false, subscribed = false, clientId = null,
+            clientLinkConnected = false,
+            clientAdvertising = false,
+            clientEverConnected = false, clientControlReceived = false, clientControllable = false,
+        )
     }
 
     @Synchronized
@@ -82,6 +100,12 @@ class FtmsPeripheralController(
     data class PeripheralStatus(
         val advertising: Boolean = false,
         val connected: Boolean = false,
+        /** FTMS-only link state, including peers still performing service discovery. */
+        val clientLinkConnected: Boolean = false,
+        val clientAdvertising: Boolean = false,
+        val clientEverConnected: Boolean = false,
+        val clientControlReceived: Boolean = false,
+        val clientControllable: Boolean = false,
         val clientId: String? = null,
         val subscribed: Boolean = false,
         val simulatorGenerationReady: Boolean = false,
@@ -433,6 +457,7 @@ class FtmsPeripheralController(
         }
 
         this.profile = profile
+        statusRelay.resetClientHistory()
         targetCapabilities = targets
         advertiserMeasurementCapabilities = measurementCapabilities
         this.cyclingConfig = effectiveCyclingConfig
@@ -624,7 +649,10 @@ class FtmsPeripheralController(
             FtmsForegroundService.stop(context)
             restoreAdapterName()
             store.clear()
-            if (publishIdle) publish(PeripheralStatus())
+            if (publishIdle) {
+                statusRelay.resetClientHistory()
+                publish(PeripheralStatus())
+            }
             return
         }
         runState = RunState.STOPPING
@@ -638,7 +666,10 @@ class FtmsPeripheralController(
         restoreAdapterName()
         store.clear()
         rollbackSessionState()
-        if (publishIdle) publish(PeripheralStatus())
+        if (publishIdle) {
+            statusRelay.resetClientHistory()
+            publish(PeripheralStatus())
+        }
     }
 
     fun dispose() {
@@ -656,6 +687,9 @@ class FtmsPeripheralController(
     private fun withDiagnostics(base: PeripheralStatus): PeripheralStatus {
         val revolutions = notifier.cyclingRevolutions()
         return base.copy(
+            clientAdvertising = advertiser.isAdvertising,
+            clientLinkConnected = advertiser.hasDownstreamLinks(),
+            clientControllable = runState == RunState.RUNNING && targetCapabilities.any && controlSink.canControl,
             packetsSent = notifier.packetsSent,
             metricsReceived = store.updateCount,
             completeRecords = notifier.completeRecords,
@@ -757,6 +791,7 @@ class FtmsPeripheralController(
             status.copy(
                 advertising = advertiser.isAdvertising,
                 connected = true,
+                clientLinkConnected = true,
                 clientId = advertiser.firstClientAddress() ?: device.address,
             ),
         )
@@ -788,6 +823,14 @@ class FtmsPeripheralController(
         store.clear()
         notifier.configureCycling(cyclingConfig)
         publish(status.copy())
+    }
+
+    override fun onClientControlReceived() {
+        statusRelay.recordClientControl()
+    }
+
+    override fun onClientLinkStateChanged(connected: Boolean) {
+        publish(status.copy(clientLinkConnected = connected))
     }
 
     override fun onCscSetCumulativeWheelRevolutions(value: Long): Boolean =

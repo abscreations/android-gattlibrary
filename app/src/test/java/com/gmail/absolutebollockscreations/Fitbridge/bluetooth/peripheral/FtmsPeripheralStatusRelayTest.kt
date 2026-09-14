@@ -7,6 +7,34 @@ import org.junit.Test
 class FtmsPeripheralStatusRelayTest {
 
     @Test
+    fun `connection and control history survive stale publication disconnect and reset until new session`() {
+        val published = mutableListOf<FtmsPeripheralController.PeripheralStatus>()
+        val relay = FtmsPeripheralStatusRelay(
+            initial = FtmsPeripheralController.PeripheralStatus(clientAdvertising = true),
+            enrich = { it }, onStatus = published::add,
+        )
+        val stale = relay.baseStatus()
+        relay.publish(stale.copy(clientLinkConnected = true))
+        relay.recordClientControl()
+        relay.publish(stale.copy(clientLinkConnected = false))
+        relay.refreshDiagnostics()
+        assertTrue(published.last().clientEverConnected)
+        assertTrue(published.last().clientControlReceived)
+        assertEquals(FtmsClientConnectionStatus.DISCONNECTED, published.last().clientConnectionStatus())
+        assertEquals(FtmsClientControlStatus.CLIENT_IS_CONTROLLING, published.last().clientControlStatus())
+
+        relay.publish(relay.baseStatus().copy(clientLinkConnected = true))
+        relay.publish(relay.baseStatus().copy()) // Procedure reset leaves receipt history intact.
+        assertEquals(FtmsClientConnectionStatus.CONNECTED, relay.snapshot().clientConnectionStatus())
+        assertTrue(relay.snapshot().clientControlReceived)
+
+        relay.resetClientHistory()
+        relay.publish(relay.baseStatus().copy(clientAdvertising = true))
+        assertEquals(FtmsClientConnectionStatus.READY, relay.snapshot().clientConnectionStatus())
+        assertEquals(FtmsClientControlStatus.NOT_CONTROLLABLE, relay.snapshot().clientControlStatus())
+    }
+
+    @Test
     fun `diagnostic refresh publishes current counters without losing lifecycle state`() {
         var packets = 0L
         var complete = 0L

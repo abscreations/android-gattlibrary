@@ -113,6 +113,8 @@ class FtmsPeripheralAdvertiser(
         fun onClientDisconnected(device: BluetoothDevice, status: Int)
         fun onSubscriptionChanged(connection: PeripheralConnection)
         fun onProcedureReset()
+        fun onClientControlReceived() {}
+        fun onClientLinkStateChanged(connected: Boolean) {}
         fun onCscSetCumulativeWheelRevolutions(value: Long): Boolean
         fun onAdvertisingStateChanged(advertising: Boolean, error: String?)
     }
@@ -245,6 +247,7 @@ class FtmsPeripheralAdvertiser(
     fun activeConnections(): List<PeripheralConnection> = connections.values.toList()
 
     fun hasClients(): Boolean = connections.isNotEmpty()
+    fun hasDownstreamLinks(): Boolean = connectedDevices.isNotEmpty()
 
     fun anyDataSubscribed(): Boolean = connections.values.any { it.anyMeasurementSubscribed }
     fun anyFtmsSubscribed(): Boolean = connections.values.any { it.dataSubscribed }
@@ -796,6 +799,7 @@ class FtmsPeripheralAdvertiser(
                 // connected-device set is also the once-per-physical-connection
                 // guard. Disconnect cleanup removes the key for the next session.
                 if (!connectedDevices.add(key)) return
+                listener.onClientLinkStateChanged(true)
                 val retained = runCatching {
                     gattServer?.connect(device, false) == true
                 }.getOrElse { error ->
@@ -842,6 +846,7 @@ class FtmsPeripheralAdvertiser(
             // the link down. Only an already-admitted client needs session cleanup
             // and a disconnect notification.
             connectedDevices.remove(key)
+            listener.onClientLinkStateChanged(connectedDevices.isNotEmpty())
             clearEngagementWatchdog(key)
             val existing = connections.remove(key)
             if (existing != null) {
@@ -1192,6 +1197,11 @@ class FtmsPeripheralAdvertiser(
                 return
             }
 
+            // Receipt is a session-level UI latch, even if the procedure is rejected.
+            // Excluded peers, unrelated characteristics and empty/multipart writes do not count.
+            if (value.isNotEmpty() && !preparedWrite && offset == 0) {
+                listener.onClientControlReceived()
+            }
             val validation = GattProtocol.validateControlPointWrite(
                 responseNeeded = responseNeeded,
                 preparedWrite = preparedWrite,
@@ -1520,6 +1530,7 @@ class FtmsPeripheralAdvertiser(
             )
             connectedDevices.remove(key)
             runCatching { gattServer?.cancelConnection(device) }
+            listener.onClientLinkStateChanged(connectedDevices.isNotEmpty())
             if (connectedDevices.isEmpty()) runCatching { resumeAdvertising() }
         }
         engagementWatchdogs[key] = runnable
