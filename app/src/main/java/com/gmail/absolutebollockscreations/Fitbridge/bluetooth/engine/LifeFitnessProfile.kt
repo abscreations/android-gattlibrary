@@ -1,5 +1,8 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+// App dependency kept deliberately until S2 moves the Life Fitness defaults into BleConfig.
+import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
+
 /**
  * The user-entered profile a Life Fitness machine's handshake consumes (plan §6, D56).
  *
