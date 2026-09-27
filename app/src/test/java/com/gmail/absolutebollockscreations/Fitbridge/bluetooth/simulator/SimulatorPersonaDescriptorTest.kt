@@ -26,6 +26,17 @@ class SimulatorPersonaDescriptorTest {
     }
 
     @Test
+    fun `broken advertisement rower is titled and describes the advertised type`() {
+        val descriptor = SimulatorPersona.Ftms.BROKEN_ROWER_ADVERTISEMENT.describe()
+        assertEquals("FTMS · Rower (Broken Feature Advertisement)", descriptor.title)
+        assertTrue(descriptor.protocol.contains("advertises Cross trainer machine type"))
+        val honest = SimulatorPersona.Ftms(FtmsMachineProfile.INDOOR_ROWER).describe()
+        assertEquals("FTMS · Rower", honest.title)
+        assertEquals(honest.metrics, descriptor.metrics)
+        assertEquals(honest.controlModes, descriptor.controlModes)
+    }
+
+    @Test
     fun `every persona names a protocol, a control answer and its metrics`() {
         everyPersona.forEach { persona ->
             val descriptor = persona.describe()

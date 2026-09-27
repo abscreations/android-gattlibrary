@@ -14,9 +14,11 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceEngineFacade
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.Fitbridge.logging.FileLoggingTree
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.roundToInt
@@ -237,7 +239,9 @@ class FtmsPeripheralController(
      * Control Point target. Normally the real machine; the data simulator swaps
      * itself in so a watch's target writes steer the synthetic machine.
      */
-    private val controlSink = SwitchableFtmsControlSink(engineControlSink)
+    private val controlSink = SwitchableFtmsControlSink(engineControlSink) {
+        profile != FtmsMachineProfile.TREADMILL || treadmillSpeedControlsEnabled()
+    }
     private val store = FtmsMetricStore()
 
     private val advertiser = FtmsPeripheralAdvertiser(
@@ -270,6 +274,28 @@ class FtmsPeripheralController(
     )
 
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val appPrefs = context.getSharedPreferences(FileLoggingTree.PREFS_NAME, Context.MODE_PRIVATE)
+
+    private fun treadmillSpeedControlsEnabled(): Boolean =
+        appPrefs.getBoolean(AppSettings.KEY_TREADMILL_SPEED_CONTROLS, false)
+
+    /** Rebuild the GATT range and feature surface after a settings change. */
+    fun refreshTreadmillSpeedControls() {
+        val desired = desiredStart ?: return
+        if (runState != RunState.RUNNING || desired.profile != FtmsMachineProfile.TREADMILL) return
+        val effectiveSpeed = desired.targets.supportsSpeed && treadmillSpeedControlsEnabled()
+        if (targetCapabilities.supportsSpeed == effectiveSpeed) return
+        start(
+            desired.profile,
+            desired.upstreamAddress,
+            desired.targets,
+            desired.cyclingConfig,
+            desired.measurementCapabilities,
+            desired.advertisedMachineType,
+        ) { result ->
+            result.onFailure { Timber.tag(TAG).w(it, "FTMS speed-control setting refresh failed") }
+        }
+    }
 
     /**
      * All adapter-name changes go through here, serialised and confirmed.
@@ -328,6 +354,7 @@ class FtmsPeripheralController(
         val targets: TargetCapabilities,
         val cyclingConfig: CyclingSensorConfig,
         val measurementCapabilities: FtmsMeasurementCapabilities,
+        val advertisedMachineType: FtmsMachineProfile,
     )
 
     /**
@@ -393,6 +420,9 @@ class FtmsPeripheralController(
 
     @Volatile
     private var profile: FtmsMachineProfile? = null
+
+    /** FTMS Service Data machine type of the running advertisement; null when not running. */
+    private var advertisedMachineType: FtmsMachineProfile? = null
     private var targetCapabilities: TargetCapabilities = TargetCapabilities.NONE
     private var advertiserMeasurementCapabilities: FtmsMeasurementCapabilities =
         FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
@@ -420,8 +450,12 @@ class FtmsPeripheralController(
         targets: TargetCapabilities,
         cyclingConfig: CyclingSensorConfig,
         measurementCapabilities: FtmsMeasurementCapabilities = profile.measurementCapabilities,
+        advertisedMachineType: FtmsMachineProfile = profile,
         onResult: (Result<Unit>) -> Unit,
     ) {
+        val effectiveTargets = if (
+            profile == FtmsMachineProfile.TREADMILL && !treadmillSpeedControlsEnabled()
+        ) targets.copy(speed = false, speedRange = null) else targets
         val effectiveCyclingConfig = cyclingConfig.effectiveFor(profile)
         desiredStart = DesiredStart(
             profile,
@@ -429,11 +463,13 @@ class FtmsPeripheralController(
             targets,
             effectiveCyclingConfig,
             measurementCapabilities,
+            advertisedMachineType,
         )
         if (
             runState == RunState.RUNNING && this.profile == profile &&
-            targetCapabilities == targets && this.cyclingConfig == effectiveCyclingConfig &&
-            advertiserMeasurementCapabilities == measurementCapabilities
+            targetCapabilities == effectiveTargets && this.cyclingConfig == effectiveCyclingConfig &&
+            advertiserMeasurementCapabilities == measurementCapabilities &&
+            this.advertisedMachineType == advertisedMachineType
         ) {
             advertiser.updateUpstreamAddress(upstreamAddress)
             onResult(Result.success(Unit))
@@ -457,12 +493,13 @@ class FtmsPeripheralController(
         }
 
         this.profile = profile
+        this.advertisedMachineType = advertisedMachineType
         statusRelay.resetClientHistory()
-        targetCapabilities = targets
+        targetCapabilities = effectiveTargets
         advertiserMeasurementCapabilities = measurementCapabilities
         this.cyclingConfig = effectiveCyclingConfig
         notifier.configureCycling(effectiveCyclingConfig)
-        engineControlSink.beginSession(targets)
+        engineControlSink.beginSession(effectiveTargets)
         runState = RunState.STARTING
 
         // Publication order matters, and the adapter name is the first step for a
@@ -481,10 +518,11 @@ class FtmsPeripheralController(
                 onSuccess = {
                     startAdvertisingAfterRename(
                         profile = profile,
-                        targets = targets,
+                        targets = effectiveTargets,
                         effectiveCyclingConfig = effectiveCyclingConfig,
                         upstreamAddress = upstreamAddress,
                         measurementCapabilities = measurementCapabilities,
+                        advertisedMachineType = advertisedMachineType,
                         epoch = epoch,
                         onResult = onResult,
                     )
@@ -509,6 +547,7 @@ class FtmsPeripheralController(
         effectiveCyclingConfig: CyclingSensorConfig,
         upstreamAddress: String?,
         measurementCapabilities: FtmsMeasurementCapabilities,
+        advertisedMachineType: FtmsMachineProfile,
         epoch: Long,
         onResult: (Result<Unit>) -> Unit,
     ) {
@@ -519,6 +558,7 @@ class FtmsPeripheralController(
             cyclingConfig = effectiveCyclingConfig,
             upstreamAddress = upstreamAddress,
             measurementCapabilities = measurementCapabilities,
+            advertisedMachineType = advertisedMachineType,
         ) startCallback@{ result ->
             if (operationEpoch.get() != epoch) {
                 onResult(Result.failure(CancellationException("FTMS start was superseded")))
@@ -565,6 +605,10 @@ class FtmsPeripheralController(
                                     ),
                                 )
                                 onResult(Result.success(Unit))
+                                // The setting may have changed while this asynchronous start
+                                // was adding services. Reconcile before a stale speed range stays
+                                // published for the rest of the session.
+                                refreshTreadmillSpeedControls()
                             },
                             onFailure = { failure ->
                                 Timber.tag(TAG).w(failure, "foreground service start failed")
@@ -594,6 +638,7 @@ class FtmsPeripheralController(
 
     private fun rollbackSessionState() {
         profile = null
+        advertisedMachineType = null
         targetCapabilities = TargetCapabilities.NONE
         advertiserMeasurementCapabilities = FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
         cyclingConfig = CyclingSensorConfig.DISABLED
@@ -910,6 +955,7 @@ class FtmsPeripheralController(
             desired.targets,
             desired.cyclingConfig,
             desired.measurementCapabilities,
+            desired.advertisedMachineType,
         ) { result ->
             result.onFailure { Timber.tag(TAG).w(it, "automatic FTMS restart failed") }
         }

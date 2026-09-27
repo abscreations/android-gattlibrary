@@ -58,12 +58,18 @@ data class FtmsAdvertisingPlan(
         private const val AD_HEADER_BYTES = 2
         private const val UUID_16_BYTES = 2
 
+        /**
+         * @param advertisedMachineType machine type written into the FTMS Service Data. Equals
+         * [profile] except for the simulator's deliberately misadvertising test persona; the
+         * local name and service list always follow [profile].
+         */
         fun forProfile(
             profile: FtmsMachineProfile,
             includeNativeBikingSensors: Boolean = false,
+            advertisedMachineType: FtmsMachineProfile = profile,
         ): FtmsAdvertisingPlan {
             val name = profile.advertisedName
-            val serviceData = ftmsServiceData(profile, available = true)
+            val serviceData = ftmsServiceData(advertisedMachineType, available = true)
             val serviceUuids = if (
                 includeNativeBikingSensors && profile == FtmsMachineProfile.INDOOR_BIKE
             ) {

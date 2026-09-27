@@ -91,7 +91,7 @@ internal fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machi
 fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     SimulatorPersona.IndoorBikeSpeedAndPower -> describeIndoorBikeSpeedAndPower()
     SimulatorPersona.StrydFootpod -> describeStrydFootpod()
-    is SimulatorPersona.Ftms -> describeFtms(profile)
+    is SimulatorPersona.Ftms -> describeFtms(profile, advertisedMachineType)
     is SimulatorPersona.Concept2Pm5 -> describeConcept2(machine, compatibility)
     is SimulatorPersona.KeiserMSeries -> describeKeiserMSeries(profile)
     SimulatorPersona.PrecorChrono -> describePrecorChrono()
@@ -161,12 +161,22 @@ private fun describeStrydFootpod(): SimulatorPersonaDescriptor {
     )
 }
 
-private fun describeFtms(profile: FtmsMachineProfile): SimulatorPersonaDescriptor {
+private fun describeFtms(
+    profile: FtmsMachineProfile,
+    advertisedMachineType: FtmsMachineProfile = profile,
+): SimulatorPersonaDescriptor {
     val capabilities = FtmsMockControlProfile.forMachine(profile)
+    val misadvertised = advertisedMachineType != profile
     return SimulatorPersonaDescriptor(
-        title = "FTMS · ${ftmsMachineLabel(profile)}",
+        title = "FTMS · ${ftmsMachineLabel(profile)}" +
+            if (misadvertised) " (Broken Feature Advertisement)" else "",
         protocol = "FTMS ${shortUuid(profile.dataCharacteristic)}" +
-            if (capabilities.any) " + 0x2AD9 control point" else "",
+            (if (capabilities.any) " + 0x2AD9 control point" else "") +
+            if (misadvertised) {
+                " · advertises ${ftmsMachineLabel(advertisedMachineType)} machine type"
+            } else {
+                ""
+            },
         controlModes = ftmsControlModes(capabilities),
         rangeKind = SimulatorRangeKind.TARGETS,
         ranges = ftmsTargetRanges(capabilities),

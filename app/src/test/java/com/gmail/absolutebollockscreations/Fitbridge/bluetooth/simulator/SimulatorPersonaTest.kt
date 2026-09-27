@@ -20,13 +20,38 @@ class SimulatorPersonaTest {
         val options = simulatorPersonaOptions(includeKickr = false)
         assertEquals(SimulatorPersona.IndoorBikeSpeedAndPower, options.first())
         assertEquals(SimulatorPersona.StrydFootpod, options[1])
+        // One extra FTMS row: the broken-advertisement rower directly below the honest rower.
+        val ftmsRows = options.drop(2).take(FtmsMockEngine.supportedMachines.size + 1)
         assertEquals(
             FtmsMockEngine.supportedMachines,
-            options.drop(2)
-                .take(FtmsMockEngine.supportedMachines.size)
-                .filterIsInstance<SimulatorPersona.Ftms>()
+            ftmsRows.filterIsInstance<SimulatorPersona.Ftms>()
+                .filterNot { it.misadvertisesMachineType }
                 .map { it.profile },
         )
+        val rower = ftmsRows.indexOf(SimulatorPersona.Ftms(FtmsMachineProfile.INDOOR_ROWER))
+        assertTrue(rower >= 0)
+        assertEquals(SimulatorPersona.Ftms.BROKEN_ROWER_ADVERTISEMENT, ftmsRows[rower + 1])
+    }
+
+    @Test
+    fun `broken advertisement rower is the standard rower advertising cross trainer`() {
+        val broken = SimulatorPersona.Ftms.BROKEN_ROWER_ADVERTISEMENT
+        assertEquals(FtmsMachineProfile.INDOOR_ROWER, broken.profile)
+        assertEquals(FtmsMachineProfile.ELLIPTICAL, broken.advertisedMachineType)
+        assertTrue(broken.misadvertisesMachineType)
+        assertEquals(FtmsMachineProfile.INDOOR_ROWER.advertisedName, broken.advertisedName)
+        assertNotEquals(SimulatorPersona.Ftms(FtmsMachineProfile.INDOOR_ROWER), broken)
+
+        val surface = requireNotNull(broken.standardSurface())
+        assertEquals(FtmsMachineProfile.INDOOR_ROWER, surface.profile)
+        assertEquals(FtmsMachineProfile.ELLIPTICAL, surface.advertisedMachineType)
+        assertFalse(surface.nativeBikeSensors)
+
+        FtmsMachineProfile.entries.forEach { profile ->
+            val honest = SimulatorPersona.Ftms(profile)
+            assertFalse(honest.misadvertisesMachineType)
+            assertEquals(profile, requireNotNull(honest.standardSurface()).advertisedMachineType)
+        }
     }
 
     @Test

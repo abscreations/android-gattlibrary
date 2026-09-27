@@ -135,7 +135,10 @@ object InertFtmsControlSink : FtmsControlSink {
  * the UI thread while a Control Point write is being handled on the GATT
  * callback thread.
  */
-class SwitchableFtmsControlSink(private val default: FtmsControlSink) : FtmsControlSink {
+class SwitchableFtmsControlSink(
+    private val default: FtmsControlSink,
+    private val speedControlAllowed: () -> Boolean = { true },
+) : FtmsControlSink {
 
     @Volatile
     var override: FtmsControlSink? = null
@@ -144,7 +147,10 @@ class SwitchableFtmsControlSink(private val default: FtmsControlSink) : FtmsCont
         get() = override ?: default
 
     override val canControl: Boolean get() = active.canControl
-    override val targetCapabilities: TargetCapabilities get() = active.targetCapabilities
+    override val targetCapabilities: TargetCapabilities
+        get() = active.targetCapabilities.let { caps ->
+            if (speedControlAllowed()) caps else caps.copy(speed = false, speedRange = null)
+        }
     override val reportsTargetChangesAsynchronously: Boolean
         get() = active.reportsTargetChangesAsynchronously
     override val clampsTargetsToAdvertisedRange: Boolean
@@ -154,7 +160,8 @@ class SwitchableFtmsControlSink(private val default: FtmsControlSink) : FtmsCont
     override fun reset(): Boolean = active.reset()
     override fun startOrResume(): Boolean = active.startOrResume()
     override fun stopOrPause(stop: Boolean): Boolean = active.stopOrPause(stop)
-    override fun setTargetSpeedKph(kph: Double): Boolean = active.setTargetSpeedKph(kph)
+    override fun setTargetSpeedKph(kph: Double): Boolean =
+        speedControlAllowed() && active.setTargetSpeedKph(kph)
     override fun setTargetInclinationPercent(percent: Double): Boolean =
         active.setTargetInclinationPercent(percent)
 

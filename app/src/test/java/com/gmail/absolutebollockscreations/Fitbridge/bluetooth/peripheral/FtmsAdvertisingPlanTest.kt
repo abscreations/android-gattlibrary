@@ -27,6 +27,21 @@ class FtmsAdvertisingPlanTest {
     }
 
     @Test
+    fun `advertised machine type override changes only the service data`() {
+        val honest = FtmsAdvertisingPlan.forProfile(FtmsMachineProfile.INDOOR_ROWER)
+        val broken = FtmsAdvertisingPlan.forProfile(
+            FtmsMachineProfile.INDOOR_ROWER,
+            advertisedMachineType = FtmsMachineProfile.ELLIPTICAL,
+        )
+        // Flags = available, Fitness Machine Type = Cross Trainer (bit 1), little-endian.
+        assertArrayEquals(byteArrayOf(0x01, 0x02, 0x00), broken.serviceData)
+        assertArrayEquals(byteArrayOf(0x01, 0x10, 0x00), honest.serviceData)
+        assertEquals(honest.localName, broken.localName)
+        assertEquals(honest.serviceUuids, broken.serviceUuids)
+        assertEquals(honest.advertisingBytes, broken.advertisingBytes)
+    }
+
+    @Test
     fun `appearance is deliberately not declared`() {
         for (profile in FtmsMachineProfile.entries) {
             assertTrue(!FtmsAdvertisingPlan.forProfile(profile).appearanceSupported)

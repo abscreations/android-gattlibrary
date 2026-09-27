@@ -30,8 +30,32 @@ sealed interface SimulatorPersona {
         override val advertisedName: String = "Stryd"
     }
 
-    data class Ftms(val profile: FtmsMachineProfile) : SimulatorPersona {
+    /**
+     * Standard FTMS persona.
+     *
+     * @param advertisedMachineType the Fitness Machine Type written into the advertisement's FTMS
+     * Service Data. It equals [profile] for every honest persona. The one deliberate exception is
+     * [BROKEN_ROWER_ADVERTISEMENT]: a rower that advertises itself as a cross trainer, so a
+     * client's scan filter (and its "show all devices" escape hatch) can be tested against a
+     * machine whose advertisement misstates its type. GATT, data characteristic and the ride are
+     * still [profile]'s; only the advertisement lies.
+     */
+    data class Ftms(
+        val profile: FtmsMachineProfile,
+        val advertisedMachineType: FtmsMachineProfile = profile,
+    ) : SimulatorPersona {
         override val advertisedName: String = profile.advertisedName
+
+        /** True when the advertisement's machine type deliberately disagrees with [profile]. */
+        val misadvertisesMachineType: Boolean get() = advertisedMachineType != profile
+
+        companion object {
+            /** Standard FTMS rower whose advertisement Service Data claims Cross Trainer. */
+            val BROKEN_ROWER_ADVERTISEMENT = Ftms(
+                profile = FtmsMachineProfile.INDOOR_ROWER,
+                advertisedMachineType = FtmsMachineProfile.ELLIPTICAL,
+            )
+        }
     }
 
     data class Concept2Pm5(
@@ -208,6 +232,8 @@ enum class KeiserMSeriesSimulatorDistanceUnit(val metresPerTenth: Double) {
 internal data class StandardSimulatorSurface(
     val profile: FtmsMachineProfile,
     val nativeBikeSensors: Boolean,
+    /** Machine type carried in the advertisement's FTMS Service Data; normally [profile]. */
+    val advertisedMachineType: FtmsMachineProfile = profile,
 )
 
 internal fun SimulatorPersona.standardSurface(): StandardSimulatorSurface? = when (this) {
@@ -218,6 +244,7 @@ internal fun SimulatorPersona.standardSurface(): StandardSimulatorSurface? = whe
     is SimulatorPersona.Ftms -> StandardSimulatorSurface(
         profile = profile,
         nativeBikeSensors = false,
+        advertisedMachineType = advertisedMachineType,
     )
     else -> null
 }

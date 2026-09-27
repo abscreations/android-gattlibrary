@@ -158,6 +158,9 @@ class FtmsPeripheralAdvertiser(
     private var advertisingAttempt: AdvertisingAttempt? = null
 
     private var profile: FtmsMachineProfile = FtmsMachineProfile.INDOOR_BIKE
+
+    /** Machine type advertised in FTMS Service Data; equals [profile] outside the broken-advert test persona. */
+    private var advertisedMachineType: FtmsMachineProfile = FtmsMachineProfile.INDOOR_BIKE
     private var targets: TargetCapabilities = TargetCapabilities.NONE
     private var measurementCapabilities: FtmsMeasurementCapabilities =
         FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
@@ -292,6 +295,7 @@ class FtmsPeripheralAdvertiser(
         cyclingConfig: CyclingSensorConfig,
         upstreamAddress: String?,
         measurementCapabilities: FtmsMeasurementCapabilities = profile.measurementCapabilities,
+        advertisedMachineType: FtmsMachineProfile = profile,
         onResult: (Result<Unit>) -> Unit,
     ) {
         // Invalidate all callbacks belonging to a previous server/advertiser.
@@ -307,6 +311,7 @@ class FtmsPeripheralAdvertiser(
         txQueue.resume()
 
         this.profile = profile
+        this.advertisedMachineType = advertisedMachineType
         this.targets = targets
         this.measurementCapabilities = measurementCapabilities
         this.includeTrainingStatus = includeTrainingStatus
@@ -538,7 +543,7 @@ class FtmsPeripheralAdvertiser(
         }
 
         val plan = runCatching {
-            FtmsAdvertisingPlan.forProfile(profile, cyclingConfig.enabled)
+            FtmsAdvertisingPlan.forProfile(profile, cyclingConfig.enabled, advertisedMachineType)
         }.getOrElse {
             onResult(Result.failure(it))
             return

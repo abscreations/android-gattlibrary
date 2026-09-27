@@ -142,6 +142,33 @@ class FtmsControlPointTest {
     // ── parameter layouts ────────────────────────────────────────────────────
 
     @Test
+    fun `treadmill speed opt in hides capability and refuses live speed writes`() {
+        val upstream = RecordingSink()
+        var speedAllowed = false
+        val guarded = SwitchableFtmsControlSink(upstream) { speedAllowed }
+        val cp = FtmsControlPointHandler(guarded)
+        val session = FtmsProcedureSession().apply { hasControl = true }
+        val speedRequest = byteArrayOf(O.SET_TARGET_SPEED, 0xE8.toByte(), 0x03)
+
+        assertFalse(guarded.targetCapabilities.supportsSpeed)
+        assertEquals(0, guarded.targetCapabilities.toTargetFeatureBits() and 1)
+        assertTrue(guarded.targetCapabilities.supportsInclination)
+        assertEquals(R.OPCODE_NOT_SUPPORTED, result(cp.handle(speedRequest, session)))
+        assertNull(upstream.speed)
+
+        speedAllowed = true
+        assertTrue(guarded.targetCapabilities.supportsSpeed)
+        assertEquals(R.SUCCESS, result(cp.handle(speedRequest, session)))
+        assertEquals(10.0, upstream.speed!!, 0.001)
+
+        speedAllowed = false
+        upstream.speed = null
+        assertEquals(R.OPCODE_NOT_SUPPORTED, result(cp.handle(speedRequest, session)))
+        assertFalse(guarded.setTargetSpeedKph(10.0))
+        assertNull(upstream.speed)
+    }
+
+    @Test
     fun `set target resistance takes a uint8, not a sint16`() {
         // FTMS 4.16: the Set Target Resistance Level parameter is a single
         // unsigned byte in 0.1 units, so a conformant write is exactly 2 octets.
