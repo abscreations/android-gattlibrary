@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import com.gmail.absolutebollockscreations.Fitbridge.logging.CaptureTree
 
 /**
  * Plan §0.9.2: the reserved tag is the entire routing mechanism.

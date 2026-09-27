@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import com.gmail.absolutebollockscreations.Fitbridge.logging.CaptureTree
 
 /**
  * The two sides of the bridge are recorded separately.
