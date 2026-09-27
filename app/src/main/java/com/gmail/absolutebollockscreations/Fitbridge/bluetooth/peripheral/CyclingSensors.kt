@@ -3,7 +3,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
-import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BleDefaults
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.CscNativeEventSnapshot
@@ -39,9 +39,9 @@ data class CyclingSensorConfig(
     )
 
     companion object {
-        const val MIN_WHEEL_CIRCUMFERENCE_MM = AppSettings.MIN_CSC_WHEEL_CIRCUMFERENCE_MM
-        const val DEFAULT_WHEEL_CIRCUMFERENCE_MM = AppSettings.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM
-        const val MAX_WHEEL_CIRCUMFERENCE_MM = AppSettings.MAX_CSC_WHEEL_CIRCUMFERENCE_MM
+        const val MIN_WHEEL_CIRCUMFERENCE_MM = BleDefaults.MIN_CSC_WHEEL_CIRCUMFERENCE_MM
+        const val DEFAULT_WHEEL_CIRCUMFERENCE_MM = BleDefaults.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM
+        const val MAX_WHEEL_CIRCUMFERENCE_MM = BleDefaults.MAX_CSC_WHEEL_CIRCUMFERENCE_MM
 
         val DISABLED = CyclingSensorConfig()
     }

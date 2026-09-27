@@ -109,7 +109,6 @@ import android.bluetooth.BluetoothProfile.STATE_DISCONNECTED
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import timber.log.Timber
 import java.util.UUID
 
@@ -457,7 +456,7 @@ internal object BtEngineGattCore {
             )
 
             handlersToClean.forEach { handler ->
-                if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                if (engine.bleConfig.phase05HardwareTest) {
                     Timber.tag(PHASE_05_TAG).i(
                         "PHASE05 disconnect cleanup start generation=%d handler=%s reason=%s",
                         context.connectionId.linkGeneration,
@@ -467,7 +466,7 @@ internal object BtEngineGattCore {
                 }
                 runCatching { handler.onDisconnected(engine) }
                     .onSuccess {
-                        if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                        if (engine.bleConfig.phase05HardwareTest) {
                             Timber.tag(PHASE_05_TAG).i(
                                 "PHASE05 disconnect cleanup complete generation=%d handler=%s " +
                                     "reason=%s",
@@ -727,7 +726,7 @@ internal object BtEngineGattCore {
 
             Timber.tag(BtEngineState.TAG)
                 .i("Services discovered: total=%d, activeHandlers=%d", services.size, activeSnapshot.size)
-            if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+            if (engine.bleConfig.phase05HardwareTest) {
                 Timber.tag(PHASE_05_TAG).i(
                     "PHASE05 active handlers generation=%d count=%d handlers=%s",
                     context.connectionId.linkGeneration,
@@ -963,7 +962,7 @@ internal object BtEngineGattCore {
                     context.connectionId,
                 )
                 activeHandlers.snapshot().forEach { handler ->
-                    if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+                    if (engine.bleConfig.phase05HardwareTest) {
                         Timber.tag(PHASE_05_TAG).i(
                             "PHASE05 merged CCCD ready delivery generation=%d handler=%s",
                             context.connectionId.linkGeneration,
@@ -1001,7 +1000,7 @@ internal object BtEngineGattCore {
                 )
                 return
             }
-            if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+            if (engine.bleConfig.phase05HardwareTest) {
                 Timber.tag(PHASE_05_TAG).d(
                     "PHASE05 characteristic route generation=%d characteristic=%s service=%s " +
                         "ownership=%s owners=%s",
@@ -1039,7 +1038,7 @@ internal object BtEngineGattCore {
                     serviceUuid,
                     context.connectionId,
                 )
-            } else if (BuildConfig.PHASE_05_HARDWARE_TEST) {
+            } else if (engine.bleConfig.phase05HardwareTest) {
                 Timber.tag(PHASE_05_TAG).d(
                     "PHASE05 descriptor route generation=%d characteristic=%s service=%s " +
                         "descriptor=%s ownership=%s owners=%s",

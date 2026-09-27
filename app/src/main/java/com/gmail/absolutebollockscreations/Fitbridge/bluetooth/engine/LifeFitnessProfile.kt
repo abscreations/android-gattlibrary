@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-// App dependency kept deliberately until S2 moves the Life Fitness defaults into BleConfig.
-import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BleDefaults
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.SigUserDataUnits
 
 /**
  * The user-entered profile a Life Fitness machine's handshake consumes (plan §6, D56).
@@ -53,15 +53,15 @@ internal data class LifeFitnessProfile(
      * They are still personal data and are redacted identically; the difference is only about
      * what blocks a connection.
      */
-    val gender: Int = AppSettings.DEFAULT_LF_GENDER,
-    val weightKg: Int = AppSettings.DEFAULT_LF_WEIGHT_KG,
-    val heightCm: Int = AppSettings.DEFAULT_LF_HEIGHT_CM,
+    val gender: Int = BleDefaults.LF_DEFAULT_GENDER,
+    val weightKg: Int = BleDefaults.LF_DEFAULT_WEIGHT_KG,
+    val heightCm: Int = BleDefaults.LF_DEFAULT_HEIGHT_CM,
 ) {
     /** Weight in the SIG `0x2A98` unit: `uint16` of 0.005 kg. */
-    val weightWireUnits: Int get() = AppSettings.weightToWireUnits(weightKg)
+    val weightWireUnits: Int get() = SigUserDataUnits.weightToWireUnits(weightKg)
 
     /** Height in the SIG `0x2A8E` unit: `uint16` of 0.01 m. */
-    val heightWireUnits: Int get() = AppSettings.heightToWireUnits(heightCm)
+    val heightWireUnits: Int get() = SigUserDataUnits.heightToWireUnits(heightCm)
 
     /**
      * Whether every required field carries something.

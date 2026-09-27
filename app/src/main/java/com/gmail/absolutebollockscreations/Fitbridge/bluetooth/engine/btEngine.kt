@@ -127,6 +127,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BleConfig
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BleDefaults
 
 const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
 const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
@@ -166,9 +168,15 @@ internal fun kayakFirstProviderCapabilities(): FtmsCapabilities = FtmsCapabiliti
 class BtEngine internal constructor(
     internal val context: Context,
     private val handlerFactory: HandlerFactory,
+    /** Host-app configuration (LIB-2/S2); replaces direct reads of the app's BuildConfig. */
+    internal val bleConfig: BleConfig,
 ) : BtServiceEngineFacade {
 
-    constructor(context: Context) : this(context, HandlerFactory.standard())
+    constructor(context: Context, bleConfig: BleConfig = BleConfig()) : this(
+        context,
+        HandlerFactory.standard(enablePhase05HardwareTest = bleConfig.phase05HardwareTest),
+        bleConfig,
+    )
 
     companion object {
         private const val RECOVERY_CONNECT_TIMEOUT_MS = 12_000L
@@ -1614,8 +1622,8 @@ class BtEngine internal constructor(
 
     internal fun acceptWheelCircumference(millimetres: Double) {
         val wheelMm = millimetres.roundToInt()
-        if (wheelMm !in com.gmail.absolutebollockscreations.Fitbridge.AppSettings.MIN_CSC_WHEEL_CIRCUMFERENCE_MM..
-            com.gmail.absolutebollockscreations.Fitbridge.AppSettings.MAX_CSC_WHEEL_CIRCUMFERENCE_MM
+        if (wheelMm !in BleDefaults.MIN_CSC_WHEEL_CIRCUMFERENCE_MM..
+            BleDefaults.MAX_CSC_WHEEL_CIRCUMFERENCE_MM
         ) {
             Timber.tag(BtEngineState.TAG).w(
                 "Accepted KICKR circumference %.1f mm is outside local CSC calibration bounds",

@@ -83,24 +83,23 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 import android.Manifest
 import androidx.annotation.RequiresPermission
 import timber.log.Timber
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUGGING
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUG_LEVEL
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BleDebug
 
 internal object BtEngineFtmsParsers {
 
     private const val TAG = "BtEngine" // or BtEngineState.TAG
 
     // Logging knobs:
-    //  - Metric values (decoded): BLE_DEBUG_LEVEL >= 4
-    //  - Raw Bluetooth payloads: BLE_DEBUG_LEVEL > 4
+    //  - Metric values (decoded): BleDebug.level >= 4
+    //  - Raw Bluetooth payloads: BleDebug.level > 4
     private const val LOG_FRAMES = true
     private const val LOG_METRIC_VALUES = true
 
     private fun canLogFrames(): Boolean =
-        BLE_DEBUGGING && BLE_DEBUG_LEVEL > 4 && LOG_FRAMES
+        BleDebug.enabled && BleDebug.level > 4 && LOG_FRAMES
 
     private fun canLogMetrics(): Boolean =
-        BLE_DEBUGGING && BLE_DEBUG_LEVEL >= 4 && LOG_METRIC_VALUES
+        BleDebug.enabled && BleDebug.level >= 4 && LOG_METRIC_VALUES
 
     // ─────────────────────────────────────────────────────────────
     // Unit conversion constants (local)

@@ -71,7 +71,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
-import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import timber.log.Timber
 import java.util.Locale
 import java.util.WeakHashMap
@@ -128,7 +127,7 @@ internal fun BtEngine.startScanImpl(
             val address = canonicalScanAddress(safeDeviceAddress(result))
             val key = address.ifBlank { "tmp:${result.device.hashCode()}" }
 
-            if (BuildConfig.PHASE_05_HARDWARE_TEST && phase05EvidenceKeys.add(key)) {
+            if (bleConfig.phase05HardwareTest && phase05EvidenceKeys.add(key)) {
                 logPhase05AdvertisementEvidence(result)
             }
 

@@ -5,8 +5,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUG_LEVEL
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUGGING
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BleDebug
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_RSC_FEATURE
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_RSC_MEASUREMENT
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_RSC_SERVICE
@@ -198,7 +197,7 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // removing. They are carried in the parser so the wire format is fully
         // covered by fixtures, and remain owed for the second half of Phase 1.
 
-        if (BLE_DEBUGGING && BLE_DEBUG_LEVEL > 4) {
+        if (BleDebug.enabled && BleDebug.level > 4) {
             Timber.tag(BtEngineState.TAG).d(
                 "RSC decoded speed=%.2f km/h cadence=%d stride=%s distance=%s gait=%s",
                 reading.speedKph,

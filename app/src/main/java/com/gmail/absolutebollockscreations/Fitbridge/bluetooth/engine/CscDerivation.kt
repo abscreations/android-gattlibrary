@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BleDefaults
 
 internal enum class CscWorkoutPersona { BIKE, ELLIPTICAL }
 
@@ -11,14 +11,14 @@ internal data class CscSessionSnapshot(
 )
 
 internal data class CscCalibration(
-    val wheelCircumferenceMm: Int = AppSettings.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM,
-    val ellipticalStrideLengthMm: Int = AppSettings.DEFAULT_ELLIPTICAL_STRIDE_LENGTH_MM,
+    val wheelCircumferenceMm: Int = BleDefaults.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM,
+    val ellipticalStrideLengthMm: Int = BleDefaults.DEFAULT_ELLIPTICAL_STRIDE_LENGTH_MM,
 ) {
     init {
         require(wheelCircumferenceMm in
-            AppSettings.MIN_CSC_WHEEL_CIRCUMFERENCE_MM..AppSettings.MAX_CSC_WHEEL_CIRCUMFERENCE_MM)
+            BleDefaults.MIN_CSC_WHEEL_CIRCUMFERENCE_MM..BleDefaults.MAX_CSC_WHEEL_CIRCUMFERENCE_MM)
         require(ellipticalStrideLengthMm in
-            AppSettings.MIN_ELLIPTICAL_STRIDE_LENGTH_MM..AppSettings.MAX_ELLIPTICAL_STRIDE_LENGTH_MM)
+            BleDefaults.MIN_ELLIPTICAL_STRIDE_LENGTH_MM..BleDefaults.MAX_ELLIPTICAL_STRIDE_LENGTH_MM)
     }
 }
 

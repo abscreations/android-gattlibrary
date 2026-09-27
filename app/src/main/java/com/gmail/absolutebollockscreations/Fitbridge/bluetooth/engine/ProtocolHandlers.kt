@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import android.bluetooth.BluetoothGatt
-import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import timber.log.Timber
 import java.util.UUID
 
@@ -184,7 +183,8 @@ internal class HandlerFactory(
 
     companion object {
         fun standard(
-            enablePhase05HardwareTest: Boolean = BuildConfig.PHASE_05_HARDWARE_TEST,
+            // BtEngine passes BleConfig.phase05HardwareTest; false matches every normal build.
+            enablePhase05HardwareTest: Boolean = false,
             kayakFirstDisplayConfiguration: () -> KayakFirstDisplayConfiguration = {
                 KayakFirstDisplayConfiguration.DEFAULT
             },
