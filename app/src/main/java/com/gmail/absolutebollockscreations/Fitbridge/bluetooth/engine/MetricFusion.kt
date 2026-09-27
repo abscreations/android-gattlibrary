@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.HrZoneMode
 import java.util.UUID
 import kotlin.math.roundToInt
 import timber.log.Timber

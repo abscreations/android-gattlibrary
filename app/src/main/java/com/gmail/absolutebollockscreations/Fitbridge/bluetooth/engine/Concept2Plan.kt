@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 import java.util.UUID
 
 /**

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.ConnectedServiceTag
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds

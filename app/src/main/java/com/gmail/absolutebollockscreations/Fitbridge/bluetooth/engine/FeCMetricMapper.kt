@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 
 /**
  * One canonical metric derived from a decoded FE-C page, in FitBridge units. Mirrors

@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FtmsMockSample
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.LifeFitnessMachine
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.LifeFitnessPacketEncoder

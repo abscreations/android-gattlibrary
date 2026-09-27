@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

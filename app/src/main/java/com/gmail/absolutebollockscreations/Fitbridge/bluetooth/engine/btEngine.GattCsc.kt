@@ -5,11 +5,8 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.Fitbridge.ActiveCscHandler
-import com.gmail.absolutebollockscreations.Fitbridge.DebugLevel
-import com.gmail.absolutebollockscreations.Fitbridge.Debugging
-import com.gmail.absolutebollockscreations.Fitbridge.cscRoleCapabilityFromFeature
-import com.gmail.absolutebollockscreations.Fitbridge.resolveCscFeatureRoles
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUG_LEVEL
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUGGING
 import java.util.UUID
 import timber.log.Timber
 
@@ -200,7 +197,7 @@ internal class CscProtocolHandler(
                 nativeCumulative = metric.nativeCumulative,
                 quality = MetricQuality.DERIVED,
             )
-            if (Debugging && DebugLevel > 4 &&
+            if (BLE_DEBUGGING && BLE_DEBUG_LEVEL > 4 &&
                 (metric.metric == MetricKind.SPEED || metric.metric == MetricKind.DISTANCE)
             ) {
                 Timber.tag(BtEngineState.TAG).d(

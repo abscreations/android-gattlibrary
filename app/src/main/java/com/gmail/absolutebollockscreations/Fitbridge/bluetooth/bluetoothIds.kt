@@ -7,7 +7,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
 import android.os.ParcelUuid
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 import java.util.UUID
 
 /**

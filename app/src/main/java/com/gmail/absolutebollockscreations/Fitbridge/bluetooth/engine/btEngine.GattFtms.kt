@@ -98,7 +98,7 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 import android.Manifest
 import android.bluetooth.*
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_BIKING_DATA
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_CCCD
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_ELLIPTICAL_DATA

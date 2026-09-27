@@ -1,7 +1,5 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile
-import com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField
 
 /**
  * Runs a Life Fitness setup transcript against a live link (plan §6, unit 6.5b part 2).

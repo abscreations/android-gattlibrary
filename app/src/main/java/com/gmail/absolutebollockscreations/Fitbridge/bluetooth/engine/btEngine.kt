@@ -103,10 +103,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
-import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
-import com.gmail.absolutebollockscreations.Fitbridge.canAssignSensorService
-import com.gmail.absolutebollockscreations.Fitbridge.cscRoleCapabilityFromAppearance
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.HrZoneMode
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_FITNESS_MACHINE_FEATURE
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_FTMS_SERVICE
@@ -618,7 +616,7 @@ class BtEngine internal constructor(
 
     /** Profile fields a Life Fitness connection asked for and did not get (plan §6, unit 6.5c). */
     internal val lifeFitnessProfilePrompt:
-        StateFlow<List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>>
+        StateFlow<List<LifeFitnessProfileField>>
         get() = state.lifeFitnessProfilePrompt
 
     /** Dismiss the prompt. The connection is unaffected; the machine simply stays silent. */
@@ -2212,7 +2210,7 @@ class BtEngine internal constructor(
 
     /** Life Fitness handshake profile, pushed from the settings screen (plan §6, D56). */
     internal fun setLifeFitnessProfileFromApp(
-        profile: com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile,
+        profile: LifeFitnessProfile,
         ageYears: Int,
     ) {
         state.setLifeFitnessProfileFromApp(profile, ageYears)

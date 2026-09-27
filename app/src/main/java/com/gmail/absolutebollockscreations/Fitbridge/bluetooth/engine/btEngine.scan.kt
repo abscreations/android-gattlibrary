@@ -70,7 +70,7 @@ import android.bluetooth.le.ScanSettings
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.BuildConfig
 import timber.log.Timber
 import java.util.Locale

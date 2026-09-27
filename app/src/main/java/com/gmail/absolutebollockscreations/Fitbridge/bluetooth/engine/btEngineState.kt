@@ -35,7 +35,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanResult
-import com.gmail.absolutebollockscreations.Fitbridge.HrZoneMode
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.HrZoneMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
@@ -1131,8 +1131,8 @@ class BtEngineState : HrmStateSink {
      * consumer is the setup transcript, which reads it once per link.
      */
     @Volatile
-    internal var lifeFitnessProfile: com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile =
-        com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile.EMPTY
+    internal var lifeFitnessProfile: LifeFitnessProfile =
+        LifeFitnessProfile.EMPTY
         private set
 
     /** Derived age in years, from the birth month and year the settings screen holds. */
@@ -1150,16 +1150,16 @@ class BtEngineState : HrmStateSink {
      * Empty means no prompt is owed.
      */
     private val _lifeFitnessProfilePrompt =
-        MutableStateFlow<List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>>(
+        MutableStateFlow<List<LifeFitnessProfileField>>(
             emptyList()
         )
     internal val lifeFitnessProfilePrompt:
-        StateFlow<List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>> =
+        StateFlow<List<LifeFitnessProfileField>> =
         _lifeFitnessProfilePrompt
 
     /** Raise the prompt. Called when a connected machine's handshake could not start. */
     internal fun setLifeFitnessProfilePrompt(
-        missing: List<com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField>,
+        missing: List<LifeFitnessProfileField>,
     ) {
         _lifeFitnessProfilePrompt.value = missing
         Timber.tag(TAG).i("lifeFitnessProfilePrompt: %d field(s) requested", missing.size)
@@ -1178,7 +1178,7 @@ class BtEngineState : HrmStateSink {
      * two, and what the others contain, is not FitBridge's to publish.
      */
     internal fun setLifeFitnessProfileFromApp(
-        profile: com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile,
+        profile: LifeFitnessProfile,
         ageYears: Int,
     ) {
         lifeFitnessProfile = profile

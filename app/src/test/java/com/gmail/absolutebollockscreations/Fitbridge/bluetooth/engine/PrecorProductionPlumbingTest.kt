@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.ActivityType
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

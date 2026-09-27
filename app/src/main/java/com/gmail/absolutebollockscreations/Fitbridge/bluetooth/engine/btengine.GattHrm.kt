@@ -59,8 +59,8 @@ import android.bluetooth.BluetoothGatt.GATT_SUCCESS
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.Fitbridge.DebugLevel
-import com.gmail.absolutebollockscreations.Fitbridge.Debugging
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUG_LEVEL
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.BLE_DEBUGGING
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_BODY_SENSOR_LOCATION
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_HEART_RATE_CONTROL_POINT
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds.UUID_HEART_RATE_MEASUREMENT
@@ -172,14 +172,14 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
             }
             UUID_HEART_RATE_CONTROL_POINT -> {
                 // We don't actively use CP, but log for debugging if a device sends something.
-                if (Debugging && DebugLevel > 4) {
+                if (BLE_DEBUGGING && BLE_DEBUG_LEVEL > 4) {
                     Timber.tag(BtEngineState.TAG).d(
                         "HRM Control Point notification/indication received payload=%s",
                         value.toHex()
                     )
                 }
             }
-            else -> if (Debugging && DebugLevel > 4) {
+            else -> if (BLE_DEBUGGING && BLE_DEBUG_LEVEL > 4) {
                 Timber.tag(BtEngineState.TAG).d(
                     "HRM notify from unhandled char %s payload=%s",
                     short(ch.uuid),
@@ -258,7 +258,7 @@ internal class HrmProtocolHandler : BtEngineGattCore.ProtocolHandler {
         if (decoded.optionalFieldTruncated) {
             Timber.tag(BtEngineState.TAG).w("HRM measurement ended inside an optional field")
         }
-        if (Debugging && DebugLevel > 4) {
+        if (BLE_DEBUGGING && BLE_DEBUG_LEVEL > 4) {
             Timber.tag(BtEngineState.TAG).d(
                 "HRM decoded bpm=%d contact=%s energyKj=%s rrCount=%d",
                 decoded.bpm,

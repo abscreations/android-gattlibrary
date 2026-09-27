@@ -530,7 +530,7 @@ internal class KayakFirstProtocolHandler(
         engine.state.connectionRegistry.setMachineDeviceType(context, BtEngineState.MachineDeviceType.ROWER)
         engine.state.updateDeviceMachineFeatureByAddress(
             context.address,
-            com.gmail.absolutebollockscreations.Fitbridge.ActivityType.ROWING.ordinal,
+            com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType.ROWING.ordinal,
         )
         engine.maybeStartProviderAdvertisingAfterFeatures(BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER)
     }
@@ -640,7 +640,7 @@ internal class KayakFirstProtocolHandler(
                     )
                     engine.state.updateDeviceMachineFeatureByAddress(
                         context.address,
-                        com.gmail.absolutebollockscreations.Fitbridge.ActivityType.ROWING.ordinal,
+                        com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType.ROWING.ordinal,
                     )
                     engine.maybeStartProviderAdvertisingAfterFeatures(
                         BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER,

@@ -1,9 +1,5 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-import com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfile
-import com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessProfileField
-import com.gmail.absolutebollockscreations.Fitbridge.LifeFitnessSetupGate
-import com.gmail.absolutebollockscreations.Fitbridge.lifeFitnessSetupGate
 
 /**
  * Decides what a connected machine's setup path should do, and drives it (plan §6, unit 6.5a).
