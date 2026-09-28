@@ -277,11 +277,23 @@ class FtmsPeripheralController(
 
     private fun treadmillSpeedControlsEnabled(): Boolean = config.treadmillSpeedControlsEnabled()
 
+    /**
+     * True when the treadmill speed opt-in removes target speed from [profile]'s surface.
+     *
+     * Only bridged sessions are gated. The data simulator installs its control override before it
+     * starts the server, and a simulated treadmill has no belt to move, so it keeps whatever speed
+     * capability "Accept target commands" gave it (LIB-9d).
+     */
+    private fun treadmillSpeedGated(profile: FtmsMachineProfile): Boolean =
+        profile == FtmsMachineProfile.TREADMILL &&
+            controlSink.override == null &&
+            !treadmillSpeedControlsEnabled()
+
     /** Rebuild the GATT range and feature surface after a settings change. */
     fun refreshTreadmillSpeedControls() {
         val desired = desiredStart ?: return
         if (runState != RunState.RUNNING || desired.profile != FtmsMachineProfile.TREADMILL) return
-        val effectiveSpeed = desired.targets.supportsSpeed && treadmillSpeedControlsEnabled()
+        val effectiveSpeed = desired.targets.supportsSpeed && !treadmillSpeedGated(desired.profile)
         if (targetCapabilities.supportsSpeed == effectiveSpeed) return
         start(
             desired.profile,
@@ -451,9 +463,11 @@ class FtmsPeripheralController(
         advertisedMachineType: FtmsMachineProfile = profile,
         onResult: (Result<Unit>) -> Unit,
     ) {
-        val effectiveTargets = if (
-            profile == FtmsMachineProfile.TREADMILL && !treadmillSpeedControlsEnabled()
-        ) targets.copy(speed = false, speedRange = null) else targets
+        val effectiveTargets = if (treadmillSpeedGated(profile)) {
+            targets.copy(speed = false, speedRange = null)
+        } else {
+            targets
+        }
         val effectiveCyclingConfig = cyclingConfig.effectiveFor(profile)
         desiredStart = DesiredStart(
             profile,

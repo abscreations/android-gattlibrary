@@ -169,6 +169,30 @@ class FtmsControlPointTest {
     }
 
     @Test
+    fun `treadmill speed opt in does not gate a local override such as the simulator`() {
+        // LIB-9d: the opt-in guards pass-through to a real treadmill. The simulator's override
+        // moves nothing, so with its own speed capability it keeps speed even when the opt-in
+        // is off; removing the override restores the gate for the real machine.
+        val upstream = RecordingSink()
+        val simulator = RecordingSink()
+        val guarded = SwitchableFtmsControlSink(upstream) { false }
+        val cp = FtmsControlPointHandler(guarded)
+        val session = FtmsProcedureSession().apply { hasControl = true }
+        val speedRequest = byteArrayOf(O.SET_TARGET_SPEED, 0xE8.toByte(), 0x03)
+
+        guarded.override = simulator
+        assertTrue(guarded.targetCapabilities.supportsSpeed)
+        assertEquals(R.SUCCESS, result(cp.handle(speedRequest, session)))
+        assertEquals(10.0, simulator.speed!!, 0.001)
+        assertNull(upstream.speed)
+
+        guarded.override = null
+        assertFalse(guarded.targetCapabilities.supportsSpeed)
+        assertEquals(R.OPCODE_NOT_SUPPORTED, result(cp.handle(speedRequest, session)))
+        assertNull(upstream.speed)
+    }
+
+    @Test
     fun `set target resistance takes a uint8, not a sint16`() {
         // FTMS 4.16: the Set Target Resistance Level parameter is a single
         // unsigned byte in 0.1 units, so a conformant write is exactly 2 octets.

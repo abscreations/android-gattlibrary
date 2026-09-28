@@ -134,6 +134,10 @@ object InertFtmsControlSink : FtmsControlSink {
  * The switch is a volatile reference read per call, so it can be changed from
  * the UI thread while a Control Point write is being handled on the GATT
  * callback thread.
+ *
+ * [speedControlAllowed] is the treadmill speed opt-in. It gates only the pass-through to a real
+ * machine: while an [override] is installed, speed follows the override's own capabilities
+ * (LIB-9d).
  */
 class SwitchableFtmsControlSink(
     private val default: FtmsControlSink,
@@ -146,10 +150,13 @@ class SwitchableFtmsControlSink(
     private val active: FtmsControlSink
         get() = override ?: default
 
+    /** The opt-in applies to the real machine only; a local override decides for itself. */
+    private fun speedAllowed(): Boolean = override != null || speedControlAllowed()
+
     override val canControl: Boolean get() = active.canControl
     override val targetCapabilities: TargetCapabilities
         get() = active.targetCapabilities.let { caps ->
-            if (speedControlAllowed()) caps else caps.copy(speed = false, speedRange = null)
+            if (speedAllowed()) caps else caps.copy(speed = false, speedRange = null)
         }
     override val reportsTargetChangesAsynchronously: Boolean
         get() = active.reportsTargetChangesAsynchronously
@@ -161,7 +168,7 @@ class SwitchableFtmsControlSink(
     override fun startOrResume(): Boolean = active.startOrResume()
     override fun stopOrPause(stop: Boolean): Boolean = active.stopOrPause(stop)
     override fun setTargetSpeedKph(kph: Double): Boolean =
-        speedControlAllowed() && active.setTargetSpeedKph(kph)
+        speedAllowed() && active.setTargetSpeedKph(kph)
     override fun setTargetInclinationPercent(percent: Double): Boolean =
         active.setTargetInclinationPercent(percent)
 
