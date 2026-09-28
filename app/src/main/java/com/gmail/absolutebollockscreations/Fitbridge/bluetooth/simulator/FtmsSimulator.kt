@@ -6,7 +6,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineSt
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
-import com.gmail.absolutebollockscreations.Fitbridge.power.FitBridgeWakeLock
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.KeepAwake
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,6 +40,8 @@ class FtmsSimulator(
     private val appContext: Context,
     private val engineState: BtEngineState,
     private val peripheral: SimulatorPeripheralHost,
+    /** CPU keep-awake owned by the host app (LIB-7/S7); shares its registry with RunMode. */
+    private val keepAwake: KeepAwake,
 ) {
 
     /**
@@ -463,7 +465,7 @@ class FtmsSimulator(
 
         // Keep the CPU up for as long as we are generating, so bridging survives
         // the screen going off. Paired with the release in stop().
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
 
         _state.value = State(
             running = true,
@@ -496,7 +498,7 @@ class FtmsSimulator(
         engine = null
         concept2Engine = null
         generationGate.reset()
-        FitBridgeWakeLock.releaseCpu(wakeLockOwner)
+        keepAwake.releaseCpu(wakeLockOwner)
         peripheral.setControlOverride(null)
         runCatching { peripheral.stopAdvertising() }
             .onFailure { Timber.tag(TAG).w(it, "stopping simulator advertising threw") }
@@ -529,7 +531,7 @@ class FtmsSimulator(
             return
         }
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -597,7 +599,7 @@ class FtmsSimulator(
         }
 
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -645,7 +647,7 @@ class FtmsSimulator(
         }
 
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -685,7 +687,7 @@ class FtmsSimulator(
             return
         }
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -746,7 +748,7 @@ class FtmsSimulator(
         }
 
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -796,7 +798,7 @@ class FtmsSimulator(
         }
 
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -849,7 +851,7 @@ class FtmsSimulator(
         }
 
         sessionProjection.begin(haveControl = persona.controlEnabled)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -893,7 +895,7 @@ class FtmsSimulator(
         // Control is negotiated independently on each downstream route; starting the simulator
         // itself does not mean a client owns any of those routes yet.
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -940,7 +942,7 @@ class FtmsSimulator(
         }
 
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
@@ -988,7 +990,7 @@ class FtmsSimulator(
         }
 
         sessionProjection.begin(haveControl = false)
-        FitBridgeWakeLock.acquireCpu(appContext, wakeLockOwner)
+        keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
             persona = persona,
