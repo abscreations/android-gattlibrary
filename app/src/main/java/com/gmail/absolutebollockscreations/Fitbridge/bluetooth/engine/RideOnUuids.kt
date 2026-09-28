@@ -1,7 +1,10 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /** RideOn constants only. Merely referencing these values never activates the protocol. */
-internal object RideOnUuids {
+@FitBridgeBleInternalApi
+object RideOnUuids {
     val ORIGINAL_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_SERVICE
     val CORE2_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE
     val ASYNC_TX = BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX

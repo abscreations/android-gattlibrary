@@ -1,11 +1,13 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import kotlin.math.PI
 import kotlin.math.pow
 
-internal enum class KayakFirstGeneration { ORANGE, BLUE }
+enum class KayakFirstGeneration { ORANGE, BLUE }
 
-internal fun kayakFirstGeneration(localName: String?): KayakFirstGeneration? {
+fun kayakFirstGeneration(localName: String?): KayakFirstGeneration? {
     if (localName == null || !localName.matches(Regex("^[0-9]{8}$"))) return null
     return if (localName.substring(0, 2).toInt() < 18) {
         KayakFirstGeneration.ORANGE
@@ -14,7 +16,8 @@ internal fun kayakFirstGeneration(localName: String?): KayakFirstGeneration? {
     }
 }
 
-internal enum class KayakFirstOrangeCommand(val wire: Byte) {
+@FitBridgeBleInternalApi
+enum class KayakFirstOrangeCommand(val wire: Byte) {
     T_MIN('1'.code.toByte()),
     T_H('2'.code.toByte()),
     T_MAX('3'.code.toByte()),
@@ -149,14 +152,16 @@ internal class KayakFirstOrangeResponseParser {
     }
 }
 
-internal data class KayakFirstOrangeTimingTuple(
+@FitBridgeBleInternalApi
+data class KayakFirstOrangeTimingTuple(
     val tMinSeconds: Double,
     val tHSeconds: Double,
     val tMaxSeconds: Double,
     val tVSeconds: Double,
 )
 
-internal data class KayakFirstOrangePhysicsResult(
+@FitBridgeBleInternalApi
+data class KayakFirstOrangePhysicsResult(
     val powerWatts: Double,
     val forceNewtons: Double,
     val speedMetresPerSecond: Double,
@@ -165,7 +170,8 @@ internal data class KayakFirstOrangePhysicsResult(
 )
 
 /** E2 4.2.0 manufacturer equations recovered from the official Orange application. */
-internal object KayakFirstOrangePhysics {
+@FitBridgeBleInternalApi
+object KayakFirstOrangePhysics {
     const val FLYWHEEL_INERTIA = 0.02527962
     const val FORCE_RADIUS_METRES = 0.027
     const val DRAG_COEFFICIENT = 0.1419262

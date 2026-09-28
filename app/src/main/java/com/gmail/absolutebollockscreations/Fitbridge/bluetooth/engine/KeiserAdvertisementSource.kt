@@ -22,7 +22,7 @@ import timber.log.Timber
  * `SharedPreferences`: the bike a person rode on Tuesday is not a preference, and a remembered
  * address would silently re-attach a returning user to a machine somebody else is now riding.
  */
-internal data class KeiserSelection(
+data class KeiserSelection(
     val address: String,
     val systemId: Int,
     /**
@@ -61,7 +61,7 @@ internal data class KeiserSelection(
     /** The same bike, now speaking from [address]. Identity, generation and origin are unchanged. */
     internal fun boundTo(address: String): KeiserSelection = copy(address = address)
 
-    internal companion object {
+    companion object {
         /** Used when a row was admitted without a decodable variant letter in its local name. */
         const val DEFAULT_MODEL = "M3"
 

@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.BleCapture
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CaptureRole
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture.CccdEvent
@@ -37,7 +38,8 @@ import java.util.UUID
  * frame-count ratio, because the bytes FitBridge actually sent were recorded
  * nowhere.
  */
-internal object PeripheralCaptureHooks {
+@FitBridgeBleInternalApi
+object PeripheralCaptureHooks {
 
     /**
      * A client connected.

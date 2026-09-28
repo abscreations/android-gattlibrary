@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import kotlin.math.abs
 import kotlin.math.cbrt
 import kotlin.math.sqrt
@@ -55,7 +57,8 @@ import kotlin.math.sqrt
  * *display*, not about the machine: their purpose is to stop a resistance change from producing a
  * visible step, and nothing about the protocol requires them.
  */
-internal object SchwinnX70PowerModel {
+@FitBridgeBleInternalApi
+object SchwinnX70PowerModel {
 
     /**
      * Quadratic coefficients per resistance level: `a`, `b`, `c` for `a·rpm² + b·rpm + c`.

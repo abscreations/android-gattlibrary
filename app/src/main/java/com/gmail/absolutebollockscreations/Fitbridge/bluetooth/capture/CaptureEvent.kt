@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import java.util.UUID
 
 /**
@@ -38,7 +39,8 @@ import java.util.UUID
  * by identity. That is deliberate and harmless: nothing compares events, and the
  * tests assert on encoded lines rather than on instances.
  */
-internal sealed interface CaptureEvent {
+@FitBridgeBleInternalApi
+sealed interface CaptureEvent {
 
     /** The `ev` discriminator written to the wire. */
     val ev: String
@@ -66,7 +68,8 @@ internal sealed interface CaptureEvent {
  * notification that produced a sample, and the downstream notification that
  * carried it onward.
  */
-internal enum class CaptureRole(val tag: String, val fileSuffix: String) {
+@FitBridgeBleInternalApi
+enum class CaptureRole(val tag: String, val fileSuffix: String) {
     /** FitBridge as GATT client. `notify` and `read` mean *received*. */
     CENTRAL("BLECAP", "central"),
 
@@ -81,7 +84,8 @@ internal enum class CaptureRole(val tag: String, val fileSuffix: String) {
 }
 
 /** Why a payload was withheld. Written verbatim as the `redacted` field. */
-internal enum class RedactionReason(val wireName: String) {
+@FitBridgeBleInternalApi
+enum class RedactionReason(val wireName: String) {
     /** Name, email, age, gender, height, weight — Life Fitness (Phase 6). */
     USER_PROFILE("user_profile"),
 
@@ -165,14 +169,16 @@ internal data class ScanEvent(
 }
 
 /** Ring-buffer or writer-queue overflow marker. */
-internal data class DroppedEvent(val count: Int) : CaptureEvent {
+@FitBridgeBleInternalApi
+data class DroppedEvent(val count: Int) : CaptureEvent {
     override val ev: String get() = "dropped"
     override val conn: String? get() = null
 }
 
 // ── connection lifecycle ──────────────────────────────────────────────────────
 
-internal data class ConnectEvent(
+@FitBridgeBleInternalApi
+data class ConnectEvent(
     override val conn: String,
     /** Link generation from §0.2, so a reconnect is distinguishable. */
     val generation: Int,
@@ -189,7 +195,8 @@ internal data class ConnectEvent(
     override val ev: String get() = "connect"
 }
 
-internal data class DisconnectEvent(
+@FitBridgeBleInternalApi
+data class DisconnectEvent(
     override val conn: String,
     val reason: String,
     val generation: Int,
@@ -221,7 +228,8 @@ internal data class CapturedCharacteristic(
     val descriptors: List<String>,
 )
 
-internal data class CccdEvent(
+@FitBridgeBleInternalApi
+data class CccdEvent(
     override val conn: String,
     val characteristic: String,
     val enabled: Boolean,
@@ -232,7 +240,8 @@ internal data class CccdEvent(
 
 // ── traffic ───────────────────────────────────────────────────────────────────
 
-internal data class NotifyEvent(
+@FitBridgeBleInternalApi
+data class NotifyEvent(
     override val conn: String,
     val characteristic: String,
     val payload: ByteArray,
@@ -240,7 +249,8 @@ internal data class NotifyEvent(
     override val ev: String get() = "notify"
 }
 
-internal data class ReadEvent(
+@FitBridgeBleInternalApi
+data class ReadEvent(
     override val conn: String,
     val characteristic: String,
     val payload: ByteArray,
@@ -258,7 +268,8 @@ internal data class ReadEvent(
  * to a payload-carrying instance that bypasses [of] entirely, which is precisely
  * the hole this design exists to close.
  */
-internal class WriteEvent private constructor(
+@FitBridgeBleInternalApi
+class WriteEvent private constructor(
     override val conn: String,
     val characteristic: String,
     val payload: ByteArray,
@@ -405,7 +416,8 @@ internal data class ErrorEvent(
  * disk seconds later, and a timestamp applied at flush time would misrepresent
  * when the thing happened.
  */
-internal data class CaptureRecord(
+@FitBridgeBleInternalApi
+data class CaptureRecord(
     val atMs: Long,
     val seq: Long,
     val event: CaptureEvent,
@@ -418,7 +430,8 @@ internal data class CaptureRecord(
 )
 
 /** First line of every capture file. */
-internal data class CaptureHeader(
+@FitBridgeBleInternalApi
+data class CaptureHeader(
     val appVersion: String,
     val androidSdk: Int,
     val deviceModel: String,

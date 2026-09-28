@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import android.Manifest
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
@@ -409,7 +411,8 @@ internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
  * here, because a command FitBridge generated would be a third value for a field where two already
  * disagree and nothing can choose between them.
  */
-internal val SCHWINN_X70_INITIALISATION: ByteArray = byteArrayOf(
+@FitBridgeBleInternalApi
+val SCHWINN_X70_INITIALISATION: ByteArray = byteArrayOf(
     0x07, 0x01, 0xD3.toByte(), 0x00, 0x1F, 0x05, 0x01,
 )
 

@@ -1,8 +1,11 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import kotlin.math.roundToInt
 
-internal sealed interface WahooKickrCommand {
+@FitBridgeBleInternalApi
+sealed interface WahooKickrCommand {
     data object Unlock : WahooKickrCommand
     data class Resistance(val fraction: Double) : WahooKickrCommand
     data class StandardLevel(val level: Int) : WahooKickrCommand

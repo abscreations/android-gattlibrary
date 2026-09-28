@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FtmsResistanceScale
 
 /**
@@ -27,6 +28,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.FtmsResist
  *  - Set Target Heart Rate and Set Indoor Bike Simulation are decoded rather
  *    than blanket-refused, so they work the moment a downstream path exists.
  */
+@OptIn(FitBridgeBleInternalApi::class)
 class FtmsControlPointHandler(
     private val sink: FtmsControlSink,
 ) {

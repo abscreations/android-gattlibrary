@@ -1,9 +1,12 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import kotlin.math.pow
 
 /** Manufacturer-model estimates used only when KayakFirst does not transmit a native metric. */
-internal object KayakFirstDerivedMetrics {
+@FitBridgeBleInternalApi
+object KayakFirstDerivedMetrics {
     const val MODEL_COEFFICIENT = 0.1419262
     const val KAYAK_MASS_KG = 12.0
 

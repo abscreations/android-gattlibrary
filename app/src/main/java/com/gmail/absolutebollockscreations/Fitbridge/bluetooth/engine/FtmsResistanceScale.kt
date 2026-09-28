@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -43,7 +44,8 @@ import kotlin.math.roundToInt
  * would produce a 10x step in the recorded activity, which is worse than being
  * consistently wrong.
  */
-internal object FtmsResistanceScale {
+@FitBridgeBleInternalApi
+object FtmsResistanceScale {
 
     /** How a machine encodes Resistance Level on its data characteristic. */
     enum class Encoding {

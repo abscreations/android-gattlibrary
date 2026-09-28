@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles
 import java.util.ArrayDeque
 import timber.log.Timber
@@ -39,7 +40,8 @@ import timber.log.Timber
  * is what makes the ordering rules exhaustively unit-testable. Every method must
  * be called on one thread (the controller uses the main looper).
  */
-internal class AdapterNameCoordinator(
+@FitBridgeBleInternalApi
+class AdapterNameCoordinator(
     private val gateway: Gateway,
     private val store: OriginalNameStore,
     private val scheduler: Scheduler,

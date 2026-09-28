@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import java.util.ArrayDeque
 
 /**
@@ -75,7 +76,8 @@ internal class CaptureRing(private val capacity: Int = DEFAULT_CAPACITY) {
  * Why a capture began. Written into the human-log summary so the two files can
  * be correlated, and named in the plan's §0.9.5 trigger table.
  */
-internal enum class CaptureTrigger(val wireName: String) {
+@FitBridgeBleInternalApi
+enum class CaptureTrigger(val wireName: String) {
     /** Debugging-menu toggle (§0.9.8). */
     MANUAL("manual"),
 

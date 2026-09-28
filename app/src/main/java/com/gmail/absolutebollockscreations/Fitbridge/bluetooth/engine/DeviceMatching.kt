@@ -1,12 +1,15 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.ActivityType
 import java.util.Locale
 import java.util.UUID
 
-internal const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
-internal const val FLYWHEEL_CANDIDATE_ID = "vendor.flywheel.sports"
-internal const val KAYAK_FIRST_CANDIDATE_ID = "kayak.first"
+@FitBridgeBleInternalApi
+const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
+const val FLYWHEEL_CANDIDATE_ID = "vendor.flywheel.sports"
+const val KAYAK_FIRST_CANDIDATE_ID = "kayak.first"
 internal const val KAYAK_FIRST_MANUFACTURER_ID = 0xA759
 
 /** The captured value is eight bytes beginning 88 A0; canonical payloads include the company ID. */

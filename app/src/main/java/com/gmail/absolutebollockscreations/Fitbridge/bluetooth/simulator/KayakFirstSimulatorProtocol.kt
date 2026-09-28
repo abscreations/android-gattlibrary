@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstDisplayConfiguration
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstDerivedMetrics
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstDisplayMetric
@@ -205,9 +207,11 @@ internal object KayakFirstSimulatorTelemetryEncoder {
     }
 }
 
-internal data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric, val value: String)
+@FitBridgeBleInternalApi
+data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric, val value: String)
 
-internal object KayakFirstPanelPresenter {
+@FitBridgeBleInternalApi
+object KayakFirstPanelPresenter {
     fun rows(
         configuration: KayakFirstDisplayConfiguration,
         sample: FtmsMockSample?,

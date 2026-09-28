@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /**
  * Bounds-checked decoder for the Keiser M-series advertisement payload (plan §11, phase 11.3).
  *
@@ -107,7 +109,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  * **Anything writable.** There is no control point, no target, no resistance command. Resistance
  * at byte 18 is a *reading* of where the rider set the lever.
  */
-internal object KeiserMSeriesMeasurement {
+@FitBridgeBleInternalApi
+object KeiserMSeriesMeasurement {
 
     /** Bluetooth SIG company identifier assigned to Keiser, little-endian on the wire as `02 01`. */
     const val COMPANY_ID = 0x0102

@@ -39,9 +39,10 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.HrZoneMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
+import java.util.UUID
 import kotlin.math.roundToInt
 
-internal fun netElevationChangeMeters(
+fun netElevationChangeMeters(
     positiveMeters: Double?,
     negativeMeters: Double?,
 ): Double? = if (positiveMeters == null && negativeMeters == null) {
@@ -55,6 +56,19 @@ class BtEngineState : HrmStateSink {
     internal val cscNativeEvents = CscNativeEventStore()
     internal val cpsNativeEvents = CpsNativeEventStore()
     internal val treadmillNativePace = TreadmillNativePaceStore()
+
+    fun cscNativeEventSnapshot(): CscNativeEventSnapshot? = cscNativeEvents.snapshot()
+
+    fun cpsNativeEventSnapshot(): CpsNativeEventSnapshot? = cpsNativeEvents.snapshot()
+
+    fun treadmillNativePaceSnapshot(): TreadmillNativePaceSnapshot? = treadmillNativePace.snapshot()
+
+    /** Services from the selected machine link, never from a sensor or stale GATT. */
+    fun currentMachineServiceUuids(): Set<UUID> =
+        connectionRegistry.current(LegacyConnectionRole.FTMS)
+            ?.discoveredServiceUuids
+            ?.toSet()
+            .orEmpty()
 
     /* ───────────────────────────── types & constants ───────────────────────────── */
 
@@ -447,7 +461,7 @@ class BtEngineState : HrmStateSink {
     }
 
     private val _kayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgress?>(null)
-    internal val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> =
+    val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> =
         _kayakFirstSetupProgress
 
     internal fun setKayakFirstSetupProgress(progress: KayakFirstSetupProgress) {
@@ -1162,7 +1176,7 @@ class BtEngineState : HrmStateSink {
         MutableStateFlow<List<LifeFitnessProfileField>>(
             emptyList()
         )
-    internal val lifeFitnessProfilePrompt:
+    val lifeFitnessProfilePrompt:
         StateFlow<List<LifeFitnessProfileField>> =
         _lifeFitnessProfilePrompt
 

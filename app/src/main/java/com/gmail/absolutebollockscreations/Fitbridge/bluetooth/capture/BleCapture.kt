@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 
@@ -32,7 +33,8 @@ import timber.log.Timber
  * that may reach disk seconds later; a timestamp applied at write time would
  * misreport when the thing happened.
  */
-internal object BleCapture {
+@FitBridgeBleInternalApi
+object BleCapture {
 
     /**
      * Reserved Timber tag for the central role.

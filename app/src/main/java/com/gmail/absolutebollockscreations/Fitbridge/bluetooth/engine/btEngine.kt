@@ -195,7 +195,7 @@ class BtEngine internal constructor(
         private val startLock = Any()
     }
 
-    internal val state: BtEngineState = BtEngineState()
+    val state: BtEngineState = BtEngineState()
     internal val metricFusion: MetricFusion = MetricFusion(state)
 
     /** Set before connection; each Kayak First handler snapshots it for one link generation. */
@@ -203,7 +203,7 @@ class BtEngine internal constructor(
     internal var kayakFirstDisplayConfiguration: KayakFirstDisplayConfiguration? = null
         private set
 
-    internal fun setKayakFirstDisplayConfiguration(configuration: KayakFirstDisplayConfiguration) {
+    fun setKayakFirstDisplayConfiguration(configuration: KayakFirstDisplayConfiguration) {
         kayakFirstDisplayConfiguration = configuration
     }
 
@@ -212,7 +212,7 @@ class BtEngine internal constructor(
     internal var kayakFirstSportMode: KayakFirstSportMode = KayakFirstSportMode.CANOEING
         private set
 
-    internal fun setKayakFirstSportMode(mode: KayakFirstSportMode) {
+    fun setKayakFirstSportMode(mode: KayakFirstSportMode) {
         kayakFirstSportMode = mode
     }
 
@@ -228,7 +228,7 @@ class BtEngine internal constructor(
         KayakFirstHandshakeVariant.LEGACY
         private set
 
-    internal fun setKayakFirstHandshakeVariant(variant: KayakFirstHandshakeVariant) {
+    fun setKayakFirstHandshakeVariant(variant: KayakFirstHandshakeVariant) {
         kayakFirstHandshakeVariant = variant
     }
 
@@ -626,12 +626,12 @@ class BtEngine internal constructor(
     val activeSession: StateFlow<Boolean> get() = state.activeSession
 
     /** Profile fields a Life Fitness connection asked for and did not get (plan §6, unit 6.5c). */
-    internal val lifeFitnessProfilePrompt:
+    val lifeFitnessProfilePrompt:
         StateFlow<List<LifeFitnessProfileField>>
         get() = state.lifeFitnessProfilePrompt
 
     /** Dismiss the prompt. The connection is unaffected; the machine simply stays silent. */
-    internal fun dismissLifeFitnessProfilePrompt() {
+    fun dismissLifeFitnessProfilePrompt() {
         state.clearLifeFitnessProfilePrompt()
     }
 
@@ -696,7 +696,7 @@ class BtEngine internal constructor(
         get() = state.discoveredDevices
     val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>>
         get() = state.connectedDevices
-    internal val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?>
+    val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?>
         get() = state.kayakFirstSetupProgress
     val activeAdvertisementMachine: StateFlow<BtEngineState.ActiveAdvertisementMachine?>
         get() = state.activeAdvertisementMachine
@@ -926,7 +926,7 @@ class BtEngine internal constructor(
      * because there is no link to watch or to close.
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    internal fun selectMachine(address: String): MachineSelectionOutcome {
+    fun selectMachine(address: String): MachineSelectionOutcome {
         val device = state.discoveredDevices.value.values.firstOrNull {
             canonicalScanAddress(it.address) == canonicalScanAddress(address)
         }
@@ -1790,14 +1790,14 @@ class BtEngine internal constructor(
         return if (unlocked) wahooKickrProviderCapabilities() else BtEngineState.FtmsCapabilities()
     }
 
-    internal fun hasSelectedKayakFirstAdapter(): Boolean {
+    fun hasSelectedKayakFirstAdapter(): Boolean {
         val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS) ?: return false
         return state.adapterLiveness.selectedAdapterId(context.connectionId) ==
             AdapterLivenessCoordinator.KAYAK_FIRST_ADAPTER_ID
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    internal fun startLocalKayakFirstSession(): Boolean =
+    fun startLocalKayakFirstSession(): Boolean =
         guardConnectPerm(op = "startLocalKayakFirstSession()", default = false) {
             val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
                 ?: return@guardConnectPerm false
@@ -1809,7 +1809,7 @@ class BtEngine internal constructor(
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    internal fun stopLocalKayakFirstSession(): Boolean =
+    fun stopLocalKayakFirstSession(): Boolean =
         guardConnectPerm(op = "stopLocalKayakFirstSession()", default = false) {
             val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
                 ?: return@guardConnectPerm false
@@ -2220,7 +2220,7 @@ class BtEngine internal constructor(
     }
 
     /** Life Fitness handshake profile, pushed from the settings screen (plan §6, D56). */
-    internal fun setLifeFitnessProfileFromApp(
+    fun setLifeFitnessProfileFromApp(
         profile: LifeFitnessProfile,
         ageYears: Int,
     ) {

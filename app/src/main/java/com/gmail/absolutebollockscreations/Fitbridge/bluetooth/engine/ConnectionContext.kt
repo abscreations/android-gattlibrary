@@ -9,7 +9,7 @@ import java.util.Locale
 import java.util.UUID
 
 /** Identifies one physical-link lifetime, including reconnects to the same BLE address. */
-internal data class ConnectionId(
+data class ConnectionId(
     val address: String,
     val linkGeneration: Long,
 )

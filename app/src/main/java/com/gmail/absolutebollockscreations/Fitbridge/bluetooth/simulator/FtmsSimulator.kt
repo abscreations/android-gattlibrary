@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
-import android.content.Context
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
@@ -39,7 +38,6 @@ import timber.log.Timber
  * stops completely, and it does not restart when the bridge ends.
  */
 class FtmsSimulator(
-    private val appContext: Context,
     private val engineState: BtEngineState,
     private val peripheral: SimulatorPeripheralHost,
     /** CPU keep-awake owned by the host app (LIB-7/S7); shares its registry with RunMode. */

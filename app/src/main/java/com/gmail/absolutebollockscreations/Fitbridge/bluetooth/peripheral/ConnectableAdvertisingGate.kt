@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /**
  * Pure connection-count gate shared by connectable simulator peripherals.
  *
@@ -7,7 +9,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
  * must explicitly pause its advertiser for the lifetime of any inbound link, then resume only
  * after the final link leaves. Duplicate callbacks are deliberately idempotent.
  */
-internal class ConnectableAdvertisingGate {
+@FitBridgeBleInternalApi
+class ConnectableAdvertisingGate {
     enum class Action { NONE, PAUSE, RESUME }
 
     private val connected = mutableSetOf<String>()

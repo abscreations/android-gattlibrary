@@ -1,8 +1,10 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import kotlin.math.roundToLong
 
-internal sealed interface RideOnProtoField {
+@FitBridgeBleInternalApi
+sealed interface RideOnProtoField {
     val number: Int
     data class Varint(override val number: Int, val value: Long) : RideOnProtoField
     data class Fixed64(override val number: Int, val bytes: ByteArray) : RideOnProtoField
@@ -10,28 +12,33 @@ internal sealed interface RideOnProtoField {
     data class Fixed32(override val number: Int, val bytes: ByteArray) : RideOnProtoField
 }
 
-internal data class RideOnDecodedPacket(val opcode: Int, val fields: List<RideOnProtoField>)
+@FitBridgeBleInternalApi
+data class RideOnDecodedPacket(val opcode: Int, val fields: List<RideOnProtoField>)
 
-internal sealed interface RideOnDecodeResult {
+@FitBridgeBleInternalApi
+sealed interface RideOnDecodeResult {
     data class Decoded(val packet: RideOnDecodedPacket) : RideOnDecodeResult
     data class Invalid(val reason: String) : RideOnDecodeResult
 }
 
-internal data class RideOnSimulationParam(
+@FitBridgeBleInternalApi
+data class RideOnSimulationParam(
     val windMpsX100: Int,
     val gradePercentX100: Int,
     val aerodynamicCoefficientX10000: Long,
     val rollingResistanceX100000: Long,
 )
 
-internal data class RideOnPhysicalParam(
+@FitBridgeBleInternalApi
+data class RideOnPhysicalParam(
     val gearRatioX10000: Long? = null,
     val bicycleMassKgX100: Long,
     val riderMassKgX100: Long,
 )
 
 /** Small protobuf-v2 wire codec for only the independently authored RideOn schema. */
-internal object RideOnProtoCodec {
+@FitBridgeBleInternalApi
+object RideOnProtoCodec {
     fun decode(packet: ByteArray): RideOnDecodeResult {
         if (packet.isEmpty()) return RideOnDecodeResult.Invalid("missing opcode")
         if (packet.size > RideOnUuids.MAX_PACKET_BYTES) {

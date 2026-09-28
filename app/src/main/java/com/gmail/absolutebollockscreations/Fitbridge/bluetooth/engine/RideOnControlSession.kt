@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +16,8 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-internal enum class RideOnServiceForm { ORIGINAL, CORE2 }
+@FitBridgeBleInternalApi
+enum class RideOnServiceForm { ORIGINAL, CORE2 }
 
 internal data class RideOnSessionTiming(
     val negotiationTimeoutMs: Long = 3_000,
@@ -220,7 +223,8 @@ internal class RideOnControlSession(
     }
 }
 
-internal val RIDEON_GEAR_RATIOS = listOf(
+@FitBridgeBleInternalApi
+val RIDEON_GEAR_RATIOS = listOf(
     7500, 8700, 9900, 11100, 12300, 13800, 15300, 16800,
     18600, 20400, 22200, 24000, 26099, 28200, 30300, 32400,
     34900, 37400, 39900, 42399, 45400, 48400, 51400, 54899,

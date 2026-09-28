@@ -214,7 +214,7 @@ internal val feCTreadmillMeasurementCapabilities =
  * FTMS first. The override is intentionally limited to a Precor-only machine link; simulator
  * bikes and ordinary FTMS bikes keep the established indoor-bike capabilities.
  */
-internal fun providerMeasurementCapabilities(
+fun providerMeasurementCapabilities(
     profile: FtmsMachineProfile,
     upstreamServiceUuids: Set<UUID>,
     advertisementCandidateId: String? = null,

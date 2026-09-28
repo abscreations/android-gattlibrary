@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.dataCharacteristic
@@ -78,7 +80,8 @@ enum class SimulatorRangeKind(val heading: String) {
 }
 
 /** Machine names for the FTMS profiles, shared by the persona title and the status card. */
-internal fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machine) {
+@FitBridgeBleInternalApi
+fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machine) {
     FtmsMachineProfile.INDOOR_BIKE -> "Indoor bike"
     FtmsMachineProfile.TREADMILL -> "Treadmill"
     FtmsMachineProfile.ELLIPTICAL -> "Cross trainer"

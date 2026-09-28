@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
-internal enum class KayakFirstSetupState {
+enum class KayakFirstSetupState {
     DISCOVERING,
     SUBSCRIBING,
     RESET_A,

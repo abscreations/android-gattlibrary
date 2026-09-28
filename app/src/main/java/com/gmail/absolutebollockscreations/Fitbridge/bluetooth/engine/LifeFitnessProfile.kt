@@ -36,7 +36,7 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.SigUserDataU
  * - Every value is redaction-registered by UUID in `SensitiveCharacteristics`, so no capture
  *   can carry it at any level.
  */
-internal data class LifeFitnessProfile(
+data class LifeFitnessProfile(
     val firstName: String,
     val lastName: String,
     val email: String,
@@ -88,7 +88,7 @@ internal data class LifeFitnessProfile(
     }
 }
 
-internal enum class LifeFitnessProfileField(val settingsLabel: String) {
+enum class LifeFitnessProfileField(val settingsLabel: String) {
     FIRST_NAME("First name"),
     LAST_NAME("Last name"),
     EMAIL("Email address"),

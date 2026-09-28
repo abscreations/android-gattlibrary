@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /**
  * Phase-10 legacy KICKR wire vocabulary.
  *
@@ -7,7 +9,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  * range, and timeout constants live here beside the later pure codec/session implementation.
  * Merely recording RideOn UUIDs does not activate that separate protocol.
  */
-internal object WahooKickrUuids {
+@FitBridgeBleInternalApi
+object WahooKickrUuids {
     val CYCLING_POWER_SERVICE = BluetoothIds.UUID_CYCLING_POWER_SERVICE
     val MARKER_EE01 = BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01
     val MARKER_EE0B = BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE0B

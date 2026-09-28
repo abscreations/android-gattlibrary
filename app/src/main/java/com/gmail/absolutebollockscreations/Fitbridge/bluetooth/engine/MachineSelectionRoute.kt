@@ -36,7 +36,7 @@ internal fun machineSelectionRoute(
 }
 
 /** Outcome of a machine selection, so a caller knows which affordances now apply. */
-internal enum class MachineSelectionOutcome {
+enum class MachineSelectionOutcome {
     /** A GATT connection was started. The CCCD/control watcher applies. */
     GATT_CONNECTING,
 

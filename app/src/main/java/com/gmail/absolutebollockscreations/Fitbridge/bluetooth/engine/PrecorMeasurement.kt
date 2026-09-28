@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /**
  * Bounds-checked decoder for the Precor Spinner Chrono Power measurement frame (plan §5b).
  *
@@ -68,7 +70,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  * capture can see it, and emitted as no metric at all. A field understood this well is exactly
  * the one it is tempting to ship.
  */
-internal object PrecorMeasurement {
+@FitBridgeBleInternalApi
+object PrecorMeasurement {
 
     /** Exact frame length. Not a minimum: a 20-octet frame is not a Chrono frame. */
     const val FRAME_LENGTH = 19

@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /** Typed rejection for one complete Kayak First measurement line. */
 internal enum class KayakFirstMeasurementRejection {
     EMPTY_LINE,
@@ -42,7 +44,8 @@ internal sealed interface KayakFirstMeasurementDecodeResult {
  * was missed, and larger on the first frame after a start. It is the time weight for every
  * integrated quantity. It is never allowed to reject or rewrite a metric.
  */
-internal object KayakFirstMeasurement {
+@FitBridgeBleInternalApi
+object KayakFirstMeasurement {
     const val MINIMUM_FIELDS = 24
     const val EVENT_TIMESTAMP_INDEX = 1
     const val ACTIVE_PADDLING_INDEX = 7
@@ -105,7 +108,7 @@ internal object KayakFirstMeasurement {
             get() = windowSeconds?.takeIf { it > 0L }?.coerceAtMost(MAX_WINDOW_SECONDS)
     }
 
-    fun decode(line: String): KayakFirstMeasurementDecodeResult {
+    internal fun decode(line: String): KayakFirstMeasurementDecodeResult {
         if (line.isEmpty()) return rejected(KayakFirstMeasurementRejection.EMPTY_LINE)
         val fields = line.split(';')
         if (fields.first() != "6") return rejected(KayakFirstMeasurementRejection.WRONG_COMMAND, 0)

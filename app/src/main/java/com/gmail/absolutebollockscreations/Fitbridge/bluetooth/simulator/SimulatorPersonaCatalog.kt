@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 
 // Persona catalogue and name line, moved from the app's ComposableSimulator.kt (LIB-9b). They are
@@ -16,7 +18,8 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceP
  * [includeKickr] has no default (LIB-9b): the library cannot read the app's `BuildConfig`, so the
  * UI passes `BuildConfig.DEBUG` and keeps the KICKR selector gate on its side.
  */
-internal fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona> =
+@FitBridgeBleInternalApi
+fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona> =
     listOf(SimulatorPersona.IndoorBikeSpeedAndPower, SimulatorPersona.StrydFootpod) +
         FtmsMockEngine.supportedMachines.flatMap { machine ->
             // The broken-advertisement rower sits directly below the honest one: same persona,
@@ -63,7 +66,8 @@ internal fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPerso
             emptyList()
         }
 
-internal fun simulatorAdvertisedNameLine(persona: SimulatorPersona): String? = when (persona) {
+@FitBridgeBleInternalApi
+fun simulatorAdvertisedNameLine(persona: SimulatorPersona): String? = when (persona) {
     SimulatorPersona.KayakFirstBlue,
     SimulatorPersona.KayakFirstOrange,
     -> "Name: ${persona.advertisedName}"

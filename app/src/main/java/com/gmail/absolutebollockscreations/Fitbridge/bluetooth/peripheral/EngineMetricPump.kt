@@ -135,11 +135,11 @@ class EngineMetricPump(
             negativeElevationGainMeters = engineState.elevationGainNeg.value,
             floors = engineState.totalFloors.value,
             strokeCount = strokeCount,
-            cscNativeEvents = engineState.cscNativeEvents.snapshot(),
-            cpsNativeEvents = engineState.cpsNativeEvents.snapshot(),
+            cscNativeEvents = engineState.cscNativeEventSnapshot(),
+            cpsNativeEvents = engineState.cpsNativeEventSnapshot(),
             // Treadmill only: no other persona has the field, and it is never synthesised.
             treadmillNativePace = if (profile == FtmsMachineProfile.TREADMILL) {
-                engineState.treadmillNativePace.snapshot()
+                engineState.treadmillNativePaceSnapshot()
             } else {
                 null
             },

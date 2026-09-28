@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -9,7 +10,8 @@ import java.util.concurrent.ConcurrentHashMap
  * closes. Only the server connection lifecycle releases this guard; local central-side client
  * activity must not affect it.
  */
-internal class PeripheralConnectionRetentionGuard {
+@FitBridgeBleInternalApi
+class PeripheralConnectionRetentionGuard {
     private val retainedConnections = ConcurrentHashMap.newKeySet<String>()
 
     /** Runs [retain] exactly once for a key until [release] or [clear] is called. */

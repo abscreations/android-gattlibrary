@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /**
  * Bounds-checked decoders for the Schwinn x70 family — 170, 270 and 570 (plan §7).
  *
@@ -64,7 +66,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
  * corpus was. Cadence here is still the raw counter, because turning it into rpm needs two frames
  * and the receive clock, and inventing a delta from one frame is the mistake being described.
  */
-internal object SchwinnX70Measurement {
+@FitBridgeBleInternalApi
+object SchwinnX70Measurement {
 
     /** 270 / 570 main stream. Exact length; a 16- or 18-octet frame is not one of these. */
     const val MAIN_FRAME_LENGTH = 17

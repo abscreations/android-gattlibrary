@@ -8,7 +8,7 @@ import android.bluetooth.BluetoothProfile
 // calls sensorConnectionLimit(CSC) directly, which is what SensorClass.CSC.maxConnections
 // returned.
 
-internal fun sensorConnectionLimit(serviceType: BtEngineState.BtServiceType): Int =
+fun sensorConnectionLimit(serviceType: BtEngineState.BtServiceType): Int =
     when (serviceType) {
         BtEngineState.BtServiceType.HeartRate,
         BtEngineState.BtServiceType.RSC,
@@ -27,7 +27,7 @@ internal const val APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR = 0x0485
 
 private val ALL_CSC_ROLES = BtEngineState.CscRole.entries.toSet()
 
-internal fun cscRoleCapabilityFromAppearance(
+fun cscRoleCapabilityFromAppearance(
     appearance: Int?,
 ): BtEngineState.CscRoleCapability? = when (appearance) {
     APPEARANCE_CYCLING_SPEED_SENSOR -> BtEngineState.CscRoleCapability(
@@ -62,11 +62,11 @@ internal fun cscRoleCapabilityFromFeature(
 }
 
 /** Missing classification occupies both roles until the mandatory Feature read resolves it. */
-internal fun occupiedCscRoles(
+fun occupiedCscRoles(
     capability: BtEngineState.CscRoleCapability?,
 ): Set<BtEngineState.CscRole> = capability?.roles?.takeIf { it.isNotEmpty() } ?: ALL_CSC_ROLES
 
-internal data class CscRoleAssignment(
+data class CscRoleAssignment(
     val address: String,
     val capability: BtEngineState.CscRoleCapability?,
     val assignedRoles: Set<BtEngineState.CscRole> = emptySet(),
@@ -144,7 +144,7 @@ internal fun resolveCscFeatureRoles(
 private fun ActiveCscHandler.effectiveAssignedRoles(): Set<BtEngineState.CscRole> =
     assignedRoles.ifEmpty { occupiedCscRoles(capability) }
 
-internal fun canAssignCscRole(
+fun canAssignCscRole(
     address: String,
     candidateCapability: BtEngineState.CscRoleCapability?,
     existingAssignments: Iterable<CscRoleAssignment>,
@@ -181,7 +181,7 @@ internal fun activeSensorConnectionCount(
     .size
 
 /** Existing same-device activation is idempotent and does not consume another slot. */
-internal fun canAssignSensorService(
+fun canAssignSensorService(
     address: String,
     serviceType: BtEngineState.BtServiceType,
     links: Iterable<BtEngineState.ConnectedDeviceLink>,

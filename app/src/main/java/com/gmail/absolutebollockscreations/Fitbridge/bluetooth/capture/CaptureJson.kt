@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 /**
  * Hand-rolled NDJSON emitter for [CaptureEvent] (plan §0.9.4).
  *
@@ -19,7 +20,8 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.capture
  * Every method returns a single line with no trailing newline; the sink owns
  * line termination.
  */
-internal object CaptureJson {
+@FitBridgeBleInternalApi
+object CaptureJson {
 
     private val HEX = "0123456789abcdef".toCharArray()
 

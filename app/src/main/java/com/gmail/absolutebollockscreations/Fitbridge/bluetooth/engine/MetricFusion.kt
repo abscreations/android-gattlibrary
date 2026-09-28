@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.HrZoneMode
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -16,7 +18,8 @@ import timber.log.Timber
  *
  * A BLE strap notifies about once a second, so this tolerates three missed notifications.
  */
-internal const val HEART_RATE_FRESHNESS_MS = 4_000L
+@FitBridgeBleInternalApi
+const val HEART_RATE_FRESHNESS_MS = 4_000L
 
 /** Protocol that produced a metric sample. */
 internal enum class MetricProtocol { FTMS, HRM, RSC, CSC, CPS, VENDOR, MOTION, GPS, SESSION }

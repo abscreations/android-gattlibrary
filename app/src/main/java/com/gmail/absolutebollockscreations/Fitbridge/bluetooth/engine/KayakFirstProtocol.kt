@@ -1,12 +1,14 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /**
  * The 17 display-selector IDs defined by pinned Apache-2.0 TMIW source.
  *
  * These codes configure console display slots. They are not command-6 array indexes; in
  * particular selectors 15, 17, and 18 do not prove a command-6 energy or power field.
  */
-internal enum class KayakFirstDisplayMetric(val wireCode: Int, val displayLabel: String) {
+enum class KayakFirstDisplayMetric(val wireCode: Int, val displayLabel: String) {
     ELAPSED_TIME(0, "Elapsed Time"),
     TOTAL_DISTANCE(2, "Total Distance"),
     AVERAGE_SPEED(3, "Average Speed"),
@@ -34,7 +36,7 @@ internal enum class KayakFirstDisplayMetric(val wireCode: Int, val displayLabel:
 }
 
 /** Immutable five-slot snapshot shared later by settings, setup, and the simulator. */
-internal data class KayakFirstDisplayConfiguration(
+data class KayakFirstDisplayConfiguration(
     val slot1: KayakFirstDisplayMetric,
     val slot2: KayakFirstDisplayMetric,
     val slot3: KayakFirstDisplayMetric,
@@ -78,7 +80,7 @@ internal data class KayakFirstDisplayConfiguration(
 }
 
 /** Bounded sport values corroborated by the paired TMIW simulator captures. */
-internal enum class KayakFirstSportMode(val wireCode: Int) {
+enum class KayakFirstSportMode(val wireCode: Int) {
     CANOEING(1),
     KAYAKING(2),
 }
@@ -91,7 +93,7 @@ internal enum class KayakFirstSportMode(val wireCode: Int) {
  * whose fourth and fifth fields are athlete weight and boat weight rather than weight and sport.
  * Both dialects share every other command in the profile.
  */
-internal enum class KayakFirstHandshakeVariant { LEGACY, BULL }
+enum class KayakFirstHandshakeVariant { LEGACY, BULL }
 
 /**
  * Which **Blue** handshake dialect the user picks before connecting.
@@ -106,7 +108,7 @@ internal enum class KayakFirstHandshakeVariant { LEGACY, BULL }
  * silence-triggered retry would send command 21 to every working Blue console. The user states the
  * dialect instead, once, at connect time.
  */
-internal enum class KayakFirstProtocolChoice(
+enum class KayakFirstProtocolChoice(
     val handshakeVariant: KayakFirstHandshakeVariant,
     val sportMode: KayakFirstSportMode,
 ) {
@@ -192,7 +194,8 @@ internal sealed interface KayakFirstCommand {
 }
 
 /** Pure command serializer and payload chunker. It owns no queue or Bluetooth state. */
-internal object KayakFirstCommandCodec {
+@FitBridgeBleInternalApi
+object KayakFirstCommandCodec {
     const val DEFAULT_PAYLOAD_CAPACITY = 20
 
     /**
@@ -214,7 +217,7 @@ internal object KayakFirstCommandCodec {
     fun athleteWeightKgOrNeutral(configuredKg: Int?): Int =
         configuredKg?.takeIf { it in WEIGHT_RANGE_KG } ?: NEUTRAL_WEIGHT_KG
 
-    fun encode(command: KayakFirstCommand): ByteArray = when (command) {
+    internal fun encode(command: KayakFirstCommand): ByteArray = when (command) {
         KayakFirstCommand.Reset -> line("1")
         is KayakFirstCommand.LegacyHandshake -> line(
             "2;${command.unixEpochSeconds};${command.timezoneOffsetMinutes};" +
@@ -232,7 +235,7 @@ internal object KayakFirstCommandCodec {
         KayakFirstCommand.Stop -> line("9;3")
     }
 
-    fun chunks(
+    internal fun chunks(
         command: KayakFirstCommand,
         payloadCapacity: Int = DEFAULT_PAYLOAD_CAPACITY,
     ): List<ByteArray> {
