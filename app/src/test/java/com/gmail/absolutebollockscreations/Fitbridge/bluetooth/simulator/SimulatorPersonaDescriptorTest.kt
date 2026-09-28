@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
-import com.gmail.absolutebollockscreations.Fitbridge.simulatorPersonaOptions
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

@@ -389,7 +389,7 @@ class AdapterNameCoordinatorTest {
         // explicit set, so a persona added with a bare name and no entry would silently reopen
         // the stranding bug. Driving every selector name through the coordinator is what catches
         // that on the day the persona is added rather than after a user reports it.
-        com.gmail.absolutebollockscreations.Fitbridge
+        com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
             .simulatorPersonaOptions(includeKickr = true)
             .map { it.advertisedName }
             .distinct()

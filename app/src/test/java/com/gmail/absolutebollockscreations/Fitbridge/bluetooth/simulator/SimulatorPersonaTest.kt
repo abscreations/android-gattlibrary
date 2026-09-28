@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
-import com.gmail.absolutebollockscreations.Fitbridge.simulatorPersonaOptions
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.advertisedName
@@ -186,7 +185,7 @@ class SimulatorPersonaTest {
 
     @Test
     fun `simulator selector places the four Life Fitness personas before Precor`() {
-        val options = simulatorPersonaOptions()
+        val options = simulatorPersonaOptions(includeKickr = true)
         val precorIndex = options.indexOf(SimulatorPersona.PrecorChrono)
         assertTrue(precorIndex >= 0)
         assertEquals(
@@ -217,7 +216,7 @@ class SimulatorPersonaTest {
         // `docs/fe-c-ble_simulator_implementation.md` §3.3). Precor is no longer the list's last
         // entry; Schwinn and the seven FE-C equipment types follow it. There is no separate "+ CPS" persona: the
         // Incyclist overlay is implicit to equipment type, not a UI-selectable option.
-        val options = simulatorPersonaOptions()
+        val options = simulatorPersonaOptions(includeKickr = true)
         val precorIndex = options.indexOf(SimulatorPersona.PrecorChrono)
         assertTrue(precorIndex >= 0)
         val fec = options.drop(precorIndex + 2).filterIsInstance<SimulatorPersona.FeCBle>()

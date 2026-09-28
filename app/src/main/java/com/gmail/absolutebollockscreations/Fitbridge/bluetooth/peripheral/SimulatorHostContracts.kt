@@ -58,4 +58,13 @@ interface ManagedPeripheralGroup {
 
     /** Manager `release()`: dispose every family controller and clear selection. */
     fun disposeAll()
+
+    companion object {
+        /** No simulator peripherals: release builds, where the gateway supplies none (LIB-9b). */
+        val NONE: ManagedPeripheralGroup = object : ManagedPeripheralGroup {
+            override val anyAdvertising: Boolean get() = false
+            override fun stopAll() = Unit
+            override fun disposeAll() = Unit
+        }
+    }
 }

@@ -2,7 +2,6 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.AdapterNameCoordinator
-import com.gmail.absolutebollockscreations.Fitbridge.simulatorPersonaOptions
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
