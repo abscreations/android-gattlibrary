@@ -5,7 +5,8 @@ import java.util.IdentityHashMap
 import java.util.UUID
 
 /**
- * Deterministic text rendering for snapshot tests (LIB-5a).
+ * Deterministic text rendering for snapshot tests (LIB-5a). Class names are rendered without their
+ * package, so moving a class between packages does not change a snapshot.
  *
  * Data classes and plain objects are printed field by field, sorted by field name, so the output
  * does not depend on `toString()` implementations (a `ByteArray` field makes a data class's own
@@ -16,7 +17,11 @@ import java.util.UUID
 internal object SnapshotRenderer {
 
     private const val MAX_DEPTH = 16
-    private const val APP_PACKAGE_PREFIX = "com.gmail.absolutebollockscreations.Fitbridge."
+    /**
+     * Owner prefix rather than the full app package, so classes still count as "ours" after the
+     * Stage 3 package rename to `…absolutebollockscreations.ble.*`.
+     */
+    private const val APP_PACKAGE_PREFIX = "com.gmail.absolutebollockscreations."
 
     fun render(value: Any?): String = render(value, 0, 0, IdentityHashMap())
 
@@ -87,7 +92,9 @@ internal object SnapshotRenderer {
                 .getOrDefault(false)
             return if (overridden) quote(value.toString()) else "<${cls.simpleName}>"
         }
-        return renderFields(value, name.removePrefix(APP_PACKAGE_PREFIX), indent, depth, seen)
+        // Package-free display name (nesting kept as `Outer$Inner`): the refactor this guards moves
+        // classes between packages, and a move must not read as a content change (LIB-5).
+        return renderFields(value, name.substringAfterLast('.'), indent, depth, seen)
     }
 
     private fun renderFields(
