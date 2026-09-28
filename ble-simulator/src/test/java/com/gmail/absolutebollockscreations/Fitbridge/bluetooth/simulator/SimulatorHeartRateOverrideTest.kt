@@ -94,7 +94,7 @@ class SimulatorHeartRateOverrideTest {
         // the sample; the standard FTMS path goes through BtEngineState. Substituting before that
         // fork means a persona added later — the Schwinn 170 — inherits it without another edit.
         val source = java.io.File(
-            "app/src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/simulator/FtmsSimulator.kt",
+            "ble-simulator/src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/simulator/FtmsSimulator.kt",
         ).takeIf { it.isFile } ?: java.io.File(
             "src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/simulator/FtmsSimulator.kt",
         )

@@ -25,7 +25,7 @@ class SimulatorBridgeGuardTest {
     fun `simulator watches the machine link and refuses to start during one`() {
         // FtmsSimulator needs Android peripherals to construct, so its wiring is checked at source.
         val source = sequenceOf(
-            File("app/src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/simulator/FtmsSimulator.kt"),
+            File("ble-simulator/src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/simulator/FtmsSimulator.kt"),
             File("src/main/java/com/gmail/absolutebollockscreations/Fitbridge/bluetooth/simulator/FtmsSimulator.kt"),
         ).first(File::isFile).readText().replace("\r\n", "\n")
         assertTrue(source.contains("engineState.connectionState.collect"))

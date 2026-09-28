@@ -23,7 +23,7 @@ import java.io.File
  */
 class SimulatorPersonaSnapshotTest {
 
-    private val goldenDir: File = sequenceOf(File("app/src/test"), File("src/test"))
+    private val goldenDir: File = sequenceOf(File("ble-simulator/src/test"), File("src/test"))
         .first(File::isDirectory)
         .resolve("resources/snapshots/simulator-personas")
 

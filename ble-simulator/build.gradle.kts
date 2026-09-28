@@ -42,6 +42,7 @@ dependencies {
     api(project(":ble-peripheral"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.timber)
+    testImplementation(project(":ble-fixtures"))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }
