@@ -10,8 +10,6 @@ import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirst
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeResponse
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeResponseParser
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.KayakFirstOrangeSession
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.KayakFirstAdvertisingPlan
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.KayakFirstGattProfile
 import com.gmail.absolutebollockscreations.Fitbridge.simulatorPersonaOptions
 import com.gmail.absolutebollockscreations.Fitbridge.simulatorAdvertisedNameLine
 import org.junit.Assert.assertEquals

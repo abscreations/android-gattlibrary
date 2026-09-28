@@ -120,7 +120,7 @@ class FtmsSimulator(
          * above).
          */
         fun sendZwiftClickShift(
-            direction: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.ZwiftClickDirection,
+            direction: ZwiftClickDirection,
         ): Boolean = false
 
         /** True when the active persona has completed the setup required before generation. */
@@ -285,7 +285,7 @@ class FtmsSimulator(
 
     /** UI entry point for the simulator's Zwift Click section. */
     fun sendZwiftClickShift(
-        direction: com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.ZwiftClickDirection,
+        direction: ZwiftClickDirection,
     ): Boolean = peripheral.sendZwiftClickShift(direction)
 
     /** Begin or resume only the PM5 workout model; advertising and GATT already remain active. */

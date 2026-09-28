@@ -2,8 +2,6 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.Concept2Measurement
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.Concept2Pm5PeripheralAdvertiser
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.Concept2Pm5Session
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
