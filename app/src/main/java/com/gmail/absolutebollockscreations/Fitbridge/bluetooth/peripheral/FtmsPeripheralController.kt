@@ -14,11 +14,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
-import com.gmail.absolutebollockscreations.Fitbridge.AppSettings
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtEngineState
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceEngineFacade
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.Fitbridge.logging.FileLoggingTree
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.roundToInt
@@ -97,6 +95,8 @@ class FtmsPeripheralController(
     private val engineState: BtEngineState,
     private val engineProvider: () -> BtServiceEngineFacade? = { null },
     private val onStatus: (PeripheralStatus) -> Unit = {},
+    /** Host-app settings (LIB-6/S6). The default keeps treadmill speed control off (D26). */
+    private val config: PeripheralConfig = PeripheralConfig(),
 ) : FtmsPeripheralAdvertiser.Listener {
 
     data class PeripheralStatus(
@@ -274,10 +274,8 @@ class FtmsPeripheralController(
     )
 
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private val appPrefs = context.getSharedPreferences(FileLoggingTree.PREFS_NAME, Context.MODE_PRIVATE)
 
-    private fun treadmillSpeedControlsEnabled(): Boolean =
-        appPrefs.getBoolean(AppSettings.KEY_TREADMILL_SPEED_CONTROLS, false)
+    private fun treadmillSpeedControlsEnabled(): Boolean = config.treadmillSpeedControlsEnabled()
 
     /** Rebuild the GATT range and feature surface after a settings change. */
     fun refreshTreadmillSpeedControls() {
