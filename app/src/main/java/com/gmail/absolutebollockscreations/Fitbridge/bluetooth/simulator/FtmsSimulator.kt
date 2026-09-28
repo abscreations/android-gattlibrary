@@ -34,7 +34,9 @@ import timber.log.Timber
  *
  * Ownership is exclusive. Starting the simulator while a real machine is
  * connected would put two writers on one state object and produce nonsense, so
- * [start] refuses in that case.
+ * [start] refuses in that case, for every persona. The reverse holds too (decision L17,
+ * LIB-9c): when the engine starts an upstream machine link for bridging, a running simulator
+ * stops completely, and it does not restart when the bridge ends.
  */
 class FtmsSimulator(
     private val appContext: Context,
@@ -282,6 +284,19 @@ class FtmsSimulator(
     /** True when a real machine is attached; the simulator must not fight it. */
     private fun realMachineAttached(): Boolean = engineState.gatt != null
 
+    /** A machine link is attached, connecting or connected: bridge mode owns the engine (L17). */
+    private fun bridgeLinkActive(): Boolean =
+        realMachineAttached() ||
+            SimulatorBridgeGuard.upstreamLinkActive(engineState.connectionState.value)
+
+    /** Full stop because a bridge is starting; the reason stays on screen (LIB-9c). */
+    private fun stopForBridge() {
+        if (!_state.value.running) return
+        Timber.tag(TAG).i("machine link starting: stopping simulator (bridge and simulator are exclusive, L17)")
+        stop()
+        _state.value = _state.value.copy(lastError = SimulatorBridgeGuard.STOPPED_FOR_BRIDGE)
+    }
+
     fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
         FtmsMockControlProfile.forMachine(machine).any
 
@@ -359,6 +374,10 @@ class FtmsSimulator(
         enableControls: Boolean = false,
         concept2Scenario: Concept2Scenario = Concept2Scenario.STEADY,
     ) {
+        if (bridgeLinkActive()) {
+            _state.value = _state.value.copy(lastError = SimulatorBridgeGuard.START_REFUSED)
+            return
+        }
         if (!_state.value.running) generationGate.reset()
         when (persona) {
             is SimulatorPersona.Concept2Pm5 -> {
@@ -417,12 +436,6 @@ class FtmsSimulator(
             is SimulatorPersona.Ftms -> Unit
         }
         val machine = requireNotNull(persona.standardSurface()).profile
-        if (realMachineAttached()) {
-            _state.value = _state.value.copy(
-                lastError = "Disconnect the physical machine before simulating data",
-            )
-            return
-        }
 
         val effectiveControls = persona is SimulatorPersona.Ftms &&
             enableControls && controlsAvailableFor(machine)
@@ -1249,6 +1262,18 @@ class FtmsSimulator(
             advertising = peripheral.isAdvertising,
             lastSample = sample,
         )
+    }
+
+    // Last in the class body so every property is initialised before the first emission.
+    init {
+        // L17 (LIB-9c): an upstream machine link starting means a bridge is starting. Watch the
+        // link rather than provider advertising, because the link comes first: the simulator
+        // must stop writing into BtEngineState before the real machine starts writing there.
+        scope.launch {
+            engineState.connectionState.collect { linkState ->
+                if (SimulatorBridgeGuard.upstreamLinkActive(linkState)) stopForBridge()
+            }
+        }
     }
 
     companion object {
