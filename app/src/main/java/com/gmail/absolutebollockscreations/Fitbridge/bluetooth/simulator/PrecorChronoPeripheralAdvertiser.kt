@@ -9,6 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.GattServerSessions
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.gattOps
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
@@ -65,6 +67,9 @@ internal class PrecorChronoPeripheralAdvertiser(
 
     private val main = Handler(Looper.getMainLooper())
     private val epoch = AtomicLong(0)
+
+    /** Service publication and leak-free shutdown for this owner's GATT servers (LIB-9g). */
+    private val gattSessions = GattServerSessions<BluetoothGattService>()
     private val clients = ConcurrentHashMap<String, Client>()
     private val advertisingGate = ConnectableAdvertisingGate()
     private val connectionRetention = PeripheralConnectionRetentionGuard()
@@ -95,11 +100,12 @@ internal class PrecorChronoPeripheralAdvertiser(
             return
         }
         server = manager.openGattServer(context, callback(currentEpoch))
+        server?.let { gattSessions.open(currentEpoch, it.gattOps()) }
         if (server == null) {
             finishStart(Result.failure(IllegalStateException("Could not open Precor Chrono GATT server")))
             return
         }
-        if (server?.addService(PrecorChronoGattProfile.buildService()) != true) {
+        if (gattSessions.addService(PrecorChronoGattProfile.buildService()) != true) {
             finishStart(Result.failure(IllegalStateException("Could not add Precor Chrono service")))
         }
     }
@@ -117,8 +123,7 @@ internal class PrecorChronoPeripheralAdvertiser(
         clients.clear()
         advertisingGate.reset()
         connectionRetention.clear()
-        runCatching { server?.clearServices() }
-        runCatching { server?.close() }
+        gattSessions.closeCurrent()
         server = null
         startResult?.invoke(Result.failure(IllegalStateException("Precor Chrono start was stopped")))
         startResult = null
@@ -127,6 +132,7 @@ internal class PrecorChronoPeripheralAdvertiser(
 
     private fun callback(callbackEpoch: Long) = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            if (gattSessions.onServiceAdded(callbackEpoch, service)) return
             if (epoch.get() != callbackEpoch) return
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 startAdvertising(callbackEpoch)

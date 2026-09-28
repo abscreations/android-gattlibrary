@@ -9,6 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.GattServerSessions
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.gattOps
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
@@ -99,6 +101,9 @@ internal class KickrPeripheralAdvertiser(
 
     private val main = Handler(Looper.getMainLooper())
     private val epoch = AtomicLong(0)
+
+    /** Service publication and leak-free shutdown for this owner's GATT servers (LIB-9g). */
+    private val gattSessions = GattServerSessions<BluetoothGattService>()
     private val generation = AtomicLong(0)
     private val clients = ConcurrentHashMap<String, Client>()
     private val advertisingGate = ConnectableAdvertisingGate()
@@ -199,6 +204,7 @@ internal class KickrPeripheralAdvertiser(
             return
         }
         server = manager.openGattServer(context, callback(currentEpoch))
+        server?.let { gattSessions.open(currentEpoch, it.gattOps()) }
         if (server == null) {
             finishStart(Result.failure(IllegalStateException("Could not open KICKR GATT server")))
             return
@@ -223,8 +229,7 @@ internal class KickrPeripheralAdvertiser(
         clients.clear()
         advertisingGate.reset()
         connectionRetention.clear()
-        runCatching { server?.clearServices() }
-        runCatching { server?.close() }
+        gattSessions.closeCurrent()
         server = null
         manifest = null
         legacyAckMode = null
@@ -236,6 +241,7 @@ internal class KickrPeripheralAdvertiser(
 
     private fun callback(callbackEpoch: Long) = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            if (gattSessions.onServiceAdded(callbackEpoch, service)) return
             if (epoch.get() != callbackEpoch) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 finishStart(Result.failure(IllegalStateException("KICKR service add failed ($status)")))
@@ -453,7 +459,7 @@ internal class KickrPeripheralAdvertiser(
         if (epoch.get() != currentEpoch) return
         val next = pendingServices.pollFirst()
         if (next == null) startAdvertising(currentEpoch)
-        else if (server?.addService(next) != true) {
+        else if (gattSessions.addService(next) != true) {
             finishStart(Result.failure(IllegalStateException("Could not add KICKR service ${next.uuid}")))
         }
     }

@@ -9,6 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.GattServerSessions
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.gattOps
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
@@ -81,6 +83,9 @@ class Concept2Pm5PeripheralAdvertiser(
     private val main = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val epoch = AtomicLong(0)
+
+    /** Service publication and leak-free shutdown for this owner's GATT servers (LIB-9g). */
+    private val gattSessions = GattServerSessions<BluetoothGattService>()
     private val clients = ConcurrentHashMap<String, Client>()
     private val advertisingGate = ConnectableAdvertisingGate()
     private val connectionRetention = PeripheralConnectionRetentionGuard()
@@ -155,6 +160,7 @@ class Concept2Pm5PeripheralAdvertiser(
             return
         }
         server = opened
+        gattSessions.open(currentEpoch, opened.gattOps())
         pendingServices = ArrayDeque(Concept2Pm5GattRegistry.buildServices(persona))
         addNextService(currentEpoch)
     }
@@ -176,8 +182,7 @@ class Concept2Pm5PeripheralAdvertiser(
         latestWorkoutProgram = null
         advertisingGate.reset()
         connectionRetention.clear()
-        runCatching { server?.clearServices() }
-        runCatching { server?.close() }
+        gattSessions.closeCurrent()
         server = null
         startResult?.invoke(Result.failure(IllegalStateException("PM5 start was stopped")))
         startResult = null
@@ -190,7 +195,7 @@ class Concept2Pm5PeripheralAdvertiser(
         val next = pendingServices.pollFirst()
         if (next == null) {
             startAdvertising(currentEpoch)
-        } else if (server?.addService(next) != true) {
+        } else if (gattSessions.addService(next) != true) {
             finishStart(Result.failure(IllegalStateException("Could not add PM5 service ${next.uuid}")))
         }
     }
@@ -271,6 +276,7 @@ class Concept2Pm5PeripheralAdvertiser(
 
     private fun callback(callbackEpoch: Long) = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            if (gattSessions.onServiceAdded(callbackEpoch, service)) return
             if (epoch.get() != callbackEpoch) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 finishStart(Result.failure(IllegalStateException("PM5 service add failed ($status)")))

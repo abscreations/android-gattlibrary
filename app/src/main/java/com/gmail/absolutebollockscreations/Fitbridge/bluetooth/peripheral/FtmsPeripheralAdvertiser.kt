@@ -131,6 +131,9 @@ class FtmsPeripheralAdvertiser(
     /** Invalidates every asynchronous callback from an older start/stop cycle. */
     private val lifecycleEpoch = AtomicLong(0L)
 
+    /** Service publication and leak-free shutdown for this owner's GATT servers (LIB-9g). */
+    private val gattSessions = GattServerSessions<BluetoothGattService>()
+
     private class StartRequest(
         val epoch: Long,
         val adapter: BluetoothAdapter,
@@ -348,6 +351,7 @@ class FtmsPeripheralAdvertiser(
             return
         }
         gattServer = server
+        gattSessions.open(epoch, server.gattOps())
         registerPairingReceiver()
 
         publishFtmsService(request)
@@ -371,7 +375,7 @@ class FtmsPeripheralAdvertiser(
         )
         armServiceTimeout(request, BluetoothIds.UUID_FTMS_SERVICE, "FTMS")
 
-        if (!server.addService(service)) {
+        if (!gattSessions.addService(service)) {
             clearServiceTimeout(request)
             finishStart(
                 request,
@@ -402,7 +406,7 @@ class FtmsPeripheralAdvertiser(
             return
         }
         armServiceTimeout(request, service.uuid, label)
-        if (!server.addService(service)) {
+        if (!gattSessions.addService(service)) {
             clearServiceTimeout(request)
             finishStart(
                 request,
@@ -510,9 +514,8 @@ class FtmsPeripheralAdvertiser(
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun teardownGattServer() {
-        val server = gattServer ?: return
-        runCatching { server.clearServices() }
-        runCatching { server.close() }
+        if (gattServer == null) return
+        gattSessions.closeCurrent()
         gattServer = null
     }
 
@@ -707,6 +710,7 @@ class FtmsPeripheralAdvertiser(
     private fun createGattCallback(callbackEpoch: Long) = object : BluetoothGattServerCallback() {
 
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            if (gattSessions.onServiceAdded(callbackEpoch, service)) return
             if (!isCurrentEpoch(callbackEpoch)) return
             val request = pendingStart ?: return
             if (request.epoch != callbackEpoch || service.uuid != request.expectedServiceUuid) return

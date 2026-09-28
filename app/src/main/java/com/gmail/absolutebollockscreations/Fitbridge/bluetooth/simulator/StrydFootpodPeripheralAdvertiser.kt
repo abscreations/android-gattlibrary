@@ -9,6 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.GattServerSessions
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.gattOps
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
@@ -64,6 +66,9 @@ internal class StrydFootpodPeripheralAdvertiser(
 
     private val main = Handler(Looper.getMainLooper())
     private val epoch = AtomicLong(0)
+
+    /** Service publication and leak-free shutdown for this owner's GATT servers (LIB-9g). */
+    private val gattSessions = GattServerSessions<BluetoothGattService>()
     private val clients = ConcurrentHashMap<String, Client>()
     private val advertisingGate = ConnectableAdvertisingGate()
     private val connectionRetention = PeripheralConnectionRetentionGuard()
@@ -100,6 +105,7 @@ internal class StrydFootpodPeripheralAdvertiser(
             return
         }
         server = manager.openGattServer(context, callback(currentEpoch))
+        server?.let { gattSessions.open(currentEpoch, it.gattOps()) }
         if (server == null) {
             finishStart(Result.failure(IllegalStateException("Could not open Stryd footpod GATT server")))
             return
@@ -125,8 +131,7 @@ internal class StrydFootpodPeripheralAdvertiser(
         clients.clear()
         advertisingGate.reset()
         connectionRetention.clear()
-        runCatching { server?.clearServices() }
-        runCatching { server?.close() }
+        gattSessions.closeCurrent()
         server = null
         startResult?.invoke(Result.failure(IllegalStateException("Stryd footpod start was stopped")))
         startResult = null
@@ -136,11 +141,12 @@ internal class StrydFootpodPeripheralAdvertiser(
     @SuppressLint("MissingPermission")
     private fun addNextService(): Boolean {
         val next = pendingServices.pollFirst() ?: return true
-        return server?.addService(next) == true
+        return gattSessions.addService(next) == true
     }
 
     private fun callback(callbackEpoch: Long) = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            if (gattSessions.onServiceAdded(callbackEpoch, service)) return
             if (epoch.get() != callbackEpoch) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 finishStart(

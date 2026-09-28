@@ -9,6 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.GattServerSessions
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral.gattOps
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
@@ -78,6 +80,9 @@ internal class KayakFirstPeripheralController(
 
     private val main = Handler(Looper.getMainLooper())
     private val epoch = AtomicLong(0)
+
+    /** Service publication and leak-free shutdown for this owner's GATT servers (LIB-9g). */
+    private val gattSessions = GattServerSessions<BluetoothGattService>()
     private val clients = ConcurrentHashMap<String, Client>()
     private val advertisingGate = ConnectableAdvertisingGate()
     private var server: BluetoothGattServer? = null
@@ -143,7 +148,8 @@ internal class KayakFirstPeripheralController(
                 return@nameCallback
             }
             server = manager.openGattServer(context, callback(currentEpoch))
-            if (server == null || server?.addService(KayakFirstGattProfile.buildService()) != true) {
+            server?.let { gattSessions.open(currentEpoch, it.gattOps()) }
+            if (server == null || !gattSessions.addService(KayakFirstGattProfile.buildService())) {
                 finishStart(Result.failure(IllegalStateException("Could not open KayakFirst GATT service")))
             }
         }
@@ -173,7 +179,7 @@ internal class KayakFirstPeripheralController(
         }
         clients.clear()
         advertisingGate.reset()
-        runCatching { server?.clearServices() }; runCatching { server?.close() }; server = null
+        gattSessions.closeCurrent(); server = null
         startResult = null
         FtmsForegroundService.stop(context)
         if (restoreName) adapterNames.restore()
@@ -181,6 +187,7 @@ internal class KayakFirstPeripheralController(
 
     private fun callback(callbackEpoch: Long) = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(result: Int, service: BluetoothGattService) {
+            if (gattSessions.onServiceAdded(callbackEpoch, service)) return
             if (epoch.get() != callbackEpoch) return
             if (result == BluetoothGatt.GATT_SUCCESS) startAdvertising(callbackEpoch)
             else finishStart(Result.failure(IllegalStateException("KayakFirst service add failed ($result)")))
