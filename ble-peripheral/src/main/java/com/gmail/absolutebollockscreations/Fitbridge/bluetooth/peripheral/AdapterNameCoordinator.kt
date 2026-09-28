@@ -303,7 +303,8 @@ class AdapterNameCoordinator(
          * the Zwift Hub's does not. The pattern stays as well, because it still catches a name
          * stranded by an older build whose manifest this one no longer lists.
          */
-        internal val UNPREFIXED_SESSION_NAMES: Set<String> = setOf(
+        @FitBridgeBleInternalApi
+        val UNPREFIXED_SESSION_NAMES: Set<String> = setOf(
             BtServiceProfiles.DEVICE_NAME_CSC_CPS,
             "Stryd",
             "CHRONO 0",
@@ -334,7 +335,8 @@ class AdapterNameCoordinator(
         )
 
         /** True for names this app assigns, so they are never saved as "original". */
-        internal fun isKnownSessionName(name: String): Boolean =
+        @FitBridgeBleInternalApi
+        fun isKnownSessionName(name: String): Boolean =
             name.startsWith(SESSION_NAME_PREFIX) ||
                 name in UNPREFIXED_SESSION_NAMES ||
                 PM5_SESSION_NAME.matches(name) ||

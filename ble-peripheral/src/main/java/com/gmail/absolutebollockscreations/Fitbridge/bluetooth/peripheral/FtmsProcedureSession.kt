@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
+
 /**
  * Mutable FTMS procedure state owned by exactly one GATT connection generation.
  *
@@ -54,10 +56,10 @@ class FtmsProcedureSession {
     )
 
     var hasControl: Boolean = false
-        internal set
+        @FitBridgeBleInternalApi set
 
     var operationalState: OperationalState = OperationalState.IDLE
-        internal set
+        @FitBridgeBleInternalApi set
 
     val acceptedTargets = AcceptedTargets()
 

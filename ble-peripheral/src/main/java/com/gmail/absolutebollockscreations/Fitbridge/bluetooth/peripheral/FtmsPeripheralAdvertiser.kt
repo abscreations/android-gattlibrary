@@ -27,6 +27,7 @@ import android.os.ParcelUuid
 import android.os.SystemClock
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat
+import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BluetoothIds
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles.FtmsMachineProfile
 import java.util.UUID
@@ -51,7 +52,8 @@ import timber.log.Timber
  * would advertise a measurement FitBridge cannot supply; sending the field without the bit
  * would be a protocol violation. Only the treadmill persona has the field.
  */
-internal fun buildFtmsFeaturePayload(
+@FitBridgeBleInternalApi
+fun buildFtmsFeaturePayload(
     profile: FtmsMachineProfile,
     targets: TargetCapabilities,
     upstreamPaceSupported: Boolean = false,

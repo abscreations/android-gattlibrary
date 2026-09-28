@@ -351,9 +351,11 @@ internal class FeCBlePeripheralAdvertiser(
                         client.pendingFtmsProcedure.addLast(
                             BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT to outcome.response.copyOf(),
                         )
-                        if (outcome.status != null && client.ftmsStatusSubscribed) {
+                        // Local copy: a public property from another module cannot be smart-cast (LIB-10d).
+                        val status = outcome.status
+                        if (status != null && client.ftmsStatusSubscribed) {
                             client.pendingFtmsProcedure.addLast(
-                                BluetoothIds.UUID_FITNESS_MACHINE_STATUS to outcome.status.copyOf(),
+                                BluetoothIds.UUID_FITNESS_MACHINE_STATUS to status.copyOf(),
                             )
                         }
                     }

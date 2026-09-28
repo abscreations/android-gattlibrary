@@ -10,6 +10,9 @@ package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core
     AnnotationTarget.CLASS,
     AnnotationTarget.FUNCTION,
     AnnotationTarget.PROPERTY,
+    // Setters too, so a property can stay publicly readable while only its setter is an
+    // implementation API (LIB-10d: FtmsProcedureSession state set by tests above the module).
+    AnnotationTarget.PROPERTY_SETTER,
     AnnotationTarget.CONSTRUCTOR,
     AnnotationTarget.TYPEALIAS,
 )
