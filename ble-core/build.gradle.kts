@@ -30,6 +30,14 @@ android {
     }
 }
 
+// Library code may use its own and lower modules' @FitBridgeBleInternalApi declarations;
+// the opt-in marks them for outside consumers, not for the libraries themselves (LIB-10a).
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
+    compilerOptions.optIn.add(
+        "com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi"
+    )
+}
+
 dependencies {
     // No dependencies: ble-core is the base of the graph.
     testImplementation(libs.junit)
