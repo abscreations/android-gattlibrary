@@ -437,6 +437,15 @@ class BtEngineState : HrmStateSink {
     val connectedDevices: StateFlow<List<ConnectedDeviceLink>> =
         connectionRegistry.connectedDevices
 
+    private val _machineProbe = MutableStateFlow(MachineProbeState.IDLE)
+
+    /** Connected machine's capability probe, for the device row and the Start gate (LIB-9f). */
+    val machineProbe: StateFlow<MachineProbeState> = _machineProbe
+
+    internal fun setMachineProbe(value: MachineProbeState) {
+        _machineProbe.value = value
+    }
+
     private val _kayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgress?>(null)
     internal val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> =
         _kayakFirstSetupProgress

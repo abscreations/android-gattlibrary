@@ -2257,6 +2257,94 @@ class BtEngine internal constructor(
         metricFusion.recalculateHeartRateZones()
     }
 
+    /* ───────────────────────────── machine capability probe (LIB-9f) ───────────────────────────── */
+
+    private var machineProbeJob: Job? = null
+
+    /**
+     * One probe per machine link: PROBING from CONNECTED until [MachineProbe] says READY, IDLE
+     * when the link is not connected. Feeds the device row status and the Start gate.
+     */
+    private fun runMachineProbe() {
+        machineProbeJob?.cancel()
+        val startedAtMs = System.nanoTime() / 1_000_000L
+        state.setMachineProbe(MachineProbeState.PROBING)
+        machineProbeJob = scope.launch {
+            try {
+                probeMachineUntilReady(startedAtMs)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                // Never leave Start held because the probe itself failed.
+                Timber.tag(BtEngineState.TAG).w(t, "Machine probe failed; allowing Start")
+                state.setMachineProbe(MachineProbeState.READY)
+            }
+        }
+    }
+
+    private suspend fun probeMachineUntilReady(startedAtMs: Long) {
+        var rangeWaitStartedAtMs: Long? = null
+        while (connectionState.value == BluetoothProfile.STATE_CONNECTED) {
+            val nowMs = System.nanoTime() / 1_000_000L
+            val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
+            val services = context?.let {
+                runCatching { it.discoveredServices.toList() }.getOrDefault(emptyList())
+            }.orEmpty()
+            val hasFtmsFeature = services
+                .firstOrNull { it.uuid == BluetoothIds.UUID_FTMS_SERVICE }
+                ?.getCharacteristic(UUID_FITNESS_MACHINE_FEATURE) != null
+            val rangeWaitMs = rangeWaitStartedAtMs?.let { nowMs - it } ?: 0L
+            val readiness = ProviderAdvertisingReadiness.decide(
+                providerMachineCapabilities(),
+                rangeWaitMs,
+            )
+            if (readiness is ProviderAdvertisingReadiness.Decision.WaitForRanges &&
+                rangeWaitStartedAtMs == null
+            ) {
+                rangeWaitStartedAtMs = nowMs
+            }
+            val probe = MachineProbe.state(
+                servicesDiscovered = services.isNotEmpty(),
+                hasFtmsFeature = hasFtmsFeature,
+                readiness = readiness,
+                probeElapsedMs = nowMs - startedAtMs,
+            )
+            if (probe == MachineProbeState.READY) {
+                if (nowMs - startedAtMs >= MachineProbe.PROBE_CAP_MS) {
+                    Timber.tag(BtEngineState.TAG).w(
+                        "Machine probe: capped after %d ms (readiness=%s); allowing Start",
+                        nowMs - startedAtMs,
+                        readiness,
+                    )
+                } else {
+                    Timber.tag(BtEngineState.TAG).i(
+                        "Machine probe: ready after %d ms (ftmsFeature=%s, readiness=%s)",
+                        nowMs - startedAtMs,
+                        hasFtmsFeature,
+                        readiness,
+                    )
+                }
+                state.setMachineProbe(MachineProbeState.READY)
+                return
+            }
+            delay(MachineProbe.POLL_MS)
+        }
+    }
+
+    // Last in the class body so every property is initialised before the first emission.
+    init {
+        scope.launch {
+            connectionState.collect { linkState ->
+                if (linkState == BluetoothProfile.STATE_CONNECTED) {
+                    if (state.machineProbe.value == MachineProbeState.IDLE) runMachineProbe()
+                } else if (linkState == BluetoothProfile.STATE_DISCONNECTED) {
+                    machineProbeJob?.cancel()
+                    state.setMachineProbe(MachineProbeState.IDLE)
+                }
+            }
+        }
+    }
+
 }
 
 internal fun BtEngine.machineContext(operation: String): ConnectionContext? =
