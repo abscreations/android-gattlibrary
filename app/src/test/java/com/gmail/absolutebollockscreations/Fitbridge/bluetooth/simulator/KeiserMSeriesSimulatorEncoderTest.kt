@@ -67,8 +67,7 @@ class KeiserMSeriesSimulatorEncoderTest {
     @Test
     fun `legacy envelope is non connectable non scannable and fits thirty one bytes`() {
         val persona = SimulatorPersona.KeiserMSeries(metricProfile)
-        val plan = com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
-            .KeiserMSeriesAdvertisingPlan.create(
+        val plan = KeiserMSeriesAdvertisingPlan.create(
                 persona,
                 KeiserMSeriesSimulatorEncoder.encode(sample(), metricProfile),
             )
@@ -90,8 +89,7 @@ class KeiserMSeriesSimulatorEncoderTest {
         val reading = requireNotNull(
             KeiserMSeriesMeasurement.parse(KeiserMSeriesSimulatorEncoder.canonicalField(payload)),
         )
-        val plan = com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
-            .KeiserMSeriesAdvertisingPlan.create(persona, payload)
+        val plan = KeiserMSeriesAdvertisingPlan.create(persona, payload)
 
         assertEquals("6.22", reading.firmware)
         assertEquals(KeiserMSeriesMeasurement.SLOW_STATS_TIMEOUT_MS, reading.statsTimeoutMs)
