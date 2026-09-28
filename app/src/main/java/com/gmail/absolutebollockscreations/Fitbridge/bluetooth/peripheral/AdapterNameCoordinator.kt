@@ -1,15 +1,6 @@
 package com.gmail.absolutebollockscreations.Fitbridge.bluetooth.peripheral
 
 import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.engine.BtServiceProfiles
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCBleSimulatorIdentity
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.FeCEquipmentType
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KeiserMSeriesSimulatorProfile
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrPersonaManifest
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.KickrSimulatorPersona
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.LifeFitnessMachine
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SCHWINN_X70_ADVERTISED_NAME
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.feCBleAdvertisedName
-import com.gmail.absolutebollockscreations.Fitbridge.bluetooth.simulator.SimulatorPersona
 import java.util.ArrayDeque
 import timber.log.Timber
 
@@ -265,12 +256,7 @@ internal class AdapterNameCoordinator(
     }
 
     /** True for names this app assigns, so they are never saved as "original". */
-    private fun isSessionName(name: String): Boolean =
-        name.startsWith(SESSION_NAME_PREFIX) ||
-            name in UNPREFIXED_SESSION_NAMES ||
-            PM5_SESSION_NAME.matches(name) ||
-            KEISER_SESSION_NAME.matches(name) ||
-            KICKR_SESSION_NAME.matches(name)
+    private fun isSessionName(name: String): Boolean = isKnownSessionName(name)
 
     companion object {
         private const val TAG = "AdapterName"
@@ -301,33 +287,57 @@ internal class AdapterNameCoordinator(
          * prefix. PM5, Keiser and KICKR were then covered by the patterns below, and everything
          * added after that was not: as of 2026-09-02 the four Life Fitness consoles, all seven
          * FE-C equipment types, both Tacx identities and the Keiser `M3o` profile (whose name the
-         * `M3(i|m)?` pattern does not match) were all unrecognised. Rather than extend a
-         * hand-written list a fourth time, this set is **derived from the persona definitions**,
-         * so a persona cannot be added without being covered.
+         * `M3(i|m)?` pattern does not match) were all unrecognised.
          *
-         * The KICKR personas are derived here too. Three of their four local names happen to
-         * match [KICKR_SESSION_NAME], but the Zwift Hub's does not — advertising as that persona
-         * and crashing would have renamed the user's phone "Zwift Hub" permanently. `internal` is
-         * module-wide rather than package-wide in Kotlin, so `KickrPersonaManifest` is reachable
-         * from here after all; the pattern below stays as well, because it still catches a name
+         * **Static since LIB-5 (decision L15).** This set used to be derived from the simulator's
+         * persona definitions. The per-family simulator peripherals now live in the simulator
+         * package, which release builds do not contain (L7), yet the protection must still hold
+         * there: a debug session that crashed mid-persona leaves the adapter renamed for the
+         * release app to find. The literal list below is therefore the source, and
+         * `AdapterNameSessionNamesTest` derives the same set from the persona definitions and
+         * fails on any difference, so a persona still cannot be added without being covered.
+         *
+         * The KICKR names stay listed even though three of the four match [KICKR_SESSION_NAME]:
+         * the Zwift Hub's does not. The pattern stays as well, because it still catches a name
          * stranded by an older build whose manifest this one no longer lists.
          */
-        private val UNPREFIXED_SESSION_NAMES: Set<String> = buildSet {
-            add(BtServiceProfiles.DEVICE_NAME_CSC_CPS)
-            add(SimulatorPersona.StrydFootpod.advertisedName)
-            add(SimulatorPersona.PrecorChrono.advertisedName)
-            add(SimulatorPersona.FlywheelSports.advertisedName)
-            add(SimulatorPersona.KayakFirstBlue.advertisedName)
-            add(SimulatorPersona.KayakFirstOrange.advertisedName)
-            add(SCHWINN_X70_ADVERTISED_NAME)
-            LifeFitnessMachine.entries.forEach { add(it.syntheticName) }
-            KeiserMSeriesSimulatorProfile.entries.forEach { add(it.advertisedName) }
-            FeCEquipmentType.entries.forEach { add(feCBleAdvertisedName(it)) }
-            FeCBleSimulatorIdentity.entries.forEach { identity -> identity.localName?.let { add(it) } }
-            KickrSimulatorPersona.entries.forEach {
-                add(KickrPersonaManifest.forPersona(it).advertising.localName)
-            }
-        }
+        internal val UNPREFIXED_SESSION_NAMES: Set<String> = setOf(
+            BtServiceProfiles.DEVICE_NAME_CSC_CPS,
+            "Stryd",
+            "CHRONO 0",
+            "Flywheel 1",
+            "25100001",
+            "17100001",
+            "SCHWINN 170/270",
+            "LF1F17B1D000001094",
+            "LF1F17B1D000002089",
+            "LF0F17B1D000003095",
+            "LF0F17B1D000004090",
+            "M3i",
+            "M3m",
+            "M3o",
+            "FitBridge FE-C Trainer",
+            "FitBridge FE-C Bike",
+            "FitBridge FE-C Treadmill",
+            "FitBridge FE-C Elliptical",
+            "FitBridge FE-C Rower",
+            "FitBridge FE-C Climber",
+            "FitBridge FE-C Skier",
+            "Tacx Neo 90002",
+            "Tacx Flux-2 90001",
+            "Wahoo KICKR AEE4",
+            "KICKR CORE C3FB",
+            "KICKR CORE 2 1A2B",
+            "Zwift Hub",
+        )
+
+        /** True for names this app assigns, so they are never saved as "original". */
+        internal fun isKnownSessionName(name: String): Boolean =
+            name.startsWith(SESSION_NAME_PREFIX) ||
+                name in UNPREFIXED_SESSION_NAMES ||
+                PM5_SESSION_NAME.matches(name) ||
+                KEISER_SESSION_NAME.matches(name) ||
+                KICKR_SESSION_NAME.matches(name)
 
         private val PM5_SESSION_NAME = Regex("PM5 [0-9]{9}(?: Row| Ski| Bike)?")
         private val KEISER_SESSION_NAME = Regex("M3(?:i|m)?(?: .+)?")
