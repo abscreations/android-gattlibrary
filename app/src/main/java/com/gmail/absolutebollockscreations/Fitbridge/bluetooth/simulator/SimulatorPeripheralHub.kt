@@ -864,13 +864,16 @@ class SimulatorPeripheralHub(
         simulatorKickrActive = false
     }
 
-    // ── ManagedPeripheralGroup: blocks the manager ran inline before LIB-9a, verbatim ─────────
+    // ── ManagedPeripheralGroup ────────────────────────────────────────────────────────────
 
+    // All ten family controllers (L17). Before LIB-9a the manager's own check omitted Flywheel
+    // and Kayak First while the host's check below included them; they now agree.
     override val anyAdvertising: Boolean
         get() = concept2Controller.isAdvertising || keiserController.isAdvertising ||
             precorController.isAdvertising || strydController.isAdvertising ||
-            lifeFitnessController.isAdvertising || schwinnX70Controller.isAdvertising || feCBleController.isAdvertising ||
-            kickrController.isAdvertising
+            flywheelController.isAdvertising || kayakFirstController.isAdvertising ||
+            lifeFitnessController.isAdvertising || schwinnX70Controller.isAdvertising ||
+            feCBleController.isAdvertising || kickrController.isAdvertising
 
     override fun stopAll() {
         concept2Controller.stop()
@@ -898,42 +901,5 @@ class SimulatorPeripheralHub(
         feCBleController.dispose()
         kickrController.dispose()
         clearSimulatorControllerSelection()
-    }
-
-    override fun stopBeforeFtmsBridge() {
-        concept2Controller.stop()
-        keiserController.stop()
-        precorController.stop()
-        flywheelController.stop()
-        kayakFirstController.stop()
-        strydController.stop()
-        lifeFitnessController.stop()
-        schwinnX70Controller.stop()
-        feCBleController.stop()
-        simulatorPm5Active = false
-        simulatorKeiserActive = false
-        simulatorPrecorActive = false
-        simulatorFlywheelActive = false
-        simulatorStrydActive = false
-        simulatorLifeFitnessActive = false
-    }
-
-    override fun stopBeforeCscCpsBridge() {
-        concept2Controller.stop()
-        keiserController.stop()
-        precorController.stop()
-        kayakFirstController.stop()
-        flywheelController.stop()
-        strydController.stop()
-        lifeFitnessController.stop()
-        schwinnX70Controller.stop()
-        feCBleController.stop()
-        simulatorPm5Active = false
-        simulatorKeiserActive = false
-        simulatorPrecorActive = false
-        simulatorFlywheelActive = false
-        simulatorKayakFirstActive = false
-        simulatorStrydActive = false
-        simulatorLifeFitnessActive = false
     }
 }

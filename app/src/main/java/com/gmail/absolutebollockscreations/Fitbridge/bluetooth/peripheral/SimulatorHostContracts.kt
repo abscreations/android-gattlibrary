@@ -40,23 +40,22 @@ interface SimulatorHostEnvironment {
 /**
  * Peripherals the app manager must stop or dispose around its own downstream sessions.
  *
- * Each method reproduces, verbatim, the block the manager ran inline before LIB-9a, including
- * its existing asymmetries (recorded in the implementation log, not changed here).
+ * **Bridge mode and simulator mode are mutually exclusive (decision L17).** A release build
+ * bridges a real machine (central + FTMS pass-through peripheral); a debug build may instead run
+ * the simulator as a fake machine for another device to connect to. So any bridge start stops
+ * every simulator peripheral and clears every selection flag, via [stopAll].
  */
 interface ManagedPeripheralGroup {
 
-    /** Advertising state the manager's `isAdvertising` includes (not Flywheel or Kayak First). */
+    /** True when any of the group's peripherals is advertising (all ten family controllers). */
     val anyAdvertising: Boolean
 
-    /** Manager `stop()` and `stopAdvertising()`: stop every family controller and clear selection. */
+    /**
+     * Stop every family controller and clear all selection flags. Used by the manager's `stop()`,
+     * `stopAdvertising()` and, under L17, before starting any bridged FTMS or CSC/CPS session.
+     */
     fun stopAll()
 
     /** Manager `release()`: dispose every family controller and clear selection. */
     fun disposeAll()
-
-    /** Before a bridged FTMS session: stop nine controllers (not KICKR) and reset six flags. */
-    fun stopBeforeFtmsBridge()
-
-    /** Before a bridged CSC/CPS session: stop nine controllers (not KICKR) and reset seven flags. */
-    fun stopBeforeCscCpsBridge()
 }
