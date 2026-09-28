@@ -287,8 +287,8 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         }
 
         // At this point FEATURES (0x2ACC) has been parsed and supports* flags are set.
-        // Ranges are either already parsed or in-flight, but we at least know which
-        // targets are supported.
+        // The claimed Supported-* Range reads are usually still queued; the provider loop
+        // waits for them (up to 5 s) before advertising (LIB-9e, ProviderAdvertisingReadiness).
         engine.maybeStartProviderAdvertisingAfterFeatures(activity)
     }
 

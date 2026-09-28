@@ -37,7 +37,8 @@
 //         • only start provider advertising once we have a “reasonable” snapshot to expose.
 //   • BtEngine runs a small retry loop that keeps attempting to start advertising while the
 //     upstream FTMS link remains connected:
-//       - It first enforces a minimal readiness check via [FtmsCapabilities.isReadyForProviderAdvertising].
+//       - It first enforces a readiness check via [ProviderAdvertisingReadiness]: FEATURES parsed,
+//         and every claimed Supported-* Range read, or 5 s spent waiting for them (LIB-9e).
 //       - It then calls [BtServiceControlSink.startAdvertisingFtms(...)] and expects a Boolean
 //         return value: `true` = advertising actually started, `false` = btService not ready yet
 //         (e.g. capabilities still converging or platform constraints).
@@ -358,29 +359,6 @@ class BtEngine internal constructor(
         earlyBondScheduled = false
     }
 
-    /**
-     * Return true when the current FTMS capabilities snapshot is "ready" to be mirrored as a
-     * provider-side virtual device:
-     *  - FEATURES (0x2ACC) must have been parsed (featuresRead = true).
-     *  - For any dimension the upstream machine claims to support, we require that its range
-     *    payload has been discovered. Today we enforce this for resistance, which is the primary
-     *    control surface for bikes/ellipticals.
-     *
-     * Note: this is a *minimal* readiness gate on the engine side. The btService layer can
-     * apply stricter criteria and express “not ready yet” by returning `false` from
-     * [BtServiceControlSink.startAdvertisingFtms].
-     *
-     * IMPORTANT: callers should treat FEATURES as *optional* for data/control:
-     *  - If 2ACC never converges, the app can still infer a machine persona from the data chars
-     *    (e.g., Elliptical Data) and start btService with conservative “all controls unsupported”
-     *    defaults. In that case this gate may remain false, but core FTMS usage still works.
-     */
-    private fun FtmsCapabilities.isReadyForProviderAdvertising(): Boolean {
-        if (!featuresRead) return false
-        if (supportsResistance && !resistanceRangeKnown) return false
-        return true
-    }
-
     /** Whether an upstream fitness machine is currently supplying this session. */
     private fun hasUpstreamMachine(): Boolean =
         connectionState.value == android.bluetooth.BluetoothProfile.STATE_CONNECTED
@@ -450,6 +428,9 @@ class BtEngine internal constructor(
 
         scope.launch {
             var attempt = 0
+            // Monotonic start of the wait for claimed Supported-* Ranges (LIB-9e); null until the
+            // first check that finds one missing.
+            var rangeWaitStartedAtMs: Long? = null
             try {
                 while (ENABLE_BTSERVICE_FTMS && !advertisingStarted) {
                     val currentSink = serviceControlSink ?: run {
@@ -486,13 +467,35 @@ class BtEngine internal constructor(
                     } else {
                         providerMachineCapabilities()
                     }
-                    if (!capabilities.isReadyForProviderAdvertising()) {
-                        Timber.tag(BtEngineState.TAG).d(
-                            "Provider advertising retry: capabilities not ready yet (caps=%s); waiting",
-                            capabilities
-                        )
-                        delay(1_000)
-                        continue
+                    val nowMs = System.nanoTime() / 1_000_000L
+                    val rangeWaitMs = rangeWaitStartedAtMs?.let { nowMs - it } ?: 0L
+                    when (val readiness = ProviderAdvertisingReadiness.decide(capabilities, rangeWaitMs)) {
+                        ProviderAdvertisingReadiness.Decision.WaitForFeatures -> {
+                            Timber.tag(BtEngineState.TAG).d(
+                                "Provider advertising retry: FEATURES not read yet (caps=%s); waiting",
+                                capabilities
+                            )
+                            delay(1_000)
+                            continue
+                        }
+                        is ProviderAdvertisingReadiness.Decision.WaitForRanges -> {
+                            if (rangeWaitStartedAtMs == null) rangeWaitStartedAtMs = nowMs
+                            Timber.tag(BtEngineState.TAG).d(
+                                "Provider advertising retry: waiting for Supported ranges %s (%d ms)",
+                                readiness.missing,
+                                rangeWaitMs
+                            )
+                            delay(ProviderAdvertisingReadiness.RANGE_POLL_MS)
+                            continue
+                        }
+                        is ProviderAdvertisingReadiness.Decision.ReadyWithoutRanges ->
+                            Timber.tag(BtEngineState.TAG).w(
+                                "Provider advertising: Supported ranges %s not read after %d ms; " +
+                                    "bridging without those controls",
+                                readiness.missing,
+                                rangeWaitMs
+                            )
+                        ProviderAdvertisingReadiness.Decision.Ready -> Unit
                     }
 
                     attempt++
