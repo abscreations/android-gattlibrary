@@ -11,19 +11,16 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import timber.log.Timber
 import java.util.UUID
 
-@GattLibraryInternalApi
-data class FlywheelCharacteristicInventory(
+internal data class FlywheelCharacteristicInventory(
     val properties: Int,
     val hasCccd: Boolean,
 )
 
-@GattLibraryInternalApi
-data class FlywheelGattInventory(
+internal data class FlywheelGattInventory(
     val services: Map<UUID, Map<UUID, FlywheelCharacteristicInventory>>,
 )
 
-@GattLibraryInternalApi
-enum class FlywheelDiscoveryFailure {
+internal enum class FlywheelDiscoveryFailure {
     ADVERTISEMENT_IDENTITY_NOT_CONFIRMED,
     MISSING_SERVICE,
     MISSING_TX,
@@ -33,17 +30,14 @@ enum class FlywheelDiscoveryFailure {
     RX_NOT_WRITABLE,
 }
 
-@GattLibraryInternalApi
-enum class FlywheelGattOperationKind { ENABLE_NOTIFICATIONS }
+internal enum class FlywheelGattOperationKind { ENABLE_NOTIFICATIONS }
 
-@GattLibraryInternalApi
-data class FlywheelGattOperation(
+internal data class FlywheelGattOperation(
     val kind: FlywheelGattOperationKind,
     val characteristicUuid: UUID,
 )
 
-@GattLibraryInternalApi
-data class FlywheelDiscoveryPlan(
+internal data class FlywheelDiscoveryPlan(
     val activate: Boolean,
     val failure: FlywheelDiscoveryFailure?,
     val operations: List<FlywheelGattOperation>,
@@ -56,8 +50,7 @@ data class FlywheelDiscoveryPlan(
  * this address before the exact service, endpoints, properties, and TX CCCD can confirm it here.
  * RX is deliberately required but produces no operation: no command vocabulary is evidenced.
  */
-@GattLibraryInternalApi
-fun planFlywheelDiscovery(
+internal fun planFlywheelDiscovery(
     advertisementCandidateId: String?,
     inventory: FlywheelGattInventory,
 ): FlywheelDiscoveryPlan {

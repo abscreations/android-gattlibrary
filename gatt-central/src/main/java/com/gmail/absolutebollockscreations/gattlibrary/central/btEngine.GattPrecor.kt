@@ -198,8 +198,7 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
  * means callers cannot accidentally subscribe to a vendor characteristic merely because it was
  * added by a later firmware revision.
  */
-@GattLibraryInternalApi
-fun planPrecorDiscovery(
+internal fun planPrecorDiscovery(
     inventory: Map<UUID, Set<UUID>>,
 ): List<CccdTarget> {
     val characteristics = inventory[BluetoothIds.UUID_PRECOR_SERVICE] ?: return emptyList()

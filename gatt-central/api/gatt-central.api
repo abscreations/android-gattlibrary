@@ -1075,16 +1075,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public static final fun canRequestFtmsControl (ZZZ)Z
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattFlywheelKt {
-	public static final fun planFlywheelDiscovery (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattInventory;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryPlan;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattFtmsKt {
 	public static final fun applyFitnessMachineStatus (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;[B)V
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattPrecorKt {
-	public static final fun planPrecorDiscovery (Ljava/util/Map;)Ljava/util/List;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattQueueKt {
@@ -2270,19 +2262,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCPr
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCProtocolSession$Companion {
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelCharacteristicInventory {
-	public fun <init> (IZ)V
-	public final fun component1 ()I
-	public final fun component2 ()Z
-	public final fun copy (IZ)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelCharacteristicInventory;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelCharacteristicInventory;IZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelCharacteristicInventory;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getHasCccd ()Z
-	public final fun getProperties ()I
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDecodeResult {
 }
 
@@ -2306,65 +2285,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Flywh
 	public final fun getReason ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelRejection;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure : java/lang/Enum {
-	public static final field ADVERTISEMENT_IDENTITY_NOT_CONFIRMED Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static final field MISSING_RX Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static final field MISSING_SERVICE Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static final field MISSING_TX Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static final field RX_NOT_WRITABLE Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static final field TX_MISSING_CCCD Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static final field TX_NOT_NOTIFY Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryPlan {
-	public fun <init> (ZLcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;Ljava/util/List;)V
-	public final fun component1 ()Z
-	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public final fun component3 ()Ljava/util/List;
-	public final fun copy (ZLcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;Ljava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryPlan;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryPlan;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;Ljava/util/List;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryPlan;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getActivate ()Z
-	public final fun getFailure ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDiscoveryFailure;
-	public final fun getOperations ()Ljava/util/List;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattInventory {
-	public fun <init> (Ljava/util/Map;)V
-	public final fun component1 ()Ljava/util/Map;
-	public final fun copy (Ljava/util/Map;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattInventory;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattInventory;Ljava/util/Map;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattInventory;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getServices ()Ljava/util/Map;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperation {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;Ljava/util/UUID;)V
-	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;
-	public final fun component2 ()Ljava/util/UUID;
-	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;Ljava/util/UUID;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperation;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperation;Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;Ljava/util/UUID;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperation;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getCharacteristicUuid ()Ljava/util/UUID;
-	public final fun getKind ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind : java/lang/Enum {
-	public static final field ENABLE_NOTIFICATIONS Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelGattOperationKind;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelMeasurement {
