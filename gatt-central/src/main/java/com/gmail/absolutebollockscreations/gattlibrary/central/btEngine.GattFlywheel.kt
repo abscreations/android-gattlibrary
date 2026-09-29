@@ -167,8 +167,7 @@ internal fun armFlywheelDisconnectCapture(diagnosis: FlywheelDisconnectDiagnosis
 }
 
 /** Pure connection-generation gate for bounded TX subscription setup. */
-@GattLibraryInternalApi
-class FlywheelSubscriptionGate(
+internal class FlywheelSubscriptionGate(
     val connectionId: ConnectionId,
     private val timeoutMs: Long,
 ) {

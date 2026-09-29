@@ -2334,16 +2334,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Flywh
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelSetupState;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelSubscriptionGate {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;J)V
-	public final fun begin (J)Z
-	public final fun cancel ()V
-	public final fun getConnectionId ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;
-	public final fun getState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FlywheelSetupState;
-	public final fun markReady (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;J)Z
-	public final fun tick (J)Z
-}
-
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/FtmsLayoutStep {
 }
 
