@@ -17,8 +17,7 @@ internal fun concept2StartupWriteMode(
 }
 
 /** One user-authorized physical setup command; never a generic CSAFE control transport. */
-@GattLibraryInternalApi
-class Concept2StartupHandshake {
+internal class Concept2StartupHandshake {
     enum class State { NEW, AWAITING_ACK, ACKNOWLEDGED, FAILED, TIMED_OUT }
     @Volatile
     var state = State.NEW

@@ -85,7 +85,7 @@ data class Concept2Pm5Snapshot(
 )
 
 /** Deterministic autonomous PM5 workout; it never accepts a Bluetooth control operation. */
-class Concept2Pm5MockEngine(
+internal class Concept2Pm5MockEngine(
     private val machine: Concept2Machine,
     var scenario: Concept2Scenario = Concept2Scenario.STEADY,
     startsPaused: Boolean = false,

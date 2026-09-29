@@ -336,7 +336,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BluetoothIdsKt {
-	public static final fun byteOf (I)[B
 	public static final fun s16le (I)[B
 	public static final fun u16le (I)[B
 	public static final fun u24le (I)[B
@@ -487,8 +486,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngineKt {
-	public static final field ENABLE_BTSERVICE_CSCCPS Z
-	public static final field ENABLE_BTSERVICE_FTMS Z
 	public static final fun flywheelProviderCapabilities ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;
 	public static final fun sensorOnlyProviderCapabilities ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;
 }
@@ -1128,11 +1125,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtSer
 	public static fun onWheelCircumferenceChangedMm (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;D)V
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSinkKt {
-	public static final fun withLogging (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;
-	public static synthetic fun withLogging$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;
-}
-
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade {
 	public abstract fun buildSupportedHeartRateRange ()[B
 	public abstract fun buildSupportedInclineRange ()[B
@@ -1219,15 +1211,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtSer
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceSupportedRangesAdapter {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceSupportedRangesAdapter;
-	public final fun buildHeartRateRange (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;)[B
-	public final fun buildInclineRange (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;)[B
-	public final fun buildPowerRange (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;)[B
-	public final fun buildResistanceRange (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;)[B
-	public final fun buildSpeedRange (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;)[B
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/CanonicalUuid {
@@ -1434,7 +1417,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Conce
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2PlanKt {
-	public static final fun getCONCEPT2_CONSUMED_CHARACTERISTICS ()Ljava/util/List;
 	public static final fun planConcept2Discovery (Ljava/util/Set;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DiscoveryPlan;
 	public static final fun planConcept2IndividualFallback (Ljava/util/Set;)Ljava/util/List;
 }
@@ -1452,31 +1434,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Conce
 	public fun onDisconnected (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;)V
 	public fun onLivenessTick (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Landroid/bluetooth/BluetoothGatt;)V
 	public fun onServicesDiscovered (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Landroid/bluetooth/BluetoothGatt;Ljava/util/List;)Z
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake {
-	public static final field ACK_TIMEOUT_MS J
-	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$Companion;
-	public fun <init> ()V
-	public final fun acceptAcknowledgement ([B)Z
-	public final fun getState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
-	public final fun issue (J)[B
-	public final fun tick (J)V
-	public final fun writeCompleted (Z)V
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$Companion {
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State : java/lang/Enum {
-	public static final field ACKNOWLEDGED Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
-	public static final field AWAITING_ACK Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
-	public static final field FAILED Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
-	public static final field NEW Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
-	public static final field TIMED_OUT Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2StartupHandshake$State;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/ConnectionContext {
@@ -2369,83 +2326,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCPr
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCProtocolSession$Companion {
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Flags {
-	public static final field BIKE_AVGCAD I
-	public static final field BIKE_AVGPOWER I
-	public static final field BIKE_AVGSPEED I
-	public static final field BIKE_CADENCE I
-	public static final field BIKE_ELAPSED I
-	public static final field BIKE_EXPENERGY I
-	public static final field BIKE_HEARTRATE I
-	public static final field BIKE_INSTPOWER I
-	public static final field BIKE_METABOLIC I
-	public static final field BIKE_MORE I
-	public static final field BIKE_REMAINING I
-	public static final field BIKE_RESISTANCE I
-	public static final field BIKE_TOTALDIST I
-	public static final field CLIMB_AVGSTEPR I
-	public static final field CLIMB_ELAPSED I
-	public static final field CLIMB_ELEVGAIN I
-	public static final field CLIMB_EXPENERGY I
-	public static final field CLIMB_HEARTRATE I
-	public static final field CLIMB_METABOLIC I
-	public static final field CLIMB_MORE I
-	public static final field CLIMB_REMAINING I
-	public static final field CLIMB_STEPRATE I
-	public static final field CLIMB_STRIDE I
-	public static final field ELL_AVGPOWER I
-	public static final field ELL_AVGSPEED I
-	public static final field ELL_ELAPSED I
-	public static final field ELL_ELEVGAIN I
-	public static final field ELL_EXPENERGY I
-	public static final field ELL_HEARTRATE I
-	public static final field ELL_INCLINATION I
-	public static final field ELL_INSTPOWER I
-	public static final field ELL_METABOLIC I
-	public static final field ELL_MORE I
-	public static final field ELL_REMAINING I
-	public static final field ELL_RESISTANCE I
-	public static final field ELL_STEPCOUNT I
-	public static final field ELL_STRIDECOUNT I
-	public static final field ELL_TOTALDIST I
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/Flags;
-	public static final field ROW_AVGPACE I
-	public static final field ROW_AVGPOWER I
-	public static final field ROW_AVGSTROKE I
-	public static final field ROW_ELAPSED I
-	public static final field ROW_EXPENERGY I
-	public static final field ROW_HEARTRATE I
-	public static final field ROW_INSTPACE I
-	public static final field ROW_INSTPOWER I
-	public static final field ROW_METABOLIC I
-	public static final field ROW_MORE I
-	public static final field ROW_REMAINING I
-	public static final field ROW_RESISTANCE I
-	public static final field ROW_TOTALDIST I
-	public static final field STEP_AVGSTEPR I
-	public static final field STEP_ELAPSED I
-	public static final field STEP_ELEVGAIN I
-	public static final field STEP_EXPENERGY I
-	public static final field STEP_HEARTRATE I
-	public static final field STEP_METABOLIC I
-	public static final field STEP_MORE I
-	public static final field STEP_REMAINING I
-	public static final field STEP_STEPRATE I
-	public static final field TREAD_AVGPACE I
-	public static final field TREAD_AVGSPEED I
-	public static final field TREAD_BELTFORCEPOWER I
-	public static final field TREAD_ELAPSEDTIME I
-	public static final field TREAD_ELEVATIONGAIN I
-	public static final field TREAD_EXPENERGY I
-	public static final field TREAD_HEARTRATE I
-	public static final field TREAD_INCLRAMPANGLE I
-	public static final field TREAD_INSTANTPACE I
-	public static final field TREAD_METABOLIC I
-	public static final field TREAD_MOREDATA I
-	public static final field TREAD_REMAININGTIME I
-	public static final field TREAD_TOTALDISTANCE I
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelCharacteristicInventory {
@@ -3949,23 +3829,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/LinkS
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/LinkState$Companion {
 	public final fun fromBluetoothProfileState (I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkState;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/LoggingBtServiceControlSink : com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;Ljava/lang/String;)V
-	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public fun onControlPermissionLost ()V
-	public fun onSafetyKeyPulled ()V
-	public fun onTargetHeartRateChangedBpm (I)V
-	public fun onTargetInclineChangedPercent (F)V
-	public fun onTargetPowerChangedWatts (I)V
-	public fun onTargetResistanceLevelChanged (F)V
-	public fun onTargetSpeedChangedKmh (F)V
-	public fun onWheelCircumferenceChangedMm (D)V
-	public fun setNotifyIntervalMs (J)V
-	public fun startAdvertisingCscCps ()V
-	public fun startAdvertisingFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Z
-	public fun stopAdvertising ()V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineControlEndpointKt {

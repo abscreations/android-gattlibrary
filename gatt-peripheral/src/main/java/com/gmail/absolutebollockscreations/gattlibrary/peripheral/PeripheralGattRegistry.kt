@@ -26,7 +26,7 @@ import java.util.UUID
  *
  * Stateless and pure - safe to re-invoke when the persona changes.
  */
-object PeripheralGattRegistry {
+internal object PeripheralGattRegistry {
 
     fun buildFtmsService(
         profile: FtmsMachineProfile,

@@ -232,7 +232,7 @@ interface BtServiceControlSink {
  *   val loggedSink = LoggingBtServiceControlSink(rawSink, "BtServiceSink")
  *   engine.attachServiceControlSink(loggedSink)
  */
-class LoggingBtServiceControlSink(
+internal class LoggingBtServiceControlSink(
     private val delegate: BtServiceControlSink,
     private val tag: String = "BtServiceControlSink"
 ) : BtServiceControlSink {
@@ -316,5 +316,5 @@ class LoggingBtServiceControlSink(
  *   val manager = BtServiceManager(context, engine.state)
  *   engine.attachServiceControlSink(manager.withLogging("BtServiceManagerSink"))
  */
-fun BtServiceControlSink.withLogging(tag: String = "BtServiceControlSink"): BtServiceControlSink =
+internal fun BtServiceControlSink.withLogging(tag: String = "BtServiceControlSink"): BtServiceControlSink =
     LoggingBtServiceControlSink(this, tag)

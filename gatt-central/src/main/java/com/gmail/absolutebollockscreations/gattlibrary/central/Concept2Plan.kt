@@ -61,8 +61,7 @@ internal fun planConcept2Identification(
     }
 
 /** The four characteristics FitBridge consumes, in identifier order. */
-@GattLibraryInternalApi
-val CONCEPT2_CONSUMED_CHARACTERISTICS: List<UUID> = listOf(
+internal val CONCEPT2_CONSUMED_CHARACTERISTICS: List<UUID> = listOf(
     BluetoothIds.UUID_C2_GENERAL_STATUS,
     BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
     BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,

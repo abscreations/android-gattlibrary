@@ -288,7 +288,7 @@ enum class FeCBleSimulatorIdentity(
 }
 
 /** Every console in the captures discovers under this name. */
-const val SCHWINN_X70_ADVERTISED_NAME = "SCHWINN 170/270"
+internal const val SCHWINN_X70_ADVERTISED_NAME = "SCHWINN 170/270"
 
 /**
  * Timing and range constants for the one x70 persona.
@@ -297,7 +297,7 @@ const val SCHWINN_X70_ADVERTISED_NAME = "SCHWINN 170/270"
  * the resistance span is the widest any capture showed (the 170's 1 to 22), so a generated ride
  * can visit the whole legal range rather than one machine's slice of it.
  */
-object SchwinnX70Ride {
+internal object SchwinnX70Ride {
     /** Median interval between supplemental/sibling pairs, across all captured consoles. */
     const val PAIR_PERIOD_MS = 96L
 
@@ -315,7 +315,7 @@ object SchwinnX70Ride {
  * The 170's was never read and the 570 has none at all (Q3), so this is the only captured identity
  * the family has and the persona uses it verbatim.
  */
-object SchwinnX70Identity {
+internal object SchwinnX70Identity {
     /**
      * **NUL-padded to nineteen octets on the wire**, which the 570u logs show and no earlier record
      * captured. TMIW does a `contains` check and never noticed; a byte-exact simulator has to.
@@ -662,7 +662,7 @@ private fun c2Notify(uuid: UUID) = Concept2CharacteristicManifest(uuid, notifiab
  * Discovery correctness is by the `FEC1` service UUID (plan §5), never by this name — it exists
  * only so a human picking from the debug persona list is not shown seven identical rows.
  */
-fun feCBleAdvertisedName(equipmentType: FeCEquipmentType): String = when (equipmentType) {
+internal fun feCBleAdvertisedName(equipmentType: FeCEquipmentType): String = when (equipmentType) {
     FeCEquipmentType.TRAINER -> "FitBridge FE-C Trainer"
     FeCEquipmentType.STATIONARY_BIKE -> "FitBridge FE-C Bike"
     FeCEquipmentType.TREADMILL -> "FitBridge FE-C Treadmill"

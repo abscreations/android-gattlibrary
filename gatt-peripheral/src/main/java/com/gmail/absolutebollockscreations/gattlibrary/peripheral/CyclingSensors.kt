@@ -237,13 +237,13 @@ object CyclingSensorEncoders {
     }
 }
 
-sealed interface CscControlPointRequest {
+internal sealed interface CscControlPointRequest {
     data class SetCumulativeWheelRevolutions(val value: Long) : CscControlPointRequest
     data class Unsupported(val opcode: Int) : CscControlPointRequest
     data class Invalid(val opcode: Int) : CscControlPointRequest
 }
 
-object CscControlPoint {
+internal object CscControlPoint {
     const val SET_CUMULATIVE_VALUE = 0x01
     const val RESPONSE_CODE = 0x10
     const val SUCCESS = 0x01

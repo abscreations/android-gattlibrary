@@ -6,7 +6,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
  * @param bit   flag bit index that declares this field present
  * @param bytes already-encoded payload, little-endian
  */
-data class FtmsField(val bit: Int, val bytes: ByteArray) {
+internal data class FtmsField(val bit: Int, val bytes: ByteArray) {
     override fun equals(other: Any?): Boolean =
         other is FtmsField && other.bit == bit && other.bytes.contentEquals(bytes)
 
@@ -48,7 +48,7 @@ enum class FtmsPackOutcome { COMPLETE, COMPACTED, FRAGMENTED }
  * Payload capacity is supplied from the connection's negotiated ATT MTU. The
  * default remains 20 octets (ATT_MTU 23 minus 3).
  */
-object FtmsPacker {
+internal object FtmsPacker {
 
     const val MAX_PAYLOAD = 20
 

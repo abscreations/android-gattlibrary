@@ -6,7 +6,7 @@ import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 
 /** Android GATT objects for the immutable PM5 firmware manifest. */
-object Concept2Pm5GattRegistry {
+internal object Concept2Pm5GattRegistry {
     fun buildServices(persona: SimulatorPersona.Concept2Pm5): List<BluetoothGattService> {
         val profile = Concept2Pm5GattProfile(persona)
         return profile.services.map { (serviceUuid, manifest) ->

@@ -132,8 +132,8 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleConfig
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDefaults
 
-const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
-const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
+internal const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
+internal const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
 
 /**
  * Settled capabilities for a session supplied only by sensors.

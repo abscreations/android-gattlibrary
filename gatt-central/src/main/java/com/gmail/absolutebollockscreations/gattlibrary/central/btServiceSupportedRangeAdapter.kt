@@ -37,7 +37,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import kotlin.math.roundToInt
 
-object BtServiceSupportedRangesAdapter {
+internal object BtServiceSupportedRangesAdapter {
 
     // Supported Speed Range (0x2AD4) – 3× uint16, 0.01 km/h
     fun buildSpeedRange(state: BtEngineState): ByteArray {

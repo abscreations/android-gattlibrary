@@ -759,7 +759,7 @@ object BluetoothIds {
 // ============================================================================
 // 2) Flags — FTMS data characteristic flag bitmasks
 // ============================================================================
-object Flags {
+internal object Flags {
 
     // ─────────────────────────────────────────────────────────────
     // Treadmill (0x2ACD)
@@ -1254,4 +1254,4 @@ fun u24le(v: Int): ByteArray =
         ((v ushr 16) and 0xFF).toByte(),
     )
 
-fun byteOf(v: Int): ByteArray = byteArrayOf((v and 0xFF).toByte())
+internal fun byteOf(v: Int): ByteArray = byteArrayOf((v and 0xFF).toByte())

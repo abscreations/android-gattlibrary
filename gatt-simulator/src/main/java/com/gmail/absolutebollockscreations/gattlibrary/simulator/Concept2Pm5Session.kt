@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 
 /** Pure per-link PM5 state: subscriptions, rate and deterministic mux position. */
-class Concept2Pm5Session {
+internal class Concept2Pm5Session {
     private val subscriptions = mutableSetOf<UUID>()
     private val csafe = Concept2CsafeLink()
     private var heartRateInputBytes: ByteArray? = null

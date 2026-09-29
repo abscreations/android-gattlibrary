@@ -5,7 +5,7 @@ import java.io.ByteArrayOutputStream
 import java.util.UUID
 
 /** Bounds-safe PM5 1.30 measurement encoders. */
-object Concept2Pm5Encoder {
+internal object Concept2Pm5Encoder {
     /**
      * PM5 207.000's two-notification FTMS Rower Data report.
      *

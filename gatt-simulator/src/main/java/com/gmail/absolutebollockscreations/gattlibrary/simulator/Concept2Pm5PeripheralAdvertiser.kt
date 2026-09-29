@@ -40,7 +40,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdv
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
 
 /** PM5-only Android GATT server with capture-bounded C2a short-frame CSAFE transport. */
-class Concept2Pm5PeripheralAdvertiser(
+internal class Concept2Pm5PeripheralAdvertiser(
     private val context: Context,
     private val listener: Listener,
 ) {

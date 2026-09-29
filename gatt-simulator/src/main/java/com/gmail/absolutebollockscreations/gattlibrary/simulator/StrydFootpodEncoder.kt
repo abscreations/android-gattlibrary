@@ -35,7 +35,7 @@ import kotlin.math.roundToInt
  * proprietary services are not implemented at all: one has an unknown payload and the other never
  * notified once in five captures, and the plan forbids inventing either.
  */
-object StrydFootpodEncoder {
+internal object StrydFootpodEncoder {
 
     // ─────────────────────────────────────────────────────────────
     // RSC Measurement (0x2A53) - fixed 10 octets
@@ -191,7 +191,7 @@ object StrydFootpodEncoder {
  * than stride length once running. That upper segment is a declared model, not a measurement, and
  * the treadmill ride this persona uses (8-13 km/h) sits entirely inside it.
  */
-object RunningGait {
+internal object RunningGait {
     private const val WALK_INTERCEPT = 30.0
     private const val WALK_SLOPE = 27.0
     private const val RUN_CADENCE_AT_THRESHOLD = 84.0
@@ -234,7 +234,7 @@ object RunningGait {
  * All public methods are synchronized: the notifier runs on a coroutine while the GATT server's
  * callbacks arrive on Android's binder thread.
  */
-class RunningStrideAccumulator {
+internal class RunningStrideAccumulator {
 
     /** One tick's coherent gait state, rendered by both encoders. */
     data class Snapshot(
@@ -327,7 +327,7 @@ class RunningStrideAccumulator {
  * reproducing that shape would mean inventing a discharge model the evidence does not contain.
  * This one starts at a declared level and falls one percent per ten minutes.
  */
-class SyntheticBatteryLevel(private val startPercent: Int = START_PERCENT) {
+internal class SyntheticBatteryLevel(private val startPercent: Int = START_PERCENT) {
     fun levelAt(elapsedSeconds: Int): Int {
         val drop = elapsedSeconds / SECONDS_PER_PERCENT
         return (startPercent - drop).coerceIn(MIN_PERCENT, 100)

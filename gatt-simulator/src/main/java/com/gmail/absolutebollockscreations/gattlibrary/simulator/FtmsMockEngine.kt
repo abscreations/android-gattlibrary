@@ -137,7 +137,7 @@ data class FtmsMockProfile(
  * that must agree, and the reason FitBridge's resistance handling was wrong for
  * as long as nothing exercised it.
  */
-object FtmsMockControlProfile {
+internal object FtmsMockControlProfile {
 
     /**
      * One shared set of full machine limits for every simulator persona.
@@ -216,7 +216,7 @@ enum class FtmsMockTarget { SPEED, INCLINATION, RESISTANCE, POWER }
  * Bike Simulation Parameters procedure, which carries its own four-value payload rather than a
  * single [FtmsMockTarget].
  */
-enum class FtmsControlKind { DIRECT, ERG, SIMULATION }
+internal enum class FtmsControlKind { DIRECT, ERG, SIMULATION }
 
 /**
  * Decoded FTMS 0x11 Set Indoor Bike Simulation Parameters payload, in public units.

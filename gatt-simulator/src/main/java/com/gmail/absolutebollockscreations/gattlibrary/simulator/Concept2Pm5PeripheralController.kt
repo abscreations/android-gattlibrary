@@ -14,7 +14,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForeground
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 
 /** PM5 lifecycle owner, deliberately independent of upstream and FTMS control paths. */
-class Concept2Pm5PeripheralController(
+internal class Concept2Pm5PeripheralController(
     private val context: Context,
     private val onStatus: (Status) -> Unit = {},
 ) : Concept2Pm5PeripheralAdvertiser.Listener {

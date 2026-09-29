@@ -67,7 +67,7 @@ val FtmsMachineProfile.dataCharacteristic: UUID
     get() = BtServiceProfiles.dataUuidForProfile(this)
 
 /** Fitness Machine Type bit for the advertising Service Data structure. */
-val FtmsMachineProfile.machineTypeBit: Int
+internal val FtmsMachineProfile.machineTypeBit: Int
     get() = BtServiceProfiles.fitnessMachineTypeFor(this)
 
 /**
@@ -251,11 +251,11 @@ fun providerMeasurementCapabilities(
  *
  * @param available value of the Fitness Machine Available flag (Table 3.2 bit 0).
  */
-fun ftmsServiceData(profile: FtmsMachineProfile, available: Boolean = true): ByteArray =
+internal fun ftmsServiceData(profile: FtmsMachineProfile, available: Boolean = true): ByteArray =
     BtServiceProfiles.ftmsServiceDataFor(profile, available)
 
 /** Personas whose data characteristic requires Instantaneous Speed. */
-fun requiresSpeed(profile: FtmsMachineProfile): Boolean = when (profile) {
+internal fun requiresSpeed(profile: FtmsMachineProfile): Boolean = when (profile) {
     FtmsMachineProfile.INDOOR_BIKE,
     FtmsMachineProfile.TREADMILL,
     FtmsMachineProfile.ELLIPTICAL,

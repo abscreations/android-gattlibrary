@@ -127,7 +127,7 @@ object FtmsSpec {
  * behavior; unsupported opcodes remain absent instead of acquiring a guessed
  * length.
  */
-object FtmsControlPointSchema {
+internal object FtmsControlPointSchema {
     fun expectedLength(opcode: Byte): Int? = when (opcode) {
         FtmsSpec.Opcode.REQUEST_CONTROL,
         FtmsSpec.Opcode.RESET,
@@ -186,7 +186,7 @@ fun u32le(v: Int): ByteArray =
         ((v ushr 24) and 0xFF).toByte(),
     )
 
-fun ByteArray.toHexString(): String =
+internal fun ByteArray.toHexString(): String =
     if (isEmpty()) "[]" else joinToString(" ") { "%02X".format(it) }
 
 /**
@@ -213,7 +213,7 @@ internal const val FTMS_VERBOSE_LOGGING: Boolean = false
 internal const val FTMS_CONNECT_TRACE: Boolean = true
 
 /** Human-readable name for the common GATT status codes we return. */
-fun gattStatusName(status: Int): String = when (status) {
+internal fun gattStatusName(status: Int): String = when (status) {
     0x00 -> "SUCCESS"
     0x01 -> "INVALID_HANDLE"
     0x02 -> "READ_NOT_PERMITTED"
@@ -228,7 +228,7 @@ fun gattStatusName(status: Int): String = when (status) {
 }
 
 /** Human-readable native status from a GATT server disconnection callback. */
-fun disconnectStatusName(status: Int): String = when (status) {
+internal fun disconnectStatusName(status: Int): String = when (status) {
     0x00 -> "SUCCESS"
     0x08 -> "CONNECTION_TIMEOUT"
     0x13 -> "REMOTE_USER_TERMINATED_CONNECTION"
@@ -241,7 +241,7 @@ fun disconnectStatusName(status: Int): String = when (status) {
     else -> "0x${status.toString(16)}"
 }
 
-fun shortUuidLabel(u: UUID?): String = when (u) {
+internal fun shortUuidLabel(u: UUID?): String = when (u) {
     null -> "null"
     else -> u.toString().let { s ->
         if (s.startsWith("0000") && s.endsWith("-0000-1000-8000-00805f9b34fb")) s.substring(4, 8)

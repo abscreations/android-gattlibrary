@@ -135,7 +135,7 @@ internal fun estimateDelivery(
  * off completion, the queued slot is normally empty. An empty queued slot is the
  * ideal state: it means nothing stale is waiting to be sent.
  */
-class FtmsPeripheralNotifier(
+internal class FtmsPeripheralNotifier(
     private val advertiser: FtmsPeripheralAdvertiser,
     private val store: FtmsMetricStore,
     private val onCountersChanged: () -> Unit = {},

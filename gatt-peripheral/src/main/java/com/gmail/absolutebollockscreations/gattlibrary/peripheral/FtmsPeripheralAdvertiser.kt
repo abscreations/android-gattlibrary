@@ -97,7 +97,7 @@ fun buildFtmsFeaturePayload(
  *  - **LE 1M PHY pinning** for Garmin downstream links, and Just Works pairing
  *    auto-confirmation, neither of which existed before.
  */
-class FtmsPeripheralAdvertiser(
+internal class FtmsPeripheralAdvertiser(
     private val context: Context,
     private val controlSink: FtmsControlSink,
     private val listener: Listener,

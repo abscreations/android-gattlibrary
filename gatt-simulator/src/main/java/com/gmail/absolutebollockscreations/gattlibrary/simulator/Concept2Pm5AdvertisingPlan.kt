@@ -5,7 +5,7 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 
 /** Legacy-PDU advertisement layout for a PM5 persona, kept separate from FTMS budgeting. */
-data class Concept2Pm5AdvertisingPlan(
+internal data class Concept2Pm5AdvertisingPlan(
     val localName: String,
     val includeNameInAdvertisement: Boolean,
     val includeTxPowerInAdvertisement: Boolean,

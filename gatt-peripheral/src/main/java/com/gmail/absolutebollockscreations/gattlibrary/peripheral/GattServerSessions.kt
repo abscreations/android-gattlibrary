@@ -23,7 +23,7 @@ fun interface GattTimer {
 }
 
 /** Main-looper [GattTimer]; the handler is created on first use. */
-object MainLooperGattTimer : GattTimer {
+internal object MainLooperGattTimer : GattTimer {
     private val handler by lazy { Handler(Looper.getMainLooper()) }
     override fun schedule(delayMs: Long, action: () -> Unit) {
         handler.postDelayed({ action() }, delayMs)
