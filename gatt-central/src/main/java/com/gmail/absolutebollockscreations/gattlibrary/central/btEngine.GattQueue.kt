@@ -142,8 +142,7 @@ data class StackEntry(
     enum class WriteMode { WITH_RESPONSE, WITHOUT_RESPONSE }
 }
 
-@GattLibraryInternalApi
-fun <T> queueCompletionMatches(
+internal fun <T> queueCompletionMatches(
     contextGatt: T?,
     callbackGatt: T,
     head: StackEntry?,

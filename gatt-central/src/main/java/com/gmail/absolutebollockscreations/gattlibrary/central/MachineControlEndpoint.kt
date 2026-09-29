@@ -72,8 +72,7 @@ internal interface MachineControlEndpoint {
     ): Boolean
 }
 
-@GattLibraryInternalApi
-enum class MachineControlRoute {
+internal enum class MachineControlRoute {
     FTMS,
     FEC,
     WAHOO,
@@ -110,8 +109,7 @@ fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
 )
 
 /** Pure selected-adapter routing decision; a half-activated FE-C link safely remains on FTMS. */
-@GattLibraryInternalApi
-fun machineControlRoute(
+internal fun machineControlRoute(
     selectedAdapterId: String?,
     hasFeCHandler: Boolean,
     hasWahooControl: Boolean = false,

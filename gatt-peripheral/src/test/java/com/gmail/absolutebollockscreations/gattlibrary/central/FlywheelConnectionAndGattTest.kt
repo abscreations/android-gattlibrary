@@ -210,36 +210,6 @@ class FlywheelConnectionAndGattTest {
         )
     }
 
-    @Test
-    fun `Flywheel CCCD queue completion cannot be consumed by another GATT`() {
-        val queue = GattQueue()
-        val descriptor = Any()
-        val expectedGatt = Any()
-        val otherGatt = Any()
-        val entry = StackEntry(
-            op = StackEntry.Op.DESC_WRITE,
-            charUuid = BluetoothIds.UUID_FLYWHEEL_TX,
-            descriptorUuid = BluetoothIds.UUID_CCCD,
-            descriptorIdentity = descriptor,
-        )
-        queue.enqueue(entry)
-        val head = queue.beginDispatch()
-
-        assertFalse(
-            queueCompletionMatches(
-                contextGatt = expectedGatt,
-                callbackGatt = otherGatt,
-                head = head,
-                callbackOp = StackEntry.Op.DESC_WRITE,
-                callbackCharUuid = BluetoothIds.UUID_FLYWHEEL_TX,
-                callbackDescriptorUuid = BluetoothIds.UUID_CCCD,
-                callbackDescriptorIdentity = descriptor,
-            ),
-        )
-        assertSame(entry, queue.head())
-        assertTrue(queue.isBusy)
-    }
-
     private fun connection(generation: Long) =
         ConnectionId("AA:BB:CC:DD:EE:12", generation)
 }

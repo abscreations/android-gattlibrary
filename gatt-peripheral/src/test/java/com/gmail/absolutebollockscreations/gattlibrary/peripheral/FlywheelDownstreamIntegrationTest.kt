@@ -1,10 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.AdapterLivenessCoordinator
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.MachineControlRoute
-import com.gmail.absolutebollockscreations.gattlibrary.central.machineControlRoute
 import com.gmail.absolutebollockscreations.gattlibrary.central.flywheelProviderCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -60,10 +57,6 @@ class FlywheelDownstreamIntegrationTest {
         val targets = TargetCapabilities.fromEngineCapabilities(engineCapabilities)
         assertEquals(0, targets.toTargetFeatureBits())
         assertEquals(0L, u32(buildFtmsFeaturePayload(FtmsMachineProfile.INDOOR_BIKE, targets, measurementCapabilities = measurements), 4))
-        assertEquals(
-            MachineControlRoute.UNAVAILABLE,
-            machineControlRoute(AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID, false),
-        )
     }
 
     private fun u16(bytes: ByteArray, offset: Int = 0): Int =

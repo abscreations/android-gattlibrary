@@ -1071,17 +1071,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public static final fun netElevationChangeMeters (Ljava/lang/Double;Ljava/lang/Double;)Ljava/lang/Double;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_ControlPointKt {
-	public static final fun canRequestFtmsControl (ZZZ)Z
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattFtmsKt {
 	public static final fun applyFitnessMachineStatus (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;[B)V
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattQueueKt {
-	public static final fun queueCompletionMatches (Ljava/lang/Object;Ljava/lang/Object;Lcom/gmail/absolutebollockscreations/gattlibrary/central/StackEntry;Lcom/gmail/absolutebollockscreations/gattlibrary/central/StackEntry$Op;Ljava/util/UUID;Ljava/util/UUID;Ljava/lang/Object;)Z
-	public static synthetic fun queueCompletionMatches$default (Ljava/lang/Object;Ljava/lang/Object;Lcom/gmail/absolutebollockscreations/gattlibrary/central/StackEntry;Lcom/gmail/absolutebollockscreations/gattlibrary/central/StackEntry$Op;Ljava/util/UUID;Ljava/util/UUID;Ljava/lang/Object;ILjava/lang/Object;)Z
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattRscKt {
@@ -3694,21 +3685,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/LinkS
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineControlEndpointKt {
-	public static final fun machineControlRoute (Ljava/lang/String;ZZZZ)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static synthetic fun machineControlRoute$default (Ljava/lang/String;ZZZZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
 	public static final fun wahooKickrProviderCapabilities ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute : java/lang/Enum {
-	public static final field ADVERTISEMENT_ONLY Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static final field FEC Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static final field RIDEON Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static final field UNAVAILABLE Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static final field WAHOO Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineControlRoute;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineProbeState : java/lang/Enum {

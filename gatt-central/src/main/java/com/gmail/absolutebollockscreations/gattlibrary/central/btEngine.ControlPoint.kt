@@ -86,7 +86,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.Manifest
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_INCLINE_SCALE
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_POWER_SCALE
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_RESISTANCE_SCALE
@@ -389,8 +388,7 @@ internal object BtEngineControlPoint {
     private fun s16le(v: Int): ByteArray = u16le(v and 0xFFFF)
 }
 
-@GattLibraryInternalApi
-fun canRequestFtmsControl(
+internal fun canRequestFtmsControl(
     cccdReady: Boolean,
     setupPending: Boolean,
     controlPointPresent: Boolean,

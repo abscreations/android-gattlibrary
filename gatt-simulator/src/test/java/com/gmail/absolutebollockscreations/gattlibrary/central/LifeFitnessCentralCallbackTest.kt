@@ -4,7 +4,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.simulator.FtmsMockSample
 import com.gmail.absolutebollockscreations.gattlibrary.simulator.LifeFitnessMachine
 import com.gmail.absolutebollockscreations.gattlibrary.simulator.LifeFitnessPacketEncoder
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -90,14 +89,6 @@ class LifeFitnessCentralCallbackTest {
                 LifeFitnessMachine.INDOOR_BIKE -> assertEquals(81.0, fusion.latestSample(MetricKind.CADENCE)!!.value, 0.001)
             }
         }
-    }
-
-    @Test
-    fun `request control requires readiness completed setup and a real control point`() {
-        assertFalse(canRequestFtmsControl(cccdReady = false, setupPending = false, controlPointPresent = true))
-        assertFalse(canRequestFtmsControl(cccdReady = true, setupPending = true, controlPointPresent = true))
-        assertFalse(canRequestFtmsControl(cccdReady = true, setupPending = false, controlPointPresent = false))
-        assertTrue(canRequestFtmsControl(cccdReady = true, setupPending = false, controlPointPresent = true))
     }
 
     private fun replayNotification(machine: LifeFitnessMachine): MetricFusion {

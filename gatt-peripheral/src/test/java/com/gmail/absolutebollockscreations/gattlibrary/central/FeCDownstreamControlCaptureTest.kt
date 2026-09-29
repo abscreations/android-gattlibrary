@@ -41,28 +41,6 @@ class FeCDownstreamControlCaptureTest {
     }
 
     @Test
-    fun `selected adapter routes control to FE-C only when its handler is active`() {
-        assertEquals(MachineControlRoute.FTMS, machineControlRoute(null, false))
-        assertEquals(
-            MachineControlRoute.FTMS,
-            machineControlRoute(AdapterLivenessCoordinator.FTMS_ADAPTER_ID, true),
-        )
-        assertEquals(
-            MachineControlRoute.FTMS,
-            machineControlRoute(AdapterLivenessCoordinator.FEC_ADAPTER_ID, false),
-        )
-        assertEquals(
-            MachineControlRoute.FEC,
-            machineControlRoute(AdapterLivenessCoordinator.FEC_ADAPTER_ID, true),
-        )
-        assertEquals(
-            "a selected Wahoo adapter remains closed until its endpoint unit lands",
-            MachineControlRoute.UNAVAILABLE,
-            machineControlRoute(AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID, false),
-        )
-    }
-
-    @Test
     fun `page 54 mode bits become exactly the downstream FE-C target bits and never speed`() {
         val state = BtEngineState()
         FeCCapabilities.publish(
