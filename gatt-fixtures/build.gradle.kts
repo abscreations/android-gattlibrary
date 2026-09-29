@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.gmail.absolutebollockscreations.fitbridge.ble.fixtures"
+    namespace = "com.gmail.absolutebollockscreations.gattlibrary.fixtures"
     compileSdk {
         version = release(37) {
             minorApiLevel = 1

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.gmail.absolutebollockscreations.fitbridge.ble.peripheral"
+    namespace = "com.gmail.absolutebollockscreations.gattlibrary.peripheral"
     compileSdk {
         version = release(37) {
             minorApiLevel = 1
@@ -34,7 +34,7 @@ android {
 // the opt-in marks them for outside consumers, not for the libraries themselves (LIB-10a).
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
     compilerOptions.optIn.add(
-        "com.gmail.absolutebollockscreations.Fitbridge.bluetooth.core.FitBridgeBleInternalApi"
+        "com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi"
     )
 }
 
