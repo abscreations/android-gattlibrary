@@ -1,0 +1,6 @@
+gatt-core
+Copyright 2026 FitBridge contributors
+
+This module contains FitBridge's shared BLE library contracts. No TMIW,
+Incyclist Devices, or gymnasticon implementation material is attributed to
+this module. See the repository's LICENSE and NOTICE for the library as a whole.

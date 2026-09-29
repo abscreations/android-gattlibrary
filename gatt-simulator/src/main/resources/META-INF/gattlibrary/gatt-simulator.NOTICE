@@ -1,0 +1,19 @@
+gatt-simulator
+Copyright 2026 FitBridge contributors
+
+This module includes synthetic FTMS material derived from
+TrackMyIndoorWorkout (TMIW), Copyright 2022 Csaba Toth, licensed under
+Apache-2.0. Source revision: 85f2ee7520705c99ce81db7355df1be7f4b72ecf.
+
+This module includes FE-C simulator material derived from Incyclist Devices
+v3.0.29, licensed under the MIT License.
+
+The Flywheel Sports simulator follows protocol behavior corroborated by
+gymnasticon v1.4.1, Copyright (c) 2020 ptx2, licensed under the MIT License.
+The reviewed revision is e142f539c518d6d4ced3abdd587a825b918a9367.
+
+The Keiser M Series simulator uses published Keiser developer documentation
+and the phase's archived capture fixtures. Keiser Corporation's MIT-licensed
+M3i BLE-HCI simulator was a test reference, not code incorporated here.
+
+See the repository's LICENSE, NOTICE, and Stage 3 provenance record.
