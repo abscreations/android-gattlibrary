@@ -1,0 +1,73 @@
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ActivityType : java/lang/Enum {
+	public static final field BIKING Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static final field ELLIPTICAL Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static final field HEARTRATE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static final field ROWING Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static final field STAIRCLIMBER Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static final field STAIRSTEPPER Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static final field TREADMILL Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/BleConfig {
+	public fun <init> ()V
+	public fun <init> (Z)V
+	public synthetic fun <init> (ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;ZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPhase05HardwareTest ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/BleDebug {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleDebug;
+	public final fun getEnabled ()Z
+	public final fun getLevel ()I
+	public final fun setEnabled (Z)V
+	public final fun setLevel (I)V
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/BleDefaults {
+	public static final field DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM I
+	public static final field DEFAULT_ELLIPTICAL_STRIDE_LENGTH_MM I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleDefaults;
+	public static final field LF_DEFAULT_GENDER I
+	public static final field LF_DEFAULT_HEIGHT_CM I
+	public static final field LF_DEFAULT_WEIGHT_KG I
+	public static final field MAX_CSC_WHEEL_CIRCUMFERENCE_MM I
+	public static final field MAX_ELLIPTICAL_STRIDE_LENGTH_MM I
+	public static final field MIN_CSC_WHEEL_CIRCUMFERENCE_MM I
+	public static final field MIN_ELLIPTICAL_STRIDE_LENGTH_MM I
+	public static final field SIG_GENDER_FEMALE I
+	public static final field SIG_GENDER_MALE I
+	public static final field SIG_GENDER_UNSPECIFIED I
+}
+
+public abstract interface annotation class com/gmail/absolutebollockscreations/gattlibrary/core/GattLibraryInternalApi : java/lang/annotation/Annotation {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode : java/lang/Enum {
+	public static final field HeartRateReserve Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;
+	public static final field MaxPercent Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;
+	public static final field Off Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/core/KeepAwake {
+	public abstract fun acquireCpu (Ljava/lang/Object;)V
+	public abstract fun releaseCpu (Ljava/lang/Object;)V
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/SigUserDataUnits {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/SigUserDataUnits;
+	public final fun heightToWireUnits (I)I
+	public final fun weightToWireUnits (I)I
+}
+
