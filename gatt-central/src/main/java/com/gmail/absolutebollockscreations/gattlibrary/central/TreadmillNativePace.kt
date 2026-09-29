@@ -1,7 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-
 /**
  * Raw FTMS Treadmill Data pace octets, preserved for lossless downstream re-emission.
  *
@@ -35,8 +33,7 @@ data class TreadmillNativePaceSnapshot(
     val averageRaw: Int? = null,
 )
 
-@GattLibraryInternalApi
-class TreadmillNativePaceStore {
+internal class TreadmillNativePaceStore {
     private val entries = linkedMapOf<ConnectionId, TreadmillNativePaceSnapshot>()
 
     @Synchronized

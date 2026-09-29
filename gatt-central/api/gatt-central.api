@@ -4970,14 +4970,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Tread
 	public fun toString ()Ljava/lang/String;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceStore {
-	public fun <init> ()V
-	public final fun clear ()V
-	public final fun publish (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/lang/Integer;Ljava/lang/Integer;)V
-	public final fun remove (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;)V
-	public final fun snapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/UnknownPacketPolicy : java/lang/Enum {
 	public static final field FALL_BACK_TO_STANDARD Lcom/gmail/absolutebollockscreations/gattlibrary/central/UnknownPacketPolicy;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
