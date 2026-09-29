@@ -357,15 +357,6 @@ class FtmsSimulator(
         return true
     }
 
-    /**
-     * Start generating data for [machine] and advertise as that machine.
-     *
-     * Blocking on the advertising verdict, so call it off the main thread.
-     */
-    fun start(machine: FtmsMachineProfile, enableControls: Boolean) {
-        start(SimulatorPersona.Ftms(machine), enableControls)
-    }
-
     /** Protocol-level entry point for the standard and proprietary simulator personas. */
     fun start(
         persona: SimulatorPersona,

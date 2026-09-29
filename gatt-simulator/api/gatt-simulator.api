@@ -458,7 +458,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 	public final fun refreshAdvertisingState ()V
 	public final fun resetConcept2Workout ()Z
 	public final fun sendZwiftClickShift (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;)Z
-	public final fun start (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Z)V
 	public final fun start (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;ZLcom/gmail/absolutebollockscreations/gattlibrary/simulator/Concept2Scenario;)V
 	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;ZLcom/gmail/absolutebollockscreations/gattlibrary/simulator/Concept2Scenario;ILjava/lang/Object;)V
 	public final fun startConcept2Workout ()Z
