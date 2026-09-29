@@ -1,0 +1,40 @@
+package com.gmail.absolutebollockscreations.gattlibrary.central
+
+import android.annotation.SuppressLint
+
+@SuppressLint("MissingPermission")
+internal class EngineConnectionBackend(private val engine: BtEngine) : CentralConnectionBackend {
+    override val state get() = engine.state
+    override val discoveryRequested get() = engine.scanLeases.discoveryRequested
+    override val scanFailure get() = engine.scanFailureCode
+    override fun platformFailure(scan: Boolean) = engine.clientPlatformFailure(scan)
+    override fun startScan(hardwareFilters: Boolean) { engine.startScan(hardwareFilters) }
+    override fun stopScan() { engine.releaseScanLease(ScanLeaseOwner.DISCOVERY_UI) }
+    override fun selectMachine(address: String): Boolean = engine.selectMachine(address) != MachineSelectionOutcome.FAILED
+    override fun connectSensor(address: String, assignment: SensorAssignment): Boolean = engine.connectSensor(
+        address, BtEngineState.BtServiceType.valueOf(assignment.service.name), assignment.engineRoles(),
+    )
+    override fun activateService(key: String, assignment: SensorAssignment): Boolean = engine.activateServiceOn(
+        key, BtEngineState.BtServiceType.valueOf(assignment.service.name), assignment.engineRoles(),
+    )
+    override fun disconnect(key: String): Boolean = engine.disconnectDevice(key)
+    /**
+     * Ends whichever machine is selected. Advertisement end is idempotent (as the legacy
+     * closeRunMode call relied on). GATT machine links are disconnected by registry identity; if a
+     * disconnect is refused (BLUETOOTH_CONNECT revoked) the legacy FTMS teardown clears local link,
+     * control, and provider state so a setup-gated machine cannot stay logically connected.
+     * With no machine link at all, no FTMS/provider reset runs: an advertisement selection must
+     * not stop downstream advertising, which the legacy Keiser deselect never did either.
+     */
+    override fun deselectMachine(): Boolean {
+        engine.deselectAdvertisementMachine()
+        val machineKeys = state.connectedDevices.value.filter { it.machineConnection }.map { it.connectionKey }
+        val disconnected = machineKeys.map { engine.disconnectDevice(it) }.all { it }
+        if (!disconnected) engine.disconnectFtms()
+        return disconnected
+    }
+    override fun close() { engine.closeClient() }
+}
+
+private fun SensorAssignment.engineRoles(): Set<BtEngineState.CscRole>? =
+    roles?.mapTo(linkedSetOf()) { BtEngineState.CscRole.valueOf(it.name) }

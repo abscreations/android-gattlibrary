@@ -41,6 +41,8 @@ internal class ScanLeaseRegistry {
 
     private val lock = Any()
     private val owners = linkedSetOf<ScanLeaseOwner>()
+    private val mutableDiscoveryRequested = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val discoveryRequested: kotlinx.coroutines.flow.StateFlow<Boolean> = mutableDiscoveryRequested
 
     /**
      * Take [owner]'s lease.
@@ -52,6 +54,7 @@ internal class ScanLeaseRegistry {
     fun acquire(owner: ScanLeaseOwner): Boolean = synchronized(lock) {
         val wasHeld = owners.isNotEmpty()
         owners += owner
+        mutableDiscoveryRequested.value = ScanLeaseOwner.DISCOVERY_UI in owners
         !wasHeld
     }
 
@@ -63,6 +66,7 @@ internal class ScanLeaseRegistry {
      */
     fun release(owner: ScanLeaseOwner): Boolean = synchronized(lock) {
         if (!owners.remove(owner)) return@synchronized false
+        mutableDiscoveryRequested.value = ScanLeaseOwner.DISCOVERY_UI in owners
         owners.isEmpty()
     }
 
@@ -70,6 +74,7 @@ internal class ScanLeaseRegistry {
     fun releaseAll(): Boolean = synchronized(lock) {
         val wasHeld = owners.isNotEmpty()
         owners.clear()
+        mutableDiscoveryRequested.value = false
         wasHeld
     }
 

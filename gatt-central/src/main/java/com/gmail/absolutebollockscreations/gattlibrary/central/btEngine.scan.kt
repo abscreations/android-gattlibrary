@@ -98,6 +98,8 @@ internal fun BtEngine.startScanImpl(
         return
     }
 
+    scanFailureCode.value = null
+
     val scanner: BluetoothLeScanner? = adapter?.bluetoothLeScanner
     if (scanner == null) {
         Timber.tag(BtEngineState.TAG).w("startScan: scanner null (adapter=${adapter != null})")
@@ -189,6 +191,10 @@ internal fun BtEngine.startScanImpl(
 
         override fun onScanFailed(errorCode: Int) {
             Timber.tag(BtEngineState.TAG).e("onScanFailed errorCode=%d", errorCode)
+            if (scanSessions[this@startScanImpl]?.callback === this) {
+                scanFailureCode.value = errorCode
+                stopScanImpl()
+            }
         }
     }
 
@@ -275,7 +281,7 @@ internal fun BtEngine.stopScanImpl() {
     try {
         Timber.tag(BtEngineState.TAG).i("stopScan")
         val scanner: BluetoothLeScanner? = adapter?.bluetoothLeScanner
-        session?.handler?.removeCallbacks(session.cleanup)
+        session?.handler?.removeCallbacksAndMessages(null)
         session?.callback?.let { cb -> scanner?.stopScan(cb) }
     } catch (_: SecurityException) {
         Timber.tag(BtEngineState.TAG).w("stopScan: SecurityException ignored")

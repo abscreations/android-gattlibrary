@@ -41,6 +41,7 @@ class ScanLeaseRegistryTest {
         assertTrue(leases.isHeld())
         assertTrue(leases.holds(ScanLeaseOwner.ADVERTISEMENT_MACHINE))
         assertFalse(leases.holds(ScanLeaseOwner.DISCOVERY_UI))
+        assertFalse(leases.discoveryRequested.value)
 
         assertTrue(leases.release(ScanLeaseOwner.ADVERTISEMENT_MACHINE))
         assertFalse(leases.isHeld())

@@ -348,6 +348,20 @@ internal class ConnectionRegistry {
         roleOwners.entries.firstOrNull { it.value == context.connectionId }?.key
     }
 
+    /** Handle-based activation must never resolve a replacement context by address. */
+    fun activateHandlerOn(context: ConnectionContext, handler: BtEngineGattCore.ProtocolHandler): Boolean {
+        if (!isCurrent(context)) return false
+        if (context.handlers.any { active -> active.primaryServices.any(handler.primaryServices::contains) }) return true
+        if (context.discoveredServiceUuids.none(handler.primaryServices::contains)) return false
+        val activated = context.handlerActivator?.invoke(handler) == true
+        return synchronized(lock) {
+            if (!isCurrent(context)) false else {
+                if (activated) publishConnectedDevices()
+                activated
+            }
+        }
+    }
+
     fun isCurrent(context: ConnectionContext): Boolean = synchronized(lock) {
         context.isActive && contexts[context.connectionId] === context
     }

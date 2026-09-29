@@ -74,6 +74,25 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Adapt
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdapterPolicyState;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementMachine {
+	public final fun getAddress ()Ljava/lang/String;
+	public final fun getCandidateId ()Ljava/lang/String;
+	public final fun getFirmware ()Ljava/lang/String;
+	public final fun getGeneration ()J
+	public final fun getModel ()Ljava/lang/String;
+	public final fun getReception ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementReception;
+	public final fun getSystemId ()I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementReception : java/lang/Enum {
+	public static final field OUT_OF_RANGE Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementReception;
+	public static final field RECEIVING Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementReception;
+	public static final field STALE Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementReception;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementReception;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementReception;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/AntSerialFrame {
 	public fun <init> (II[B)V
 	public final fun component1 ()I
@@ -381,6 +400,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getConnectedDevices ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getDiscoveredDevices ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getDiscoveryClient ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;
 	public fun getEngineState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;
 	public fun getHandlesDownstreamSessionTransitionsLocally ()Z
 	public final fun getHaveControlFlow ()Lkotlinx/coroutines/flow/StateFlow;
@@ -1369,6 +1389,19 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Conce
 	public fun onServicesDiscovered (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Landroid/bluetooth/BluetoothGatt;Ljava/util/List;)Z
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/ConnectedLink {
+	public final fun getActiveServices ()Ljava/util/Set;
+	public final fun getAddress ()Ljava/lang/String;
+	public final fun getAssignedRoles ()Ljava/util/Set;
+	public final fun getHandle ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;
+	public final fun getMachineConnection ()Z
+	public final fun getMachineFamily ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public final fun getMachineKind ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public final fun getRoleEvidence ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;
+	public final fun getStatus ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public final fun getSupportedRoles ()Ljava/util/Set;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/ConnectionContext {
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/lang/String;ZLandroid/bluetooth/BluetoothGatt;Lkotlinx/coroutines/flow/MutableStateFlow;Ljava/util/List;Ljava/util/Set;Ljava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/GattQueue;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CccdState;Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkRecoveryState;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$CscRoleCapability;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineDeviceType;)V
 	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/lang/String;ZLandroid/bluetooth/BluetoothGatt;Lkotlinx/coroutines/flow/MutableStateFlow;Ljava/util/List;Ljava/util/Set;Ljava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/GattQueue;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CccdState;Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkRecoveryState;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$CscRoleCapability;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineDeviceType;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -1419,6 +1452,24 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Conne
 	public final fun getLinkGeneration ()J
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/ConnectionSnapshot {
+	public final fun getAdvertisementMachine ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/AdvertisementMachine;
+	public final fun getLinks ()Ljava/util/List;
+	public final fun getMachineProbe ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineProbeState;
+	public final fun getMachineStatus ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public final fun getMachineSubscriptionsReady ()Z
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus : java/lang/Enum {
+	public static final field CONNECTED Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public static final field CONNECTING Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public static final field DISCONNECTED Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public static final field DISCONNECTING Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/CpsDerivationState {
@@ -1798,6 +1849,9 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/CscWo
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscWorkoutPersona;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle {
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceMatcherRegistry {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceMatcherRegistry$Companion;
 	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -1817,6 +1871,50 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Devic
 	public static final field FLYWHEEL_CANDIDATE_ID Ljava/lang/String;
 	public static final field KAYAK_FIRST_CANDIDATE_ID Ljava/lang/String;
 	public static final field KEISER_M_SERIES_CANDIDATE_ID Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceService : java/lang/Enum {
+	public static final field CSC Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+	public static final field Glucose Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+	public static final field HeartRate Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+	public static final field Power Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+	public static final field RSC Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceTransport : java/lang/Enum {
+	public static final field ADVERTISEMENT_ONLY Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceTransport;
+	public static final field GATT Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceTransport;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceTransport;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceTransport;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DiscoveredDevice {
+	public final fun getAddress ()Ljava/lang/String;
+	public final fun getAdvertisedMachineFeature ()Ljava/lang/Integer;
+	public final fun getAdvertisementFirmware ()Ljava/lang/String;
+	public final fun getAdvertisementSystemId ()Ljava/lang/Integer;
+	public final fun getAppearance ()Ljava/lang/Integer;
+	public final fun getHandle ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;
+	public final fun getLastSeenMs ()J
+	public final fun getMachineCandidate ()Z
+	public final fun getMachineFeature ()Ljava/lang/Integer;
+	public final fun getMatchCandidateId ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getRssi ()I
+	public final fun getServices ()Ljava/util/Set;
+	public final fun getTransport ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceTransport;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DiscoverySnapshot {
+	public final fun getDevices ()Ljava/util/List;
+	public final fun getDiscoveryRequested ()Z
+	public final fun getRadioScanning ()Z
+	public final fun getScanFailureCode ()Ljava/lang/Integer;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCCapabilities {
@@ -2251,6 +2349,27 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCPr
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCProtocolSession$Companion {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient$Companion;
+	public final fun activateSensorService (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun clearDiscoveredDevices ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun close ()V
+	public final fun connectSensor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun deselectMachine ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun disconnect (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun getConnections ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getDiscovery ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun startScan (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public static synthetic fun startScan$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun stopScan ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient$Companion {
+	public final fun create (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;
+	public static synthetic fun create$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient$Companion;Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/FlywheelDecodeResult {
@@ -3655,6 +3774,9 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeF
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupSequence$Reason;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle {
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/LinkRecoveryState {
 	public fun <init> ()V
 }
@@ -3677,6 +3799,33 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/LinkS
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineControlEndpointKt {
 	public static final fun wahooKickrProviderCapabilities ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily : java/lang/Enum {
+	public static final field CONCEPT2_PM5 Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static final field FE_C_OVER_BLE Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static final field FLYWHEEL_SPORTS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static final field KAYAK_FIRST Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static final field LIFE_FITNESS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static final field PRECOR_SPINNER_CHRONO_POWER Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineKind : java/lang/Enum {
+	public static final field BIKE Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static final field BIKE_ERG Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static final field ELLIPTICAL Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static final field ROWER Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static final field SKI_ERG Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static final field STAIR_CLIMBER Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static final field STAIR_STEPPER Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static final field TREADMILL Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineKind;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineProbeState : java/lang/Enum {
@@ -4132,6 +4281,23 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MonotonicMetricClock$Companion {
 	public final fun getSYSTEM ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MonotonicMetricClock;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure : java/lang/Enum {
+	public static final field BLUETOOTH_UNAVAILABLE Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+	public static final field CLOSED Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+	public static final field PERMISSION_REQUIRED Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+	public static final field REJECTED Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+	public static final field STALE_HANDLE Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+	public static final field UNSUPPORTED Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/OperationResult {
+	public final fun getAccepted ()Z
+	public final fun getFailure ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationFailure;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule {
@@ -4618,6 +4784,14 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/RscMe
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions {
+	public fun <init> ()V
+	public fun <init> (JZ)V
+	public synthetic fun <init> (JZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDurationMillis ()J
+	public final fun getUseHardwareFilters ()Z
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/SchwinnX70Measurement {
 	public static final field FRAME_LENGTH_IS_FIRST_OCTET Z
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/SchwinnX70Measurement;
@@ -4780,6 +4954,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Schwi
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;Ljava/util/Set;)V
+	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getRoles ()Ljava/util/Set;
+	public final fun getService ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignmentPolicyKt {
 	public static final field APPEARANCE_CYCLING_CADENCE_SENSOR I
 	public static final field APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR I
@@ -4793,6 +4974,22 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Senso
 	public static final fun occupiedCscRoles (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$CscRoleCapability;)Ljava/util/Set;
 	public static final fun resolveCscFeatureRoles (Ljava/lang/String;ILjava/lang/Iterable;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscFeatureResolution;
 	public static final fun sensorConnectionLimit (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;)I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorRole : java/lang/Enum {
+	public static final field CADENCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
+	public static final field SPEED Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence : java/lang/Enum {
+	public static final field APPEARANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;
+	public static final field FEATURE Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/StackEntry {

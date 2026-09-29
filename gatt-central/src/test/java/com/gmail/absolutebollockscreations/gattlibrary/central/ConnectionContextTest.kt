@@ -16,6 +16,37 @@ import java.util.UUID
 class ConnectionContextTest {
 
     @Test
+    fun `handle activation cannot attach a service to a replacement at the same address`() {
+        val registry = ConnectionRegistry()
+        val old = registry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
+        registry.clear(old)
+        val replacement = registry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
+        replacement.discoveredServiceUuids += BluetoothIds.UUID_RSC_SERVICE
+        var calls = 0
+        replacement.handlerActivator = { calls++; true }
+        assertFalse(registry.activateHandlerOn(old, TestHandler(BluetoothIds.UUID_RSC_SERVICE)))
+        assertEquals(0, calls)
+        assertTrue(registry.isCurrent(replacement))
+    }
+
+    @Test
+    fun `handle activation adds multiple services once on its original physical link`() {
+        val registry = ConnectionRegistry()
+        val context = registry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
+        context.handlers += TestHandler(BluetoothIds.UUID_HRM_SERVICE)
+        context.discoveredServiceUuids += BluetoothIds.UUID_RSC_SERVICE
+        var calls = 0
+        context.handlerActivator = { handler -> calls++; context.handlers += handler; true }
+        assertTrue(registry.activateHandlerOn(context, TestHandler(BluetoothIds.UUID_RSC_SERVICE)))
+        assertTrue(registry.activateHandlerOn(context, TestHandler(BluetoothIds.UUID_RSC_SERVICE)))
+        assertEquals(1, calls)
+        assertEquals(setOf(BtEngineState.BtServiceType.HeartRate, BtEngineState.BtServiceType.RSC),
+            registry.connectedDevices.value.single().activeServices)
+        assertTrue(registry.clear(context))
+        assertTrue(registry.connectedDevices.value.isEmpty())
+    }
+
+    @Test
     fun `registry projects definitive machine family ahead of generic FTMS`() {
         val registry = ConnectionRegistry()
         val context = registry.open(

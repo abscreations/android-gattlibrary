@@ -208,6 +208,12 @@ class BtEngine internal constructor(
     }
 
     val state: BtEngineState = BtEngineState()
+    /** Transitional wiring for FitBridge's still-unmigrated metric/provider paths. One engine only. */
+    @GattLibraryInternalApi
+    val discoveryClient: FitnessGattClient by lazy {
+        FitnessGattClient(EngineConnectionBackend(this), CoroutineScope(Dispatchers.Main.immediate + SupervisorJob()))
+    }
+    internal val scanFailureCode = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
     internal val metricFusion: MetricFusion = MetricFusion(state)
 
     /** Set before connection; each Kayak First handler snapshots it for one link generation. */
@@ -768,6 +774,12 @@ class BtEngine internal constructor(
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                     PackageManager.PERMISSION_GRANTED
         }
+
+    internal fun clientPlatformFailure(scan: Boolean): OperationFailure? = when {
+        !hasConnectPermission() || (scan && !hasScanPermission()) -> OperationFailure.PERMISSION_REQUIRED
+        adapter?.isEnabled != true -> OperationFailure.BLUETOOTH_UNAVAILABLE
+        else -> null
+    }
 
     private inline fun <T> guardConnectPerm(op: String, default: T, block: () -> T): T {
         if (!hasConnectPermission()) {
@@ -1434,7 +1446,10 @@ class BtEngine internal constructor(
         address: String,
         serviceType: BtEngineState.BtServiceType,
         cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
+        expectedContext: ConnectionContext? = null,
     ): Boolean = guardConnectPerm("activateServiceAtAddress($address, $serviceType)", default = false) {
+        if (expectedContext != null && !state.connectionRegistry.isCurrent(expectedContext)) return@guardConnectPerm false
+        val targetContext = expectedContext ?: state.connectionRegistry.contextsForAddress(address).firstOrNull()
         val candidateCscCapability = cscRoleCapabilityForAddress(address)
         if (!canAssignSensorService(
                 address,
@@ -1453,16 +1468,17 @@ class BtEngine internal constructor(
         val protocol = sensorProtocolFor(serviceType) ?: return@guardConnectPerm false
         if (!handlerFactory.supports(protocol)) return@guardConnectPerm false
         if (serviceType == BtEngineState.BtServiceType.CSC) {
-            state.connectionRegistry.contextsForAddress(address).firstOrNull()?.let { context ->
+            targetContext?.let { context ->
                 state.connectionRegistry.setCscRequestedRoles(context, cscRequestedRoles)
             }
         }
-        val activated = state.connectionRegistry.activateHandlerOn(
-            address,
-            handlerFactory.create(protocol),
-        )
+        val activated = if (expectedContext != null) {
+            state.connectionRegistry.activateHandlerOn(expectedContext, handlerFactory.create(protocol))
+        } else {
+            state.connectionRegistry.activateHandlerOn(address, handlerFactory.create(protocol))
+        }
         if (activated) {
-            state.connectionRegistry.contextsForAddress(address).firstOrNull()?.let { context ->
+            targetContext?.takeIf(state.connectionRegistry::isCurrent)?.let { context ->
                 if (serviceType == BtEngineState.BtServiceType.CSC) {
                     state.setCscRoleCapability(context, candidateCscCapability)
                 }
@@ -1486,7 +1502,7 @@ class BtEngine internal constructor(
         cscRequestedRoles: Set<BtEngineState.CscRole>? = null,
     ): Boolean {
         val context = state.connectionRegistry.contextForKey(connectionKey) ?: return false
-        return activateServiceAtAddress(context.address, serviceType, cscRequestedRoles)
+        return activateServiceAtAddress(context.address, serviceType, cscRequestedRoles, context)
     }
 
     /** Manual hook to force a pairing UI for a known MAC (e.g., user action) */
@@ -1518,6 +1534,28 @@ class BtEngine internal constructor(
         }
         stopProviderAdvertising("release")
         resetProviderAdvertisingState()
+    }
+
+    /** Terminal client shutdown also cancels jobs; legacy release remains reusable during migration. */
+    internal fun closeClient() {
+        try {
+            release()
+        } finally {
+            try {
+                // Permission revocation must not leave a logically live context or a recovery job.
+                state.connectedDevices.value.forEach { link ->
+                    state.connectionRegistry.contextForKey(link.connectionKey)?.let { connection ->
+                        val gatt = connection.gatt
+                        runCatching { connection.terminationHook?.invoke("client closed") }
+                        runCatching { gatt?.close() }
+                        metricFusion.onDisconnected(connection.connectionId)
+                        state.clearConnection(connection)
+                    }
+                }
+            } finally {
+                job.cancel()
+            }
+        }
     }
 
     /* ───────────────────────────── session orchestration ───────────────────────────── */
