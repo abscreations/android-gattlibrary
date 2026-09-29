@@ -1313,50 +1313,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Colli
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/CollisionRisk;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath : java/lang/Enum {
-	public static final field INDIVIDUAL Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;
-	public static final field MULTIPLEXED Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2DiscoveryPlan {
-	public fun <init> (ZLcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;Ljava/util/List;)V
-	public final fun component1 ()Z
-	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;
-	public final fun component3 ()Ljava/util/List;
-	public final fun copy (ZLcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;Ljava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DiscoveryPlan;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DiscoveryPlan;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;Ljava/util/List;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DiscoveryPlan;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getActivate ()Z
-	public final fun getOperations ()Ljava/util/List;
-	public final fun getPath ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DeliveryPath;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperation {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;Ljava/util/UUID;)V
-	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;
-	public final fun component2 ()Ljava/util/UUID;
-	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;Ljava/util/UUID;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperation;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperation;Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;Ljava/util/UUID;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperation;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getCharacteristicUuid ()Ljava/util/UUID;
-	public final fun getKind ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind : java/lang/Enum {
-	public static final field ENABLE_NOTIFICATIONS Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;
-	public static final field READ Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2GattOperationKind;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2Measurement {
 	public static final field HEART_RATE_INVALID I
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2Measurement;
@@ -1414,11 +1370,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Conce
 	public final fun getTotalCalories ()Ljava/lang/Integer;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2PlanKt {
-	public static final fun planConcept2Discovery (Ljava/util/Set;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2DiscoveryPlan;
-	public static final fun planConcept2IndividualFallback (Ljava/util/Set;)Ljava/util/List;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2ProtocolHandler : com/gmail/absolutebollockscreations/gattlibrary/central/BtEngineGattCore$ProtocolHandler {

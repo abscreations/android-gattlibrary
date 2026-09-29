@@ -57,30 +57,6 @@ class Concept2ControlHonestyTest {
         )
     }
 
-    @Test
-    fun `the subscription plan issues notification enables and nothing else`() {
-        // A plan that ever emitted a write would be the first step of a control path.
-        val everything = setOf(
-            BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
-            BluetoothIds.UUID_C2_GENERAL_STATUS,
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
-            BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
-            BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE,
-        )
-
-        for (available in listOf(everything, everything - BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION)) {
-            val plan = planConcept2Discovery(available)
-            assertTrue(
-                plan.operations.all { it.kind == Concept2GattOperationKind.ENABLE_NOTIFICATIONS },
-            )
-        }
-        assertTrue(
-            planConcept2IndividualFallback(everything)
-                .all { it.kind == Concept2GattOperationKind.ENABLE_NOTIFICATIONS },
-        )
-    }
-
     // ── §11.8 / §9.2: the downstream capability row ──────────────────────────────
 
     @Test

@@ -24,6 +24,23 @@ class Concept2PlanTest {
 
     private val allIndividual = setOf(general, status1, status2, stroke)
 
+    @Test
+    fun `the subscription plan issues notification enables and nothing else`() {
+        // A planned write would be the first step of an unsupported Concept2 control path.
+        val everything = allIndividual + multiplexed + BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE
+
+        for (available in listOf(everything, everything - multiplexed)) {
+            val plan = planConcept2Discovery(available)
+            assertTrue(
+                plan.operations.all { it.kind == Concept2GattOperationKind.ENABLE_NOTIFICATIONS },
+            )
+        }
+        assertTrue(
+            planConcept2IndividualFallback(everything)
+                .all { it.kind == Concept2GattOperationKind.ENABLE_NOTIFICATIONS },
+        )
+    }
+
     // ── UUID resolution ──────────────────────────────────────────────────────────
 
     @Test
