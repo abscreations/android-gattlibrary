@@ -47,6 +47,56 @@ class ProtocolHandlersTest {
     }
 
     @Test
+    fun `selected handler set registers only requested protocols`() {
+        val handlers = HandlerSet.of(
+            HandlerSet.Protocol.FTMS,
+            HandlerSet.Protocol.HRM,
+            HandlerSet.Protocol.CSC,
+        )
+        val factory = HandlerFactory.standard(handlerSet = handlers)
+
+        assertTrue(factory.supports(ProtocolKey.FTMS))
+        assertTrue(factory.supports(ProtocolKey.HRM))
+        assertTrue(factory.supports(ProtocolKey.CSC))
+        assertFalse(factory.supports(ProtocolKey.RSC))
+        assertFalse(factory.supports(ProtocolKey.CONCEPT2))
+        assertFalse(handlers.includesAdvertisementMachine())
+        assertTrue(handlers.includesSensor(BtEngineState.BtServiceType.CSC))
+        assertFalse(handlers.includesSensor(BtEngineState.BtServiceType.RSC))
+        assertEquals(HandlerSet.ftmsAndHrm(), HandlerSet.of(
+            HandlerSet.Protocol.FTMS,
+            HandlerSet.Protocol.HRM,
+        ))
+    }
+
+    @Test
+    fun `all-handler preset preserves production and phase 05 companion registration`() {
+        val all = HandlerSet.all()
+        val factory = HandlerFactory.standard(
+            enablePhase05HardwareTest = true,
+            handlerSet = all,
+        )
+
+        assertTrue(MACHINE_PROTOCOLS.all(factory::supports))
+        assertTrue(listOf(ProtocolKey.HRM, ProtocolKey.RSC, ProtocolKey.CSC, ProtocolKey.CPS)
+            .all(factory::supports))
+        assertTrue(all.includesAdvertisementMachine())
+        assertTrue(factory.createForConnection(ProtocolKey.HRM).last() is TestEchoHandler)
+    }
+
+    @Test
+    fun `phase 05 companion follows HRM in a restricted handler set`() {
+        val factory = HandlerFactory.standard(
+            enablePhase05HardwareTest = true,
+            handlerSet = HandlerSet.ftmsAndHrm(),
+        )
+
+        assertTrue(factory.supports(ProtocolKey.TEST_ECHO))
+        assertEquals(2, factory.createForConnection(ProtocolKey.HRM).size)
+        assertFalse(factory.supports(ProtocolKey.RSC))
+    }
+
+    @Test
     fun `release-safe factory keeps HRM connection single handler`() {
         val handlers = HandlerFactory.standard(enablePhase05HardwareTest = false)
             .createForConnection(ProtocolKey.HRM)

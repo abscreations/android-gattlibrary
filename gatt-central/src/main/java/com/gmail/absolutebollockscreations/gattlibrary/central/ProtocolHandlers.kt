@@ -175,6 +175,8 @@ class HandlerFactory(
     private val builders: Map<ProtocolKey, () -> BtEngineGattCore.ProtocolHandler>,
     private val companionProtocols: Map<ProtocolKey, List<ProtocolKey>> = emptyMap(),
 ) {
+    internal fun supports(protocol: ProtocolKey): Boolean = protocol in builders
+
     fun create(protocol: ProtocolKey): BtEngineGattCore.ProtocolHandler =
         requireNotNull(builders[protocol]) { "No handler factory registered for ${protocol.value}" }
             .invoke()
@@ -190,6 +192,7 @@ class HandlerFactory(
         fun standard(
             // BtEngine passes BleConfig.phase05HardwareTest; false matches every normal build.
             enablePhase05HardwareTest: Boolean = false,
+            handlerSet: HandlerSet = HandlerSet.all(),
             kayakFirstDisplayConfiguration: () -> KayakFirstDisplayConfiguration = {
                 KayakFirstDisplayConfiguration.DEFAULT
             },
@@ -211,16 +214,19 @@ class HandlerFactory(
                     KayakFirstProtocolHandler(kayakFirstDisplayConfiguration())
                 },
             ).apply {
-                if (enablePhase05HardwareTest) {
+                if (enablePhase05HardwareTest && handlerSet.includes(ProtocolKey.HRM)) {
                     put(ProtocolKey.TEST_ECHO, ::TestEchoHandler)
                 }
             }
-            val companions = if (enablePhase05HardwareTest) {
+            val companions = if (enablePhase05HardwareTest && handlerSet.includes(ProtocolKey.HRM)) {
                 mapOf(ProtocolKey.HRM to listOf(ProtocolKey.TEST_ECHO))
             } else {
                 emptyMap()
             }
-            return HandlerFactory(builders, companions)
+            return HandlerFactory(
+                builders.filterKeys { it == ProtocolKey.TEST_ECHO || handlerSet.includes(it) },
+                companions,
+            )
         }
     }
 }

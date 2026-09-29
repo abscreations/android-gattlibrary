@@ -343,8 +343,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine : com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine$Companion;
-	public fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;)V
-	public synthetic fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun activateServiceOn (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/util/Set;)Z
 	public static synthetic fun activateServiceOn$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/util/Set;ILjava/lang/Object;)Z
 	public final fun attachServiceControlSink (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;)V
@@ -438,6 +436,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine$Companion {
+	public final fun create (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;
+	public static synthetic fun create$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine$Companion;Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/core/BleConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngineFtmsParsers {
@@ -2490,8 +2490,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Handl
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/HandlerFactory$Companion {
-	public final fun standard (ZLkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerFactory;
-	public static synthetic fun standard$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerFactory$Companion;ZLkotlin/jvm/functions/Function0;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerFactory;
+	public final fun standard (ZLcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerFactory;
+	public static synthetic fun standard$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerFactory$Companion;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerFactory;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/HandlerOwnership : java/lang/Enum {
@@ -2500,6 +2500,39 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Handl
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerOwnership;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerOwnership;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Companion;
+	public synthetic fun <init> (Ljava/util/Set;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Companion {
+	public final fun all ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;
+	public final fun ftmsAndHrm ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;
+	public final fun of ([Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol : java/lang/Enum {
+	public static final field CONCEPT2 Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field CPS Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field CSC Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field FEC Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field FLYWHEEL Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field HRM Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field KAYAK_FIRST Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field KEISER_M_SERIES Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field PRECOR Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field RIDEON Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field RSC Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field SCHWINN_X70 Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field WAHOO_KICKR Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec {

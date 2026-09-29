@@ -72,7 +72,7 @@
 //     implement REQUEST_CONTROL but accept Start/Stop directly.
 //
 //   Typical usage:
-//     val engine = BtEngine(context)
+//     val engine = BtEngine.create(context)
 //     engine.attachServiceControlSink(btServiceManager)   // optional: mirror to local GATT
 //     engine.start(address, activityType)
 // -------------------------------------------------------------------------------------------------
@@ -174,15 +174,24 @@ class BtEngine internal constructor(
     private val handlerFactory: HandlerFactory,
     /** Host-app configuration (LIB-2/S2); replaces direct reads of the app's BuildConfig. */
     internal val bleConfig: BleConfig,
+    private val handlerSet: HandlerSet,
 ) : BtServiceEngineFacade {
 
-    constructor(context: Context, bleConfig: BleConfig = BleConfig()) : this(
-        context,
-        HandlerFactory.standard(enablePhase05HardwareTest = bleConfig.phase05HardwareTest),
-        bleConfig,
-    )
-
     companion object {
+        fun create(
+            context: Context,
+            config: BleConfig = BleConfig(),
+            handlers: HandlerSet = HandlerSet.all(),
+        ): BtEngine = BtEngine(
+            context,
+            HandlerFactory.standard(
+                enablePhase05HardwareTest = config.phase05HardwareTest,
+                handlerSet = handlers,
+            ),
+            config,
+            handlers,
+        )
+
         private const val RECOVERY_CONNECT_TIMEOUT_MS = 12_000L
 
         // Polled faster than 1 Hz so a published second never drifts a whole tick late.
@@ -873,16 +882,18 @@ class BtEngine internal constructor(
         // rather than adding a second special case is what keeps the next family from
         // reproducing the same omission.
         if (machineConnection) {
-            MACHINE_PROTOCOLS.forEach { addAll(handlerFactory.createForConnection(it)) }
+            MACHINE_PROTOCOLS.filter(handlerFactory::supports)
+                .forEach { addAll(handlerFactory.createForConnection(it)) }
         }
         // One handler per assigned service that has one, with no per-service
         // branches: a running strap advertises both 0x180D and 0x1814 on one
         // connection and both must activate, which Phase 0.5 made possible and
         // Phase 1 was the first family to need. See [sensorProtocolFor] for why
         // the mapping is not repeated here.
-        services.mapNotNull(::sensorProtocolFor).distinct().forEach { protocol ->
-            addAll(handlerFactory.createForConnection(protocol))
-        }
+        services.mapNotNull(::sensorProtocolFor).distinct()
+            .filter(handlerFactory::supports).forEach { protocol ->
+                addAll(handlerFactory.createForConnection(protocol))
+            }
     }.distinctBy { handler -> handler::class.java.name to handler.primaryServices }
 
     private fun recoveryTarget(
@@ -958,6 +969,7 @@ class BtEngine internal constructor(
      * *started* rather than stopped, because for this machine the scan is the telemetry.
      */
     private fun selectAdvertisementMachine(device: BtEngineState.DiscoveredDevice): Boolean {
+        if (!handlerSet.includesAdvertisementMachine()) return false
         val systemId = device.advertisementSystemId
         val address = canonicalScanAddress(device.address)
         if (systemId == null || address.isBlank()) {
@@ -1034,6 +1046,7 @@ class BtEngine internal constructor(
         op = "connectFtms(address=$address, activity=$activity, preBondIfNeeded=$preBondIfNeeded)",
         default = false
     ) {
+        if (MACHINE_PROTOCOLS.none(handlerFactory::supports)) return@guardConnectPerm false
         Timber.tag(BtEngineState.TAG).i(
             "connectFtms address=%s activity=%s",
             address,
@@ -1190,6 +1203,7 @@ class BtEngine internal constructor(
                 recoveryAttempt,
             )
             if (address.isBlank()) return@guardConnectPerm false
+            if (!assignedServices.all(handlerSet::includesSensor)) return@guardConnectPerm false
             val candidateCscCapability = cscRoleCapabilityForAddress(address)
             if (assignedServices.any { serviceType ->
                     !canAssignSensorService(
@@ -1437,6 +1451,7 @@ class BtEngine internal constructor(
             return@guardConnectPerm false
         }
         val protocol = sensorProtocolFor(serviceType) ?: return@guardConnectPerm false
+        if (!handlerFactory.supports(protocol)) return@guardConnectPerm false
         if (serviceType == BtEngineState.BtServiceType.CSC) {
             state.connectionRegistry.contextsForAddress(address).firstOrNull()?.let { context ->
                 state.connectionRegistry.setCscRequestedRoles(context, cscRequestedRoles)
