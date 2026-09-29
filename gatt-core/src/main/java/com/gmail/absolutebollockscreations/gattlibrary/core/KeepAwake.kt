@@ -11,8 +11,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.core
  * [owner] is an identity token: acquiring twice with the same owner is one hold, and only that
  * owner's release drops it.
  */
-interface KeepAwake {
-    fun acquireCpu(owner: Any)
+public interface KeepAwake {
+    public fun acquireCpu(owner: Any): Unit
 
-    fun releaseCpu(owner: Any)
+    public fun releaseCpu(owner: Any): Unit
 }

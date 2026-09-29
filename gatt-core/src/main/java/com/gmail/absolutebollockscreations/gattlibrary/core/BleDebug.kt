@@ -10,10 +10,10 @@ package com.gmail.absolutebollockscreations.gattlibrary.core
  *
  * Levels: 0 errors, 1 +warnings, 3 +info, 4 debug, 5 extended (high-volume payload logging).
  */
-object BleDebug {
+public object BleDebug {
     @Volatile
-    var enabled: Boolean = true
+    public var enabled: Boolean = true
 
     @Volatile
-    var level: Int = 5
+    public var level: Int = 5
 }

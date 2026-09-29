@@ -16,4 +16,4 @@ package com.gmail.absolutebollockscreations.gattlibrary.core
     AnnotationTarget.CONSTRUCTOR,
     AnnotationTarget.TYPEALIAS,
 )
-annotation class GattLibraryInternalApi
+public annotation class GattLibraryInternalApi

@@ -11,6 +11,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.core
  * `BuildConfig.PHASE_05_HARDWARE_TEST`, which every normal build keeps `false`
  * (`Phase05HardwareHarnessTest`).
  */
-data class BleConfig(
-    val phase05HardwareTest: Boolean = false,
+public data class BleConfig(
+    public val phase05HardwareTest: Boolean = false,
 )

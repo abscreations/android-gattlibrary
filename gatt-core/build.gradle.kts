@@ -40,6 +40,10 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
     compilerOptions.optIn.add(
         "com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi"
     )
+    // AGP 9 owns Kotlin compilation; match explicitApi() on production variants only.
+    if (!name.contains("UnitTest") && !name.contains("AndroidTest")) {
+        compilerOptions.freeCompilerArgs.add("-Xexplicit-api=strict")
+    }
 }
 
 dependencies {
