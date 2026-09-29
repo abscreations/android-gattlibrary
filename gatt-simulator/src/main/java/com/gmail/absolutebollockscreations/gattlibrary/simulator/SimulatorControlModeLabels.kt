@@ -24,7 +24,7 @@ object SimulatorControlModeLabels {
      * kind from here, so a persona described as accepting "Erg" and a status line reading
      * "FTMS - Erg" cannot drift apart.
      */
-    object Kind {
+    internal object Kind {
         const val DIRECT = "Direct"
         const val ERG = "Erg"
         const val SIM = "Sim"
@@ -35,16 +35,16 @@ object SimulatorControlModeLabels {
 
     const val AUTOMATIC = "Automatic"
 
-    const val FTMS_DIRECT = "FTMS - ${Kind.DIRECT}"
-    const val FTMS_ERG = "FTMS - ${Kind.ERG}"
+    internal const val FTMS_DIRECT = "FTMS - ${Kind.DIRECT}"
+    internal const val FTMS_ERG = "FTMS - ${Kind.ERG}"
     const val FTMS_SIM = "FTMS - ${Kind.SIM}"
 
     const val ANT_DIRECT = "ANT+ ${Kind.DIRECT}"
     const val ANT_SIM = "ANT+ ${Kind.SIM}"
 
-    const val KICKR_DIRECT = "KICKR-${Kind.DIRECT}"
-    const val KICKR_SIM = "KICKR-${Kind.SIM}"
+    internal const val KICKR_DIRECT = "KICKR-${Kind.DIRECT}"
+    internal const val KICKR_SIM = "KICKR-${Kind.SIM}"
 
-    const val RIDEON_DIRECT = "RideOn-${Kind.DIRECT}"
-    const val RIDEON_SIM = "RideOn-${Kind.SIM}"
+    internal const val RIDEON_DIRECT = "RideOn-${Kind.DIRECT}"
+    internal const val RIDEON_SIM = "RideOn-${Kind.SIM}"
 }

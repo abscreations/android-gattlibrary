@@ -629,22 +629,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 	public static final field ANT_DIRECT Ljava/lang/String;
 	public static final field ANT_SIM Ljava/lang/String;
 	public static final field AUTOMATIC Ljava/lang/String;
-	public static final field FTMS_DIRECT Ljava/lang/String;
-	public static final field FTMS_ERG Ljava/lang/String;
 	public static final field FTMS_SIM Ljava/lang/String;
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorControlModeLabels;
-	public static final field KICKR_DIRECT Ljava/lang/String;
-	public static final field KICKR_SIM Ljava/lang/String;
-	public static final field RIDEON_DIRECT Ljava/lang/String;
-	public static final field RIDEON_SIM Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorControlModeLabels$Kind {
-	public static final field DIRECT Ljava/lang/String;
-	public static final field ERG Ljava/lang/String;
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorControlModeLabels$Kind;
-	public static final field NONE Ljava/lang/String;
-	public static final field SIM Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPeripheralHub : com/gmail/absolutebollockscreations/gattlibrary/peripheral/ManagedPeripheralGroup, com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost {
