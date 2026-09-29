@@ -445,10 +445,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator {
-	public static final field CONCEPT2_PERIOD_MS J
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$Companion;
-	public static final field LIFE_FITNESS_PERIOD_MS J
-	public static final field PERIOD_MS J
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/core/KeepAwake;)V
 	public final fun controlsAvailableFor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Z
 	public final fun dispose ()V
