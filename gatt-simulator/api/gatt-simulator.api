@@ -910,54 +910,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 	public static final fun simulatorPersonaOptions (Z)Ljava/util/List;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaDescriptor {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;Ljava/util/List;Ljava/lang/String;)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()Ljava/util/List;
-	public final fun component4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;
-	public final fun component5 ()Ljava/util/List;
-	public final fun component6 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;Ljava/util/List;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaDescriptor;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaDescriptor;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaDescriptor;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getControlModes ()Ljava/util/List;
-	public final fun getControlSummary ()Ljava/lang/String;
-	public final fun getDescriptorLine ()Ljava/lang/String;
-	public final fun getMetrics ()Ljava/lang/String;
-	public final fun getProtocol ()Ljava/lang/String;
-	public final fun getRangeKind ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;
-	public final fun getRanges ()Ljava/util/List;
-	public final fun getTitle ()Ljava/lang/String;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaDescriptorKt {
-	public static final fun describe (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaDescriptor;
+	public static final fun descriptorLine (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;)Ljava/lang/String;
+	public static final fun descriptorTitle (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;)Ljava/lang/String;
 	public static final fun ftmsMachineLabel (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaRange {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaRange;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaRange;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersonaRange;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getMetric ()Ljava/lang/String;
-	public final fun getSpan ()Ljava/lang/String;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind : java/lang/Enum {
-	public static final field RIDE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;
-	public static final field TARGETS Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun getHeading ()Ljava/lang/String;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorRangeKind;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection : java/lang/Enum {

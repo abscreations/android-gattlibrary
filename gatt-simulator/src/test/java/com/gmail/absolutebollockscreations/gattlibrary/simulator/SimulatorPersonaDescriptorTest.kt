@@ -15,6 +15,15 @@ class SimulatorPersonaDescriptorTest {
     private val everyPersona = simulatorPersonaOptions(includeKickr = true)
 
     @Test
+    fun `public presentation strings preserve descriptor text for every persona`() {
+        everyPersona.forEach { persona ->
+            val descriptor = persona.describe()
+            assertEquals(descriptor.title, persona.descriptorTitle())
+            assertEquals(descriptor.descriptorLine, persona.descriptorLine())
+        }
+    }
+
+    @Test
     fun `speed and power persona describes CSC and CPS without target control`() {
         val descriptor = SimulatorPersona.IndoorBikeSpeedAndPower.describe()
         assertEquals("Indoor Bike Speed and Power", descriptor.title)

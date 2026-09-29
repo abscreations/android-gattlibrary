@@ -33,7 +33,7 @@ import java.util.UUID
  * [KickrSyntheticModel] for KICKR control limits, [SchwinnX70Ride] for the x70 resistance span -
  * never re-typed. A descriptor that drifts from behaviour is worse than no descriptor.
  */
-data class SimulatorPersonaDescriptor(
+internal data class SimulatorPersonaDescriptor(
     val title: String,
     val protocol: String,
     val controlModes: List<String>,
@@ -61,7 +61,7 @@ data class SimulatorPersonaDescriptor(
 }
 
 /** One range slot: the metric it constrains and the span, units included. */
-data class SimulatorPersonaRange(val metric: String, val span: String) {
+internal data class SimulatorPersonaRange(val metric: String, val span: String) {
     override fun toString(): String = "$metric $span"
 }
 
@@ -74,7 +74,7 @@ data class SimulatorPersonaRange(val metric: String, val span: String) {
  * persona actually declares one. Nothing reports both; mixing the two is how the old summaries
  * came to mean different things in different rows.
  */
-enum class SimulatorRangeKind(val heading: String) {
+internal enum class SimulatorRangeKind(val heading: String) {
     TARGETS("Targets"),
     RIDE("Ride"),
 }
@@ -91,7 +91,11 @@ fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machine) {
 }
 
 /** Normalized selector descriptor for one persona. */
-fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
+fun SimulatorPersona.descriptorTitle(): String = describe().title
+
+fun SimulatorPersona.descriptorLine(): String = describe().descriptorLine
+
+internal fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     SimulatorPersona.IndoorBikeSpeedAndPower -> describeIndoorBikeSpeedAndPower()
     SimulatorPersona.StrydFootpod -> describeStrydFootpod()
     is SimulatorPersona.Ftms -> describeFtms(profile, advertisedMachineType)
