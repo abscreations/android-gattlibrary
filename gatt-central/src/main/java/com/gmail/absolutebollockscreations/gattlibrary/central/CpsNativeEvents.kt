@@ -1,7 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-
 data class CpsNativeEventSnapshot(
     val cumulativeWheelRevolutions: Long? = null,
     val lastWheelEventTimeTicks: Int? = null,
@@ -10,8 +8,7 @@ data class CpsNativeEventSnapshot(
 )
 
 /** Session-only native CPS event fields from the selected single CPS link generation. */
-@GattLibraryInternalApi
-class CpsNativeEventStore {
+internal class CpsNativeEventStore {
     private val entries = linkedMapOf<ConnectionId, CpsMeasurement.Reading>()
 
     @Synchronized

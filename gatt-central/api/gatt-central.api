@@ -1603,14 +1603,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/CpsNa
 	public fun toString ()Ljava/lang/String;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventStore {
-	public fun <init> ()V
-	public final fun clear ()V
-	public final fun publish (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsMeasurement$Reading;)V
-	public final fun remove (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;)V
-	public final fun snapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/CscCalibration {
 	public fun <init> ()V
 	public fun <init> (II)V
