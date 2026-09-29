@@ -71,3 +71,78 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/SigUserD
 	public final fun weightToWireUnits (I)I
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/bytes/BigEndian {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/BigEndian;
+	public final fun u16 ([BI)I
+	public final fun u16OrNull ([BI)Ljava/lang/Integer;
+	public final fun u32 ([BI)J
+	public final fun u32OrNull ([BI)Ljava/lang/Long;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/bytes/ByteCursor {
+	public fun <init> ([BI)V
+	public synthetic fun <init> ([BIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun bytes (I)[B
+	public final fun getLastFailure ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/ByteCursorFailure;
+	public final fun getOffset ()I
+	public final fun getRemaining ()I
+	public final fun s16 ()Ljava/lang/Integer;
+	public final fun skip (I)Z
+	public final fun u16 ()Ljava/lang/Integer;
+	public final fun u24 ()Ljava/lang/Integer;
+	public final fun u32 ()Ljava/lang/Long;
+	public final fun u8 ()Ljava/lang/Integer;
+	public final fun varint ()Ljava/lang/Long;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/bytes/ByteCursorFailure : java/lang/Enum {
+	public static final field OVERLONG_VARINT Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/ByteCursorFailure;
+	public static final field TRUNCATED Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/ByteCursorFailure;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/ByteCursorFailure;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/ByteCursorFailure;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/bytes/LittleEndian {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/LittleEndian;
+	public static final field S16_MAX J
+	public static final field S16_MIN J
+	public static final field U16_MAX J
+	public static final field U24_MAX J
+	public static final field U32_MAX J
+	public static final field U8_MAX J
+	public final fun putU16Saturating ([BIJ)V
+	public final fun putU16Wrapping ([BII)V
+	public final fun putU24Saturating ([BIJ)V
+	public final fun putU24Wrapping ([BII)V
+	public final fun s16 ([BI)I
+	public final fun s16OrNull ([BI)Ljava/lang/Integer;
+	public final fun s16Saturating (J)[B
+	public final fun s16Wrapping (I)[B
+	public final fun u16 ([BI)I
+	public final fun u16OrNull ([BI)Ljava/lang/Integer;
+	public final fun u16Saturating (J)[B
+	public final fun u16Wrapping (I)[B
+	public final fun u24 ([BI)I
+	public final fun u24OrNull ([BI)Ljava/lang/Integer;
+	public final fun u24Saturating (J)[B
+	public final fun u24Wrapping (I)[B
+	public final fun u32 ([BI)J
+	public final fun u32OrNull ([BI)Ljava/lang/Long;
+	public final fun u32Saturating (J)[B
+	public final fun u32Wrapping (J)[B
+	public final fun u48 ([BI)J
+	public final fun u8 ([BI)I
+	public final fun u8OrNull ([BI)Ljava/lang/Integer;
+	public final fun u8Saturating (J)[B
+	public final fun u8Wrapping (I)[B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/bytes/ProtobufVarint {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/bytes/ProtobufVarint;
+	public static final field MAX_BYTES I
+	public final fun encode (J)[B
+	public final fun zigZagDecode32 (J)I
+	public final fun zigZagEncode32 (I)J
+}
+
