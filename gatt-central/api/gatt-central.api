@@ -3412,10 +3412,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeF
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessProfileField;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessProfileKt {
-	public static final fun lifeFitnessSetupGate (ZLcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessProfile;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetup {
 	public static final field CONTROL_1_CLOSE B
 	public static final field CONTROL_1_OPEN B
@@ -3578,34 +3574,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeF
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupDriver$Progress$Succeeded : com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupDriver$Progress {
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupDriver$Progress$Succeeded;
-	public fun equals (Ljava/lang/Object;)Z
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate {
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$NeedsProfile : com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate {
-	public fun <init> (Ljava/util/List;)V
-	public final fun component1 ()Ljava/util/List;
-	public final fun copy (Ljava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$NeedsProfile;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$NeedsProfile;Ljava/util/List;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$NeedsProfile;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getMissing ()Ljava/util/List;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$NotApplicable : com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$NotApplicable;
-	public fun equals (Ljava/lang/Object;)Z
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$Ready : com/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessSetupGate$Ready;
 	public fun equals (Ljava/lang/Object;)Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -4221,10 +4189,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Preco
 	public final fun getUnidentified15to16 ()I
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/PrecorMeasurementKt {
-	public static final fun confirmsCadenceIsUint16 (Lcom/gmail/absolutebollockscreations/gattlibrary/central/PrecorMeasurement$Reading;)Z
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/PrecorProtocolHandler : com/gmail/absolutebollockscreations/gattlibrary/central/BtEngineGattCore$ProtocolHandler {

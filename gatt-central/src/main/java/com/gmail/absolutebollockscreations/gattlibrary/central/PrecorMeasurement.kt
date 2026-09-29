@@ -184,8 +184,7 @@ object PrecorMeasurement {
  * Cheap enough to evaluate per frame; the handler logs the transition once per link rather
  * than the value, so this costs nothing on the notification path.
  */
-@GattLibraryInternalApi
-fun PrecorMeasurement.Reading.confirmsCadenceIsUint16(): Boolean = cadenceHighOctet != 0
+internal fun PrecorMeasurement.Reading.confirmsCadenceIsUint16(): Boolean = cadenceHighOctet != 0
 
 /** Name used in the one-shot log line, so the string is not built inline in the handler. */
 internal const val PRECOR_CADENCE_HIGH_OCTET_OBSERVED =
