@@ -4776,10 +4776,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/RscMe
 	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/RscMeasurement$Reading;DILjava/lang/Double;Ljava/lang/Double;ZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/RscMeasurement$Reading;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCadenceStepsPerMinute ()I
+	public final fun getRunning ()Z
 	public final fun getSpeedKph ()D
 	public final fun getStrideLengthMetres ()Ljava/lang/Double;
 	public final fun getTotalDistanceMetres ()Ljava/lang/Double;
-	public final fun getWalking ()Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

@@ -76,9 +76,9 @@ class RscFixtureParityTest {
                     reading.cadenceStepsPerMinute,
                 )
                 assertEquals(
-                    "$label walking flag",
-                    expect["walking"] as Boolean,
-                    reading.walking,
+                    "$label running flag",
+                    expect["running"] as Boolean,
+                    reading.running,
                 )
 
                 val stride = expect["strideLengthMetres"]

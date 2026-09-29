@@ -6,7 +6,7 @@
   "acquisition": "transcribed",
   "acquisition_note": "Transcribed rather than generated. Plan 5.1 classifies TMIW as generate-only because several of its tests build packets with Random() and assert against descriptor internals; the four RSC corpora do neither. They are literal TestPair lists, so transcription preserves the language-neutral guarantee D4 asks for at a fraction of the cost.",
   "characteristic": "00002a53-0000-1000-8000-00805f9b34fb",
-  "note": "Stryd foot pod. Flags 0x80 sets a reserved bit with neither optional field present, so the packet is 13 octets of which only the first 4 are meaningful - a useful check that trailing bytes are ignored rather than misread.",
+  "note": "Stryd foot pod. Flags 0x80 sets a reserved bit with neither optional field present, so the packet is 13 octets of which only the first 4 are meaningful - a useful check that trailing bytes are ignored rather than misread. LIB-18c: the gait expectation key was renamed from \"walking\" to \"running\" to follow the Bluetooth SIG definition of flag bit 2 (0 walking, 1 running). Recorded values are unchanged: bit 2 is clear here, so the sensor reports walking and running is false. The earlier key encoded FitBridge's inverted reading, not a source fact.",
   "cases": [
     {
       "name": "packet-0",
@@ -30,7 +30,7 @@
         "cadenceStepsPerMinute": 0,
         "strideLengthMetres": null,
         "totalDistanceMetres": null,
-        "walking": false
+        "running": false
       }
     }
   ]

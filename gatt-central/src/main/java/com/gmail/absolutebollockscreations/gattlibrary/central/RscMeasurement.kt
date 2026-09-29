@@ -20,7 +20,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * | 4-5 | Instantaneous Stride Length | uint16 | 1/100 m | flag bit 0 |
  * | next 4 | Total Distance | uint32 | 1/10 m | flag bit 1 |
  *
- * Flag bit 2 is walking (1) / running (0) and carries no field of its own.
+ * Flag bit 2 is the Walking or Running Status: 0 walking, 1 running (Bluetooth SIG RSC
+ * Measurement definition). It carries no field of its own. Before LIB-18c this parser read the
+ * bit inverted; the only consumer was a debug log line.
  *
  * ### Two things worth knowing
  *
@@ -64,7 +66,7 @@ object RscMeasurement {
 
     private const val FLAG_STRIDE_LENGTH = 0x01
     private const val FLAG_TOTAL_DISTANCE = 0x02
-    private const val FLAG_WALKING = 0x04
+    private const val FLAG_RUNNING = 0x04
 
     /** Smallest packet that carries the mandatory fields. */
     const val MINIMUM_LENGTH = 4
@@ -81,7 +83,8 @@ object RscMeasurement {
         val cadenceStepsPerMinute: Int,
         val strideLengthMetres: Double? = null,
         val totalDistanceMetres: Double? = null,
-        val walking: Boolean = false,
+        /** Walking or Running Status, flag bit 2: true when the sensor reports running. */
+        val running: Boolean = false,
     )
 
     /**
@@ -115,7 +118,7 @@ object RscMeasurement {
             cadenceStepsPerMinute = cadence,
             strideLengthMetres = strideLengthMetres,
             totalDistanceMetres = totalDistanceMetres,
-            walking = flags and FLAG_WALKING != 0,
+            running = flags and FLAG_RUNNING != 0,
         )
     }
 

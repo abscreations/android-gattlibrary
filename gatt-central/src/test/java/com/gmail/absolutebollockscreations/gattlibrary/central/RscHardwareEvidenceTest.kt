@@ -44,7 +44,7 @@ class RscHardwareEvidenceTest {
             )
             val distance = reading.totalDistanceMetres!!
             assertEquals(FixtureJson.double(expect["totalDistanceMetres"]), distance, 1e-9)
-            assertEquals(expect["walking"] as Boolean, reading.walking)
+            assertEquals(expect["running"] as Boolean, reading.running)
             assertTrue("native distance must be monotonic", distance > previousDistance)
             previousDistance = distance
         }

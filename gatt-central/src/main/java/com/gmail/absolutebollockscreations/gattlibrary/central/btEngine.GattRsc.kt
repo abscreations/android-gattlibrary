@@ -206,7 +206,7 @@ internal class RscProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 reading.cadenceStepsPerMinute,
                 reading.strideLengthMetres?.toString() ?: "absent",
                 reading.totalDistanceMetres?.toString() ?: "absent",
-                if (reading.walking) "walking" else "running",
+                if (reading.running) "running" else "walking",
             )
         }
     }

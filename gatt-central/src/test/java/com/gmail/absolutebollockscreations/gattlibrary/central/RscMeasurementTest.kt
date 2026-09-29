@@ -49,14 +49,15 @@ class RscMeasurementTest {
     // ── gait ─────────────────────────────────────────────────────────────────
 
     @Test
-    fun `the walking bit is reported but does not move any field`() {
-        // Masking with 0x03 before deriving offsets is the whole point: a runner
-        // slowing to a walk must not appear to change the packet shape.
-        val running = RscMeasurement.parse(bytes(0x03, 0, 1, 80, 100, 0, 0xE8, 0x03, 0, 0))!!
-        val walking = RscMeasurement.parse(bytes(0x07, 0, 1, 80, 100, 0, 0xE8, 0x03, 0, 0))!!
+    fun `the walking or running bit is reported per the SIG definition and does not move any field`() {
+        // Bit 2 is Walking or Running Status: 0 walking, 1 running. Masking with 0x03 before
+        // deriving offsets is the whole point: a runner slowing to a walk must not appear to
+        // change the packet shape.
+        val walking = RscMeasurement.parse(bytes(0x03, 0, 1, 80, 100, 0, 0xE8, 0x03, 0, 0))!!
+        val running = RscMeasurement.parse(bytes(0x07, 0, 1, 80, 100, 0, 0xE8, 0x03, 0, 0))!!
 
-        assertFalse(running.walking)
-        assertTrue(walking.walking)
+        assertFalse(walking.running)
+        assertTrue(running.running)
         assertEquals(running.speedKph, walking.speedKph, 1e-9)
         assertEquals(running.strideLengthMetres!!, walking.strideLengthMetres!!, 1e-9)
         assertEquals(running.totalDistanceMetres!!, walking.totalDistanceMetres!!, 1e-9)
