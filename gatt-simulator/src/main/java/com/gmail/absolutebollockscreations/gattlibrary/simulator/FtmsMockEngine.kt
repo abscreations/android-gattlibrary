@@ -24,7 +24,7 @@ import kotlin.random.Random
  */
 
 /** Inclusive bounds for one synthetic instantaneous metric. */
-data class FtmsMockRange(val min: Double, val max: Double) {
+internal data class FtmsMockRange(val min: Double, val max: Double) {
     fun at(fraction: Double): Double = min + (max - min) * fraction
     fun clamp(value: Double): Double = value.coerceIn(min, max)
 }
@@ -38,7 +38,7 @@ data class FtmsMockRange(val min: Double, val max: Double) {
  * per metric would produce 300 W at 40 rpm and make the output useless for
  * judging whether a downstream display is sane.
  */
-data class FtmsMockProfile(
+internal data class FtmsMockProfile(
     val machine: FtmsMachineProfile,
     val power: FtmsMockRange,
     val heartRate: FtmsMockRange,
@@ -264,7 +264,7 @@ data class FtmsMockSample(
  * Not thread-safe by itself; [FtmsSimulator] owns the only instance and drives it
  * from a single coroutine.
  */
-class FtmsMockEngine(
+internal class FtmsMockEngine(
     machine: FtmsMachineProfile,
     val controlsEnabled: Boolean = false,
     private val random: Random = Random.Default,
