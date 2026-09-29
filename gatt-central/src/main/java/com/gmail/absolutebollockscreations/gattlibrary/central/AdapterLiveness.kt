@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 
 /**
@@ -36,7 +36,7 @@ import timber.log.Timber
  * fault quickly; it is tuned so that catching a fault at all does not come at the
  * cost of false accusations against working hardware.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class AdapterLivenessCoordinator(
     private val livenessTimeoutMs: Long = DEFAULT_LIVENESS_TIMEOUT_MS,
 ) {

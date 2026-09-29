@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDerivedMetrics
@@ -207,10 +207,10 @@ internal object KayakFirstSimulatorTelemetryEncoder {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric, val value: String)
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object KayakFirstPanelPresenter {
     fun rows(
         configuration: KayakFirstDisplayConfiguration,

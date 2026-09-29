@@ -7,22 +7,22 @@ import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTrigger
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class FlywheelCharacteristicInventory(
     val properties: Int,
     val hasCccd: Boolean,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class FlywheelGattInventory(
     val services: Map<UUID, Map<UUID, FlywheelCharacteristicInventory>>,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FlywheelDiscoveryFailure {
     ADVERTISEMENT_IDENTITY_NOT_CONFIRMED,
     MISSING_SERVICE,
@@ -33,16 +33,16 @@ enum class FlywheelDiscoveryFailure {
     RX_NOT_WRITABLE,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FlywheelGattOperationKind { ENABLE_NOTIFICATIONS }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class FlywheelGattOperation(
     val kind: FlywheelGattOperationKind,
     val characteristicUuid: UUID,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class FlywheelDiscoveryPlan(
     val activate: Boolean,
     val failure: FlywheelDiscoveryFailure?,
@@ -56,7 +56,7 @@ data class FlywheelDiscoveryPlan(
  * this address before the exact service, endpoints, properties, and TX CCCD can confirm it here.
  * RX is deliberately required but produces no operation: no command vocabulary is evidenced.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun planFlywheelDiscovery(
     advertisementCandidateId: String?,
     inventory: FlywheelGattInventory,
@@ -107,7 +107,7 @@ internal fun List<BluetoothGattService>.toFlywheelInventory(): FlywheelGattInven
         },
     )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FlywheelSetupState { IDLE, SUBSCRIBING, READY, FAILED, CANCELLED }
 
 internal data class FlywheelDisconnectDiagnosis(
@@ -174,7 +174,7 @@ internal fun armFlywheelDisconnectCapture(diagnosis: FlywheelDisconnectDiagnosis
 }
 
 /** Pure connection-generation gate for bounded TX subscription setup. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class FlywheelSubscriptionGate(
     val connectionId: ConnectionId,
     private val timeoutMs: Long,
@@ -229,7 +229,7 @@ class FlywheelSubscriptionGate(
  * RX anywhere in this handler. One dropout filter belongs to this handler/link generation and is
  * discarded on disconnect before another generation can emit.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
     override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_FLYWHEEL_SERVICE)
     override val extraCharacteristics: Set<UUID> = setOf(
@@ -243,10 +243,10 @@ class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
     private var syntheticMetrics = FlywheelSyntheticMetrics()
     private var disconnectDiagnostic = FlywheelDisconnectDiagnostic()
 
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun setupState(): FlywheelSetupState = setupGate?.state ?: FlywheelSetupState.IDLE
     internal fun hasStructuralMatch(): Boolean = structuralMatch
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun recordStructuralMatch() {
         structuralMatch = true
     }

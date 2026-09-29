@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 
@@ -33,7 +33,7 @@ import timber.log.Timber
  * that may reach disk seconds later; a timestamp applied at write time would
  * misreport when the thing happened.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object BleCapture {
 
     /**
@@ -184,12 +184,12 @@ object BleCapture {
     }
 
     /** Test seam for a deterministic clock. */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun setClockForTest(source: () -> Long) {
         clock = source
     }
 
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun resetClock() {
         clock = System::currentTimeMillis
     }

@@ -82,11 +82,11 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.Manifest
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDebug
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object BtEngineFtmsParsers {
 
     private const val TAG = "BtEngine" // or BtEngineState.TAG

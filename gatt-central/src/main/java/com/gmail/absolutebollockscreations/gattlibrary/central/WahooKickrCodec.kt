@@ -1,10 +1,10 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import kotlin.math.roundToInt
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface WahooKickrCommand {
     data object Unlock : WahooKickrCommand
     data class Resistance(val fraction: Double) : WahooKickrCommand
@@ -22,20 +22,20 @@ sealed interface WahooKickrCommand {
     data class WheelCircumference(val millimetres: Double) : WahooKickrCommand
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class WahooKickrValidationError(
     val field: String,
     val reason: String,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface WahooKickrEncodeResult {
     data class Encoded(val bytes: ByteArray) : WahooKickrEncodeResult
     data class Invalid(val error: WahooKickrValidationError) : WahooKickrEncodeResult
 }
 
 /** Pure legacy KICKR encoder. It validates engineering values and has no transport side effects. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object WahooKickrCodec {
     fun encode(command: WahooKickrCommand): WahooKickrEncodeResult = when (command) {
         WahooKickrCommand.Unlock -> encoded(

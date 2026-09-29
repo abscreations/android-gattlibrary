@@ -1,8 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class RideOnTelemetry(
     val powerWatts: Int?,
     val cadenceRpm: Int?,
@@ -11,7 +11,7 @@ data class RideOnTelemetry(
     val diagnosticFields: Map<Int, Long>,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun decodeRideOnTelemetry(packet: ByteArray): RideOnTelemetry? {
     val decoded = (RideOnProtoCodec.decode(packet) as? RideOnDecodeResult.Decoded)?.packet ?: return null
     if (decoded.opcode != RideOnUuids.OPCODE_RIDING_DATA) return null

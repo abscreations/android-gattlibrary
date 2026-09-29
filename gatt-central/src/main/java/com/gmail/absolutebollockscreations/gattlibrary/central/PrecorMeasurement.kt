@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Bounds-checked decoder for the Precor Spinner Chrono Power measurement frame (plan §5b).
@@ -70,7 +70,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * capture can see it, and emitted as no metric at all. A field understood this well is exactly
  * the one it is tempting to ship.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object PrecorMeasurement {
 
     /** Exact frame length. Not a minimum: a 20-octet frame is not a Chrono frame. */
@@ -184,7 +184,7 @@ object PrecorMeasurement {
  * Cheap enough to evaluate per frame; the handler logs the transition once per link rather
  * than the value, so this costs nothing on the notification path.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun PrecorMeasurement.Reading.confirmsCadenceIsUint16(): Boolean = cadenceHighOctet != 0
 
 /** Name used in the one-shot log line, so the string is not built inline in the handler. */

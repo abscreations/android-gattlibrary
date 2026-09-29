@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.bluetooth.BluetoothProfile
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 // CSC-role and sensor-slot policy, split from the app's SensorClass.kt (LIB-1/S1). The engine
 // calls this (CSC Feature resolution, sensor admission) and it depends only on BtEngineState,
@@ -22,11 +22,11 @@ fun sensorConnectionLimit(serviceType: BtEngineState.BtServiceType): Int =
         -> 0
     }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 const val APPEARANCE_CYCLING_SPEED_SENSOR = 0x0482
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 const val APPEARANCE_CYCLING_CADENCE_SENSOR = 0x0483
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 const val APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR = 0x0485
 
 private val ALL_CSC_ROLES = BtEngineState.CscRole.entries.toSet()
@@ -53,7 +53,7 @@ fun cscRoleCapabilityFromAppearance(
 }
 
 /** Feature bit 0 is wheel/speed and bit 1 is crank/cadence. Zero is not a usable CSC role. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun cscRoleCapabilityFromFeature(
     featureBits: Int,
 ): BtEngineState.CscRoleCapability? {
@@ -77,7 +77,7 @@ data class CscRoleAssignment(
     val assignedRoles: Set<BtEngineState.CscRole> = emptySet(),
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class ActiveCscHandler(
     val connectionKey: String,
     val linkGeneration: Long,
@@ -87,7 +87,7 @@ data class ActiveCscHandler(
     val requestedRoles: Set<BtEngineState.CscRole>? = null,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class CscFeatureResolution(
     val capability: BtEngineState.CscRoleCapability,
     val assignedRoles: Set<BtEngineState.CscRole>,
@@ -96,7 +96,7 @@ data class CscFeatureResolution(
 )
 
 /** Defensive post-read resolution for two provisional links admitted by a connection race. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun resolveCscFeatureRoles(
     resolvedConnectionKey: String,
     featureBits: Int,
@@ -176,7 +176,7 @@ fun canAssignCscRole(
     return candidateRoles.any { it !in occupied }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun activeSensorConnectionCount(
     links: Iterable<BtEngineState.ConnectedDeviceLink>,
     serviceType: BtEngineState.BtServiceType,

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 
 /**
@@ -166,7 +166,7 @@ internal enum class KeiserAdvertisementOutcome {
  *
  * Deliberately not called "connected" at any point, because nothing ever connects.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class KeiserSourceState {
     /** No bike selected. */
     IDLE,

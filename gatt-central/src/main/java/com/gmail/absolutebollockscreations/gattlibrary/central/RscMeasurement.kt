@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Decoder for RSC Measurement, `0x2A53`.
@@ -50,7 +50,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * the §11b runtime plausibility bounds, which are still owed for this phase -
  * not in a magic constant here. Recorded in the divergence register.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object RscMeasurement {
 
     /** Metres per second per wire unit: the speed field is in 1/256 m/s. */

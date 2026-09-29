@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 
 /**
@@ -15,7 +15,7 @@ import java.util.UUID
  * fresh per connection generation and calling [close] when that generation ends, so state
  * never survives a reconnect by accident.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 interface ProtocolSession {
     val connectionId: ConnectionId
     val protocolId: String

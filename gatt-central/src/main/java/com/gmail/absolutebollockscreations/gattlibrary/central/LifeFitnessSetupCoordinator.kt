@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 
 /**
@@ -29,7 +29,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * that moves its characteristics still completes setup; building the transcript against
  * `BluetoothIds.UUID_LF_CONTROL_SERVICE` would quietly undo that.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class LifeFitnessSetupCoordinator {
 
     sealed interface Decision {

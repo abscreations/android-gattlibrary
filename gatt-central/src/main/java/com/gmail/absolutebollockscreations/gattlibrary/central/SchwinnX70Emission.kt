@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * One canonical metric derived from a Schwinn x70 frame, in FitBridge units.
@@ -10,7 +10,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * @param eventMs the machine's own elapsed time in milliseconds, where the frame carries one.
  * Protocol time only; fusion's freshness clock stays on arrival time.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class SchwinnX70Sample(
     val metric: MetricKind,
     val value: Double,

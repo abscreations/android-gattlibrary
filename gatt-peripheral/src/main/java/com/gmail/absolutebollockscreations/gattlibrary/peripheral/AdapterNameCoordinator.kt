@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
 import java.util.ArrayDeque
 import timber.log.Timber
@@ -40,7 +40,7 @@ import timber.log.Timber
  * is what makes the ordering rules exhaustively unit-testable. Every method must
  * be called on one thread (the controller uses the main looper).
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class AdapterNameCoordinator(
     private val gateway: Gateway,
     private val store: OriginalNameStore,
@@ -303,7 +303,7 @@ class AdapterNameCoordinator(
          * the Zwift Hub's does not. The pattern stays as well, because it still catches a name
          * stranded by an older build whose manifest this one no longer lists.
          */
-        @FitBridgeBleInternalApi
+        @GattLibraryInternalApi
         val UNPREFIXED_SESSION_NAMES: Set<String> = setOf(
             BtServiceProfiles.DEVICE_NAME_CSC_CPS,
             "Stryd",
@@ -335,7 +335,7 @@ class AdapterNameCoordinator(
         )
 
         /** True for names this app assigns, so they are never saved as "original". */
-        @FitBridgeBleInternalApi
+        @GattLibraryInternalApi
         fun isKnownSessionName(name: String): Boolean =
             name.startsWith(SESSION_NAME_PREFIX) ||
                 name in UNPREFIXED_SESSION_NAMES ||

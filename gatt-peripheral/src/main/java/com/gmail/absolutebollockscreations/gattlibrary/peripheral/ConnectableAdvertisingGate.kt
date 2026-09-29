@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Pure connection-count gate shared by connectable simulator peripherals.
@@ -9,7 +9,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * must explicitly pause its advertiser for the lifetime of any inbound link, then resume only
  * after the final link leaves. Duplicate callbacks are deliberately idempotent.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class ConnectableAdvertisingGate {
     enum class Action { NONE, PAUSE, RESUME }
 

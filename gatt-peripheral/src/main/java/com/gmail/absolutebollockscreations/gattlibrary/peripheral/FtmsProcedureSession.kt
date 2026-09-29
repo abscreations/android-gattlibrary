@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Mutable FTMS procedure state owned by exactly one GATT connection generation.
@@ -56,10 +56,10 @@ class FtmsProcedureSession {
     )
 
     var hasControl: Boolean = false
-        @FitBridgeBleInternalApi set
+        @GattLibraryInternalApi set
 
     var operationalState: OperationalState = OperationalState.IDLE
-        @FitBridgeBleInternalApi set
+        @GattLibraryInternalApi set
 
     val acceptedTargets = AcceptedTargets()
 

@@ -109,7 +109,7 @@ import android.bluetooth.BluetoothProfile.STATE_DISCONNECTED
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
 
@@ -151,7 +151,7 @@ internal class GattDiscoveryAttemptGate(
  * Compatibility roles for the two public connection slots retained during Phase 0.
  * Connection identity is carried by ConnectionContext rather than by this role.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class LegacyConnectionRole { FTMS, HRM }
 
 internal data class LegacyConnectionSlots<T>(
@@ -217,7 +217,7 @@ internal class ActiveHandlerLifecycle<T> {
     fun discard() = synchronized(lock) { active.clear() }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object BtEngineGattCore {
 
     private const val PREFERRED_ATT_MTU = 512
@@ -226,7 +226,7 @@ object BtEngineGattCore {
     private const val MAX_DISCOVERY_ATTEMPTS = 3
 
     /** Minimal protocol contract implemented per profile (FTMS, HRM, ...). */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     interface ProtocolHandler {
         /** Primary services this handler owns. */
         val primaryServices: Set<UUID>

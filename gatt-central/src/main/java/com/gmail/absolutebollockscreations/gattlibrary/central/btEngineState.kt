@@ -35,7 +35,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanResult
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,7 +54,7 @@ fun netElevationChangeMeters(
 
 class BtEngineState : HrmStateSink {
 
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     val cscNativeEvents = CscNativeEventStore()
     internal val cpsNativeEvents = CpsNativeEventStore()
     internal val treadmillNativePace = TreadmillNativePaceStore()
@@ -965,7 +965,7 @@ class BtEngineState : HrmStateSink {
     }
 
     // Connections
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun openConnectionContext(
         role: LegacyConnectionRole,
         address: String,
@@ -1011,7 +1011,7 @@ class BtEngineState : HrmStateSink {
     }
 
     /** Publish state by physical-link identity; legacy flows are registry projections. */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun setConnectionState(context: ConnectionContext, state: Int) {
         val old = context.connectionState.value.bluetoothProfileState
         val role = connectionRegistry.roleOf(context)

@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** RideOn constants only. Merely referencing these values never activates the protocol. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object RideOnUuids {
     val ORIGINAL_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_SERVICE
     val CORE2_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE

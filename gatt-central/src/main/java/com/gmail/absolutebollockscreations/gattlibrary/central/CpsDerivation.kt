@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** Session-scoped derivation from native CPS wheel/crank events. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class CpsDerivationState {
     private var distanceMeters = 0.0
 

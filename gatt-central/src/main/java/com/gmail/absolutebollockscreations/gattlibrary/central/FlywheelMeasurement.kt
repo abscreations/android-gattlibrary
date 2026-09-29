@@ -1,15 +1,15 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** Typed reasons a Flywheel statistics notification can be rejected before field access. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FlywheelRejection {
     TOO_SHORT,
     BAD_MAGIC,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface FlywheelDecodeResult {
     data class Decoded(val reading: FlywheelMeasurement.Reading) : FlywheelDecodeResult
     data class Rejected(val reason: FlywheelRejection) : FlywheelDecodeResult
@@ -27,7 +27,7 @@ sealed interface FlywheelDecodeResult {
  * handler will own one [FlywheelDropoutFilter] per link generation and offer only successfully
  * decoded readings to it.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object FlywheelMeasurement {
     const val MINIMUM_FRAME_BYTES = 13
 

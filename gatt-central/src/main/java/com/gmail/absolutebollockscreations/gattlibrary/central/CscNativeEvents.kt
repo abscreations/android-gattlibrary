@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 data class CscNativeEventSnapshot(
     val cumulativeWheelRevolutions: Long? = null,
@@ -10,7 +10,7 @@ data class CscNativeEventSnapshot(
 )
 
 /** Session-only selected native CSC fields, composed across exact link generations. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class CscNativeEventStore {
     private data class Entry(
         val wheel: CscMeasurement.WheelEvent? = null,

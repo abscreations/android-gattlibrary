@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Bounds-checked decoders for the Concept2 PM Bluetooth Smart rowing characteristics.
@@ -61,7 +61,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * its separate closed-loop CSAFE surface; these decoders retain no control seam and must not
  * forward a simulator request to a physical Concept2 link.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object Concept2Measurement {
 
     /** Low byte of the characteristic UUID, which is also the multiplexed identification byte. */

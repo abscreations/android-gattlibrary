@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -16,7 +16,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class RideOnServiceForm { ORIGINAL, CORE2 }
 
 internal data class RideOnSessionTiming(
@@ -223,7 +223,7 @@ internal class RideOnControlSession(
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 val RIDEON_GEAR_RATIOS = listOf(
     7500, 8700, 9900, 11100, 12300, 13800, 15300, 16800,
     18600, 20400, 22200, 24000, 26099, 28200, 30300, 32400,

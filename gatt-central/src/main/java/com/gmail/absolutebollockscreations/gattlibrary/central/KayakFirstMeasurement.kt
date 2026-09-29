@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** Typed rejection for one complete Kayak First measurement line. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class KayakFirstMeasurementRejection {
     EMPTY_LINE,
     WRONG_COMMAND,
@@ -16,7 +16,7 @@ enum class KayakFirstMeasurementRejection {
     CADENCE_OUT_OF_RANGE,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface KayakFirstMeasurementDecodeResult {
     data class Decoded(val reading: KayakFirstMeasurement.Reading) : KayakFirstMeasurementDecodeResult
     data class Rejected(
@@ -46,7 +46,7 @@ sealed interface KayakFirstMeasurementDecodeResult {
  * was missed, and larger on the first frame after a start. It is the time weight for every
  * integrated quantity. It is never allowed to reject or rewrite a metric.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object KayakFirstMeasurement {
     const val MINIMUM_FIELDS = 24
     const val EVENT_TIMESTAMP_INDEX = 1
@@ -110,7 +110,7 @@ object KayakFirstMeasurement {
             get() = windowSeconds?.takeIf { it > 0L }?.coerceAtMost(MAX_WINDOW_SECONDS)
     }
 
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun decode(line: String): KayakFirstMeasurementDecodeResult {
         if (line.isEmpty()) return rejected(KayakFirstMeasurementRejection.EMPTY_LINE)
         val fields = line.split(';')

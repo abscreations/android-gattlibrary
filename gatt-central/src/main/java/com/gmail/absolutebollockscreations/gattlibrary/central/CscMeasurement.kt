@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** Pure decoder for Cycling Speed and Cadence Measurement, `0x2A5B`. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object CscMeasurement {
     const val FLAG_WHEEL_REVOLUTION_DATA = 0x01
     const val FLAG_CRANK_REVOLUTION_DATA = 0x02
@@ -77,7 +77,7 @@ object CscMeasurement {
 }
 
 /** Per-link-generation CSC baselines and wrap-safe revolution/event-time deltas. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class CscMeasurementTracker {
     data class WheelDelta(
         val revolutions: Long,

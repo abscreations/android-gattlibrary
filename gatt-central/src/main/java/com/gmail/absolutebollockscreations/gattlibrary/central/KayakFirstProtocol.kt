@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * The 17 display-selector IDs defined by pinned Apache-2.0 TMIW source.
@@ -132,7 +132,7 @@ enum class KayakFirstProtocolChoice(
 }
 
 /** Commands in the first D98/D99 central compatibility profile. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface KayakFirstCommand {
     data object Reset : KayakFirstCommand
 
@@ -195,7 +195,7 @@ sealed interface KayakFirstCommand {
 }
 
 /** Pure command serializer and payload chunker. It owns no queue or Bluetooth state. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object KayakFirstCommandCodec {
     const val DEFAULT_PAYLOAD_CAPACITY = 20
 

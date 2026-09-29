@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import kotlin.math.abs
 import kotlin.math.cbrt
@@ -57,7 +57,7 @@ import kotlin.math.sqrt
  * *display*, not about the machine: their purpose is to stop a resistance change from producing a
  * visible step, and nothing about the protocol requires them.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object SchwinnX70PowerModel {
 
     /**

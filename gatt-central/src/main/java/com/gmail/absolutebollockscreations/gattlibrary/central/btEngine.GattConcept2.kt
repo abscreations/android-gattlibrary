@@ -5,7 +5,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
 
@@ -27,7 +27,7 @@ import java.util.UUID
  * Only one fixed Just Row/Prepare startup command is permitted by D11 (2026-09-12).
  * No generic command forwarding, movement targets, or downstream target capabilities exist.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_C2_ERG_SERVICE)

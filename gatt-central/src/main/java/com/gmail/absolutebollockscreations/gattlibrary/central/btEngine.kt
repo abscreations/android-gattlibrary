@@ -105,7 +105,7 @@ import android.os.Build
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_FEATURE
@@ -141,7 +141,7 @@ const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE
  * There is no upstream machine to read or control, so every target capability and range must
  * remain absent. `featuresRead` means the answer is final, not that a `0x2ACC` read occurred.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
     featuresRead = true,
     supportsSpeed = false,
@@ -151,7 +151,7 @@ fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
 )
 
 /** Settled control capabilities for a measurement-only Flywheel Sports upstream. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun flywheelProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
     featuresRead = true,
     supportsSpeed = false,

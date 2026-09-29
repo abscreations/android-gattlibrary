@@ -1,13 +1,13 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * The 4-value FE State enum ANT+ FE-C packs into the high bits of page 16 byte 7 and page 25
  * byte 7 (bits 4-6 of each). Values outside this set (0, 5, 6, 7) are reserved/undefined by
  * the spec and are surfaced as `null` rather than guessed at.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FeCEquipmentState(val wireValue: Int) {
     ASLEEP_OR_OFF(1),
     READY(2),
@@ -29,7 +29,7 @@ enum class FeCEquipmentState(val wireValue: Int) {
  * side-effect-free is what makes it directly unit-testable against byte vectors without any
  * GATT or engine-state scaffolding.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface FeCPage {
 
     /**
@@ -199,7 +199,7 @@ sealed interface FeCPage {
     data class Unknown(val page: Int) : FeCPage
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object FeCPageParsers {
 
     private const val HR_UNAVAILABLE = 0xFF

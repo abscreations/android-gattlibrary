@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 
 /**
@@ -23,7 +23,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * started it and only the engine knows about generations. It exposes [inFlight] so the caller
  * can arm one, and [onTimeout] so the caller can report that it fired.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class LifeFitnessSetupDriver(
     private val coordinator: LifeFitnessSetupCoordinator = LifeFitnessSetupCoordinator(),
 ) {

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
 
@@ -18,7 +18,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
  * [includeKickr] has no default (LIB-9b): the library cannot read the app's `BuildConfig`, so the
  * UI passes `BuildConfig.DEBUG` and keeps the KICKR selector gate on its side.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona> =
     listOf(SimulatorPersona.IndoorBikeSpeedAndPower, SimulatorPersona.StrydFootpod) +
         FtmsMockEngine.supportedMachines.flatMap { machine ->
@@ -66,7 +66,7 @@ fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona> =
             emptyList()
         }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun simulatorAdvertisedNameLine(persona: SimulatorPersona): String? = when (persona) {
     SimulatorPersona.KayakFirstBlue,
     SimulatorPersona.KayakFirstOrange,

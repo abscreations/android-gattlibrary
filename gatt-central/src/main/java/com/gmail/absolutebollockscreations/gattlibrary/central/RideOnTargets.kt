@@ -1,10 +1,10 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface RideOnControlTarget {
     data class Erg(val watts: Int) : RideOnControlTarget
     data class Simulation(
@@ -18,7 +18,7 @@ sealed interface RideOnControlTarget {
     ) : RideOnControlTarget
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun encodeRideOnTarget(target: RideOnControlTarget): ByteArray? = runCatching {
     when (target) {
         is RideOnControlTarget.Erg -> {

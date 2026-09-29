@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureRole
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CccdEvent
@@ -38,7 +38,7 @@ import java.util.UUID
  * frame-count ratio, because the bytes FitBridge actually sent were recorded
  * nowhere.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object PeripheralCaptureHooks {
 
     /**

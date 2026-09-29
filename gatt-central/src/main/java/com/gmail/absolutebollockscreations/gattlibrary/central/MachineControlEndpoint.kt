@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.Manifest
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 
 /**
@@ -72,7 +72,7 @@ internal interface MachineControlEndpoint {
     ): Boolean
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MachineControlRoute {
     FTMS,
     FEC,
@@ -92,7 +92,7 @@ enum class MachineControlRoute {
 }
 
 /** Exact downstream ranges approved for the legacy KICKR protocol surface. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
     featuresRead = true,
     supportsResistance = true,
@@ -110,7 +110,7 @@ fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
 )
 
 /** Pure selected-adapter routing decision; a half-activated FE-C link safely remains on FTMS. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun machineControlRoute(
     selectedAdapterId: String?,
     hasFeCHandler: Boolean,

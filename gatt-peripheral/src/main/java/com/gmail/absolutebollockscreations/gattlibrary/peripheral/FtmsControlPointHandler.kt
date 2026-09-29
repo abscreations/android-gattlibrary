@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.FtmsResistanceScale
 
 /**
@@ -28,7 +28,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.FtmsResistanceSca
  *  - Set Target Heart Rate and Set Indoor Bike Simulation are decoded rather
  *    than blanket-refused, so they work the moment a downstream path exists.
  */
-@OptIn(FitBridgeBleInternalApi::class)
+@OptIn(GattLibraryInternalApi::class)
 class FtmsControlPointHandler(
     private val sink: FtmsControlSink,
 ) {

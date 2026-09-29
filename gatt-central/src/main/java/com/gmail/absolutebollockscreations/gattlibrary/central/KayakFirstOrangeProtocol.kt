@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import kotlin.math.PI
 import kotlin.math.pow
@@ -16,7 +16,7 @@ fun kayakFirstGeneration(localName: String?): KayakFirstGeneration? {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class KayakFirstOrangeCommand(val wire: Byte) {
     T_MIN('1'.code.toByte()),
     T_H('2'.code.toByte()),
@@ -88,7 +88,7 @@ internal class KayakFirstOrangeLineAssembler(
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KayakFirstOrangeTimingResponse(
     val command: KayakFirstOrangeCommand,
     val sequence: Long,
@@ -97,7 +97,7 @@ data class KayakFirstOrangeTimingResponse(
     val timingSeconds: Double get() = timingMicroseconds / 1_000_000.0
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface KayakFirstOrangeResponse {
     data object ResetOk : KayakFirstOrangeResponse
     data class Timing(val value: KayakFirstOrangeTimingResponse) : KayakFirstOrangeResponse
@@ -105,7 +105,7 @@ sealed interface KayakFirstOrangeResponse {
 }
 
 /** Strict three-line response grammar: command, unsigned sequence, positive timing in microseconds. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class KayakFirstOrangeResponseParser {
     private val fields = mutableListOf<String>()
 
@@ -155,7 +155,7 @@ class KayakFirstOrangeResponseParser {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KayakFirstOrangeTimingTuple(
     val tMinSeconds: Double,
     val tHSeconds: Double,
@@ -163,7 +163,7 @@ data class KayakFirstOrangeTimingTuple(
     val tVSeconds: Double,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KayakFirstOrangePhysicsResult(
     val powerWatts: Double,
     val forceNewtons: Double,
@@ -173,7 +173,7 @@ data class KayakFirstOrangePhysicsResult(
 )
 
 /** E2 4.2.0 manufacturer equations recovered from the official Orange application. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object KayakFirstOrangePhysics {
     const val FLYWHEEL_INERTIA = 0.02527962
     const val FORCE_RADIUS_METRES = 0.027
@@ -216,7 +216,7 @@ object KayakFirstOrangePhysics {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KayakFirstOrangeReading(
     val sequence: Long,
     val elapsedSeconds: Double,
@@ -239,7 +239,7 @@ data class KayakFirstOrangeReading(
 )
 
 /** Owns the reset/poll sequence and only publishes complete, non-duplicate 1/2/3/4 tuples. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class KayakFirstOrangeSession(
     private val athleteWeightKg: () -> Double?,
 ) {

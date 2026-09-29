@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import android.Manifest
 import android.bluetooth.BluetoothGatt
@@ -58,7 +58,7 @@ import java.util.UUID
  * D26 does not block it. No capture contains a resistance target or a start/stop exchange, and §9.2
  * sets no target bits for this family.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_X70_SERVICE)
@@ -107,7 +107,7 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
     private var deviceClassificationPublished = false
     private var rejectedFrames = 0
 
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun resetLinkState() {
         previousCounter = null
         previousCounterAtMs = 0L
@@ -133,7 +133,7 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
      * so this number was wrong on every x70 session that produced a main stream. Markers now have
      * their own counter.
      */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun rejectedFrameCount(): Int = rejectedFrames
 
     /** Stream markers seen on this link. Recognised, not decoded, and never counted as corruption. */
@@ -247,7 +247,7 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
      *
      * Dispatch is on the characteristic and never on payload length — QZ's structural defect here.
      */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun samplesForNotification(
         characteristic: UUID,
         value: ByteArray,
@@ -399,7 +399,7 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
     }
 
     /** Every console in this family is an upright bike. */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun persona(): FusionPersona = FusionPersona.RIDE
 
     internal fun publishDeviceClassification(state: BtEngineState, address: String) {
@@ -416,7 +416,7 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
  * here, because a command FitBridge generated would be a third value for a field where two already
  * disagree and nothing can choose between them.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 val SCHWINN_X70_INITIALISATION: ByteArray = byteArrayOf(
     0x07, 0x01, 0xD3.toByte(), 0x00, 0x1F, 0x05, 0x01,
 )
@@ -433,7 +433,7 @@ val SCHWINN_X70_INITIALISATION: ByteArray = byteArrayOf(
  * for a device that does not exist, which is the failure the §7 registry test guards against on the
  * matcher side and this function guards on the subscription side.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun planSchwinnX70Discovery(inventory: Map<UUID, Set<UUID>>): List<CccdTarget> {
     val characteristics = inventory[BluetoothIds.UUID_X70_SERVICE] ?: return emptyList()
     return listOf(

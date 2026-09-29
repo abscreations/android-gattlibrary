@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Encodes FE-C over BLE control pages (48/49/50/51) for FEC3, per plan §2.5/§10/§16.6.
@@ -22,7 +22,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * field definition (48/49/50) with an explicit "unknown" sentinel this code always has a safe
  * value for.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object FeCControlEncoder {
 
     private const val CHANNEL = BluetoothIds.FEC_DEFAULT_CHANNEL

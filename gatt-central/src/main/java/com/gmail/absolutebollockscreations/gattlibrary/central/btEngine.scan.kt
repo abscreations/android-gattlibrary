@@ -71,7 +71,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.Locale
 import java.util.WeakHashMap
@@ -305,7 +305,7 @@ private fun BtEngine.pruneStaleScanEntries(nowMs: Long) {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun <K, V> retainFreshScanEntries(
     entries: Map<K, V>,
     nowMs: Long,

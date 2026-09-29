@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 
 /**
@@ -39,7 +39,7 @@ import java.util.UUID
  * by identity. That is deliberate and harmless: nothing compares events, and the
  * tests assert on encoded lines rather than on instances.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface CaptureEvent {
 
     /** The `ev` discriminator written to the wire. */
@@ -68,7 +68,7 @@ sealed interface CaptureEvent {
  * notification that produced a sample, and the downstream notification that
  * carried it onward.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class CaptureRole(val tag: String, val fileSuffix: String) {
     /** FitBridge as GATT client. `notify` and `read` mean *received*. */
     CENTRAL("BLECAP", "central"),
@@ -84,7 +84,7 @@ enum class CaptureRole(val tag: String, val fileSuffix: String) {
 }
 
 /** Why a payload was withheld. Written verbatim as the `redacted` field. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class RedactionReason(val wireName: String) {
     /** Name, email, age, gender, height, weight — Life Fitness (Phase 6). */
     USER_PROFILE("user_profile"),
@@ -109,7 +109,7 @@ enum class RedactionReason(val wireName: String) {
  * Deliberately immutable: a registry that could be mutated at runtime is a
  * registry that can be mutated too late.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object SensitiveCharacteristics {
 
     private val byUuid: Map<UUID, RedactionReason> = mapOf(
@@ -170,7 +170,7 @@ internal data class ScanEvent(
 }
 
 /** Ring-buffer or writer-queue overflow marker. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class DroppedEvent(val count: Int) : CaptureEvent {
     override val ev: String get() = "dropped"
     override val conn: String? get() = null
@@ -178,7 +178,7 @@ data class DroppedEvent(val count: Int) : CaptureEvent {
 
 // ── connection lifecycle ──────────────────────────────────────────────────────
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class ConnectEvent(
     override val conn: String,
     /** Link generation from §0.2, so a reconnect is distinguishable. */
@@ -196,7 +196,7 @@ data class ConnectEvent(
     override val ev: String get() = "connect"
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class DisconnectEvent(
     override val conn: String,
     val reason: String,
@@ -229,7 +229,7 @@ internal data class CapturedCharacteristic(
     val descriptors: List<String>,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class CccdEvent(
     override val conn: String,
     val characteristic: String,
@@ -241,7 +241,7 @@ data class CccdEvent(
 
 // ── traffic ───────────────────────────────────────────────────────────────────
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class NotifyEvent(
     override val conn: String,
     val characteristic: String,
@@ -250,7 +250,7 @@ data class NotifyEvent(
     override val ev: String get() = "notify"
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class ReadEvent(
     override val conn: String,
     val characteristic: String,
@@ -269,7 +269,7 @@ data class ReadEvent(
  * to a payload-carrying instance that bypasses [of] entirely, which is precisely
  * the hole this design exists to close.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class WriteEvent private constructor(
     override val conn: String,
     val characteristic: String,
@@ -417,7 +417,7 @@ internal data class ErrorEvent(
  * disk seconds later, and a timestamp applied at flush time would misrepresent
  * when the thing happened.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class CaptureRecord(
     val atMs: Long,
     val seq: Long,
@@ -431,7 +431,7 @@ data class CaptureRecord(
 )
 
 /** First line of every capture file. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class CaptureHeader(
     val appVersion: String,
     val androidSdk: Int,

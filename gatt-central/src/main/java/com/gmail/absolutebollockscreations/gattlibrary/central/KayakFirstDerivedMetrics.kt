@@ -1,11 +1,11 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import kotlin.math.pow
 
 /** Manufacturer-model estimates used only when KayakFirst does not transmit a native metric. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object KayakFirstDerivedMetrics {
     const val MODEL_COEFFICIENT = 0.1419262
     const val KAYAK_MASS_KG = 12.0
@@ -254,7 +254,7 @@ internal class KayakFirstEnergyEstimator {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KayakFirstEnergyEstimate(
     val totalKilocalories: Double,
     val kilocaloriesPerHour: Double,

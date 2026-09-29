@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCaptur
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTrigger
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.DemoteEvent
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.ErrorEvent
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 
 /** A machine adapter eligible for one physical link generation. */
@@ -29,7 +29,7 @@ internal data class MachineAdapterCandidate(
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class AdapterPolicyState {
     NOT_STARTED,
     SETUP_REQUIRED,

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
 
@@ -15,7 +15,7 @@ import java.util.UUID
  * indistinguishable from a snapshot alone, which is fine for Phase 9's scope: nothing here
  * needs to tell "never sent" apart from "explicitly invalid" yet.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class FeCMeasurementSnapshot(
     val equipmentType: Int? = null,
     val equipmentState: FeCEquipmentState? = null,
@@ -60,7 +60,7 @@ data class FeCMeasurementSnapshot(
  * Every FEC2 notification is expected to carry exactly one complete ANT frame (plan
  * §2.2/§2.3) - there is no multi-notification reassembly here.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class FeCProtocolSession(
     override val connectionId: ConnectionId,
 ) : ProtocolSession {

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Projects FE-C page-54 mode bits into the FTMS-shaped capability fields consumed by the local
@@ -14,7 +14,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * mode, the range below is the FE-C page's documented encodable domain expressed in downstream
  * FTMS raw units; it is not a claim about a particular machine's physical limit.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object FeCCapabilities {
 
     /** Page 48 (Basic Resistance): 0-100%, 0.5% resolution -> FTMS raw 0.1-level units. */

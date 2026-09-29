@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** One canonical, source-independent metric mapped from an accepted Kayak First reading. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KayakFirstSample(
     val metric: MetricKind,
     val value: Double,
@@ -20,7 +20,7 @@ data class KayakFirstSample(
  * while the generic `STROKE_RATE` bound is 60. The downstream rower projection converts the
  * accepted row/paddle cadence to its stroke-rate field after the 120 spm source bound has run.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun kayakFirstSamples(reading: KayakFirstMeasurement.Reading): List<KayakFirstSample> =
     buildList {
         add(KayakFirstSample(
@@ -46,7 +46,7 @@ fun kayakFirstSamples(reading: KayakFirstMeasurement.Reading): List<KayakFirstSa
         ))
     }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun kayakFirstEstimatedPowerSamples(
     powerWatts: Double,
     averagePowerWatts: Double,
@@ -65,7 +65,7 @@ fun kayakFirstEstimatedPowerSamples(
     ),
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun kayakFirstEstimatedEnergySamples(
     estimate: KayakFirstEnergyEstimate,
 ): List<KayakFirstSample> = listOf(

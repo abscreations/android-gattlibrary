@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 data class CpsNativeEventSnapshot(
     val cumulativeWheelRevolutions: Long? = null,
@@ -10,7 +10,7 @@ data class CpsNativeEventSnapshot(
 )
 
 /** Session-only native CPS event fields from the selected single CPS link generation. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class CpsNativeEventStore {
     private val entries = linkedMapOf<ConnectionId, CpsMeasurement.Reading>()
 

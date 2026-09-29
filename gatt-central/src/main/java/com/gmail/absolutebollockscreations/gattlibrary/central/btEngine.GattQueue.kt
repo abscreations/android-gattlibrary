@@ -92,7 +92,7 @@ import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothStatusCodes
 import android.os.Build
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_CCCD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -116,7 +116,7 @@ private val queueIoScope = CoroutineScope(Dispatchers.IO)
 /* Queue entry + push helpers                                                    */
 /* ────────────────────────────────────────────────────────────────────────────── */
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class StackEntry(
     val op: Op,
     val charUuid: UUID? = null,
@@ -142,7 +142,7 @@ data class StackEntry(
     enum class WriteMode { WITH_RESPONSE, WITHOUT_RESPONSE }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun <T> queueCompletionMatches(
     contextGatt: T?,
     callbackGatt: T,

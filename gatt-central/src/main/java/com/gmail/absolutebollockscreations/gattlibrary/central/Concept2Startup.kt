@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** GATT property bits are Bluetooth-defined; no command is issued without a subscribable reply. */
 internal fun concept2StartupWriteMode(
@@ -17,7 +17,7 @@ internal fun concept2StartupWriteMode(
 }
 
 /** One user-authorized physical setup command; never a generic CSAFE control transport. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class Concept2StartupHandshake {
     enum class State { NEW, AWAITING_ACK, ACKNOWLEDGED, FAILED, TIMED_OUT }
     @Volatile

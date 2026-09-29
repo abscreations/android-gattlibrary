@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.ArrayDeque
 
 /**
@@ -76,7 +76,7 @@ internal class CaptureRing(private val capacity: Int = DEFAULT_CAPACITY) {
  * Why a capture began. Written into the human-log summary so the two files can
  * be correlated, and named in the plan's §0.9.5 trigger table.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class CaptureTrigger(val wireName: String) {
     /** Debugging-menu toggle (§0.9.8). */
     MANUAL("manual"),

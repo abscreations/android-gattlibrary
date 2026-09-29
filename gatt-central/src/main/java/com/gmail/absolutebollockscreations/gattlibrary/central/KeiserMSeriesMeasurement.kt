@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Bounds-checked decoder for the Keiser M-series advertisement payload (plan §11, phase 11.3).
@@ -109,7 +109,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * **Anything writable.** There is no control point, no target, no resistance command. Resistance
  * at byte 18 is a *reading* of where the rider set the lever.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object KeiserMSeriesMeasurement {
 
     /** Bluetooth SIG company identifier assigned to Keiser, little-endian on the wire as `02 01`. */

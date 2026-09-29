@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Bounds-checked decoders for the Schwinn x70 family — 170, 270 and 570 (plan §7).
@@ -66,7 +66,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * corpus was. Cadence here is still the raw counter, because turning it into rpm needs two frames
  * and the receive clock, and inventing a delta from one frame is the mistake being described.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object SchwinnX70Measurement {
 
     /** 270 / 570 main stream. Exact length; a 16- or 18-octet frame is not one of these. */

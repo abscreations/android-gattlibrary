@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 
 /**
@@ -12,17 +12,17 @@ import java.util.UUID
  * handler stayed untested long enough for a defect to ship through it.
  */
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class Concept2GattOperationKind { READ, ENABLE_NOTIFICATIONS }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class Concept2GattOperation(
     val kind: Concept2GattOperationKind,
     val characteristicUuid: UUID,
 )
 
 /** Which delivery path a plan subscribes. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class Concept2DeliveryPath {
     /** One CCCD on `0x0080`; identifiers dispatch to the individual decoders. */
     MULTIPLEXED,
@@ -31,7 +31,7 @@ enum class Concept2DeliveryPath {
     INDIVIDUAL,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class Concept2DiscoveryPlan(
     val activate: Boolean,
     val path: Concept2DeliveryPath?,
@@ -61,7 +61,7 @@ internal fun planConcept2Identification(
     }
 
 /** The four characteristics FitBridge consumes, in identifier order. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 val CONCEPT2_CONSUMED_CHARACTERISTICS: List<UUID> = listOf(
     BluetoothIds.UUID_C2_GENERAL_STATUS,
     BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
@@ -89,7 +89,7 @@ val CONCEPT2_CONSUMED_CHARACTERISTICS: List<UUID> = listOf(
  * multiplexed characteristic is planned individually from the start; one that offers it but
  * never speaks is handled by [concept2FallbackDecision].
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun planConcept2Discovery(characteristicUuids: Set<UUID>): Concept2DiscoveryPlan {
     if (BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION in characteristicUuids) {
         return Concept2DiscoveryPlan(
@@ -125,7 +125,7 @@ fun planConcept2Discovery(characteristicUuids: Set<UUID>): Concept2DiscoveryPlan
  * enabled, so arming these CCCDs withdraws those identifiers from the multiplex automatically.
  * There is no window in which both paths deliver the same frame.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun planConcept2IndividualFallback(characteristicUuids: Set<UUID>): List<Concept2GattOperation> =
     CONCEPT2_CONSUMED_CHARACTERISTICS
         .filter { it in characteristicUuids }

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 /**
  * Hand-rolled NDJSON emitter for [CaptureEvent] (plan §0.9.4).
  *
@@ -20,7 +20,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * Every method returns a single line with no trailing newline; the sink owns
  * line termination.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object CaptureJson {
 
     private val HEX = "0123456789abcdef".toCharArray()

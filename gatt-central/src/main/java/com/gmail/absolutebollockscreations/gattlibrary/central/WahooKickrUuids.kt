@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Phase-10 legacy KICKR wire vocabulary.
@@ -9,7 +9,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * range, and timeout constants live here beside the later pure codec/session implementation.
  * Merely recording RideOn UUIDs does not activate that separate protocol.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object WahooKickrUuids {
     val CYCLING_POWER_SERVICE = BluetoothIds.UUID_CYCLING_POWER_SERVICE
     val MARKER_EE01 = BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01

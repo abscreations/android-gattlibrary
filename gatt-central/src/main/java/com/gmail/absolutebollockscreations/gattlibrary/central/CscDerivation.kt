@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDefaults
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class CscWorkoutPersona { BIKE, ELLIPTICAL }
 
 internal data class CscSessionSnapshot(
@@ -12,7 +12,7 @@ internal data class CscSessionSnapshot(
     val calibration: CscCalibration,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class CscCalibration(
     val wheelCircumferenceMm: Int = BleDefaults.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM,
     val ellipticalStrideLengthMm: Int = BleDefaults.DEFAULT_ELLIPTICAL_STRIDE_LENGTH_MM,
@@ -25,7 +25,7 @@ data class CscCalibration(
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class CscDerivedMetric(
     val metric: MetricKind,
     val value: Double,
@@ -34,7 +34,7 @@ data class CscDerivedMetric(
 )
 
 /** Session-scoped metric accumulation over one link's native CSC event deltas. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class CscDerivationState {
     private var bikeDistanceMeters = 0.0
     private var ellipticalDistanceMeters = 0.0

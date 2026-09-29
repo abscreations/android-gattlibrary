@@ -3,7 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
@@ -15,7 +15,7 @@ data class ConnectionId(
     val linkGeneration: Long,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class LinkState(val bluetoothProfileState: Int) {
     DISCONNECTED(BluetoothProfile.STATE_DISCONNECTED),
     CONNECTING(BluetoothProfile.STATE_CONNECTING),
@@ -30,7 +30,7 @@ enum class LinkState(val bluetoothProfileState: Int) {
 }
 
 /** Serialized operation state owned by one physical GATT link. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class GattQueue {
     private val lock: Any = Any()
     private val entries: ArrayDeque<StackEntry> = ArrayDeque()
@@ -74,21 +74,21 @@ class GattQueue {
 }
 
 /** Full service/characteristic identity for one CCCD enable request. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class CccdTarget(
     val serviceUuid: UUID,
     val characteristicUuid: UUID,
 )
 
 /** Bounded result of claiming the next CCCD recovery attempt for one connection context. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface CccdRecoveryDecision {
     data class Retry(val attempt: Int) : CccdRecoveryDecision
     data object Terminate : CccdRecoveryDecision
 }
 
 /** CCCD enable plan, readiness, and recovery state owned by one physical GATT link. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class CccdState {
     private val lock = Any()
     val ready = MutableStateFlow(false)
@@ -175,11 +175,11 @@ class CccdState {
 }
 
 /** In-session link recovery state; intentionally empty until recovery moves in Phase 0.3. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class LinkRecoveryState
 
 /** Effective-readiness gate for the proprietary transcript on an FTMS machine link. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class LifeFitnessLinkSetupState {
     NOT_REQUIRED,
     PENDING,
@@ -188,7 +188,7 @@ enum class LifeFitnessLinkSetupState {
 }
 
 /** All state whose lifetime is one physical BLE connection. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class ConnectionContext(
     val connectionId: ConnectionId,
     val address: String,

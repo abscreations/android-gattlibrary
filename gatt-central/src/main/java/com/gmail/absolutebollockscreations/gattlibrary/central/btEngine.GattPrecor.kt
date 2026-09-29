@@ -6,7 +6,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
 
@@ -31,7 +31,7 @@ import java.util.UUID
  * the correct posture regardless: this is a family FitBridge cannot test, so it ships
  * measurement only and advertises no target capability downstream.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_PRECOR_SERVICE)
@@ -53,14 +53,14 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
     /** Avoid rewriting the observable device type on every measurement notification. */
     private var deviceClassificationPublished = false
 
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun resetLinkState() {
         cadenceHighOctetSeen = false
         rejectedFrames = 0
         deviceClassificationPublished = false
     }
 
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun recordRejectedFrame() {
         rejectedFrames += 1
     }
@@ -147,7 +147,7 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
      * The exact `24 08 00` value is observed after each measurement on a physical Chrono and
      * carries no established metric. Adjacent short values remain malformed and observable.
      */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun decodeNotification(value: ByteArray): PrecorMeasurement.Reading? {
         if (PrecorMeasurement.isAuxiliaryFrame(value)) return null
         val reading = PrecorMeasurement.parse(value)
@@ -176,18 +176,18 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
      * Chrono is one product and it is a spin bike. Returning null here to look symmetrical
      * would discard a fact for the sake of a shape.
      */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun persona(): FusionPersona = FusionPersona.RIDE
 
     /** Publish the product's fixed bike identity only after the Chrono frame gate has passed. */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun publishDeviceClassification(state: BtEngineState, address: String) {
         state.updateDeviceMachineFeatureByAddress(address, ActivityType.BIKING.ordinal)
         deviceClassificationPublished = true
     }
 
     /** Frames rejected on this link, for the §11 evidence record and diagnostic capture. */
-    @FitBridgeBleInternalApi
+    @GattLibraryInternalApi
     fun rejectedFrameCount(): Int = rejectedFrames
 }
 
@@ -198,7 +198,7 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
  * means callers cannot accidentally subscribe to a vendor characteristic merely because it was
  * added by a later firmware revision.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun planPrecorDiscovery(
     inventory: Map<UUID, Set<UUID>>,
 ): List<CccdTarget> {

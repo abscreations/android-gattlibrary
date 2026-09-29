@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.bluetooth.BluetoothGatt
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
 
@@ -35,7 +35,7 @@ internal fun BtEngine.metricEmitterFor(
 }
 
 /** Stable factory key for one BLE protocol handler implementation. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class ProtocolKey(val value: String) {
     init {
         require(value.isNotBlank()) { "Protocol key must not be blank" }
@@ -126,7 +126,7 @@ data class ProtocolKey(val value: String) {
  * `null` means no sensor handler exists yet. `FTMS` is null on purpose: it is the
  * machine role, admitted through the machine path, not the secondary-sensor path.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): ProtocolKey? =
     when (serviceType) {
         BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
@@ -156,7 +156,7 @@ fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): ProtocolKey? =
  * Order is FTMS first for readability only. D6 governs multi-adapter ranking except for the
  * Concept2 native-only exclusion in [centralProtocolServiceUuids].
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FTMS,
     ProtocolKey.CONCEPT2,
@@ -170,7 +170,7 @@ val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
 )
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class HandlerFactory(
     private val builders: Map<ProtocolKey, () -> BtEngineGattCore.ProtocolHandler>,
     private val companionProtocols: Map<ProtocolKey, List<ProtocolKey>> = emptyMap(),
@@ -234,7 +234,7 @@ internal fun centralProtocolServiceUuids(discoveredServiceUuids: Set<UUID>): Set
     }
 
 /** Offer discovery to eligible candidates and retain every successful activation. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun activateMatchingProtocolHandlers(
     candidates: List<BtEngineGattCore.ProtocolHandler>,
     discoveredServiceUuids: Set<UUID>,
@@ -242,20 +242,20 @@ fun activateMatchingProtocolHandlers(
 ): List<BtEngineGattCore.ProtocolHandler> =
     matchingProtocolHandlers(candidates, discoveredServiceUuids).filter(offer)
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class HandlerOwnership {
     EXPLICIT_CHARACTERISTIC,
     PRIMARY_SERVICE,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class ProtocolHandlerRoute(
     val owners: List<BtEngineGattCore.ProtocolHandler>,
     val ownership: HandlerOwnership?,
 )
 
 /** Resolve ownership without a fan-out fallback, which would be ambiguous with several handlers. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun resolveProtocolHandlerRoute(
     activeHandlers: Collection<BtEngineGattCore.ProtocolHandler>,
     characteristicUuid: UUID,

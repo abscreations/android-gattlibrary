@@ -6,7 +6,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDebug
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_FEATURE
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_MEASUREMENT
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_SERVICE
@@ -75,7 +75,7 @@ internal fun decodeRscRead(
     else -> RscReadOutcome.Ignored
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun emitRscMetrics(reading: RscMeasurement.Reading, emitter: MetricEmitter) {
     emitter.emit(MetricKind.SPEED, reading.speedKph)
     emitter.emit(MetricKind.CADENCE, reading.cadenceStepsPerMinute.toDouble())

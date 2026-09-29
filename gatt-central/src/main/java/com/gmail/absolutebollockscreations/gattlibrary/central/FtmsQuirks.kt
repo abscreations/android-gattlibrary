@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 
 /**
@@ -36,7 +36,7 @@ import java.util.UUID
  */
 
 /** One field in an overridden layout, in wire order. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface FtmsLayoutStep {
     /** Decode [width] octets as [field]. */
     data class Read(val field: FtmsQuirkField, val width: Int) : FtmsLayoutStep
@@ -49,7 +49,7 @@ sealed interface FtmsLayoutStep {
 }
 
 /** Fields an override can produce. Deliberately small: a quirk decodes, it does not derive. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FtmsQuirkField {
     STROKE_RATE_HALF_SPM,
     STROKE_COUNT,
@@ -62,13 +62,13 @@ enum class FtmsQuirkField {
     HEART_RATE_BPM,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class UnknownPacketPolicy {
     /** Packet does not match the fingerprint: parse it as an ordinary FTMS frame. */
     FALL_BACK_TO_STANDARD,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class FtmsQuirk(
     val id: String,
     /** Lowercased device-name prefix. The only identity these machines expose. */
@@ -136,7 +136,7 @@ data class FtmsQuirk(
             length == packetLength
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object FtmsQuirkRegistry {
 
     /**

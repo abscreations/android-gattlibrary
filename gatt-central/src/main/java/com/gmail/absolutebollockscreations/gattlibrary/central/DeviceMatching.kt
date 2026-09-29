@@ -1,12 +1,12 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import java.util.Locale
 import java.util.UUID
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
 const val FLYWHEEL_CANDIDATE_ID = "vendor.flywheel.sports"
 const val KAYAK_FIRST_CANDIDATE_ID = "kayak.first"
@@ -38,7 +38,7 @@ internal fun isKayakFirstAddressCorrelation(
 
 /** Matcher-layer UUID storage. Values are always lowercase canonical 128-bit UUID strings. */
 @JvmInline
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 value class CanonicalUuid private constructor(val value: String) {
     fun toUuid(): UUID = UUID.fromString(value)
     override fun toString(): String = value
@@ -66,7 +66,7 @@ private fun registeredSig16(assignedNumber: Int): CanonicalUuid {
     )
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MatchEvidenceKind {
     LOCAL_NAME_PATTERN,
     MANUFACTURER_COMPANY_ID,
@@ -98,7 +98,7 @@ enum class MatchEvidenceKind {
  * from a missing service UUID, because "we have not identified a service yet" and "there is no
  * service" are different claims and only the second is a protocol fact.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MatchTransport { GATT, ADVERTISEMENT_ONLY }
 
 /**
@@ -121,7 +121,7 @@ enum class MatchTransport { GATT, ADVERTISEMENT_ONLY }
  * bytes are copied in and out so no caller can retain a reference into a scan buffer, and nothing
  * here is persisted: an observation lives for the duration of one match.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class ManufacturerPayload(bytes: ByteArray) {
 
     private val bytes: ByteArray = bytes.copyOf()
@@ -159,13 +159,13 @@ class ManufacturerPayload(bytes: ByteArray) {
  * function with its own tests, and so the definition reads as a claim about the protocol instead
  * of as an anonymous predicate.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun interface ManufacturerPayloadRule {
     fun matches(companyId: Int, payload: ManufacturerPayload): Boolean
 }
 
 /** Optional, transient correlation evidence. Implementations must never expose the address. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun interface ManufacturerAddressRule {
     fun matches(address: String, payload: ManufacturerPayload): Boolean
 }
@@ -178,7 +178,7 @@ fun interface ManufacturerAddressRule {
  * filter discards it in hardware and no amount of correct software matching can recover it.
  * Typed so a definition contributes the filter its own transport needs.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface HardwareScanFilterSpec {
     data class ServiceUuid(val uuid: CanonicalUuid) : HardwareScanFilterSpec
 
@@ -189,10 +189,10 @@ sealed interface HardwareScanFilterSpec {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class CollisionRisk { LOW, MEDIUM, HIGH }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class MatchEvidenceFact(
     val kind: MatchEvidenceKind,
     val structuralValue: String,
@@ -207,7 +207,7 @@ data class MatchEvidenceFact(
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class MatchEvidence(val facts: List<MatchEvidenceFact>) {
     val totalWeight: Int = facts.sumOf { it.weight }
     val rankingWeight: Int = facts
@@ -222,10 +222,10 @@ data class MatchEvidence(val facts: List<MatchEvidenceFact>) {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class KnownBleService { FTMS, HRM, CSC, RSC, CPS, GLUCOSE }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class PacketShapeRule(
     val lengths: IntRange? = null,
     val flagsMask: Long? = null,
@@ -244,7 +244,7 @@ data class PacketShapeRule(
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class MatchObservation(
     val localName: String? = null,
     val deviceAddress: String? = null,
@@ -265,7 +265,7 @@ data class MatchObservation(
     val manufacturerPayloads: Map<Int, ManufacturerPayload> = emptyMap(),
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class MatchDefinition(
     val candidateId: String,
     /**
@@ -367,7 +367,7 @@ data class MatchDefinition(
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class RankedMatchCandidate(
     val candidateId: String,
     /** Null for an advertisement-only family, which serves no GATT service. */
@@ -385,7 +385,7 @@ data class RankedMatchCandidate(
     val rank: Int = evidence.rankingWeight
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class DeviceMatcherRegistry private constructor(
     private val definitions: List<MatchDefinition>,
 ) {

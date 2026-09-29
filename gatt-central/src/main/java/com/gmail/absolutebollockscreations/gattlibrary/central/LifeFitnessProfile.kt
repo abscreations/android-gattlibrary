@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDefaults
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.SigUserDataUnits
 
 /**
@@ -103,7 +103,7 @@ enum class LifeFitnessProfileField(val settingsLabel: String) {
  * specific connection. Keeping them apart is what lets the gate be exercised for a machine that
  * is not Life Fitness at all, which is the case most likely to regress.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface LifeFitnessSetupGate {
 
     /** Not a Life Fitness machine, or not one whose setup surface was fingerprinted. */
@@ -130,7 +130,7 @@ sealed interface LifeFitnessSetupGate {
  * advertising and only claims the family after `LifeFitnessFingerprint` resolves both
  * characteristic pairs, so a machine merely called `LF Something` never triggers this prompt.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun lifeFitnessSetupGate(
     fingerprinted: Boolean,
     profile: LifeFitnessProfile,

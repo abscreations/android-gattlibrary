@@ -99,7 +99,7 @@ import android.Manifest
 import android.bluetooth.*
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_BIKING_DATA
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_CCCD
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_ELLIPTICAL_DATA
@@ -145,7 +145,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STAT
 import timber.log.Timber
 import java.util.UUID
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(UUID_FTMS_SERVICE)
@@ -753,7 +753,7 @@ internal fun correlateControlPointResponse(value: ByteArray): CpResponseOutcome 
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun applyFitnessMachineStatus(
     state: BtEngineState,
     serviceControlSink: BtServiceControlSink?,

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 
 /**
@@ -35,7 +35,7 @@ import java.util.UUID
  * control write fails the whole sequence and surfaces the explicit setup-failure state, which is
  * a visible dead session rather than a machine in a state we cannot name.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object LifeFitnessSetup {
 
     /**
@@ -257,7 +257,7 @@ object LifeFitnessSetup {
  * means every failure branch — a refused write, a timeout, a retry exhausting — is reachable
  * from a unit test rather than only from a machine nobody has.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class LifeFitnessSetupSequence(private val ops: List<LifeFitnessSetup.Op>) {
 
     sealed interface Outcome {

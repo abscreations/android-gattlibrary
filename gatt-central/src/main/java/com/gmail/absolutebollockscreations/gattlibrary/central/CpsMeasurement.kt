@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** Bounds-checked decoder for Cycling Power Measurement, `0x2A63`. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object CpsMeasurement {
     data class WheelEvent(val cumulativeRevolutions: Long, val lastEventTimeTicks: Int)
     data class CrankEvent(val cumulativeRevolutions: Int, val lastEventTimeTicks: Int)
@@ -115,7 +115,7 @@ object CpsMeasurement {
     private const val BIT_OFFSET_COMPENSATION_INDICATOR = 12
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class CpsMeasurementTracker {
     data class WheelDelta(
         val revolutions: Long,

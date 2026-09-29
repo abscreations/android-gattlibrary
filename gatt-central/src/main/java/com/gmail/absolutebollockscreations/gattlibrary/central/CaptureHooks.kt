@@ -18,7 +18,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.capture.Redaction
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.SampleEvent
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.ScanEvent
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.WriteEvent
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 
 /**
@@ -46,7 +46,7 @@ import java.util.UUID
  * event by any route. Vendor setup sequences that write profile data pass their
  * own [RedactionReason] instead.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object CaptureHooks {
 
     fun advertisementSource(

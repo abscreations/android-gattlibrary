@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
  * closes. Only the server connection lifecycle releases this guard; local central-side client
  * activity must not affect it.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class PeripheralConnectionRetentionGuard {
     private val retainedConnections = ConcurrentHashMap.newKeySet<String>()
 

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * One canonical metric derived from a Keiser advertisement, in FitBridge units.
@@ -9,7 +9,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * this bike on its own broadcast interval rather than on a source-class default. See
  * [MetricSample.freshnessMs].
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class KeiserSample(
     val metric: MetricKind,
     val value: Double,
@@ -37,7 +37,7 @@ internal fun keiserAverageSpeedKph(reading: KeiserMSeriesMeasurement.Reading): D
  * protocol's total-distance average is the startup fallback; a confirmed cadence-and-power stop is
  * zero immediately. Counter/time rollback and unit changes rebase the estimator.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class KeiserSpeedEstimator {
     private data class Observation(val elapsedSeconds: Int, val distanceMetres: Double)
 
@@ -174,7 +174,7 @@ class KeiserSpeedEstimator {
  *
  * **Anything writable.** No target, no capability, no control signal. The bike cannot receive.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun keiserSamples(
     reading: KeiserMSeriesMeasurement.Reading,
     estimatedSpeedKph: Double? = null,

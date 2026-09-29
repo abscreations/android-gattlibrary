@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * One decoded ANT serial message carried inside a FEC2 notification.
@@ -10,7 +10,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * leading `channel` byte stripped off. Phase 9 assumes one complete ANT frame per BLE
  * notification (plan §2.2/§2.3) - there is no reassembly buffer here.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class AntSerialFrame(
     val messageType: Int,
     val channel: Int,
@@ -31,7 +31,7 @@ data class AntSerialFrame(
 }
 
 /** Structured rejection reasons for [FeCFrameCodec.decode], per plan §14 diagnostics. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FeCFrameRejection {
     TOO_SHORT,
     BAD_SYNC,
@@ -41,7 +41,7 @@ enum class FeCFrameRejection {
     SHORT_KNOWN_PAGE,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface FeCFrameDecodeResult {
     data class Decoded(val frame: AntSerialFrame) : FeCFrameDecodeResult
     data class Rejected(val reason: FeCFrameRejection) : FeCFrameDecodeResult
@@ -66,7 +66,7 @@ sealed interface FeCFrameDecodeResult {
  * over. Verified against the Tacx PDF's worked example: `A4 09 4F 05 33 FF FF FF FF 20 4E 42
  * F8` XORs (over the first 12 bytes) to `0xF8`, matching the trailing checksum byte.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object FeCFrameCodec {
 
     /** ANT+ broadcast/acknowledged data messages carry a fixed page(1) + payload(7) = 8 bytes. */

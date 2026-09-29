@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 
 /**
@@ -41,7 +41,7 @@ import java.util.UUID
  * the status path without failing the fingerprint** — a machine that completes setup while
  * telling us nothing is still a machine that completes setup.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object LifeFitnessFingerprint {
 
     /**

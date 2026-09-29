@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import java.util.UUID
@@ -18,15 +18,15 @@ import timber.log.Timber
  *
  * A BLE strap notifies about once a second, so this tolerates three missed notifications.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 const val HEART_RATE_FRESHNESS_MS = 4_000L
 
 /** Protocol that produced a metric sample. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MetricProtocol { FTMS, HRM, RSC, CSC, CPS, VENDOR, MOTION, GPS, SESSION }
 
 /** Source role used by fusion priority independently of protocol framing. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MetricSourceClass {
     HRM,
     FTMS,
@@ -44,10 +44,10 @@ enum class MetricSourceClass {
     SESSION,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MetricQuality { NATIVE, DERIVED, ESTIMATED }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MetricUnit {
     BPM,
     KILOMETERS_PER_HOUR,
@@ -69,7 +69,7 @@ enum class MetricUnit {
 }
 
 /** Canonical workout fields that can participate in source fusion. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = false) {
     HEART_RATE(MetricUnit.BPM),
     SPEED(MetricUnit.KILOMETERS_PER_HOUR),
@@ -100,7 +100,7 @@ enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = false) {
 }
 
 /** Lifetime that owns metric state. It is never synthesized across transport kinds. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface MetricOriginId {
     data class Gatt(val connectionId: ConnectionId) : MetricOriginId
 
@@ -116,7 +116,7 @@ sealed interface MetricOriginId {
 }
 
 /** Wire endpoint that produced a metric within an origin lifetime. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface MetricEndpointId {
     data class GattCharacteristic(val uuid: UUID) : MetricEndpointId
 
@@ -128,7 +128,7 @@ sealed interface MetricEndpointId {
 }
 
 /** Stable identity of one metric-producing endpoint within one origin generation. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class MetricSourceId(
     val originId: MetricOriginId,
     val protocol: MetricProtocol,
@@ -164,7 +164,7 @@ data class MetricSourceId(
  * Source-tagged handler output. [arrivalMs] is monotonic host receipt time and is the only
  * freshness clock. [eventMs] is protocol time and is retained only for protocol math.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class MetricSample(
     val originId: MetricOriginId,
     val sourceId: MetricSourceId,
@@ -236,7 +236,7 @@ data class MetricSample(
         }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun interface MonotonicMetricClock {
     fun nowMs(): Long
 
@@ -246,7 +246,7 @@ fun interface MonotonicMetricClock {
 }
 
 /** Wall-clock time used only for UI series that are rendered against epoch time. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun interface MetricSeriesClock {
     fun nowMs(): Long
 
@@ -255,7 +255,7 @@ fun interface MetricSeriesClock {
     }
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FusionSubmission {
     ACCEPTED,
     REJECTED_STALE,
@@ -267,7 +267,7 @@ enum class FusionSubmission {
     REJECTED_IMPLAUSIBLE,
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 enum class FusionPersona { RIDE, RUN, ROW_PADDLE }
 
 private data class MetricCandidateKey(
@@ -277,7 +277,7 @@ private data class MetricCandidateKey(
 )
 
 /** Packet-scoped source binding. Every field decoded from one packet shares [arrivalMs]. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class MetricEmitter(
     private val fusion: MetricFusion,
     val sourceId: MetricSourceId,
@@ -318,7 +318,7 @@ class MetricEmitter(
  * Session-scoped, per-metric source selection. Protocol time is never consulted here: source
  * freshness and all tie-breaking recency use monotonic host [MetricSample.arrivalMs] only.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 class MetricFusion(
     private val state: BtEngineState,
     private val clock: MonotonicMetricClock = MonotonicMetricClock.SYSTEM,

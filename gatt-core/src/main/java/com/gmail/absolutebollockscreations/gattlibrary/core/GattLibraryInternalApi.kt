@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.core
 
 /** Library implementation API exposed only where the module graph requires it. */
 @RequiresOptIn(
-    message = "This FitBridge BLE implementation API may change without notice.",
+    message = "This gattLibrary implementation API may change without notice.",
     level = RequiresOptIn.Level.WARNING,
 )
 @Retention(AnnotationRetention.BINARY)
@@ -16,4 +16,4 @@ package com.gmail.absolutebollockscreations.gattlibrary.core
     AnnotationTarget.CONSTRUCTOR,
     AnnotationTarget.TYPEALIAS,
 )
-annotation class FitBridgeBleInternalApi
+annotation class GattLibraryInternalApi

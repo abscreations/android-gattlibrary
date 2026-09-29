@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -44,7 +44,7 @@ import kotlin.math.roundToInt
  * would produce a 10x step in the recorded activity, which is worse than being
  * consistently wrong.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object FtmsResistanceScale {
 
     /** How a machine encodes Resistance Level on its data characteristic. */

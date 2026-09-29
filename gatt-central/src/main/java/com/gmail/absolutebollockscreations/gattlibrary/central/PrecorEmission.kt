@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * One canonical metric derived from a Precor Chrono frame, in FitBridge units.
@@ -8,7 +8,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * @param eventMs the machine's own elapsed time in milliseconds. Protocol time, used for
  * protocol math only; fusion's freshness clock stays on arrival time.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class PrecorSample(
     val metric: MetricKind,
     val value: Double,
@@ -51,7 +51,7 @@ data class PrecorSample(
  * none of them. TMIW's descriptor sets `caloriesPerHourMetric`, `caloriesPerMinuteMetric` and
  * `strokeCountMetric` to null for this device, and its own tests assert that.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun precorSamples(reading: PrecorMeasurement.Reading): List<PrecorSample> {
     val eventMs = reading.elapsedSeconds * 1_000L
     val samples = mutableListOf<PrecorSample>()

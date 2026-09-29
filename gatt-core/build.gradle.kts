@@ -30,11 +30,11 @@ android {
     }
 }
 
-// Library code may use its own and lower modules' @FitBridgeBleInternalApi declarations;
+// Library code may use its own and lower modules' @GattLibraryInternalApi declarations;
 // the opt-in marks them for outside consumers, not for the libraries themselves (LIB-10a).
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
     compilerOptions.optIn.add(
-        "com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi"
+        "com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi"
     )
 }
 

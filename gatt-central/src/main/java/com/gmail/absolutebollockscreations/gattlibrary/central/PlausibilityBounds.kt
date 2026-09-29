@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /**
  * Physically sensible ranges per metric, per activity persona — plan §1.5 item 5, §11b.
@@ -46,7 +46,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternal
  * `INCLINATION` and `RAMP_ANGLE` are signed and bounded both ways. `RESISTANCE` is a vendor
  * level with no shared meaning across machines and stays unbounded.
  */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object PlausibilityBounds {
 
     /** An inclusive range, or null where a metric is deliberately not bounded above. */

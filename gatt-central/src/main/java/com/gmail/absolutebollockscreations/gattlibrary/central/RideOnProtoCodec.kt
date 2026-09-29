@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import kotlin.math.roundToLong
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface RideOnProtoField {
     val number: Int
     data class Varint(override val number: Int, val value: Long) : RideOnProtoField
@@ -12,16 +12,16 @@ sealed interface RideOnProtoField {
     data class Fixed32(override val number: Int, val bytes: ByteArray) : RideOnProtoField
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class RideOnDecodedPacket(val opcode: Int, val fields: List<RideOnProtoField>)
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 sealed interface RideOnDecodeResult {
     data class Decoded(val packet: RideOnDecodedPacket) : RideOnDecodeResult
     data class Invalid(val reason: String) : RideOnDecodeResult
 }
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class RideOnSimulationParam(
     val windMpsX100: Int,
     val gradePercentX100: Int,
@@ -29,7 +29,7 @@ data class RideOnSimulationParam(
     val rollingResistanceX100000: Long,
 )
 
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 data class RideOnPhysicalParam(
     val gearRatioX10000: Long? = null,
     val bicycleMassKgX100: Long,
@@ -37,7 +37,7 @@ data class RideOnPhysicalParam(
 )
 
 /** Small protobuf-v2 wire codec for only the independently authored RideOn schema. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 object RideOnProtoCodec {
     fun decode(packet: ByteArray): RideOnDecodeResult {
         if (packet.isEmpty()) return RideOnDecodeResult.Invalid("missing opcode")

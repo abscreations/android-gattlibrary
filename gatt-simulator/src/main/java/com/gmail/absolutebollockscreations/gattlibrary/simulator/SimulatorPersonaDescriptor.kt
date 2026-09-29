@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.FitBridgeBleInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
@@ -80,7 +80,7 @@ enum class SimulatorRangeKind(val heading: String) {
 }
 
 /** Machine names for the FTMS profiles, shared by the persona title and the status card. */
-@FitBridgeBleInternalApi
+@GattLibraryInternalApi
 fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machine) {
     FtmsMachineProfile.INDOOR_BIKE -> "Indoor bike"
     FtmsMachineProfile.TREADMILL -> "Treadmill"
