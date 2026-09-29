@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
+import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
 import java.util.UUID
 
@@ -67,26 +68,13 @@ data class FtmsAdvertisingPlan(
             profile: FtmsMachineProfile,
             includeNativeBikingSensors: Boolean = false,
             advertisedMachineType: FtmsMachineProfile = profile,
+            localName: String = profile.advertisedName,
         ): FtmsAdvertisingPlan {
-            val name = profile.advertisedName
+            val name = localName
             val serviceData = ftmsServiceData(advertisedMachineType, available = true)
-            val serviceUuids = if (
-                includeNativeBikingSensors && profile == FtmsMachineProfile.INDOOR_BIKE
-            ) {
-                listOf(
-                    BluetoothIds.UUID_FTMS_SERVICE,
-                    BluetoothIds.UUID_CSC_SERVICE,
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                )
-            } else {
-                listOf(BluetoothIds.UUID_FTMS_SERVICE)
-            }
-            // Android/controller contributes the Flags structure. Every other
-            // structure needs its two-byte length/type header included here.
-            val used = CONTROLLER_FLAGS_BYTES +
-                (AD_HEADER_BYTES + name.toByteArray(Charsets.UTF_8).size) +
-                (AD_HEADER_BYTES + UUID_16_BYTES * serviceUuids.size) +
-                (AD_HEADER_BYTES + UUID_16_BYTES + serviceData.size)
+            val serviceUuids = serviceUuidsFor(profile, includeNativeBikingSensors)
+            val used = fixedBytes(serviceUuids, serviceData) +
+                (AD_HEADER_BYTES + name.toByteArray(Charsets.UTF_8).size)
             return FtmsAdvertisingPlan(
                 localName = name,
                 serviceData = serviceData,
@@ -95,5 +83,90 @@ data class FtmsAdvertisingPlan(
                 serviceUuids = serviceUuids,
             )
         }
+
+        /** Octets left for the local name once everything else in this persona's advertisement is counted. */
+        fun localNameBudget(
+            profile: FtmsMachineProfile,
+            includeNativeBikingSensors: Boolean = false,
+            advertisedMachineType: FtmsMachineProfile = profile,
+        ): Int {
+            val serviceData = ftmsServiceData(advertisedMachineType, available = true)
+            val uuids = serviceUuidsFor(profile, includeNativeBikingSensors)
+            return MAX_LEGACY_BYTES - fixedBytes(uuids, serviceData) - AD_HEADER_BYTES
+        }
+
+        /**
+         * The name a bridge session advertises (LIB-18e): [BtServiceProfiles.DEVICE_NAME_PREFIX]
+         * followed by the bridged machine's own name, cut to this persona's octet budget.
+         *
+         * The name is cleaned first (control characters become spaces, whitespace collapses, ends trimmed)
+         * and truncated on a code-point boundary by UTF-8 octets, never by characters, so a
+         * multi-byte name cannot overflow the advertisement or be split mid-character. With no
+         * usable machine name (unknown, blank, or a simulator persona) the persona's fallback
+         * name, for example "FB-Treadmill", is used unchanged.
+         */
+        fun bridgeLocalName(
+            profile: FtmsMachineProfile,
+            upstreamName: String?,
+            includeNativeBikingSensors: Boolean = false,
+            advertisedMachineType: FtmsMachineProfile = profile,
+        ): String {
+            val cleaned = cleanMachineName(upstreamName) ?: return profile.advertisedName
+            val prefix = BtServiceProfiles.DEVICE_NAME_PREFIX
+            val available = localNameBudget(profile, includeNativeBikingSensors, advertisedMachineType) -
+                prefix.toByteArray(Charsets.UTF_8).size
+            val truncated = truncateUtf8(cleaned, available).trimEnd()
+            return if (truncated.isEmpty()) profile.advertisedName else prefix + truncated
+        }
+
+        internal fun cleanMachineName(name: String?): String? =
+            name
+                ?.map { if (Character.isISOControl(it)) ' ' else it }
+                ?.joinToString("")
+                ?.replace(WHITESPACE_RUN, " ")
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+
+        /** Longest prefix of [text] whose UTF-8 encoding fits [maxBytes], ending on a code point. */
+        internal fun truncateUtf8(text: String, maxBytes: Int): String {
+            if (maxBytes <= 0) return ""
+            var used = 0
+            var end = 0
+            while (end < text.length) {
+                val codePoint = text.codePointAt(end)
+                val width = when {
+                    codePoint < 0x80 -> 1
+                    codePoint < 0x800 -> 2
+                    codePoint < 0x10000 -> 3
+                    else -> 4
+                }
+                if (used + width > maxBytes) break
+                used += width
+                end += Character.charCount(codePoint)
+            }
+            return text.substring(0, end)
+        }
+
+        private fun serviceUuidsFor(
+            profile: FtmsMachineProfile,
+            includeNativeBikingSensors: Boolean,
+        ): List<UUID> = if (includeNativeBikingSensors && profile == FtmsMachineProfile.INDOOR_BIKE) {
+            listOf(
+                BluetoothIds.UUID_FTMS_SERVICE,
+                BluetoothIds.UUID_CSC_SERVICE,
+                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+            )
+        } else {
+            listOf(BluetoothIds.UUID_FTMS_SERVICE)
+        }
+
+        // Android/controller contributes the Flags structure. Every other
+        // structure needs its two-byte length/type header included here.
+        private fun fixedBytes(serviceUuids: List<UUID>, serviceData: ByteArray): Int =
+            CONTROLLER_FLAGS_BYTES +
+                (AD_HEADER_BYTES + UUID_16_BYTES * serviceUuids.size) +
+                (AD_HEADER_BYTES + UUID_16_BYTES + serviceData.size)
+
+        private val WHITESPACE_RUN = Regex("\\s+")
     }
 }

@@ -278,6 +278,12 @@ class AdapterNameCoordinator(
          * `const val` is inlined, so this costs no class loading in a JVM test.
          */
         const val SESSION_NAME_PREFIX = BtServiceProfiles.DEVICE_NAME_PREFIX
+
+        /**
+         * Pre-LIB-18e prefix. Recognised so that a phone left named "FBRG-Treadmill" by a crash
+         * under an older build is still restored instead of being saved as the user's name.
+         */
+        const val LEGACY_SESSION_NAME_PREFIX = BtServiceProfiles.LEGACY_DEVICE_NAME_PREFIX
         /**
          * Persona names that carry no [SESSION_NAME_PREFIX].
          *
@@ -338,6 +344,7 @@ class AdapterNameCoordinator(
         @GattLibraryInternalApi
         fun isKnownSessionName(name: String): Boolean =
             name.startsWith(SESSION_NAME_PREFIX) ||
+                name.startsWith(LEGACY_SESSION_NAME_PREFIX) ||
                 name in UNPREFIXED_SESSION_NAMES ||
                 PM5_SESSION_NAME.matches(name) ||
                 KEISER_SESSION_NAME.matches(name) ||

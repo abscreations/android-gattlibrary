@@ -911,12 +911,21 @@ object BtServiceProfiles {
      * The point is attribution on a crowded scan list: a bare "Bike" or
      * "Treadmill" is indistinguishable from a real machine, and because Android
      * publishes the *global adapter name* in the advertisement, an unprefixed
-     * persona is easily confused with the phone itself. "FBRG-" makes it obvious
+     * persona is easily confused with the phone itself. "FB-" makes it obvious
      * which entry is this bridge.
      *
-     * Four characters, deliberately: see the budget note on the names below.
+     * Three characters since LIB-18e (was "FBRG-"): the two octets saved go to the bridged
+     * machine's own name, which the bridge now advertises after the prefix
+     * ([FtmsAdvertisingPlan.bridgeLocalName] in peripheral). The names below are the fallback
+     * when no machine name is known, and the names simulator standard personas use.
      */
-    const val DEVICE_NAME_PREFIX: String = "FBRG-"
+    const val DEVICE_NAME_PREFIX: String = "FB-"
+
+    /**
+     * Prefix used before LIB-18e. Never advertised any more, but a phone left renamed by a crash
+     * under an older build still carries it, so it stays recognised as a session name.
+     */
+    const val LEGACY_DEVICE_NAME_PREFIX: String = "FBRG-"
 
     const val DEVICE_NAME_FTMS_BIKE: String       = DEVICE_NAME_PREFIX + "Bike"
     const val DEVICE_NAME_FTMS_ELLIPTICAL: String = DEVICE_NAME_PREFIX + "Elliptical"
@@ -929,7 +938,7 @@ object BtServiceProfiles {
      *
      * It used to alias [DEVICE_NAME_FTMS_BIKE], which put two different personas on the scan list
      * under one name: the FTMS indoor bike and the native-sensor bike both appeared as
-     * "FBRG-Bike", and the only way to tell which one you had connected to was to discover its
+     * "FBRG-Bike" (now "FB-Bike"), and the only way to tell which one you had connected to was to discover its
      * services. Naming it for its protocol is the same convention the descriptor line already
      * uses, and at seven characters it is *shorter* than the name [FtmsAdvertisingPlan] budgets
      * for this persona, so the advertisement gets smaller rather than larger.
@@ -948,15 +957,17 @@ object BtServiceProfiles {
      *
      *     3 Flags + (2 + name) + (2 + 2 per 16-bit UUID) + 7 Service Data
      *
-     * The longest, "FBRG-Elliptical" at 15 characters, lands on exactly 31/31.
-     * Any longer name, or a second advertised UUID on a non-bike persona,
-     * overflows and Android rejects the whole advertisement asynchronously.
+     * A non-bike persona has 15 octets for its name (the old "FBRG-Elliptical"
+     * landed on exactly 31/31); the native-sensor bike has 11. Any longer name,
+     * or a second advertised UUID on a non-bike persona, overflows and Android
+     * rejects the whole advertisement asynchronously. Bridged machine names are
+     * truncated to this budget by [FtmsAdvertisingPlan.bridgeLocalName].
      * [FtmsAdvertisingPlan] computes this before touching the radio so the
      * failure is deterministic; FtmsAdvertisingPlanTest asserts the budget for
      * every persona.
      *
      * The indoor bike is the only persona that advertises extra UUIDs (CSC and
-     * Cycling Power), and "FBRG-Bike" is short enough to absorb them at 29/31.
+     * Cycling Power), and "FB-Bike" is short enough to absorb them at 27/31.
      */
     fun deviceNameFor(machine: FtmsMachineProfile): String = when (machine) {
         FtmsMachineProfile.INDOOR_BIKE   -> DEVICE_NAME_FTMS_BIKE

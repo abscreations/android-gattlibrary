@@ -1169,6 +1169,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtSer
 	public static final field FM_TYPE_STEP_CLIMBER I
 	public static final field FM_TYPE_TREADMILL I
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles;
+	public static final field LEGACY_DEVICE_NAME_PREFIX Ljava/lang/String;
 	public static final field MAX_CLIENTS I
 	public static final field TSF_NONE I
 	public final fun activityTypeFromFtmsServiceData ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;

@@ -3,12 +3,12 @@
 ## persona
 SimulatorPersona$Ftms(
   advertisedMachineType = FtmsMachineProfile.STAIR_STEPPER,
-  advertisedName = "FBRG-Stepper",
+  advertisedName = "FB-Stepper",
   profile = FtmsMachineProfile.STAIR_STEPPER
 )
 
 ## advertisedName
-"FBRG-Stepper"
+"FB-Stepper"
 
 ## descriptor
 SimulatorPersonaDescriptor(
@@ -33,9 +33,9 @@ StandardSimulatorSurface(
 
 ## ftmsAdvertisingPlan
 FtmsAdvertisingPlan(
-  advertisingBytes = 28,
+  advertisingBytes = 26,
   appearanceSupported = false,
-  localName = "FBRG-Stepper",
+  localName = "FB-Stepper",
   scanResponseBytes = 0,
   serviceData = hex(3)[01 04 00],
   serviceUuids = [

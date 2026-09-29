@@ -29,9 +29,9 @@ StandardSimulatorSurface(
 
 ## ftmsAdvertisingPlan
 FtmsAdvertisingPlan(
-  advertisingBytes = 29,
+  advertisingBytes = 27,
   appearanceSupported = false,
-  localName = "FBRG-Bike",
+  localName = "FB-Bike",
   scanResponseBytes = 0,
   serviceData = hex(3)[01 20 00],
   serviceUuids = [

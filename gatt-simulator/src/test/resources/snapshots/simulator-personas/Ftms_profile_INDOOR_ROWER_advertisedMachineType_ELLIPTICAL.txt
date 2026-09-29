@@ -3,12 +3,12 @@
 ## persona
 SimulatorPersona$Ftms(
   advertisedMachineType = FtmsMachineProfile.ELLIPTICAL,
-  advertisedName = "FBRG-Rower",
+  advertisedName = "FB-Rower",
   profile = FtmsMachineProfile.INDOOR_ROWER
 )
 
 ## advertisedName
-"FBRG-Rower"
+"FB-Rower"
 
 ## descriptor
 SimulatorPersonaDescriptor(
@@ -49,9 +49,9 @@ StandardSimulatorSurface(
 
 ## ftmsAdvertisingPlan
 FtmsAdvertisingPlan(
-  advertisingBytes = 26,
+  advertisingBytes = 24,
   appearanceSupported = false,
-  localName = "FBRG-Rower",
+  localName = "FB-Rower",
   scanResponseBytes = 0,
   serviceData = hex(3)[01 02 00],
   serviceUuids = [

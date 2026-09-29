@@ -3,12 +3,12 @@
 ## persona
 SimulatorPersona$Ftms(
   advertisedMachineType = FtmsMachineProfile.ELLIPTICAL,
-  advertisedName = "FBRG-Elliptical",
+  advertisedName = "FB-Elliptical",
   profile = FtmsMachineProfile.ELLIPTICAL
 )
 
 ## advertisedName
-"FBRG-Elliptical"
+"FB-Elliptical"
 
 ## descriptor
 SimulatorPersonaDescriptor(
@@ -53,9 +53,9 @@ StandardSimulatorSurface(
 
 ## ftmsAdvertisingPlan
 FtmsAdvertisingPlan(
-  advertisingBytes = 31,
+  advertisingBytes = 29,
   appearanceSupported = false,
-  localName = "FBRG-Elliptical",
+  localName = "FB-Elliptical",
   scanResponseBytes = 0,
   serviceData = hex(3)[01 02 00],
   serviceUuids = [

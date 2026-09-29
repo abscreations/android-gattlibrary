@@ -3,12 +3,12 @@
 ## persona
 SimulatorPersona$Ftms(
   advertisedMachineType = FtmsMachineProfile.TREADMILL,
-  advertisedName = "FBRG-Treadmill",
+  advertisedName = "FB-Treadmill",
   profile = FtmsMachineProfile.TREADMILL
 )
 
 ## advertisedName
-"FBRG-Treadmill"
+"FB-Treadmill"
 
 ## descriptor
 SimulatorPersonaDescriptor(
@@ -49,9 +49,9 @@ StandardSimulatorSurface(
 
 ## ftmsAdvertisingPlan
 FtmsAdvertisingPlan(
-  advertisingBytes = 30,
+  advertisingBytes = 28,
   appearanceSupported = false,
-  localName = "FBRG-Treadmill",
+  localName = "FB-Treadmill",
   scanResponseBytes = 0,
   serviceData = hex(3)[01 01 00],
   serviceUuids = [

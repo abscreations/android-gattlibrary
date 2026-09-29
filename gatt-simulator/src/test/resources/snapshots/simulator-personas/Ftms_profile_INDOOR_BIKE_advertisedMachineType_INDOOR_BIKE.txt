@@ -3,12 +3,12 @@
 ## persona
 SimulatorPersona$Ftms(
   advertisedMachineType = FtmsMachineProfile.INDOOR_BIKE,
-  advertisedName = "FBRG-Bike",
+  advertisedName = "FB-Bike",
   profile = FtmsMachineProfile.INDOOR_BIKE
 )
 
 ## advertisedName
-"FBRG-Bike"
+"FB-Bike"
 
 ## descriptor
 SimulatorPersonaDescriptor(
@@ -50,9 +50,9 @@ StandardSimulatorSurface(
 
 ## ftmsAdvertisingPlan
 FtmsAdvertisingPlan(
-  advertisingBytes = 25,
+  advertisingBytes = 23,
   appearanceSupported = false,
-  localName = "FBRG-Bike",
+  localName = "FB-Bike",
   scanResponseBytes = 0,
   serviceData = hex(3)[01 20 00],
   serviceUuids = [

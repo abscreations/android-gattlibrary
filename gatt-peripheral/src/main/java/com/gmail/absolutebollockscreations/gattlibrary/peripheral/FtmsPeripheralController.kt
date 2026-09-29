@@ -302,6 +302,7 @@ class FtmsPeripheralController(
             desired.cyclingConfig,
             desired.measurementCapabilities,
             desired.advertisedMachineType,
+            upstreamName = desired.upstreamName,
         ) { result ->
             result.onFailure { Timber.tag(TAG).w(it, "FTMS speed-control setting refresh failed") }
         }
@@ -365,6 +366,7 @@ class FtmsPeripheralController(
         val cyclingConfig: CyclingSensorConfig,
         val measurementCapabilities: FtmsMeasurementCapabilities,
         val advertisedMachineType: FtmsMachineProfile,
+        val upstreamName: String?,
     )
 
     /**
@@ -433,6 +435,9 @@ class FtmsPeripheralController(
 
     /** FTMS Service Data machine type of the running advertisement; null when not running. */
     private var advertisedMachineType: FtmsMachineProfile? = null
+
+    /** Advertised (and adapter) name of the running session; null when not running (LIB-18e). */
+    private var localName: String? = null
     private var targetCapabilities: TargetCapabilities = TargetCapabilities.NONE
     private var advertiserMeasurementCapabilities: FtmsMeasurementCapabilities =
         FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
@@ -443,7 +448,8 @@ class FtmsPeripheralController(
         // to confirm, and registering afterwards would leave it relying on the
         // slower poll fallback.
         registerAdapterReceiver()
-        // If the process died mid-session the phone is still named "FBRG-Treadmill".
+        // If the process died mid-session the phone is still named e.g. "FB-Treadmill"
+        // (or "FBRG-Treadmill" from a build before LIB-18e).
         // Put it back before doing anything else. This is queued, and the
         // coordinator is FIFO, so a start() arriving immediately cannot have its
         // rename overwritten by this restore landing late - which is the second
@@ -461,6 +467,8 @@ class FtmsPeripheralController(
         cyclingConfig: CyclingSensorConfig,
         measurementCapabilities: FtmsMeasurementCapabilities = profile.measurementCapabilities,
         advertisedMachineType: FtmsMachineProfile = profile,
+        /** The bridged machine's own name, advertised after the prefix; null for none (simulator, unknown). */
+        upstreamName: String? = null,
         onResult: (Result<Unit>) -> Unit,
     ) {
         val effectiveTargets = if (treadmillSpeedGated(profile)) {
@@ -469,6 +477,12 @@ class FtmsPeripheralController(
             targets
         }
         val effectiveCyclingConfig = cyclingConfig.effectiveFor(profile)
+        val sessionName = FtmsAdvertisingPlan.bridgeLocalName(
+            profile,
+            upstreamName,
+            includeNativeBikingSensors = effectiveCyclingConfig.enabled,
+            advertisedMachineType = advertisedMachineType,
+        )
         desiredStart = DesiredStart(
             profile,
             upstreamAddress,
@@ -476,12 +490,14 @@ class FtmsPeripheralController(
             effectiveCyclingConfig,
             measurementCapabilities,
             advertisedMachineType,
+            upstreamName,
         )
         if (
             runState == RunState.RUNNING && this.profile == profile &&
             targetCapabilities == effectiveTargets && this.cyclingConfig == effectiveCyclingConfig &&
             advertiserMeasurementCapabilities == measurementCapabilities &&
-            this.advertisedMachineType == advertisedMachineType
+            this.advertisedMachineType == advertisedMachineType &&
+            this.localName == sessionName
         ) {
             advertiser.updateUpstreamAddress(upstreamAddress)
             onResult(Result.success(Unit))
@@ -506,6 +522,7 @@ class FtmsPeripheralController(
 
         this.profile = profile
         this.advertisedMachineType = advertisedMachineType
+        this.localName = sessionName
         statusRelay.resetClientHistory()
         targetCapabilities = effectiveTargets
         advertiserMeasurementCapabilities = measurementCapabilities
@@ -521,7 +538,7 @@ class FtmsPeripheralController(
         // the phone's previous name. The coordinator does not call back until the
         // adapter genuinely reports the new name, and fails rather than letting
         // us advertise under the wrong identity.
-        adapterNames.apply(profile.advertisedName) nameCallback@{ nameResult ->
+        adapterNames.apply(sessionName) nameCallback@{ nameResult ->
             if (operationEpoch.get() != epoch) {
                 onResult(Result.failure(CancellationException("FTMS start was superseded")))
                 return@nameCallback
@@ -535,6 +552,7 @@ class FtmsPeripheralController(
                         upstreamAddress = upstreamAddress,
                         measurementCapabilities = measurementCapabilities,
                         advertisedMachineType = advertisedMachineType,
+                        localName = sessionName,
                         epoch = epoch,
                         onResult = onResult,
                     )
@@ -560,6 +578,7 @@ class FtmsPeripheralController(
         upstreamAddress: String?,
         measurementCapabilities: FtmsMeasurementCapabilities,
         advertisedMachineType: FtmsMachineProfile,
+        localName: String,
         epoch: Long,
         onResult: (Result<Unit>) -> Unit,
     ) {
@@ -571,6 +590,7 @@ class FtmsPeripheralController(
             upstreamAddress = upstreamAddress,
             measurementCapabilities = measurementCapabilities,
             advertisedMachineType = advertisedMachineType,
+            localName = localName,
         ) startCallback@{ result ->
             if (operationEpoch.get() != epoch) {
                 onResult(Result.failure(CancellationException("FTMS start was superseded")))
@@ -580,7 +600,7 @@ class FtmsPeripheralController(
                 onSuccess = {
                     FtmsForegroundService.start(
                         context,
-                        title = "Sharing as ${profile.advertisedName}",
+                        title = "Sharing as $localName",
                         text = "Other apps and watches can read this workout",
                     ) foregroundCallback@{ foregroundResult ->
                         if (operationEpoch.get() != epoch) {
@@ -608,7 +628,7 @@ class FtmsPeripheralController(
                                         // what we asked for. The two used to be
                                         // allowed to differ silently.
                                         advertisedName = currentAdapterName()
-                                            ?: profile.advertisedName,
+                                            ?: localName,
                                         nativeBikingSensorsEnabled = effectiveCyclingConfig.enabled,
                                         wheelCircumferenceMm = effectiveCyclingConfig
                                             .wheelCircumferenceMm
@@ -651,6 +671,7 @@ class FtmsPeripheralController(
     private fun rollbackSessionState() {
         profile = null
         advertisedMachineType = null
+        localName = null
         targetCapabilities = TargetCapabilities.NONE
         advertiserMeasurementCapabilities = FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
         cyclingConfig = CyclingSensorConfig.DISABLED
@@ -905,7 +926,7 @@ class FtmsPeripheralController(
      * and put it back afterwards.
      *
      * The original is persisted rather than held in memory because a process death
-     * would otherwise leave the user's phone permanently called "FBRG-Treadmill"
+     * would otherwise leave the user's phone permanently called "FB-Treadmill"
      * every Bluetooth context. The old advertiser set the name and never restored
      * it at all.
      */
@@ -968,6 +989,7 @@ class FtmsPeripheralController(
             desired.cyclingConfig,
             desired.measurementCapabilities,
             desired.advertisedMachineType,
+            upstreamName = desired.upstreamName,
         ) { result ->
             result.onFailure { Timber.tag(TAG).w(it, "automatic FTMS restart failed") }
         }

@@ -3,12 +3,12 @@
 ## persona
 SimulatorPersona$Ftms(
   advertisedMachineType = FtmsMachineProfile.STAIR_CLIMBER,
-  advertisedName = "FBRG-Climber",
+  advertisedName = "FB-Climber",
   profile = FtmsMachineProfile.STAIR_CLIMBER
 )
 
 ## advertisedName
-"FBRG-Climber"
+"FB-Climber"
 
 ## descriptor
 SimulatorPersonaDescriptor(
@@ -33,9 +33,9 @@ StandardSimulatorSurface(
 
 ## ftmsAdvertisingPlan
 FtmsAdvertisingPlan(
-  advertisingBytes = 28,
+  advertisingBytes = 26,
   appearanceSupported = false,
-  localName = "FBRG-Climber",
+  localName = "FB-Climber",
   scanResponseBytes = 0,
   serviceData = hex(3)[01 08 00],
   serviceUuids = [

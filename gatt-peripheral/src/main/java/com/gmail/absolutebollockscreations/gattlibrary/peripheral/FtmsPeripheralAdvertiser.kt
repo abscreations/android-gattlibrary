@@ -166,6 +166,9 @@ internal class FtmsPeripheralAdvertiser(
 
     /** Machine type advertised in FTMS Service Data; equals [profile] outside the broken-advert test persona. */
     private var advertisedMachineType: FtmsMachineProfile = FtmsMachineProfile.INDOOR_BIKE
+
+    /** Local name for this server's advertisement; set by [start] (LIB-18e). */
+    private var localName: String = FtmsMachineProfile.INDOOR_BIKE.advertisedName
     private var targets: TargetCapabilities = TargetCapabilities.NONE
     private var measurementCapabilities: FtmsMeasurementCapabilities =
         FtmsMachineProfile.INDOOR_BIKE.measurementCapabilities
@@ -301,6 +304,8 @@ internal class FtmsPeripheralAdvertiser(
         upstreamAddress: String?,
         measurementCapabilities: FtmsMeasurementCapabilities = profile.measurementCapabilities,
         advertisedMachineType: FtmsMachineProfile = profile,
+        /** Must equal the adapter name the controller applied; the plan re-checks its octet budget. */
+        localName: String = profile.advertisedName,
         onResult: (Result<Unit>) -> Unit,
     ) {
         // Invalidate all callbacks belonging to a previous server/advertiser.
@@ -317,6 +322,7 @@ internal class FtmsPeripheralAdvertiser(
 
         this.profile = profile
         this.advertisedMachineType = advertisedMachineType
+        this.localName = localName
         this.targets = targets
         this.measurementCapabilities = measurementCapabilities
         this.includeTrainingStatus = includeTrainingStatus
@@ -548,7 +554,7 @@ internal class FtmsPeripheralAdvertiser(
         }
 
         val plan = runCatching {
-            FtmsAdvertisingPlan.forProfile(profile, cyclingConfig.enabled, advertisedMachineType)
+            FtmsAdvertisingPlan.forProfile(profile, cyclingConfig.enabled, advertisedMachineType, localName)
         }.getOrElse {
             onResult(Result.failure(it))
             return
