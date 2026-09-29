@@ -1098,7 +1098,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattSchwinnX70Kt {
 	public static final fun getSCHWINN_X70_INITIALISATION ()[B
-	public static final fun planSchwinnX70Discovery (Ljava/util/Map;)Ljava/util/List;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_scanKt {

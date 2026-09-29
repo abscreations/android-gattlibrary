@@ -433,8 +433,7 @@ val SCHWINN_X70_INITIALISATION: ByteArray = byteArrayOf(
  * for a device that does not exist, which is the failure the §7 registry test guards against on the
  * matcher side and this function guards on the subscription side.
  */
-@GattLibraryInternalApi
-fun planSchwinnX70Discovery(inventory: Map<UUID, Set<UUID>>): List<CccdTarget> {
+internal fun planSchwinnX70Discovery(inventory: Map<UUID, Set<UUID>>): List<CccdTarget> {
     val characteristics = inventory[BluetoothIds.UUID_X70_SERVICE] ?: return emptyList()
     return listOf(
         BluetoothIds.UUID_X70_MEASUREMENT,
