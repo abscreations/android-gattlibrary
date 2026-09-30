@@ -153,38 +153,9 @@ internal object FtmsControlPointSchema {
     }
 }
 
-// ── Little-endian byte helpers ────────────────────────────────────────────────
-//
-// Deliberately declared in this package rather than reusing the engine package's
-// helpers: the peripheral encoders need u8/u32le too, and keeping one complete
-// set here means an encoder file never has to import from two packages and risk
-// an ambiguity error.
-
-fun u8(v: Int): ByteArray = byteArrayOf((v and 0xFF).toByte())
-
-fun u16le(v: Int): ByteArray =
-    byteArrayOf((v and 0xFF).toByte(), ((v ushr 8) and 0xFF).toByte())
-
-/** Two's-complement 16-bit little-endian. Negative inputs must survive here. */
-fun s16le(v: Int): ByteArray {
-    val s = v.toShort().toInt()
-    return byteArrayOf((s and 0xFF).toByte(), ((s ushr 8) and 0xFF).toByte())
-}
-
-fun u24le(v: Int): ByteArray =
-    byteArrayOf(
-        (v and 0xFF).toByte(),
-        ((v ushr 8) and 0xFF).toByte(),
-        ((v ushr 16) and 0xFF).toByte(),
-    )
-
-fun u32le(v: Int): ByteArray =
-    byteArrayOf(
-        (v and 0xFF).toByte(),
-        ((v ushr 8) and 0xFF).toByte(),
-        ((v ushr 16) and 0xFF).toByte(),
-        ((v ushr 24) and 0xFF).toByte(),
-    )
+// Little-endian byte helpers moved to gatt-core `core.bytes.LittleEndian` (LIB-18g). The
+// encoders use its explicit `…Wrapping` forms, which keep exactly the masking behavior the
+// removed u8/u16le/s16le/u24le/u32le had.
 
 internal fun ByteArray.toHexString(): String =
     if (isEmpty()) "[]" else joinToString(" ") { "%02X".format(it) }

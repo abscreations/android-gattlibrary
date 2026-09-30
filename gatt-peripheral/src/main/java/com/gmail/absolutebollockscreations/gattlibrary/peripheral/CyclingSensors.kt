@@ -10,6 +10,11 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSna
 import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
 import java.util.UUID
 import kotlin.math.floor
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Saturating
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Wrapping
 
 /**
  * Native CSC (0x1816) and Cycling Power (0x1818) sensor emulation for the Indoor
@@ -189,11 +194,11 @@ object CyclingSensorEncoders {
     const val SENSOR_LOCATION_REAR_HUB = 0x0D
 
     fun cscMeasurement(revolutions: CyclingRevolutionSnapshot): ByteArray =
-        u8(CSC_FEATURE_WHEEL_AND_CRANK) +
-            u32leLong(revolutions.cumulativeWheelRevolutions) +
-            u16le(revolutions.lastWheelEventTime) +
-            u16le(revolutions.cumulativeCrankRevolutions) +
-            u16le(revolutions.lastCrankEventTime)
+        u8Wrapping(CSC_FEATURE_WHEEL_AND_CRANK) +
+            u32Saturating(revolutions.cumulativeWheelRevolutions) +
+            u16Wrapping(revolutions.lastWheelEventTime) +
+            u16Wrapping(revolutions.cumulativeCrankRevolutions) +
+            u16Wrapping(revolutions.lastCrankEventTime)
 
     fun cyclingPowerMeasurement(
         instantaneousPowerWatts: Int,
@@ -208,33 +213,23 @@ object CyclingSensorEncoders {
         }
         val flags = CPS_FLAG_CRANK_REVOLUTION_DATA_PRESENT or
             if (nativeWheel != null) CPS_FLAG_WHEEL_REVOLUTION_DATA_PRESENT else 0
-        return u16le(flags) +
-            s16le(
+        return u16Wrapping(flags) +
+            s16Wrapping(
                 instantaneousPowerWatts.coerceIn(
                     Short.MIN_VALUE.toInt(),
                     Short.MAX_VALUE.toInt(),
                 ),
             ) +
-            (nativeWheel?.let { u32leLong(it.first) + u16le(it.second) } ?: byteArrayOf()) +
-            u16le(nativeCrank?.first ?: revolutions.cumulativeCrankRevolutions) +
-            u16le(nativeCrank?.second ?: revolutions.lastCrankEventTime)
+            (nativeWheel?.let { u32Saturating(it.first) + u16Wrapping(it.second) } ?: byteArrayOf()) +
+            u16Wrapping(nativeCrank?.first ?: revolutions.cumulativeCrankRevolutions) +
+            u16Wrapping(nativeCrank?.second ?: revolutions.lastCrankEventTime)
     }
 
-    fun cscFeature(): ByteArray = u16le(CSC_FEATURE_WHEEL_AND_CRANK)
+    fun cscFeature(): ByteArray = u16Wrapping(CSC_FEATURE_WHEEL_AND_CRANK)
 
-    fun cyclingPowerFeature(): ByteArray = u32le(CPS_FEATURE_CRANK_REVOLUTION_DATA)
+    fun cyclingPowerFeature(): ByteArray = u32Wrapping(CPS_FEATURE_CRANK_REVOLUTION_DATA.toLong())
 
-    fun sensorLocation(): ByteArray = u8(SENSOR_LOCATION_REAR_HUB)
-
-    private fun u32leLong(value: Long): ByteArray {
-        val v = value.coerceIn(0L, CyclingEventAccumulator.MAX_WHEEL_REVOLUTIONS)
-        return byteArrayOf(
-            (v and 0xFF).toByte(),
-            ((v ushr 8) and 0xFF).toByte(),
-            ((v ushr 16) and 0xFF).toByte(),
-            ((v ushr 24) and 0xFF).toByte(),
-        )
-    }
+    fun sensorLocation(): ByteArray = u8Wrapping(SENSOR_LOCATION_REAR_HUB)
 }
 
 internal sealed interface CscControlPointRequest {

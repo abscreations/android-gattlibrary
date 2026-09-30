@@ -26,6 +26,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 
 /** Serializes lifecycle state and live diagnostic refreshes onto one status stream. */
 internal class FtmsPeripheralStatusRelay(
@@ -819,36 +822,36 @@ class FtmsPeripheralController(
     fun emitStatusTargetSpeedChanged(kmh: Float) {
         broadcastStatus(
             byteArrayOf(FtmsSpec.Status.TARGET_SPEED_CHANGED) +
-                u16le((kmh * 100f).toInt().coerceIn(0, 0xFFFF)),
+                u16Wrapping((kmh * 100f).toInt().coerceIn(0, 0xFFFF)),
         )
     }
 
     fun emitStatusTargetInclineChanged(percent: Float) {
         broadcastStatus(
             byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED) +
-                s16le((percent * 10f).toInt()),
+                s16Wrapping((percent * 10f).toInt()),
         )
     }
 
     fun emitStatusTargetResistanceLevelChanged(level: Float) {
         broadcastStatus(
             byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED) +
-                u8((level * 10f).toInt().coerceIn(0, 0xFF)),
+                u8Wrapping((level * 10f).toInt().coerceIn(0, 0xFF)),
         )
     }
 
     fun emitStatusTargetPowerChanged(watts: Int) {
-        broadcastStatus(byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED) + s16le(watts))
+        broadcastStatus(byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED) + s16Wrapping(watts))
     }
 
     fun emitStatusWheelCircumferenceChanged(millimetres: Double) {
         val raw = (millimetres * 10.0).roundToInt().coerceIn(1, 0xFFFF)
-        broadcastStatus(byteArrayOf(FtmsSpec.Status.WHEEL_CIRCUMFERENCE_CHANGED) + u16le(raw))
+        broadcastStatus(byteArrayOf(FtmsSpec.Status.WHEEL_CIRCUMFERENCE_CHANGED) + u16Wrapping(raw))
     }
 
     fun emitStatusTargetHeartRateChanged(bpm: Int) {
         broadcastStatus(
-            byteArrayOf(FtmsSpec.Status.TARGET_HEART_RATE_CHANGED) + u8(bpm.coerceIn(0, 0xFF)),
+            byteArrayOf(FtmsSpec.Status.TARGET_HEART_RATE_CHANGED) + u8Wrapping(bpm.coerceIn(0, 0xFF)),
         )
     }
 

@@ -2,6 +2,11 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.FtmsResistanceScale
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16
 
 /**
  * Pure FTMS Control Point decoder and per-connection procedure state machine.
@@ -143,7 +148,7 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.speedRange,
                 FtmsSpec.Status.TARGET_SPEED_CHANGED,
                 rawValue = { u16(value, 1) },
-                statusOperand = { u16le(it) },
+                statusOperand = { u16Wrapping(it) },
             ) { raw ->
                 val t = raw!! / 100.0
                 if (!sink.setTargetSpeedKph(t)) return@target false
@@ -156,7 +161,7 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.inclinationRange,
                 FtmsSpec.Status.TARGET_INCLINE_CHANGED,
                 rawValue = { s16(value, 1) },
-                statusOperand = { s16le(it) },
+                statusOperand = { s16Wrapping(it) },
             ) { raw ->
                 val t = raw!! / 10.0
                 if (!sink.setTargetInclinationPercent(t)) return@target false
@@ -221,7 +226,7 @@ class FtmsControlPointHandler(
                             FtmsResistanceScale.Encoding.TENTHS -> normalized
                             null -> null
                         }
-                        if (echo != null && echo in 0..0xFF) u8(echo) else s16le(normalized)
+                        if (echo != null && echo in 0..0xFF) u8Wrapping(echo) else s16Wrapping(normalized)
                     },
                 ) { raw ->
                     val t = raw!! / 10.0
@@ -236,7 +241,7 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.powerRange,
                 FtmsSpec.Status.TARGET_POWER_CHANGED,
                 rawValue = { s16(value, 1) },
-                statusOperand = { s16le(it) },
+                statusOperand = { s16Wrapping(it) },
             ) { raw ->
                 val t = raw!!
                 if (!sink.setTargetPowerWatts(t)) return@target false
@@ -249,7 +254,7 @@ class FtmsControlPointHandler(
                 sink.targetCapabilities.heartRateRange,
                 FtmsSpec.Status.TARGET_HEART_RATE_CHANGED,
                 rawValue = { value[1].toInt() and 0xFF },
-                statusOperand = { u8(it) },
+                statusOperand = { u8Wrapping(it) },
             ) { raw ->
                 val t = raw!!
                 if (!sink.setTargetHeartRate(t)) return@target false
@@ -370,12 +375,6 @@ class FtmsControlPointHandler(
 
     private fun response(requestOp: Byte, result: Byte): ByteArray =
         byteArrayOf(FtmsSpec.Opcode.RESPONSE_CODE, requestOp, result)
-
-    private fun u16(b: ByteArray, off: Int): Int =
-        (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
-
-    private fun s16(b: ByteArray, off: Int): Int = u16(b, off).toShort().toInt()
-
     companion object {
         private const val LEGACY_RESISTANCE_PROCEDURE_LENGTH = 2
         private const val SINT16_RESISTANCE_PROCEDURE_LENGTH = 3

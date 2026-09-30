@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 
 /**
  * Byte-level tests for the FTMS encoders.
@@ -135,8 +136,8 @@ class FtmsEncoderTest {
         try {
             FtmsPacker.pack(
                 flagsWidth = 2,
-                mandatory = u16le(100),
-                optionals = listOf(FtmsField(4, u16le(1)), FtmsField(2, u16le(2))),
+                mandatory = u16Wrapping(100),
+                optionals = listOf(FtmsField(4, u16Wrapping(1)), FtmsField(2, u16Wrapping(2))),
             )
         } catch (e: IllegalArgumentException) {
             threw = true

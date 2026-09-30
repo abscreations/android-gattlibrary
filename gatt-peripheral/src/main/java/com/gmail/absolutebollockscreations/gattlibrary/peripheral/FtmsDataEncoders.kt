@@ -3,6 +3,10 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
 import kotlin.math.atan
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u24Wrapping
 
 /**
  * Encoders for the six FTMS machine data characteristics.
@@ -100,32 +104,32 @@ object FtmsDataEncoders {
 
     /** km/h -> uint16 in 0.01 km/h. */
     private fun speedField(kph: Double): ByteArray =
-        u16le((kph * 100.0).roundToInt().coerceIn(0, 0xFFFF))
+        u16Wrapping((kph * 100.0).roundToInt().coerceIn(0, 0xFFFF))
 
     /** Seconds per 500 metres -> uint16 in whole seconds. */
     private fun rowerPaceField(secondsPer500m: Double): ByteArray =
-        u16le(secondsPer500m.roundToInt().coerceIn(0, 0xFFFE))
+        u16Wrapping(secondsPer500m.roundToInt().coerceIn(0, 0xFFFE))
 
     /** metres -> uint24. */
-    private fun distanceField(m: Int): ByteArray = u24le(m.coerceIn(0, 0xFFFFFF))
+    private fun distanceField(m: Int): ByteArray = u24Wrapping(m.coerceIn(0, 0xFFFFFF))
 
     /**
      * Total Energy (uint16 kcal) + Energy per Hour (uint16) + Energy per Minute
      * (uint8). One flag bit covers all three, so all three must be emitted.
      */
     private fun energyField(s: FtmsMetricSnapshot): ByteArray =
-        u16le(s.caloriesTotal?.coerceIn(0, 0xFFFE) ?: 0xFFFF) +
-            u16le(s.caloriesPerHour?.coerceIn(0, 0xFFFE) ?: 0xFFFF) +
-            u8(s.caloriesPerMinute?.coerceIn(0, 0xFE) ?: 0xFF)
+        u16Wrapping(s.caloriesTotal?.coerceIn(0, 0xFFFE) ?: 0xFFFF) +
+            u16Wrapping(s.caloriesPerHour?.coerceIn(0, 0xFFFE) ?: 0xFFFF) +
+            u8Wrapping(s.caloriesPerMinute?.coerceIn(0, 0xFE) ?: 0xFF)
 
     /** Positive + negative cumulative elevation gain, uint16 whole metres. */
     private fun elevationPairField(s: FtmsMetricSnapshot): ByteArray =
-        u16le(s.positiveElevationGainMeters?.roundToInt()?.coerceIn(0, 0xFFFE) ?: 0xFFFF) +
-            u16le(s.negativeElevationGainMeters?.roundToInt()?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
+        u16Wrapping(s.positiveElevationGainMeters?.roundToInt()?.coerceIn(0, 0xFFFE) ?: 0xFFFF) +
+            u16Wrapping(s.negativeElevationGainMeters?.roundToInt()?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
 
     /** Positive cumulative elevation gain, uint16 whole metres. */
     private fun positiveElevationField(s: FtmsMetricSnapshot): ByteArray =
-        u16le(s.positiveElevationGainMeters?.roundToInt()?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
+        u16Wrapping(s.positiveElevationGainMeters?.roundToInt()?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
 
     /**
      * Inclination (sint16, 0.1 %) + Ramp Angle (sint16, 0.1 degree). One flag bit
@@ -139,12 +143,12 @@ object FtmsDataEncoders {
         val incl = (percent * 10.0).roundToInt().coerceIn(-32768, 32767)
         val rampDeg = Math.toDegrees(atan(percent / 100.0))
         val ramp = (rampDeg * 10.0).roundToInt().coerceIn(-32768, 32767)
-        return s16le(incl) + s16le(ramp)
+        return s16Wrapping(incl) + s16Wrapping(ramp)
     }
 
-    private fun hrField(bpm: Int): ByteArray = u8(bpm.coerceIn(0, 0xFF))
+    private fun hrField(bpm: Int): ByteArray = u8Wrapping(bpm.coerceIn(0, 0xFF))
 
-    private fun elapsedField(sec: Int): ByteArray = u16le(sec.coerceIn(0, 0xFFFF))
+    private fun elapsedField(sec: Int): ByteArray = u16Wrapping(sec.coerceIn(0, 0xFFFF))
 
     /**
      * Cross Trainer Resistance Level, scaled by [CROSS_TRAINER_TENTHS_SCALE].
@@ -153,7 +157,7 @@ object FtmsDataEncoders {
      * cannot overflow into a plausible-looking small number on the wire.
      */
     internal fun crossTrainerResistanceField(level: Float): ByteArray =
-        s16le((level * CROSS_TRAINER_TENTHS_SCALE).roundToInt().coerceIn(-32768, 32767))
+        s16Wrapping((level * CROSS_TRAINER_TENTHS_SCALE).roundToInt().coerceIn(-32768, 32767))
 
     /**
      * Resistance Level for characteristics that do **not** declare a decimal
@@ -164,7 +168,7 @@ object FtmsDataEncoders {
      * characteristics have nowhere to put it.
      */
     private fun unscaledResistanceField(level: Float): ByteArray =
-        s16le(level.roundToInt().coerceIn(-32768, 32767))
+        s16Wrapping(level.roundToInt().coerceIn(-32768, 32767))
 
     /**
      * Cross Trainer Stride Count, scaled by [CROSS_TRAINER_TENTHS_SCALE].
@@ -179,11 +183,11 @@ object FtmsDataEncoders {
      * client ten times low, exactly as Resistance Level did.
      */
     internal fun crossTrainerStrideCountField(strides: Int): ByteArray =
-        u16le((strides.coerceIn(0, 0xFFFF / CROSS_TRAINER_TENTHS_SCALE)) * CROSS_TRAINER_TENTHS_SCALE)
+        u16Wrapping((strides.coerceIn(0, 0xFFFF / CROSS_TRAINER_TENTHS_SCALE)) * CROSS_TRAINER_TENTHS_SCALE)
 
     /** Force on Belt (sint16 N) + Power Output (sint16 W), one treadmill flag. */
     private fun forceAndPowerField(forceNewtons: Int, powerWatts: Int): ByteArray =
-        s16le(forceNewtons.coerceIn(-32768, 32767)) + s16le(powerWatts.coerceIn(-32768, 32767))
+        s16Wrapping(forceNewtons.coerceIn(-32768, 32767)) + s16Wrapping(powerWatts.coerceIn(-32768, 32767))
 
     // ── Indoor Bike Data, 0x2AD2 (FTMS Table 4.10) ───────────────────────────
     //
@@ -202,15 +206,15 @@ object FtmsDataEncoders {
         s.averageSpeedKph?.let { optionals += FtmsField(1, speedField(it)) }
         // Instantaneous Cadence: uint16 in 0.5 rpm, i.e. rpm * 2.
         s.cadence?.let {
-            optionals += FtmsField(2, u16le((it * 2.0).roundToInt().coerceIn(0, 0xFFFF)))
+            optionals += FtmsField(2, u16Wrapping((it * 2.0).roundToInt().coerceIn(0, 0xFFFF)))
         }
         s.averageCadence?.let {
-            optionals += FtmsField(3, u16le((it * 2.0).roundToInt().coerceIn(0, 0xFFFF)))
+            optionals += FtmsField(3, u16Wrapping((it * 2.0).roundToInt().coerceIn(0, 0xFFFF)))
         }
         s.distanceMeters?.let { optionals += FtmsField(4, distanceField(it)) }
         s.resistance?.let { optionals += FtmsField(5, unscaledResistanceField(it)) }
-        s.powerWatts?.let { optionals += FtmsField(6, s16le(it.coerceIn(-32768, 32767))) }
-        s.averagePowerWatts?.let { optionals += FtmsField(7, s16le(it.coerceIn(-32768, 32767))) }
+        s.powerWatts?.let { optionals += FtmsField(6, s16Wrapping(it.coerceIn(-32768, 32767))) }
+        s.averagePowerWatts?.let { optionals += FtmsField(7, s16Wrapping(it.coerceIn(-32768, 32767))) }
         if (s.caloriesTotal != null) optionals += FtmsField(8, energyField(s))
         s.heartRate?.let { optionals += FtmsField(9, hrField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(11, elapsedField(it)) }
@@ -317,8 +321,8 @@ object FtmsDataEncoders {
         if (s.cadence != null && s.averageCadence != null) {
             optionals += FtmsField(
                 3,
-                u16le(s.cadence.roundToInt().coerceIn(0, 0xFFFF)) +
-                    u16le(s.averageCadence.roundToInt().coerceIn(0, 0xFFFF)),
+                u16Wrapping(s.cadence.roundToInt().coerceIn(0, 0xFFFF)) +
+                    u16Wrapping(s.averageCadence.roundToInt().coerceIn(0, 0xFFFF)),
             )
         }
         s.strokeCount?.let { optionals += FtmsField(4, crossTrainerStrideCountField(it)) }
@@ -327,8 +331,8 @@ object FtmsDataEncoders {
         }
         s.inclinationPercent?.let { optionals += FtmsField(6, inclinationAndRampField(it)) }
         s.resistance?.let { optionals += FtmsField(7, crossTrainerResistanceField(it)) }
-        s.powerWatts?.let { optionals += FtmsField(8, s16le(it.coerceIn(-32768, 32767))) }
-        s.averagePowerWatts?.let { optionals += FtmsField(9, s16le(it.coerceIn(-32768, 32767))) }
+        s.powerWatts?.let { optionals += FtmsField(8, s16Wrapping(it.coerceIn(-32768, 32767))) }
+        s.averagePowerWatts?.let { optionals += FtmsField(9, s16Wrapping(it.coerceIn(-32768, 32767))) }
         if (s.caloriesTotal != null) optionals += FtmsField(10, energyField(s))
         s.heartRate?.let { optionals += FtmsField(11, hrField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(13, elapsedField(it)) }
@@ -445,17 +449,17 @@ object FtmsDataEncoders {
         val count = s.strokeCount ?: return emptyList()
         val strokeRate = (cadence * 2.0).roundToInt().coerceIn(0, 0xFF)
         val strokeCount = count.coerceIn(0, 0xFFFF)
-        val mandatory = u8(strokeRate) + u16le(strokeCount)
+        val mandatory = u8Wrapping(strokeRate) + u16Wrapping(strokeCount)
 
         val optionals = mutableListOf<FtmsField>()
         s.averageCadence?.let {
-            optionals += FtmsField(1, u8((it * 2.0).roundToInt().coerceIn(0, 0xFF)))
+            optionals += FtmsField(1, u8Wrapping((it * 2.0).roundToInt().coerceIn(0, 0xFF)))
         }
         s.distanceMeters?.let { optionals += FtmsField(2, distanceField(it)) }
         s.paceSecondsPer500m?.let { optionals += FtmsField(3, rowerPaceField(it)) }
         s.averagePaceSecondsPer500m?.let { optionals += FtmsField(4, rowerPaceField(it)) }
-        s.powerWatts?.let { optionals += FtmsField(5, s16le(it.coerceIn(-32768, 32767))) }
-        s.averagePowerWatts?.let { optionals += FtmsField(6, s16le(it.coerceIn(-32768, 32767))) }
+        s.powerWatts?.let { optionals += FtmsField(5, s16Wrapping(it.coerceIn(-32768, 32767))) }
+        s.averagePowerWatts?.let { optionals += FtmsField(6, s16Wrapping(it.coerceIn(-32768, 32767))) }
         s.resistance?.let { optionals += FtmsField(7, unscaledResistanceField(it)) }
         if (s.caloriesTotal != null) optionals += FtmsField(8, energyField(s))
         s.heartRate?.let { optionals += FtmsField(9, hrField(it)) }
@@ -488,13 +492,13 @@ object FtmsDataEncoders {
         mode: FtmsPayloadMode,
         onOutcome: (FtmsPackOutcome) -> Unit,
     ): List<ByteArray> {
-        val mandatory = u16le((s.floors ?: 0).coerceIn(0, 0xFFFF)) +
-            u16le((s.strokeCount ?: 0).coerceIn(0, 0xFFFF))
+        val mandatory = u16Wrapping((s.floors ?: 0).coerceIn(0, 0xFFFF)) +
+            u16Wrapping((s.strokeCount ?: 0).coerceIn(0, 0xFFFF))
 
         val optionals = mutableListOf<FtmsField>()
-        s.cadence?.let { optionals += FtmsField(1, u16le(it.roundToInt().coerceIn(0, 0xFFFF))) }
+        s.cadence?.let { optionals += FtmsField(1, u16Wrapping(it.roundToInt().coerceIn(0, 0xFFFF))) }
         s.averageCadence?.let {
-            optionals += FtmsField(2, u16le(it.roundToInt().coerceIn(0, 0xFFFF)))
+            optionals += FtmsField(2, u16Wrapping(it.roundToInt().coerceIn(0, 0xFFFF)))
         }
         if (s.positiveElevationGainMeters != null) {
             optionals += FtmsField(3, positiveElevationField(s))
@@ -529,17 +533,17 @@ object FtmsDataEncoders {
         mode: FtmsPayloadMode,
         onOutcome: (FtmsPackOutcome) -> Unit,
     ): List<ByteArray> {
-        val mandatory = u16le((s.floors ?: 0).coerceIn(0, 0xFFFF))
+        val mandatory = u16Wrapping((s.floors ?: 0).coerceIn(0, 0xFFFF))
 
         val optionals = mutableListOf<FtmsField>()
-        s.cadence?.let { optionals += FtmsField(1, u16le(it.roundToInt().coerceIn(0, 0xFFFF))) }
+        s.cadence?.let { optionals += FtmsField(1, u16Wrapping(it.roundToInt().coerceIn(0, 0xFFFF))) }
         s.averageCadence?.let {
-            optionals += FtmsField(2, u16le(it.roundToInt().coerceIn(0, 0xFFFF)))
+            optionals += FtmsField(2, u16Wrapping(it.roundToInt().coerceIn(0, 0xFFFF)))
         }
         if (s.positiveElevationGainMeters != null) {
             optionals += FtmsField(3, positiveElevationField(s))
         }
-        s.strokeCount?.let { optionals += FtmsField(4, u16le(it.coerceIn(0, 0xFFFF))) }
+        s.strokeCount?.let { optionals += FtmsField(4, u16Wrapping(it.coerceIn(0, 0xFFFF))) }
         if (s.caloriesTotal != null) optionals += FtmsField(5, energyField(s))
         s.heartRate?.let { optionals += FtmsField(6, hrField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(8, elapsedField(it)) }

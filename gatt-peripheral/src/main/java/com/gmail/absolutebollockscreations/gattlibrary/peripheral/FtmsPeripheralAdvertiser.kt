@@ -42,6 +42,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Wrapping
 
 /**
  * Exact eight-octet value returned by the downstream Fitness Machine Feature (`0x2ACC`).
@@ -63,7 +64,7 @@ fun buildFtmsFeaturePayload(
     if (profile == FtmsMachineProfile.TREADMILL && upstreamPaceSupported) {
         measurement = measurement or (1 shl FtmsSpec.Feature.PACE)
     }
-    return u32le(measurement) + u32le(targets.toTargetFeatureBits())
+    return u32Wrapping(measurement.toLong()) + u32Wrapping(targets.toTargetFeatureBits().toLong())
 }
 
 /**

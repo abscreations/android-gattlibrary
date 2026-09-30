@@ -2,6 +2,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 
 /** Integer wire-unit range shared by feature publication and CP validation. */
 data class FtmsTargetRange(
@@ -35,17 +38,17 @@ data class FtmsTargetRange(
 
     fun encodeU16(): ByteArray {
         require(isValidU16)
-        return u16le(minimum) + u16le(maximum) + u16le(increment)
+        return u16Wrapping(minimum) + u16Wrapping(maximum) + u16Wrapping(increment)
     }
 
     fun encodeS16(): ByteArray {
         require(isValidS16)
-        return s16le(minimum) + s16le(maximum) + u16le(increment)
+        return s16Wrapping(minimum) + s16Wrapping(maximum) + u16Wrapping(increment)
     }
 
     fun encodeU8(): ByteArray {
         require(isValidU8)
-        return u8(minimum) + u8(maximum) + u8(increment)
+        return u8Wrapping(minimum) + u8Wrapping(maximum) + u8Wrapping(increment)
     }
 }
 

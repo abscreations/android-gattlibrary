@@ -859,14 +859,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public static final field PRE_WORKOUT B
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpecKt {
-	public static final fun s16le (I)[B
-	public static final fun u16le (I)[B
-	public static final fun u24le (I)[B
-	public static final fun u32le (I)[B
-	public static final fun u8 (I)[B
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsTargetRange {
 	public fun <init> (III)V
 	public final fun clampAndSnap (I)I
