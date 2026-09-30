@@ -8,6 +8,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsTargetRange
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 
 class TargetCapabilitiesTest {
 

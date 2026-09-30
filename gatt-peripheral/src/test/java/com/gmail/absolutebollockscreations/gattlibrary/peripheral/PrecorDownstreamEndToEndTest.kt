@@ -18,6 +18,12 @@ import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsDataEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
+import com.gmail.absolutebollockscreations.gattlibrary.server.measurementCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.providerMeasurementCapabilities
 
 /** Phase 5b §11.8: proprietary notification through fusion into FTMS Indoor Bike bytes. */
 class PrecorDownstreamEndToEndTest {

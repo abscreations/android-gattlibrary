@@ -4,7 +4,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import java.util.UUID
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 

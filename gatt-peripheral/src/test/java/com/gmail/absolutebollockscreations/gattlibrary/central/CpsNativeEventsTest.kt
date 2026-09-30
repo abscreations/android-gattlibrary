@@ -1,10 +1,10 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingRevolutionSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingRevolutionSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingSensorEncoders
 import org.junit.Assert.assertArrayEquals
 import org.junit.Test
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CpsNativeEventInput
+import com.gmail.absolutebollockscreations.gattlibrary.server.CpsNativeEventInput
 
 class CpsNativeEventsTest {
     @Test

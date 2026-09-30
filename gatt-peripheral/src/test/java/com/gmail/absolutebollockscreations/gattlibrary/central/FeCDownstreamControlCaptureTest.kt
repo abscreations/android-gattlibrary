@@ -3,9 +3,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.BleCapture
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureTrigger
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.buildFtmsFeaturePayload
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.providerMeasurementCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
+import com.gmail.absolutebollockscreations.gattlibrary.server.providerMeasurementCapabilities
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

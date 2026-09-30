@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsAdvertisingPlan
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsAdvertisingPlan
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
 import org.junit.Test

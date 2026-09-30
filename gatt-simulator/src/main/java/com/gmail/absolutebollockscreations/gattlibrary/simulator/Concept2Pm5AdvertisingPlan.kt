@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import java.util.UUID
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 

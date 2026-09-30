@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals

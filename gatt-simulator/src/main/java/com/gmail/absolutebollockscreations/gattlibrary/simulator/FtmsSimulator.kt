@@ -2,8 +2,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSink
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.core.KeepAwake
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

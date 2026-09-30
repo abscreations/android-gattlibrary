@@ -21,6 +21,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingRevolutionSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingSensorEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsDataEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
+import com.gmail.absolutebollockscreations.gattlibrary.server.withNativeEvents
 
 class CscDownstreamEndToEndTest {
 

@@ -7,6 +7,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
 
 class FtmsRowerSimulatorFeatureTest {
     @Test

@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.BtServiceProfiles
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
+import com.gmail.absolutebollockscreations.gattlibrary.server.BtServiceProfiles
+import com.gmail.absolutebollockscreations.gattlibrary.server.AdapterNameCoordinator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

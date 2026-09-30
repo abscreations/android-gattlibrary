@@ -22,6 +22,12 @@ import org.junit.Test
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsDataEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
+import com.gmail.absolutebollockscreations.gattlibrary.server.measurementCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.providerMeasurementCapabilities
 
 class KeiserDownstreamIntegrationTest {
 

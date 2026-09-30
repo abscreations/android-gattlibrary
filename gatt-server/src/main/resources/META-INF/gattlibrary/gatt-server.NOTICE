@@ -1,0 +1,8 @@
+gatt-server
+Copyright 2026 FitBridge contributors
+
+This module includes FTMS server material derived from
+TrackMyIndoorWorkout (TMIW), Copyright 2022 Csaba Toth, licensed under
+Apache-2.0. Source revision: 85f2ee7520705c99ce81db7355df1be7f4b72ecf.
+
+See the repository's LICENSE, NOTICE, and Stage 3 provenance record.

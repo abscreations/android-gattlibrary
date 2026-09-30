@@ -12,6 +12,13 @@ import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillNativePaceSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.CpsNativeEventInput
+import com.gmail.absolutebollockscreations.gattlibrary.server.CscNativeEventInput
+import com.gmail.absolutebollockscreations.gattlibrary.server.DEFAULT_EMISSION_PERIOD_MS
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
+import com.gmail.absolutebollockscreations.gattlibrary.server.MetricSampler
+import com.gmail.absolutebollockscreations.gattlibrary.server.TreadmillNativePaceInput
 
 /**
  * Samples [BtEngineState] into [FtmsMetricStore].
@@ -183,7 +190,7 @@ class EngineMetricPump(
          * time-weighted, so a shorter period leaves them mathematically unchanged
          * and marginally more accurate.
          */
-        const val DEFAULT_SAMPLE_PERIOD_MS = FtmsPeripheralNotifier.DEFAULT_PERIOD_MS / 2
+        const val DEFAULT_SAMPLE_PERIOD_MS = DEFAULT_EMISSION_PERIOD_MS / 2
 
         private const val MILES_TO_KM = 1.609344
     }

@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralCaptureHooks
+import com.gmail.absolutebollockscreations.gattlibrary.server.PeripheralCaptureHooks
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

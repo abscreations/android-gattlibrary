@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

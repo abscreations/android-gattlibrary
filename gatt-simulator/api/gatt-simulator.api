@@ -480,8 +480,8 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 	public fun publishStrydFootpod (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun resetConcept2WorkoutState ()V
 	public fun sendZwiftClickShift (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;)Z
-	public abstract fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsControlSink;)V
-	public abstract fun startAdvertising (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;)Z
+	public abstract fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsControlSink;)V
+	public abstract fun startAdvertising (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;)Z
 	public abstract fun stopAdvertising ()V
 }
 
@@ -630,9 +630,9 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorControlModeLabels;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPeripheralHub : com/gmail/absolutebollockscreations/gattlibrary/peripheral/ManagedPeripheralGroup, com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost {
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPeripheralHub : com/gmail/absolutebollockscreations/gattlibrary/server/ManagedPeripheralGroup, com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost {
 	public static final field START_TIMEOUT_MS J
-	public fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/SimulatorHostEnvironment;)V
+	public fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/server/SimulatorHostEnvironment;)V
 	public fun consumeConcept2WorkoutTerminationRequest ()Z
 	public fun disposeAll ()V
 	public fun getAnyAdvertising ()Z
@@ -650,8 +650,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 	public fun publishStrydFootpod (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun resetConcept2WorkoutState ()V
 	public fun sendZwiftClickShift (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;)Z
-	public fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsControlSink;)V
-	public fun startAdvertising (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;)Z
+	public fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsControlSink;)V
+	public fun startAdvertising (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;)Z
 	public fun stopAdvertising ()V
 	public fun stopAll ()V
 }

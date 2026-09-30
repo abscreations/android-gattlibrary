@@ -44,6 +44,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
 
 dependencies {
     api(project(":gatt-central"))
+    api(project(":gatt-server"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.timber)
     testImplementation(project(":gatt-fixtures"))

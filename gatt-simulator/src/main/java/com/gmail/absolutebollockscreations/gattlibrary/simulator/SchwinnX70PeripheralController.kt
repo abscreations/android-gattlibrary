@@ -10,9 +10,9 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.AdapterNameCoordinator
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsForegroundService
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 
 /** Lifecycle and adapter-name owner for the Schwinn x70 simulator peripheral. */
 internal class SchwinnX70PeripheralController(

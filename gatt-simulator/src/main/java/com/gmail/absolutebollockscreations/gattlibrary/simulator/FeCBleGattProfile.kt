@@ -4,8 +4,8 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import java.util.UUID
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingServiceRegistry
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingSensorEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingServiceRegistry
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids

@@ -3,9 +3,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingRevolutionSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsProcedureSession
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingRevolutionSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsProcedureSession
 
 class TacxFlux2StandardSupportTest {
     @Test fun `indoor bike data reproduces captured field shape`() {

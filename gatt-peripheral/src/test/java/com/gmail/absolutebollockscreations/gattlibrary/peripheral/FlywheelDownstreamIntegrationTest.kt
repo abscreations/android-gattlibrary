@@ -7,6 +7,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsDataEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
+import com.gmail.absolutebollockscreations.gattlibrary.server.measurementCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.providerMeasurementCapabilities
 
 class FlywheelDownstreamIntegrationTest {
     @Test

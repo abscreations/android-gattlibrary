@@ -1,8 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsTargetRange
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsTargetRange
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.roundToInt

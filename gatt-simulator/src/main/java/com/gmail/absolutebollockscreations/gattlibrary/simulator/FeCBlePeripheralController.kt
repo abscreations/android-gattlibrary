@@ -9,12 +9,12 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import java.util.concurrent.atomic.AtomicLong
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingEventAccumulator
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorConfig
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.AdapterNameCoordinator
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingEventAccumulator
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingSensorConfig
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingSensorEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsForegroundService
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 
 /**
  * Lifecycle, adapter-name, scheduler, and diagnostics owner for the FE-C-over-BLE simulator

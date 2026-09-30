@@ -9,8 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.GattServerSessions
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.gattOps
+import com.gmail.absolutebollockscreations.gattlibrary.server.GattServerSessions
+import com.gmail.absolutebollockscreations.gattlibrary.server.gattOps
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
@@ -29,10 +29,10 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplay
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.AdapterNameCoordinator
+import com.gmail.absolutebollockscreations.gattlibrary.server.ConnectableAdvertisingGate
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsForegroundService
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand

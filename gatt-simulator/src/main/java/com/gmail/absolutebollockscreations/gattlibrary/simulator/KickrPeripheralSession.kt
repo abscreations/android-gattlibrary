@@ -4,8 +4,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnService
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import java.util.ArrayDeque
 import java.util.UUID
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler
+import com.gmail.absolutebollockscreations.gattlibrary.server.PeripheralConnection
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
@@ -76,7 +76,7 @@ internal class KickrPeripheralSession(
     }
 
     @Synchronized
-    fun handleFtmsControl(value: ByteArray): com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler.Outcome? {
+    fun handleFtmsControl(value: ByteArray): com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler.Outcome? {
         if (subscription(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT) != PeripheralConnection.CccdMode.INDICATE ||
             route !in setOf(null, KickrControlRoute.FTMS) ||
             !ftms.session.tryBeginProcedure()

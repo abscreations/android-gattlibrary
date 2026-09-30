@@ -1,10 +1,10 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSink
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsProcedureSession
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsTargetRange
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsProcedureSession
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsTargetRange
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import java.util.UUID
 import kotlin.math.PI
 import kotlin.math.floor

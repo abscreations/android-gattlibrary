@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.providerMeasurementCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.requiresSpeed
+import com.gmail.absolutebollockscreations.gattlibrary.server.providerMeasurementCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.requiresSpeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame

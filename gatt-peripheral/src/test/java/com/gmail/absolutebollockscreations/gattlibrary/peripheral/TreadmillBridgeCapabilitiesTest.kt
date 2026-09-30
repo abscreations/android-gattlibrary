@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 
 /**
  * LIB-9e, peripheral side: why the bridge must wait for ranges. A treadmill snapshot taken

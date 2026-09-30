@@ -11,6 +11,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsProcedureSession
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsTargetRange
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 
 class FtmsPassThroughCharacterizationTest {
 

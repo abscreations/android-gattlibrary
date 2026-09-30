@@ -1,14 +1,14 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import kotlin.math.roundToInt
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingRevolutionSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSink
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsTargetRange
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingRevolutionSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingSensorEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsTargetRange
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CpsNativeEventInput
+import com.gmail.absolutebollockscreations.gattlibrary.server.CpsNativeEventInput
 
 /** Standard packet behavior directly exercised by Zwift in the physical Flux-2 capture. */
 internal object TacxFlux2StandardEncoders {

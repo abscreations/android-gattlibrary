@@ -7,6 +7,11 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsDataEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.TreadmillNativePaceInput
+import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
 
 /**
  * Plan §11.8 coverage for downstream treadmill pace.

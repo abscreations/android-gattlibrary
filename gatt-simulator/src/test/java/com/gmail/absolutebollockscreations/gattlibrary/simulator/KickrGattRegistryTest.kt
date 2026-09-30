@@ -9,7 +9,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
+import com.gmail.absolutebollockscreations.gattlibrary.server.PeripheralConnection
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids

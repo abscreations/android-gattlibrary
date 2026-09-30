@@ -305,7 +305,7 @@ class KickrSyntheticModelTest {
         return BikeHarness(state, fusion)
     }
 
-    private fun assertResult(expected: Byte, outcome: com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler.Outcome) {
+    private fun assertResult(expected: Byte, outcome: com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler.Outcome) {
         assertEquals(expected, outcome.response[2])
     }
 

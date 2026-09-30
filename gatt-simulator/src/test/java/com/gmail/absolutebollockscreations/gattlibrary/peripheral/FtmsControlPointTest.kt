@@ -12,6 +12,13 @@ import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsProcedureSession
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsTargetRange
+import com.gmail.absolutebollockscreations.gattlibrary.server.InertFtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.SwitchableFtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 
 /**
  * Control Point tests.

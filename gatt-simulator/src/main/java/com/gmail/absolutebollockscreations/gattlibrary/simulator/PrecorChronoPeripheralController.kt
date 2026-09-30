@@ -9,9 +9,9 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import java.util.concurrent.atomic.AtomicLong
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.AdapterNameCoordinator
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsForegroundService
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 
 /** Lifecycle and adapter-name owner for the Precor Chrono simulator peripheral. */
 internal class PrecorChronoPeripheralController(

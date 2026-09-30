@@ -1,6 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
+import com.gmail.absolutebollockscreations.gattlibrary.server.ReportedTargetRanges
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 
 /**
  * Bridge mapping from the central engine's capability snapshot to the server-owned [ReportedTargetRanges].

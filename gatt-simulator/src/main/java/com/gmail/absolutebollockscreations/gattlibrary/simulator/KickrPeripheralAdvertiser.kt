@@ -9,8 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.GattServerSessions
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.gattOps
+import com.gmail.absolutebollockscreations.gattlibrary.server.GattServerSessions
+import com.gmail.absolutebollockscreations.gattlibrary.server.gattOps
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
@@ -26,10 +26,10 @@ import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralCaptureHooks
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.server.ConnectableAdvertisingGate
+import com.gmail.absolutebollockscreations.gattlibrary.server.PeripheralCaptureHooks
+import com.gmail.absolutebollockscreations.gattlibrary.server.PeripheralConnection
+import com.gmail.absolutebollockscreations.gattlibrary.server.PeripheralConnectionRetentionGuard
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids

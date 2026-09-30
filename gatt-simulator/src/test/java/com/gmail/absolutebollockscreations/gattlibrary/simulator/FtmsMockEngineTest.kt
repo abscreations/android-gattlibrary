@@ -553,6 +553,6 @@ class FtmsMockEngineTest {
         }
     }
 
-    private fun com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsTargetRange.asTriple() =
+    private fun com.gmail.absolutebollockscreations.gattlibrary.server.FtmsTargetRange.asTriple() =
         Triple(minimum, maximum, increment)
 }

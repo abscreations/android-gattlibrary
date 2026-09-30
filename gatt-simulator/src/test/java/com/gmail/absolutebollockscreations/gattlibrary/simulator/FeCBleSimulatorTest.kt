@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingRevolutionSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingRevolutionSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.CyclingSensorEncoders
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

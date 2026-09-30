@@ -3,11 +3,11 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import android.Manifest
 import android.content.Context
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSink
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsPeripheralController
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ManagedPeripheralGroup
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.SimulatorHostEnvironment
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsPeripheralController
+import com.gmail.absolutebollockscreations.gattlibrary.server.ManagedPeripheralGroup
+import com.gmail.absolutebollockscreations.gattlibrary.server.SimulatorHostEnvironment
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference

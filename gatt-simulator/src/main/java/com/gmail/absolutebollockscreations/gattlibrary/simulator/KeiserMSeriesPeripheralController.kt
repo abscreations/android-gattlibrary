@@ -18,9 +18,9 @@ import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.gattlibrary.central.KeiserMSeriesMeasurement
 import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.server.AdapterNameCoordinator
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsForegroundService
+import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /** Pure legacy-envelope facts, kept separate from Android objects for focused unit coverage. */

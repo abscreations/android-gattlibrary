@@ -3,6 +3,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 import android.annotation.SuppressLint
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamControlSink
 
 /**
  * Live pass-through to the upstream fitness machine via [BtServiceEngineFacade].

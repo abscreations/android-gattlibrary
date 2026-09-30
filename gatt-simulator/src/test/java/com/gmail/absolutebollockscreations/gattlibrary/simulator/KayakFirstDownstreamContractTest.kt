@@ -21,8 +21,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.EngineMetricPump
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsMetricStore
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.providerMeasurementCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
+import com.gmail.absolutebollockscreations.gattlibrary.server.providerMeasurementCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 
