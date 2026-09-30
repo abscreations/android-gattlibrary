@@ -5,6 +5,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class InternalControlRoutingTest {
     @Test
@@ -45,8 +47,8 @@ class InternalControlRoutingTest {
         val otherGatt = Any()
         val entry = StackEntry(
             op = StackEntry.Op.DESC_WRITE,
-            charUuid = BluetoothIds.UUID_FLYWHEEL_TX,
-            descriptorUuid = BluetoothIds.UUID_CCCD,
+            charUuid = FlywheelUuids.UUID_FLYWHEEL_TX,
+            descriptorUuid = SigUuids.UUID_CCCD,
             descriptorIdentity = descriptor,
         )
         queue.enqueue(entry)
@@ -58,8 +60,8 @@ class InternalControlRoutingTest {
                 callbackGatt = otherGatt,
                 head = head,
                 callbackOp = StackEntry.Op.DESC_WRITE,
-                callbackCharUuid = BluetoothIds.UUID_FLYWHEEL_TX,
-                callbackDescriptorUuid = BluetoothIds.UUID_CCCD,
+                callbackCharUuid = FlywheelUuids.UUID_FLYWHEEL_TX,
+                callbackDescriptorUuid = SigUuids.UUID_CCCD,
                 callbackDescriptorIdentity = descriptor,
             ),
         )

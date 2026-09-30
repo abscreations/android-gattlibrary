@@ -9,6 +9,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 class SimulatorPersonaTest {
     @Test
@@ -119,8 +120,8 @@ class SimulatorPersonaTest {
     @Test
     fun `baseline manifest includes measurement services and no controls`() {
         val uuids = Concept2Pm5CompatibilityProfile.ERGDATA_V2_ROW.characteristics.map { it.uuid }.toSet()
-        assertTrue(BluetoothIds.UUID_C2_GENERAL_STATUS in uuids)
-        assertTrue(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION in uuids)
+        assertTrue(Concept2Uuids.UUID_C2_GENERAL_STATUS in uuids)
+        assertTrue(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION in uuids)
         assertFalse(uuids.any { it.toString().startsWith("ce06002") })
     }
 

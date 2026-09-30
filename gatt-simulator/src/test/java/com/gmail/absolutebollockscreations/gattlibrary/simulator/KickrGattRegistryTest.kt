@@ -12,6 +12,8 @@ import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 class KickrGattRegistryTest {
     @Test
@@ -25,21 +27,21 @@ class KickrGattRegistryTest {
 
         assertEquals(
             setOf(
-                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
                 FtmsUuids.UUID_BIKING_DATA,
-                BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+                SigUuids.UUID_HEART_RATE_MEASUREMENT,
             ),
             frames.mapTo(linkedSetOf()) { it.characteristicUuid },
         )
         assertEquals(snapshot.powerWatts, frames.single {
-            it.characteristicUuid == BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT
+            it.characteristicUuid == SigUuids.UUID_CYCLING_POWER_MEASUREMENT
         }.value.let { (it[2].toInt() and 0xFF) or (it[3].toInt() shl 8) })
         assertEquals(snapshot.powerWatts, frames.single {
             it.characteristicUuid == FtmsUuids.UUID_BIKING_DATA
         }.value.let { (it[6].toInt() and 0xFF) or (it[7].toInt() shl 8) })
         assertEquals(
             snapshot.heartRateBpm,
-            (frames.single { it.characteristicUuid == BluetoothIds.UUID_HEART_RATE_MEASUREMENT }
+            (frames.single { it.characteristicUuid == SigUuids.UUID_HEART_RATE_MEASUREMENT }
                 .value[1].toInt() and 0xFF),
         )
     }
@@ -102,8 +104,8 @@ class KickrGattRegistryTest {
     @Test
     fun `coalescing keeps only the newest acknowledgement for an opcode`() {
         val session = KickrPeripheralSession(8L, KickrSyntheticModel(), queueCapacity = 3)
-        session.enqueueCoalesced(KickrTxFrame(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, byteArrayOf(1, 0x42, 1), true))
-        session.enqueueCoalesced(KickrTxFrame(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, byteArrayOf(1, 0x42, 2), true))
+        session.enqueueCoalesced(KickrTxFrame(WahooUuids.UUID_WAHOO_KICKR_CONTROL, byteArrayOf(1, 0x42, 1), true))
+        session.enqueueCoalesced(KickrTxFrame(WahooUuids.UUID_WAHOO_KICKR_CONTROL, byteArrayOf(1, 0x42, 2), true))
         assertEquals(1, session.pendingCount)
         assertEquals(2, session.beginNext()!!.value[2].toInt())
     }
@@ -116,7 +118,7 @@ class KickrGattRegistryTest {
             KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
         )
         ftmsFirst.subscribe(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
-        ftmsFirst.subscribe(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
+        ftmsFirst.subscribe(WahooUuids.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
 
         val deniedTarget = ftmsFirst.handleFtmsControl(byteArrayOf(0x05, 0xFA.toByte(), 0x00))
         assertEquals(0x05, deniedTarget!!.response[1].toInt())
@@ -132,7 +134,7 @@ class KickrGattRegistryTest {
             KickrLegacyAckMode.SILENT_CORROBORATED,
         )
         legacyFirst.subscribe(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
-        legacyFirst.subscribe(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
+        legacyFirst.subscribe(WahooUuids.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
         assertTrue(legacyFirst.handleLegacyControl(byteArrayOf(0x20, 0xEE.toByte(), 0xFC.toByte()))!!.accepted)
         assertEquals(KickrControlRoute.LEGACY_WAHOO, legacyFirst.route)
         assertNull(legacyFirst.handleFtmsControl(byteArrayOf(0x00)))

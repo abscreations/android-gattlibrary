@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Pure simulator tests against `docs/fe-c-ble_simulator_implementation.md` §21-§25.
@@ -79,7 +80,7 @@ class FeCBleSimulatorTest {
         assertEquals("50 FF FF 01 59 00 F0 0A", hex(page))
         assertEquals(
             "A4 09 4F 05 50 FF FF 01 59 00 F0 0A 15",
-            hex(FeCBleTelemetryEncoder.buildAntFrame(page, BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA)),
+            hex(FeCBleTelemetryEncoder.buildAntFrame(page, FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA)),
         )
     }
 
@@ -152,7 +153,7 @@ class FeCBleSimulatorTest {
     fun `common page 70 requests page 54 twice as broadcast data`() {
         val wire = FeCBleTelemetryEncoder.buildAntFrame(
             bytes("46 FF FF FF FF 02 36 01"),
-            BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
+            FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
         )
         val request = FeCBleControlDecoder.decode(wire) as FeCBleControlCommand.RequestDataPage
         assertEquals(0x36, request.requestedPage)
@@ -166,7 +167,7 @@ class FeCBleSimulatorTest {
         val request = FeCBleControlDecoder.decode(
             bytes("A4 09 4F 05 46 FF FF FF FF 80 50 01 70"),
         ) as FeCBleControlCommand.RequestDataPage
-        assertEquals(BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION, request.requestedPage)
+        assertEquals(FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION, request.requestedPage)
         assertEquals(1, request.transmissionCount)
         assertTrue(request.acknowledgedResponse)
         assertTrue(request.transmitUntilAcknowledged)

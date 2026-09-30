@@ -3,6 +3,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Phase 5b §11.6 coverage through the real Chrono decoder and emission mapping. */
 class PrecorFusionTest {
@@ -12,7 +14,7 @@ class PrecorFusionTest {
     private fun chronoSource(generation: Long) = MetricSourceId(
         ConnectionId(chronoAddress, generation),
         MetricProtocol.VENDOR,
-        BluetoothIds.UUID_PRECOR_MEASUREMENT,
+        PrecorUuids.UUID_PRECOR_MEASUREMENT,
     )
 
     private fun emitChrono(
@@ -62,7 +64,7 @@ class PrecorFusionTest {
         val cps = MetricSourceId(
             ConnectionId("C0:00:00:00:00:04", 4),
             MetricProtocol.CPS,
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
         )
         MetricEmitter(fusion, cps, MetricSourceClass.CPS, 1_100)
             .emit(MetricKind.POWER, 225)

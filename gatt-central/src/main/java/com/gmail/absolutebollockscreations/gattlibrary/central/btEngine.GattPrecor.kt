@@ -9,6 +9,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 /**
  * Precor Spinner Chrono Power protocol handler (plan §5b), measurement-only.
@@ -34,9 +35,9 @@ import java.util.UUID
 @GattLibraryInternalApi
 class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_PRECOR_SERVICE)
+    override val primaryServices: Set<UUID> = setOf(PrecorUuids.UUID_PRECOR_SERVICE)
 
-    override val extraCharacteristics: Set<UUID> = setOf(BluetoothIds.UUID_PRECOR_MEASUREMENT)
+    override val extraCharacteristics: Set<UUID> = setOf(PrecorUuids.UUID_PRECOR_MEASUREMENT)
 
     /**
      * Whether byte 9 has ever been non-zero on this link (divergence V10).
@@ -107,7 +108,7 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (ch.uuid != BluetoothIds.UUID_PRECOR_MEASUREMENT) return
+        if (ch.uuid != PrecorUuids.UUID_PRECOR_MEASUREMENT) return
 
         val reading = decodeNotification(value) ?: return
 
@@ -201,12 +202,12 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
 internal fun planPrecorDiscovery(
     inventory: Map<UUID, Set<UUID>>,
 ): List<CccdTarget> {
-    val characteristics = inventory[BluetoothIds.UUID_PRECOR_SERVICE] ?: return emptyList()
-    if (BluetoothIds.UUID_PRECOR_MEASUREMENT !in characteristics) return emptyList()
+    val characteristics = inventory[PrecorUuids.UUID_PRECOR_SERVICE] ?: return emptyList()
+    if (PrecorUuids.UUID_PRECOR_MEASUREMENT !in characteristics) return emptyList()
     return listOf(
         CccdTarget(
-            serviceUuid = BluetoothIds.UUID_PRECOR_SERVICE,
-            characteristicUuid = BluetoothIds.UUID_PRECOR_MEASUREMENT,
+            serviceUuid = PrecorUuids.UUID_PRECOR_SERVICE,
+            characteristicUuid = PrecorUuids.UUID_PRECOR_MEASUREMENT,
         ),
     )
 }

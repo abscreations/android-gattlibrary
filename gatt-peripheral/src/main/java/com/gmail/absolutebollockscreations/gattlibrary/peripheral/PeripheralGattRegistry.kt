@@ -7,6 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Builds the FTMS GATT schema.
@@ -99,7 +100,7 @@ internal object PeripheralGattRegistry {
     }
 
     private fun cccd(): BluetoothGattDescriptor = BluetoothGattDescriptor(
-        BluetoothIds.UUID_CCCD,
+        SigUuids.UUID_CCCD,
         BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
     )
 

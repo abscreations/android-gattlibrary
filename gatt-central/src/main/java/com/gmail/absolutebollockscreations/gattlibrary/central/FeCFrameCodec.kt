@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * One decoded ANT serial message carried inside a FEC2 notification.
@@ -73,26 +74,26 @@ object FeCFrameCodec {
     private const val ANT_STANDARD_PAGE_LENGTH = 8
 
     private val KNOWN_PAGES = setOf(
-        BluetoothIds.FEC_PAGE_GENERAL_FE_DATA,
-        BluetoothIds.FEC_PAGE_GENERAL_SETTINGS,
-        BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA,
-        BluetoothIds.FEC_PAGE_SPECIFIC_TREADMILL_DATA,
-        BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA,
-        BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA,
-        BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA,
-        BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA,
-        BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA,
-        BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA,
-        BluetoothIds.FEC_PAGE_FE_CAPABILITIES,
-        BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION,
-        BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION,
+        FecBleUuids.FEC_PAGE_GENERAL_FE_DATA,
+        FecBleUuids.FEC_PAGE_GENERAL_SETTINGS,
+        FecBleUuids.FEC_PAGE_GENERAL_METABOLIC_DATA,
+        FecBleUuids.FEC_PAGE_SPECIFIC_TREADMILL_DATA,
+        FecBleUuids.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA,
+        FecBleUuids.FEC_PAGE_SPECIFIC_ROWER_DATA,
+        FecBleUuids.FEC_PAGE_SPECIFIC_CLIMBER_DATA,
+        FecBleUuids.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA,
+        FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_DATA,
+        FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA,
+        FecBleUuids.FEC_PAGE_FE_CAPABILITIES,
+        FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION,
+        FecBleUuids.FEC_PAGE_PRODUCT_INFORMATION,
     )
 
     fun decode(bytes: ByteArray): FeCFrameDecodeResult {
         if (bytes.size < 5) return FeCFrameDecodeResult.Rejected(FeCFrameRejection.TOO_SHORT)
 
         val sync = bytes[0].toInt() and 0xFF
-        if (sync != BluetoothIds.FEC_ANT_SYNC) {
+        if (sync != FecBleUuids.FEC_ANT_SYNC) {
             return FeCFrameDecodeResult.Rejected(FeCFrameRejection.BAD_SYNC)
         }
 
@@ -105,8 +106,8 @@ object FeCFrameCodec {
         }
 
         val messageType = bytes[2].toInt() and 0xFF
-        if (messageType != BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA &&
-            messageType != BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA
+        if (messageType != FecBleUuids.FEC_ANT_MSG_BROADCAST_DATA &&
+            messageType != FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA
         ) {
             return FeCFrameDecodeResult.Rejected(FeCFrameRejection.UNSUPPORTED_MESSAGE_TYPE)
         }
@@ -140,7 +141,7 @@ object FeCFrameCodec {
     fun encode(messageType: Int, channel: Int, payload: ByteArray): ByteArray {
         val n = payload.size + 1 // channel byte + payload
         val out = ByteArray(n + 4)
-        out[0] = BluetoothIds.FEC_ANT_SYNC.toByte()
+        out[0] = FecBleUuids.FEC_ANT_SYNC.toByte()
         out[1] = n.toByte()
         out[2] = messageType.toByte()
         out[3] = channel.toByte()

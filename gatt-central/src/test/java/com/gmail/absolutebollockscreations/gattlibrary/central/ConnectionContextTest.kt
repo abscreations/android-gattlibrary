@@ -13,6 +13,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class ConnectionContextTest {
 
@@ -22,10 +26,10 @@ class ConnectionContextTest {
         val old = registry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
         registry.clear(old)
         val replacement = registry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
-        replacement.discoveredServiceUuids += BluetoothIds.UUID_RSC_SERVICE
+        replacement.discoveredServiceUuids += SigUuids.UUID_RSC_SERVICE
         var calls = 0
         replacement.handlerActivator = { calls++; true }
-        assertFalse(registry.activateHandlerOn(old, TestHandler(BluetoothIds.UUID_RSC_SERVICE)))
+        assertFalse(registry.activateHandlerOn(old, TestHandler(SigUuids.UUID_RSC_SERVICE)))
         assertEquals(0, calls)
         assertTrue(registry.isCurrent(replacement))
     }
@@ -34,12 +38,12 @@ class ConnectionContextTest {
     fun `handle activation adds multiple services once on its original physical link`() {
         val registry = ConnectionRegistry()
         val context = registry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
-        context.handlers += TestHandler(BluetoothIds.UUID_HRM_SERVICE)
-        context.discoveredServiceUuids += BluetoothIds.UUID_RSC_SERVICE
+        context.handlers += TestHandler(SigUuids.UUID_HRM_SERVICE)
+        context.discoveredServiceUuids += SigUuids.UUID_RSC_SERVICE
         var calls = 0
         context.handlerActivator = { handler -> calls++; context.handlers += handler; true }
-        assertTrue(registry.activateHandlerOn(context, TestHandler(BluetoothIds.UUID_RSC_SERVICE)))
-        assertTrue(registry.activateHandlerOn(context, TestHandler(BluetoothIds.UUID_RSC_SERVICE)))
+        assertTrue(registry.activateHandlerOn(context, TestHandler(SigUuids.UUID_RSC_SERVICE)))
+        assertTrue(registry.activateHandlerOn(context, TestHandler(SigUuids.UUID_RSC_SERVICE)))
         assertEquals(1, calls)
         assertEquals(setOf(BtEngineState.BtServiceType.HeartRate, BtEngineState.BtServiceType.RSC),
             registry.connectedDevices.value.single().activeServices)
@@ -58,7 +62,7 @@ class ConnectionContextTest {
         )
         context.discoveredServiceUuids += setOf(
             FtmsUuids.UUID_FTMS_SERVICE,
-            BluetoothIds.UUID_C2_ERG_SERVICE,
+            Concept2Uuids.UUID_C2_ERG_SERVICE,
         )
 
         registry.setMachineDeviceType(context, BtEngineState.MachineDeviceType.SKI_ERG)
@@ -95,7 +99,7 @@ class ConnectionContextTest {
             gatt = null,
             initialState = BluetoothProfile.STATE_CONNECTED,
         )
-        precor.discoveredServiceUuids += BluetoothIds.UUID_PRECOR_SERVICE
+        precor.discoveredServiceUuids += PrecorUuids.UUID_PRECOR_SERVICE
         precorRegistry.replaceHandlers(precor, emptyList())
         val precorLink = precorRegistry.connectedDevices.value.single()
         assertEquals(
@@ -114,7 +118,7 @@ class ConnectionContextTest {
             gatt = null,
             initialState = BluetoothProfile.STATE_CONNECTED,
         )
-        context.discoveredServiceUuids += BluetoothIds.UUID_FLYWHEEL_SERVICE
+        context.discoveredServiceUuids += FlywheelUuids.UUID_FLYWHEEL_SERVICE
         registry.replaceHandlers(context, emptyList())
 
         val link = registry.connectedDevices.value.single()
@@ -168,7 +172,7 @@ class ConnectionContextTest {
             initialState = BluetoothProfile.STATE_CONNECTED,
         )
         context.handlers += TestHandler(FtmsUuids.UUID_FTMS_SERVICE)
-        context.discoveredServiceUuids += BluetoothIds.UUID_HRM_SERVICE
+        context.discoveredServiceUuids += SigUuids.UUID_HRM_SERVICE
         var activationCalls = 0
         context.handlerActivator = { handler ->
             activationCalls += 1
@@ -180,13 +184,13 @@ class ConnectionContextTest {
         assertTrue(
             registry.activateHandlerOn(
                 "AA:BB",
-                TestHandler(BluetoothIds.UUID_HRM_SERVICE),
+                TestHandler(SigUuids.UUID_HRM_SERVICE),
             )
         )
         assertTrue(
             registry.activateHandlerOn(
                 "aa:bb",
-                TestHandler(BluetoothIds.UUID_HRM_SERVICE),
+                TestHandler(SigUuids.UUID_HRM_SERVICE),
             )
         )
 
@@ -210,8 +214,8 @@ class ConnectionContextTest {
             gatt = null,
             initialState = BluetoothProfile.STATE_CONNECTED,
         )
-        context.handlers += TestHandler(BluetoothIds.UUID_HRM_SERVICE)
-        context.discoveredServiceUuids += BluetoothIds.UUID_RSC_SERVICE
+        context.handlers += TestHandler(SigUuids.UUID_HRM_SERVICE)
+        context.discoveredServiceUuids += SigUuids.UUID_RSC_SERVICE
         context.handlerActivator = { handler ->
             context.handlers += handler
             true
@@ -220,7 +224,7 @@ class ConnectionContextTest {
         assertTrue(
             registry.activateHandlerOn(
                 address = "aa:bb",
-                handler = TestHandler(BluetoothIds.UUID_RSC_SERVICE),
+                handler = TestHandler(SigUuids.UUID_RSC_SERVICE),
             )
         )
 

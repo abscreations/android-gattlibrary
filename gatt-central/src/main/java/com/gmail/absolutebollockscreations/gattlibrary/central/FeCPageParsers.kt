@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * The 4-value FE State enum ANT+ FE-C packs into the high bits of page 16 byte 7 and page 25
@@ -225,25 +226,25 @@ object FeCPageParsers {
         if (data.isEmpty()) return FeCPage.Unknown(page = -1)
         val page = data[0].toInt() and 0xFF
         return when (page) {
-            BluetoothIds.FEC_PAGE_GENERAL_FE_DATA -> decodeGeneralFe(data)
-            BluetoothIds.FEC_PAGE_GENERAL_SETTINGS -> decodeGeneralSettings(data)
-            BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA -> decodeGeneralMetabolicData(data)
-            BluetoothIds.FEC_PAGE_SPECIFIC_TREADMILL_DATA -> decodeSpecificTreadmillData(data)
-            BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA -> decodeSpecificEllipticalData(data)
-            BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA -> decodeSpecificRowerData(data)
-            BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA -> decodeSpecificClimberData(data)
-            BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA -> decodeSpecificNordicSkierData(data)
-            BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA -> decodeTrainerData(data)
-            BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA -> decodeTrainerTorqueData(data)
-            BluetoothIds.FEC_PAGE_FE_CAPABILITIES -> decodeFeCapabilities(data)
-            BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION -> decodeManufacturerInformation(data)
-            BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION -> decodeProductInformation(data)
+            FecBleUuids.FEC_PAGE_GENERAL_FE_DATA -> decodeGeneralFe(data)
+            FecBleUuids.FEC_PAGE_GENERAL_SETTINGS -> decodeGeneralSettings(data)
+            FecBleUuids.FEC_PAGE_GENERAL_METABOLIC_DATA -> decodeGeneralMetabolicData(data)
+            FecBleUuids.FEC_PAGE_SPECIFIC_TREADMILL_DATA -> decodeSpecificTreadmillData(data)
+            FecBleUuids.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA -> decodeSpecificEllipticalData(data)
+            FecBleUuids.FEC_PAGE_SPECIFIC_ROWER_DATA -> decodeSpecificRowerData(data)
+            FecBleUuids.FEC_PAGE_SPECIFIC_CLIMBER_DATA -> decodeSpecificClimberData(data)
+            FecBleUuids.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA -> decodeSpecificNordicSkierData(data)
+            FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_DATA -> decodeTrainerData(data)
+            FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA -> decodeTrainerTorqueData(data)
+            FecBleUuids.FEC_PAGE_FE_CAPABILITIES -> decodeFeCapabilities(data)
+            FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION -> decodeManufacturerInformation(data)
+            FecBleUuids.FEC_PAGE_PRODUCT_INFORMATION -> decodeProductInformation(data)
             else -> FeCPage.Unknown(page)
         }
     }
 
     private fun decodeGeneralFe(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_GENERAL_FE_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_GENERAL_FE_DATA)
         val equipmentType = u8(data, 1) and 0x1F
         val elapsedRaw = u8(data, 2)
         val distanceRaw = u8(data, 3)
@@ -265,7 +266,7 @@ object FeCPageParsers {
     }
 
     private fun decodeGeneralSettings(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_GENERAL_SETTINGS)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_GENERAL_SETTINGS)
         val cycleLengthRaw = u8(data, 3)
         val inclineRaw = u16(data, 4)
         val resistanceRaw = u8(data, 6)
@@ -278,7 +279,7 @@ object FeCPageParsers {
     }
 
     private fun decodeGeneralMetabolicData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_GENERAL_METABOLIC_DATA)
         val metRaw = u16(data, 2)
         val burnRateRaw = u16(data, 4)
         val capabilities = u8(data, 7)
@@ -292,7 +293,7 @@ object FeCPageParsers {
     }
 
     private fun decodeTrainerData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_DATA)
         val eventCount = u8(data, 1)
         val cadenceByte = u8(data, 2)
         val accumulatedPower = u16(data, 3)
@@ -319,7 +320,7 @@ object FeCPageParsers {
     }
 
     private fun decodeSpecificTreadmillData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_TREADMILL_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_SPECIFIC_TREADMILL_DATA)
         val cadenceByte = u8(data, 4)
         val negativeRaw = u8(data, 5)
         val positiveRaw = u8(data, 6)
@@ -338,7 +339,7 @@ object FeCPageParsers {
     }
 
     private fun decodeSpecificRowerData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_SPECIFIC_ROWER_DATA)
         val strokeCountRaw = u8(data, 3)
         val cadenceByte = u8(data, 4)
         val powerRaw = u16(data, 5)
@@ -355,7 +356,7 @@ object FeCPageParsers {
     }
 
     private fun decodeSpecificEllipticalData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA)
         val byte7 = u8(data, 7)
         val cadence = u8(data, 4)
         val power = u16(data, 5)
@@ -371,7 +372,7 @@ object FeCPageParsers {
     }
 
     private fun decodeSpecificClimberData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_SPECIFIC_CLIMBER_DATA)
         val byte7 = u8(data, 7)
         val cadence = u8(data, 4)
         val power = u16(data, 5)
@@ -385,7 +386,7 @@ object FeCPageParsers {
     }
 
     private fun decodeSpecificNordicSkierData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA)
         val byte7 = u8(data, 7)
         val cadence = u8(data, 4)
         val power = u16(data, 5)
@@ -399,7 +400,7 @@ object FeCPageParsers {
     }
 
     private fun decodeTrainerTorqueData(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA)
         return FeCPage.TrainerTorqueData(
             eventCountRaw = u8(data, 1),
             wheelTicksRaw = u8(data, 2),
@@ -410,7 +411,7 @@ object FeCPageParsers {
     }
 
     private fun decodeFeCapabilities(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_FE_CAPABILITIES)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_FE_CAPABILITIES)
         val maxResistance = u16(data, 5)
         val capabilities = u8(data, 7)
         return FeCPage.FeCapabilities(
@@ -422,7 +423,7 @@ object FeCPageParsers {
     }
 
     private fun decodeManufacturerInformation(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION)
         return FeCPage.ManufacturerInformation(
             hardwareRevision = u8(data, 3),
             manufacturerId = u16(data, 4),
@@ -431,7 +432,7 @@ object FeCPageParsers {
     }
 
     private fun decodeProductInformation(data: ByteArray): FeCPage {
-        if (data.size < 8) return FeCPage.Unknown(BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION)
+        if (data.size < 8) return FeCPage.Unknown(FecBleUuids.FEC_PAGE_PRODUCT_INFORMATION)
         val supplemental = u8(data, 2)
         val main = u8(data, 3)
         // Unsigned uint32LE. Deliberately not `readInt32LE()` (Incyclist's bug, see

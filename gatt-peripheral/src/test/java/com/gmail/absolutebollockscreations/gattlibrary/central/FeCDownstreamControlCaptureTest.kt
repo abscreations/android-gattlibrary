@@ -15,6 +15,7 @@ import org.junit.Test
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /** Phase 9 §11.7, §11.8 and capture evidence at the production policy seams. */
 class FeCDownstreamControlCaptureTest {
@@ -84,7 +85,7 @@ class FeCDownstreamControlCaptureTest {
     @Test
     fun `FE-C treadmill downstream Feature word does not claim force-on-belt power`() {
         val profile = FtmsMachineProfile.TREADMILL
-        val capabilities = providerMeasurementCapabilities(profile, setOf(BluetoothIds.UUID_FEC_SERVICE))
+        val capabilities = providerMeasurementCapabilities(profile, setOf(FecBleUuids.UUID_FEC_SERVICE))
         val payload = buildFtmsFeaturePayload(profile, TargetCapabilities.NONE, measurementCapabilities = capabilities)
         val measurementBits = u32(payload, 0)
 
@@ -108,7 +109,7 @@ class FeCDownstreamControlCaptureTest {
         assertTrue(
             providerMeasurementCapabilities(
                 profile,
-                setOf(BluetoothIds.UUID_FEC_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
+                setOf(FecBleUuids.UUID_FEC_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
             ).forceOnBeltAndPowerOutput,
         )
     }
@@ -119,23 +120,23 @@ class FeCDownstreamControlCaptureTest {
         val validPage = byteArrayOf(0x10, 25, 1, 2, 0x88.toByte(), 0x13, 140.toByte(), 0x34)
         val validFrame = FeCFrameCodec.encode(0x4E, 5, validPage)
         BleCapture.arm(CaptureTrigger.MANUAL)
-        CaptureHooks.notified(connection, BluetoothIds.UUID_FEC_MEASUREMENT, validFrame)
+        CaptureHooks.notified(connection, FecBleUuids.UUID_FEC_MEASUREMENT, validFrame)
         MetricEmitter(
             MetricFusion(BtEngineState()).also { it.setPersona(FusionPersona.RIDE, 0) },
-            MetricSourceId(connection, MetricProtocol.VENDOR, BluetoothIds.UUID_FEC_MEASUREMENT),
+            MetricSourceId(connection, MetricProtocol.VENDOR, FecBleUuids.UUID_FEC_MEASUREMENT),
             MetricSourceClass.VENDOR_NATIVE,
             1_000,
         ).emit(MetricKind.POWER, 200)
-        CaptureHooks.wrote(connection, BluetoothIds.UUID_FEC_CONTROL, byteArrayOf(0x31), true)
+        CaptureHooks.wrote(connection, FecBleUuids.UUID_FEC_CONTROL, byteArrayOf(0x31), true)
 
-        assertTrue(tree.lines.any { it.contains("\"ev\":\"notify\"") && it.contains(BluetoothIds.UUID_FEC_MEASUREMENT.toString()) })
+        assertTrue(tree.lines.any { it.contains("\"ev\":\"notify\"") && it.contains(FecBleUuids.UUID_FEC_MEASUREMENT.toString()) })
         assertTrue(tree.lines.any { it.contains("\"ev\":\"sample\"") && it.contains("POWER") })
         assertTrue(tree.lines.any { it.contains("\"ev\":\"write\"") && it.contains("\"withoutResponse\":true") })
 
         BleCapture.resetSession()
         val session = FeCProtocolSession(connection)
         val corrupt = validFrame.copyOf().also { it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
-        session.onPacket(BluetoothIds.UUID_FEC_MEASUREMENT, corrupt, 2_000)
+        session.onPacket(FecBleUuids.UUID_FEC_MEASUREMENT, corrupt, 2_000)
         assertEquals(CaptureTrigger.PARSER_REJECTION, BleCapture.armedBy())
     }
 

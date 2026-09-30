@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Advertising and GATT plans for the Stryd footpod persona.
@@ -46,7 +47,7 @@ internal data class StrydFootpodAdvertisingPlan(
 
         fun create(): StrydFootpodAdvertisingPlan {
             val name = SimulatorPersona.StrydFootpod.advertisedName
-            val uuids = listOf(BluetoothIds.UUID_RSC_SERVICE, BluetoothIds.UUID_POWER_SERVICE)
+            val uuids = listOf(SigUuids.UUID_RSC_SERVICE, SigUuids.UUID_POWER_SERVICE)
             return StrydFootpodAdvertisingPlan(
                 localName = name,
                 serviceUuids = uuids,
@@ -117,13 +118,13 @@ internal object StrydFootpodGattProfile {
             addCharacteristic(notify(UUID_PROPRIETARY_MEASUREMENT_B))
         }
 
-    fun buildBatteryService(): BluetoothGattService = primary(BluetoothIds.UUID_BATTERY_SERVICE).apply {
-        addCharacteristic(readNotify(BluetoothIds.UUID_BATTERY_LEVEL))
+    fun buildBatteryService(): BluetoothGattService = primary(SigUuids.UUID_BATTERY_SERVICE).apply {
+        addCharacteristic(readNotify(SigUuids.UUID_BATTERY_LEVEL))
     }
 
-    fun buildRscService(): BluetoothGattService = primary(BluetoothIds.UUID_RSC_SERVICE).apply {
-        addCharacteristic(notify(BluetoothIds.UUID_RSC_MEASUREMENT))
-        addCharacteristic(readOnly(BluetoothIds.UUID_RSC_FEATURE))
+    fun buildRscService(): BluetoothGattService = primary(SigUuids.UUID_RSC_SERVICE).apply {
+        addCharacteristic(notify(SigUuids.UUID_RSC_MEASUREMENT))
+        addCharacteristic(readOnly(SigUuids.UUID_RSC_FEATURE))
     }
 
     /**
@@ -135,42 +136,42 @@ internal object StrydFootpodGattProfile {
      * an absent one is visibly absent.
      */
     fun buildCyclingPowerService(): BluetoothGattService =
-        primary(BluetoothIds.UUID_CYCLING_POWER_SERVICE).apply {
-            addCharacteristic(notify(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT))
-            addCharacteristic(readOnly(BluetoothIds.UUID_CYCLING_POWER_FEATURE))
-            addCharacteristic(readOnly(BluetoothIds.UUID_SENSOR_LOCATION))
+        primary(SigUuids.UUID_CYCLING_POWER_SERVICE).apply {
+            addCharacteristic(notify(SigUuids.UUID_CYCLING_POWER_MEASUREMENT))
+            addCharacteristic(readOnly(SigUuids.UUID_CYCLING_POWER_FEATURE))
+            addCharacteristic(readOnly(SigUuids.UUID_SENSOR_LOCATION))
         }
 
     fun buildDeviceInformationService(): BluetoothGattService =
-        primary(BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE).apply {
-            addCharacteristic(readOnly(BluetoothIds.UUID_MANUFACTURER_NAME))
-            addCharacteristic(readOnly(BluetoothIds.UUID_MODEL_NUMBER))
-            addCharacteristic(readOnly(BluetoothIds.UUID_FIRMWARE_REVISION))
-            addCharacteristic(readOnly(BluetoothIds.UUID_SOFTWARE_REVISION))
+        primary(SigUuids.UUID_DEVICE_INFORMATION_SERVICE).apply {
+            addCharacteristic(readOnly(SigUuids.UUID_MANUFACTURER_NAME))
+            addCharacteristic(readOnly(SigUuids.UUID_MODEL_NUMBER))
+            addCharacteristic(readOnly(SigUuids.UUID_FIRMWARE_REVISION))
+            addCharacteristic(readOnly(SigUuids.UUID_SOFTWARE_REVISION))
         }
 
     /** Static read values, by characteristic, for the read-request handler. */
     fun staticReadValues(): Map<UUID, ByteArray> = mapOf(
-        BluetoothIds.UUID_MANUFACTURER_NAME to StrydFootpodIdentity.MANUFACTURER_NAME.toByteArray(Charsets.UTF_8),
-        BluetoothIds.UUID_MODEL_NUMBER to StrydFootpodIdentity.MODEL_NUMBER.toByteArray(Charsets.UTF_8),
-        BluetoothIds.UUID_FIRMWARE_REVISION to StrydFootpodIdentity.FIRMWARE_REVISION.toByteArray(Charsets.UTF_8),
-        BluetoothIds.UUID_SOFTWARE_REVISION to StrydFootpodIdentity.SOFTWARE_REVISION.toByteArray(Charsets.UTF_8),
+        SigUuids.UUID_MANUFACTURER_NAME to StrydFootpodIdentity.MANUFACTURER_NAME.toByteArray(Charsets.UTF_8),
+        SigUuids.UUID_MODEL_NUMBER to StrydFootpodIdentity.MODEL_NUMBER.toByteArray(Charsets.UTF_8),
+        SigUuids.UUID_FIRMWARE_REVISION to StrydFootpodIdentity.FIRMWARE_REVISION.toByteArray(Charsets.UTF_8),
+        SigUuids.UUID_SOFTWARE_REVISION to StrydFootpodIdentity.SOFTWARE_REVISION.toByteArray(Charsets.UTF_8),
     )
 
     /** Notifiable endpoints this persona accepts subscriptions for, paired with their services. */
     val notifyingCharacteristics: List<Pair<UUID, UUID>> = listOf(
         UUID_PROPRIETARY_SERVICE_B to UUID_PROPRIETARY_MEASUREMENT_B,
-        BluetoothIds.UUID_RSC_SERVICE to BluetoothIds.UUID_RSC_MEASUREMENT,
+        SigUuids.UUID_RSC_SERVICE to SigUuids.UUID_RSC_MEASUREMENT,
         UUID_PROPRIETARY_SERVICE_A to UUID_PROPRIETARY_MEASUREMENT_A,
-        BluetoothIds.UUID_CYCLING_POWER_SERVICE to BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
-        BluetoothIds.UUID_BATTERY_SERVICE to BluetoothIds.UUID_BATTERY_LEVEL,
+        SigUuids.UUID_CYCLING_POWER_SERVICE to SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
+        SigUuids.UUID_BATTERY_SERVICE to SigUuids.UUID_BATTERY_LEVEL,
     )
 
     private fun primary(uuid: UUID) =
         BluetoothGattService(uuid, BluetoothGattService.SERVICE_TYPE_PRIMARY)
 
     private fun cccd() = BluetoothGattDescriptor(
-        BluetoothIds.UUID_CCCD,
+        SigUuids.UUID_CCCD,
         BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
     )
 

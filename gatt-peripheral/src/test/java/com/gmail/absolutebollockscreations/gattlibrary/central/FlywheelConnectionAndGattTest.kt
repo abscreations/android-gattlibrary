@@ -9,6 +9,9 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 
 class FlywheelConnectionAndGattTest {
     @Test
@@ -23,16 +26,16 @@ class FlywheelConnectionAndGattTest {
 
         val route = resolveProtocolHandlerRoute(
             listOf(first),
-            BluetoothIds.UUID_FLYWHEEL_TX,
-            BluetoothIds.UUID_FLYWHEEL_SERVICE,
+            FlywheelUuids.UUID_FLYWHEEL_TX,
+            FlywheelUuids.UUID_FLYWHEEL_SERVICE,
         )
         assertEquals(HandlerOwnership.EXPLICIT_CHARACTERISTIC, route.ownership)
         assertSame(first, route.owners.single())
         assertTrue(
             resolveProtocolHandlerRoute(
                 listOf(first),
-                BluetoothIds.UUID_FEC_MEASUREMENT,
-                BluetoothIds.UUID_FEC_SERVICE,
+                FecBleUuids.UUID_FEC_MEASUREMENT,
+                FecBleUuids.UUID_FEC_SERVICE,
             ).owners.isEmpty(),
         )
     }
@@ -46,7 +49,7 @@ class FlywheelConnectionAndGattTest {
             machineConnection = true,
             gatt = null,
             connectionState = MutableStateFlow(LinkState.CONNECTED),
-            discoveredServiceUuids = linkedSetOf(BluetoothIds.UUID_FLYWHEEL_SERVICE),
+            discoveredServiceUuids = linkedSetOf(FlywheelUuids.UUID_FLYWHEEL_SERVICE),
             handlers = mutableListOf(handler),
         )
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000)
@@ -71,7 +74,7 @@ class FlywheelConnectionAndGattTest {
             machineConnection = true,
             gatt = null,
             connectionState = MutableStateFlow(LinkState.CONNECTED),
-            discoveredServiceUuids = linkedSetOf(BluetoothIds.UUID_FLYWHEEL_SERVICE),
+            discoveredServiceUuids = linkedSetOf(FlywheelUuids.UUID_FLYWHEEL_SERVICE),
             handlers = mutableListOf(handler),
         )
         val coordinator = AdapterLivenessCoordinator()
@@ -84,7 +87,7 @@ class FlywheelConnectionAndGattTest {
                 sourceId = MetricSourceId(
                     connectionId = context.connectionId,
                     protocol = MetricProtocol.VENDOR,
-                    characteristicUuid = BluetoothIds.UUID_FLYWHEEL_TX,
+                    characteristicUuid = FlywheelUuids.UUID_FLYWHEEL_TX,
                 ),
                 protocol = MetricProtocol.VENDOR,
                 sourceClass = MetricSourceClass.VENDOR_NATIVE,
@@ -128,8 +131,8 @@ class FlywheelConnectionAndGattTest {
             gatt = null,
             connectionState = MutableStateFlow(LinkState.CONNECTED),
             discoveredServiceUuids = linkedSetOf(
-                BluetoothIds.UUID_FLYWHEEL_SERVICE,
-                BluetoothIds.UUID_C2_ERG_SERVICE,
+                FlywheelUuids.UUID_FLYWHEEL_SERVICE,
+                Concept2Uuids.UUID_C2_ERG_SERVICE,
             ),
             handlers = mutableListOf(handler),
         )
@@ -149,7 +152,7 @@ class FlywheelConnectionAndGattTest {
                 sourceId = MetricSourceId(
                     connectionId = context.connectionId,
                     protocol = MetricProtocol.VENDOR,
-                    characteristicUuid = BluetoothIds.UUID_FLYWHEEL_TX,
+                    characteristicUuid = FlywheelUuids.UUID_FLYWHEEL_TX,
                 ),
                 protocol = MetricProtocol.VENDOR,
                 sourceClass = MetricSourceClass.VENDOR_NATIVE,

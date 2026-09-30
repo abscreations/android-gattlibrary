@@ -29,6 +29,8 @@ import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Bounded per-client notification FIFO; a complete current pair replaces stale queued data. */
 internal class PrecorNotificationQueue(private val capacity: Int = 4) {
@@ -203,7 +205,7 @@ internal class PrecorChronoPeripheralAdvertiser(
             descriptor: BluetoothGattDescriptor,
         ) {
             val client = clients[device.address.lowercase()]
-            val whole = if (descriptor.uuid == BluetoothIds.UUID_CCCD && client != null) {
+            val whole = if (descriptor.uuid == SigUuids.UUID_CCCD && client != null) {
                 if (client.subscribed) {
                     BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 } else {
@@ -227,8 +229,8 @@ internal class PrecorChronoPeripheralAdvertiser(
             val client = clients[device.address.lowercase()]
             val enable = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-            val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
-                descriptor.characteristic.uuid == BluetoothIds.UUID_PRECOR_MEASUREMENT &&
+            val valid = client != null && descriptor.uuid == SigUuids.UUID_CCCD &&
+                descriptor.characteristic.uuid == PrecorUuids.UUID_PRECOR_MEASUREMENT &&
                 !preparedWrite && offset == 0 && (enable || disable)
             if (valid) {
                 client.subscribed = enable
@@ -347,8 +349,8 @@ internal class PrecorChronoPeripheralAdvertiser(
                 client.inFlight = true
             }
         } ?: return
-        val characteristic = server?.getService(BluetoothIds.UUID_PRECOR_SERVICE)
-            ?.getCharacteristic(BluetoothIds.UUID_PRECOR_MEASUREMENT)
+        val characteristic = server?.getService(PrecorUuids.UUID_PRECOR_SERVICE)
+            ?.getCharacteristic(PrecorUuids.UUID_PRECOR_MEASUREMENT)
         if (characteristic == null || !notify(client.device, characteristic, frame)) {
             synchronized(client) { client.inFlight = false }
         }

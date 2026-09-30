@@ -32,6 +32,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralCapt
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 /** Build only measurement frames that the selected persona actually exposes as notifiable. */
 internal fun kickrStandardMeasurementFrames(
@@ -43,10 +45,10 @@ internal fun kickrStandardMeasurementFrames(
         .filter { KickrGattProperty.NOTIFY in it.properties }
         .mapTo(hashSetOf()) { it.uuid }
     return buildList {
-        if (BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT in notifiable) {
+        if (SigUuids.UUID_CYCLING_POWER_MEASUREMENT in notifiable) {
             add(
                 KickrTxFrame(
-                    BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                    SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
                     KickrStandardEncoders.cyclingPowerMeasurement(snapshot),
                     false,
                 ),
@@ -61,10 +63,10 @@ internal fun kickrStandardMeasurementFrames(
                 ),
             )
         }
-        if (BluetoothIds.UUID_HEART_RATE_MEASUREMENT in notifiable) {
+        if (SigUuids.UUID_HEART_RATE_MEASUREMENT in notifiable) {
             add(
                 KickrTxFrame(
-                    BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+                    SigUuids.UUID_HEART_RATE_MEASUREMENT,
                     byteArrayOf(0x00, snapshot.heartRateBpm.coerceIn(1, 255).toByte()),
                     false,
                 ),
@@ -118,7 +120,7 @@ internal class KickrPeripheralAdvertiser(
     private var characteristicServices: Map<UUID, UUID> = emptyMap()
     private var userWeight = KickrStandardEncoders.readValue(
         KickrSimulatorPersona.V5_STANDARD_LEGACY,
-        BluetoothIds.UUID_USER_WEIGHT,
+        SigUuids.UUID_USER_WEIGHT,
     )!!.bytes
     @Volatile private var rejectedWrites = 0L
 
@@ -196,7 +198,7 @@ internal class KickrPeripheralAdvertiser(
             service.characteristics.map { it.uuid to service.uuid }
         }.toMap()
         pendingServices = ArrayDeque(KickrGattRegistry.buildServices(selected))
-        userWeight = KickrStandardEncoders.readValue(persona, BluetoothIds.UUID_USER_WEIGHT)?.bytes ?: byteArrayOf()
+        userWeight = KickrStandardEncoders.readValue(persona, SigUuids.UUID_USER_WEIGHT)?.bytes ?: byteArrayOf()
         val currentEpoch = epoch.incrementAndGet()
         startResult = onResult
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -297,7 +299,7 @@ internal class KickrPeripheralAdvertiser(
             val selected = manifest?.persona
             val client = clients[device.address.lowercase()]
             val value = when (characteristic.uuid) {
-                BluetoothIds.UUID_USER_WEIGHT -> userWeight
+                SigUuids.UUID_USER_WEIGHT -> userWeight
                 else -> selected?.let {
                     KickrStandardEncoders.readValue(
                         it,
@@ -332,13 +334,13 @@ internal class KickrPeripheralAdvertiser(
             val status = when (characteristic.uuid) {
                 FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT ->
                     if (structurallyValid) handleFtms(client, value) else BluetoothGatt.GATT_FAILURE
-                BluetoothIds.UUID_WAHOO_KICKR_CONTROL ->
+                WahooUuids.UUID_WAHOO_KICKR_CONTROL ->
                     if (structurallyValid) handleLegacy(client, value) else BluetoothGatt.GATT_FAILURE
-                BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX ->
+                WahooUuids.UUID_WAHOO_RIDEON_SYNC_RX ->
                     if (structurallyValid) handleZwift(client, value) else BluetoothGatt.GATT_FAILURE
-                BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT ->
+                SigUuids.UUID_CYCLING_POWER_CONTROL_POINT ->
                     if (structurallyValid) handleCyclingPowerControl(client, value) else BluetoothGatt.GATT_FAILURE
-                BluetoothIds.UUID_USER_WEIGHT -> {
+                SigUuids.UUID_USER_WEIGHT -> {
                     if (structurallyValid && value.size == 2) {
                         userWeight = value.copyOf(); BluetoothGatt.GATT_SUCCESS
                     } else BluetoothGatt.GATT_FAILURE
@@ -359,7 +361,7 @@ internal class KickrPeripheralAdvertiser(
         ) {
             val client = clients[device.address.lowercase()]
             val mode = client?.session?.subscription(descriptor.characteristic.uuid)
-            val value = if (descriptor.uuid != BluetoothIds.UUID_CCCD || mode == null) null else when (mode) {
+            val value = if (descriptor.uuid != SigUuids.UUID_CCCD || mode == null) null else when (mode) {
                 PeripheralConnection.CccdMode.DISABLED -> BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
                 PeripheralConnection.CccdMode.NOTIFY -> BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 PeripheralConnection.CccdMode.INDICATE -> BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
@@ -391,7 +393,7 @@ internal class KickrPeripheralAdvertiser(
                 PeripheralConnection.CccdMode.INDICATE -> KickrGattProperty.INDICATE in (allowed?.properties ?: emptySet())
                 null -> false
             }
-            val ok = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
+            val ok = client != null && descriptor.uuid == SigUuids.UUID_CCCD &&
                 !preparedWrite && offset == 0 && mode != null && propertyAllowed
             if (ok) synchronized(client.session) { client.session.subscribe(target, mode) }
             if (ok) {
@@ -429,13 +431,13 @@ internal class KickrPeripheralAdvertiser(
     }
 
     private fun handleCyclingPowerControl(client: Client, value: ByteArray): Int = synchronized(client.session) {
-        if (client.session.subscription(BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT) != PeripheralConnection.CccdMode.INDICATE) {
+        if (client.session.subscription(SigUuids.UUID_CYCLING_POWER_CONTROL_POINT) != PeripheralConnection.CccdMode.INDICATE) {
             return BluetoothGatt.GATT_FAILURE
         }
         // Cycling Power Control Point: response opcode, requested opcode, opcode-not-supported.
         client.session.enqueue(
             KickrTxFrame(
-                BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT,
+                SigUuids.UUID_CYCLING_POWER_CONTROL_POINT,
                 byteArrayOf(0x20, value.firstOrNull() ?: 0xFF.toByte(), 0x02),
                 true,
             ),

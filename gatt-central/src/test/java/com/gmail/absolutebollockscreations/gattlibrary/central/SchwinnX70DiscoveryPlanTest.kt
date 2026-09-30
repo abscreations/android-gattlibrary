@@ -5,32 +5,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 class SchwinnX70DiscoveryPlanTest {
     private fun inventory(vararg characteristics: UUID): Map<UUID, Set<UUID>> =
-        mapOf(BluetoothIds.UUID_X70_SERVICE to characteristics.toSet())
+        mapOf(SchwinnX70Uuids.UUID_X70_SERVICE to characteristics.toSet())
 
     @Test
     fun `a console offering only the main stream subscribes to it alone`() {
         // Captured logs show every x70 console emitting all three streams, so this tests a
         // partial GATT table, not a model of a 270.
         val targets = planSchwinnX70Discovery(
-            inventory(BluetoothIds.UUID_X70_MEASUREMENT, BluetoothIds.UUID_X70_CONTROL),
+            inventory(SchwinnX70Uuids.UUID_X70_MEASUREMENT, SchwinnX70Uuids.UUID_X70_CONTROL),
         )
-        assertEquals(listOf(BluetoothIds.UUID_X70_MEASUREMENT), targets.map { it.characteristicUuid })
+        assertEquals(listOf(SchwinnX70Uuids.UUID_X70_MEASUREMENT), targets.map { it.characteristicUuid })
     }
 
     @Test
     fun `a console offering only the paired streams subscribes to those and no more`() {
         val targets = planSchwinnX70Discovery(
             inventory(
-                BluetoothIds.UUID_X70_SUPPLEMENTAL,
-                BluetoothIds.UUID_X70_SIBLING,
-                BluetoothIds.UUID_X70_CONTROL,
+                SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+                SchwinnX70Uuids.UUID_X70_SIBLING,
+                SchwinnX70Uuids.UUID_X70_CONTROL,
             ),
         )
         assertEquals(
-            listOf(BluetoothIds.UUID_X70_SUPPLEMENTAL, BluetoothIds.UUID_X70_SIBLING),
+            listOf(SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL, SchwinnX70Uuids.UUID_X70_SIBLING),
             targets.map { it.characteristicUuid },
         )
     }
@@ -41,9 +42,9 @@ class SchwinnX70DiscoveryPlanTest {
         // one. The inventory therefore cannot distinguish console models.
         val targets = planSchwinnX70Discovery(
             inventory(
-                BluetoothIds.UUID_X70_MEASUREMENT,
-                BluetoothIds.UUID_X70_SUPPLEMENTAL,
-                BluetoothIds.UUID_X70_SIBLING,
+                SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+                SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+                SchwinnX70Uuids.UUID_X70_SIBLING,
             ),
         )
         assertEquals(3, targets.size)
@@ -52,11 +53,11 @@ class SchwinnX70DiscoveryPlanTest {
     @Test
     fun `a service with no measurement stream activates nothing`() {
         // A service UUID is evidence of identity, not a promise of data.
-        assertTrue(planSchwinnX70Discovery(inventory(BluetoothIds.UUID_X70_CONTROL)).isEmpty())
+        assertTrue(planSchwinnX70Discovery(inventory(SchwinnX70Uuids.UUID_X70_CONTROL)).isEmpty())
         assertTrue(planSchwinnX70Discovery(emptyMap()).isEmpty())
         assertTrue(
             "a foreign service must not activate this handler",
-            planSchwinnX70Discovery(mapOf(FtmsUuids.UUID_FTMS_SERVICE to setOf(BluetoothIds.UUID_X70_MEASUREMENT)))
+            planSchwinnX70Discovery(mapOf(FtmsUuids.UUID_FTMS_SERVICE to setOf(SchwinnX70Uuids.UUID_X70_MEASUREMENT)))
                 .isEmpty(),
         )
     }
@@ -66,11 +67,11 @@ class SchwinnX70DiscoveryPlanTest {
         // Queue targeting keys on the parent, so a wrong service would target another CCCD.
         val targets = planSchwinnX70Discovery(
             inventory(
-                BluetoothIds.UUID_X70_MEASUREMENT,
-                BluetoothIds.UUID_X70_SUPPLEMENTAL,
-                BluetoothIds.UUID_X70_SIBLING,
+                SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+                SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+                SchwinnX70Uuids.UUID_X70_SIBLING,
             ),
         )
-        assertTrue(targets.all { it.serviceUuid == BluetoothIds.UUID_X70_SERVICE })
+        assertTrue(targets.all { it.serviceUuid == SchwinnX70Uuids.UUID_X70_SERVICE })
     }
 }

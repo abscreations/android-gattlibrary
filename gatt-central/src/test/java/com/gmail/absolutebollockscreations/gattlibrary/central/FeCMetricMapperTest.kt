@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 class FeCMetricMapperTest {
 
@@ -215,7 +216,7 @@ class FeCMetricMapperTest {
         assertEquals(ActivityType.STAIRCLIMBER, FeCMetricMapper.activityTypeFor(23))
         assertEquals(ActivityType.ROWING, FeCMetricMapper.activityTypeFor(24))
         // Trainer and Stationary Bike share wire value 25 per the official ANT+ spec (Table
-        // 8-7) - see BluetoothIds.FEC_EQUIPMENT_STATIONARY_BIKE's doc.
+        // 8-7) - see FecBleUuids.FEC_EQUIPMENT_STATIONARY_BIKE's doc.
         assertEquals(ActivityType.BIKING, FeCMetricMapper.activityTypeFor(25))
     }
 

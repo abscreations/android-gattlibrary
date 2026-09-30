@@ -9,6 +9,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Scan admission for the first advertisement-only family (plan §6.4, phase 11.4).
@@ -224,10 +225,10 @@ class KeiserScanAdmissionTest {
     fun `registering an advertisement-only family leaves every other ranking where it was`() {
         val cases = mapOf(
             "sig.ftms" to FtmsUuids.UUID_FTMS_SERVICE,
-            "sig.cps" to BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-            "sig.hrm" to BluetoothIds.UUID_HRM_SERVICE,
-            "sig.csc" to BluetoothIds.UUID_CSC_SERVICE,
-            "sig.rsc" to BluetoothIds.UUID_RSC_SERVICE,
+            "sig.cps" to SigUuids.UUID_CYCLING_POWER_SERVICE,
+            "sig.hrm" to SigUuids.UUID_HRM_SERVICE,
+            "sig.csc" to SigUuids.UUID_CSC_SERVICE,
+            "sig.rsc" to SigUuids.UUID_RSC_SERVICE,
         )
 
         for ((expected, service) in cases) {

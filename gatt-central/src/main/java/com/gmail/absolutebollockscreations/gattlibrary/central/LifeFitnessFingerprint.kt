@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 /**
  * Post-discovery identification of a Life Fitness setup surface (plan §6, D52, D54).
@@ -103,9 +104,9 @@ object LifeFitnessFingerprint {
         data class NoMatch(val reason: Decline) : Result
     }
 
-    private val CONTROL_PAIR = setOf(BluetoothIds.UUID_LF_CONTROL_1, BluetoothIds.UUID_LF_CONTROL_2)
+    private val CONTROL_PAIR = setOf(LifeFitnessUuids.UUID_LF_CONTROL_1, LifeFitnessUuids.UUID_LF_CONTROL_2)
     private val USER_PAIR =
-        setOf(BluetoothIds.UUID_LF_VENDOR_TOKEN_1, BluetoothIds.UUID_LF_VENDOR_TOKEN_2)
+        setOf(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1, LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2)
 
     /**
      * Identify the control and user services in a discovered GATT database.
@@ -138,8 +139,8 @@ object LifeFitnessFingerprint {
                 controlService = controlService,
                 userService = userService,
                 statusCharacteristic = resolveStatus(services, controlService),
-                canonicalParents = controlService == BluetoothIds.UUID_LF_CONTROL_SERVICE &&
-                    userService == BluetoothIds.UUID_LF_USER_SERVICE,
+                canonicalParents = controlService == LifeFitnessUuids.UUID_LF_CONTROL_SERVICE &&
+                    userService == LifeFitnessUuids.UUID_LF_USER_SERVICE,
             ),
         )
     }
@@ -155,7 +156,7 @@ object LifeFitnessFingerprint {
         services.firstOrNull { it.serviceUuid == controlService }
             ?.characteristics
             ?.firstOrNull {
-                it.uuid == BluetoothIds.UUID_LF_STATUS && it.notifyOrIndicate && it.hasCccd
+                it.uuid == LifeFitnessUuids.UUID_LF_STATUS && it.notifyOrIndicate && it.hasCccd
             }
             ?.uuid
 

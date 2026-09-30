@@ -10,6 +10,8 @@ import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class LifeFitnessPeripheralModelTest {
     @Test
@@ -66,20 +68,20 @@ class LifeFitnessPeripheralModelTest {
         val services = LifeFitnessGattProfile.manifest(LifeFitnessMachine.TREADMILL)
         assertEquals(
             listOf(
-                BluetoothIds.UUID_BOND_MANAGEMENT_SERVICE,
+                SigUuids.UUID_BOND_MANAGEMENT_SERVICE,
                 FtmsUuids.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_LF_SECONDARY_SERVICE,
-                BluetoothIds.UUID_LF_FD00_SERVICE,
-                BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
-                BluetoothIds.UUID_LF_USER_SERVICE,
-                BluetoothIds.UUID_LF_CONTROL_SERVICE,
+                LifeFitnessUuids.UUID_LF_SECONDARY_SERVICE,
+                LifeFitnessUuids.UUID_LF_FD00_SERVICE,
+                SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
+                LifeFitnessUuids.UUID_LF_USER_SERVICE,
+                LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
             ),
             services.map(LifeFitnessGattService::uuid),
         )
-        assertFalse(services.single { it.uuid == BluetoothIds.UUID_LF_SECONDARY_SERVICE }.primary)
-        assertTrue(services.filterNot { it.uuid == BluetoothIds.UUID_LF_SECONDARY_SERVICE }.all { it.primary })
+        assertFalse(services.single { it.uuid == LifeFitnessUuids.UUID_LF_SECONDARY_SERVICE }.primary)
+        assertTrue(services.filterNot { it.uuid == LifeFitnessUuids.UUID_LF_SECONDARY_SERVICE }.all { it.primary })
 
-        val user = services.single { it.uuid == BluetoothIds.UUID_LF_USER_SERVICE }
+        val user = services.single { it.uuid == LifeFitnessUuids.UUID_LF_USER_SERVICE }
         assertEquals(13, user.characteristics.size)
         assertTrue(
             user.characteristics.all {
@@ -89,24 +91,24 @@ class LifeFitnessPeripheralModelTest {
             },
         )
 
-        val control = services.single { it.uuid == BluetoothIds.UUID_LF_CONTROL_SERVICE }
+        val control = services.single { it.uuid == LifeFitnessUuids.UUID_LF_CONTROL_SERVICE }
         val expected = mapOf(
-            BluetoothIds.UUID_LF_B90_READ_5AA9 to BluetoothGattCharacteristic.PROPERTY_READ,
-            BluetoothIds.UUID_LF_STATUS to BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            BluetoothIds.UUID_LF_CONTROL_1 to BluetoothGattCharacteristic.PROPERTY_WRITE,
-            BluetoothIds.UUID_LF_B90_RW_NOTIFY_52A6 to
+            LifeFitnessUuids.UUID_LF_B90_READ_5AA9 to BluetoothGattCharacteristic.PROPERTY_READ,
+            LifeFitnessUuids.UUID_LF_STATUS to BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            LifeFitnessUuids.UUID_LF_CONTROL_1 to BluetoothGattCharacteristic.PROPERTY_WRITE,
+            LifeFitnessUuids.UUID_LF_B90_RW_NOTIFY_52A6 to
                 (BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE or
                     BluetoothGattCharacteristic.PROPERTY_NOTIFY),
-            BluetoothIds.UUID_LF_B90_NOTIFY_5AA8 to BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            BluetoothIds.UUID_LF_B90_READ_ECA0 to BluetoothGattCharacteristic.PROPERTY_READ,
-            BluetoothIds.UUID_LF_B90_READ_EF5C to BluetoothGattCharacteristic.PROPERTY_READ,
-            BluetoothIds.UUID_LF_B90_WRITE_F4E8 to writeBoth,
-            BluetoothIds.UUID_LF_B90_WRITE_F164 to writeBoth,
-            BluetoothIds.UUID_LF_B90_WRITE_F330 to writeBoth,
-            BluetoothIds.UUID_LF_B90_WRITE_FB00 to writeBoth,
-            BluetoothIds.UUID_LF_B90_WRITE_FD94 to writeBoth,
-            BluetoothIds.UUID_LF_CONTROL_2 to BluetoothGattCharacteristic.PROPERTY_WRITE,
-            BluetoothIds.UUID_LF_B90_WRITE_6AB6 to BluetoothGattCharacteristic.PROPERTY_WRITE,
+            LifeFitnessUuids.UUID_LF_B90_NOTIFY_5AA8 to BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            LifeFitnessUuids.UUID_LF_B90_READ_ECA0 to BluetoothGattCharacteristic.PROPERTY_READ,
+            LifeFitnessUuids.UUID_LF_B90_READ_EF5C to BluetoothGattCharacteristic.PROPERTY_READ,
+            LifeFitnessUuids.UUID_LF_B90_WRITE_F4E8 to writeBoth,
+            LifeFitnessUuids.UUID_LF_B90_WRITE_F164 to writeBoth,
+            LifeFitnessUuids.UUID_LF_B90_WRITE_F330 to writeBoth,
+            LifeFitnessUuids.UUID_LF_B90_WRITE_FB00 to writeBoth,
+            LifeFitnessUuids.UUID_LF_B90_WRITE_FD94 to writeBoth,
+            LifeFitnessUuids.UUID_LF_CONTROL_2 to BluetoothGattCharacteristic.PROPERTY_WRITE,
+            LifeFitnessUuids.UUID_LF_B90_WRITE_6AB6 to BluetoothGattCharacteristic.PROPERTY_WRITE,
         )
         assertEquals(expected, control.characteristics.associate { it.uuid to it.properties })
     }

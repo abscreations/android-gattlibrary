@@ -7,6 +7,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Phase 9 §11.6 and §11b using decoded and mapped FE-C samples. */
 class FeCFusionAndBoundsTest {
@@ -22,7 +24,7 @@ class FeCFusionAndBoundsTest {
     private fun source(generation: Long) = MetricSourceId(
         ConnectionId(address, generation),
         MetricProtocol.VENDOR,
-        BluetoothIds.UUID_FEC_MEASUREMENT,
+        FecBleUuids.UUID_FEC_MEASUREMENT,
     )
 
     private fun emit(
@@ -34,7 +36,7 @@ class FeCFusionAndBoundsTest {
         val connection = ConnectionId(address, generation)
         val session = FeCProtocolSession(connection)
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, page),
             arrivalMs,
         )
@@ -73,7 +75,7 @@ class FeCFusionAndBoundsTest {
         val cps = MetricSourceId(
             ConnectionId("FE:C0:00:00:00:22", 1),
             MetricProtocol.CPS,
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
         )
         MetricEmitter(fusion, cps, MetricSourceClass.CPS, 1_100).emit(MetricKind.POWER, 240)
         assertEquals(cps, fusion.selectedSource(MetricKind.POWER))

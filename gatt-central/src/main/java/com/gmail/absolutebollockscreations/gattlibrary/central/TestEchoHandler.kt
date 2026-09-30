@@ -9,6 +9,7 @@ import androidx.annotation.RequiresPermission
 import timber.log.Timber
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Phase 0.5 hardware-only observer for a Garmin HRM that also exposes the standard RSC service.
@@ -20,8 +21,8 @@ import java.util.concurrent.atomic.AtomicLong
  */
 internal class TestEchoHandler : BtEngineGattCore.ProtocolHandler {
 
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_RSC_SERVICE)
-    override val extraCharacteristics: Set<UUID> = setOf(BluetoothIds.UUID_RSC_MEASUREMENT)
+    override val primaryServices: Set<UUID> = setOf(SigUuids.UUID_RSC_SERVICE)
+    override val extraCharacteristics: Set<UUID> = setOf(SigUuids.UUID_RSC_MEASUREMENT)
 
     private val instanceId = nextInstanceId.incrementAndGet()
     private var linkGeneration: Long? = null
@@ -40,17 +41,17 @@ internal class TestEchoHandler : BtEngineGattCore.ProtocolHandler {
         gatt: BluetoothGatt,
         services: List<BluetoothGattService>,
     ): Boolean {
-        val rscService = services.firstOrNull { it.uuid == BluetoothIds.UUID_RSC_SERVICE }
+        val rscService = services.firstOrNull { it.uuid == SigUuids.UUID_RSC_SERVICE }
             ?: return false
 
         logGattInventory(services)
 
-        val measurement = rscService.getCharacteristic(BluetoothIds.UUID_RSC_MEASUREMENT)
+        val measurement = rscService.getCharacteristic(SigUuids.UUID_RSC_MEASUREMENT)
         if (measurement == null) {
             Timber.tag(TAG).w(
                 "PHASE05 echo declined instance=%d reason=missing-rsc-measurement service=%s",
                 instanceId,
-                BluetoothIds.UUID_RSC_SERVICE,
+                SigUuids.UUID_RSC_SERVICE,
             )
             return false
         }
@@ -72,8 +73,8 @@ internal class TestEchoHandler : BtEngineGattCore.ProtocolHandler {
             instanceId,
             context.connectionId.linkGeneration,
             activationCount,
-            BluetoothIds.UUID_RSC_SERVICE,
-            BluetoothIds.UUID_RSC_MEASUREMENT,
+            SigUuids.UUID_RSC_SERVICE,
+            SigUuids.UUID_RSC_MEASUREMENT,
             propertiesString(measurement.properties),
         )
 
@@ -89,7 +90,7 @@ internal class TestEchoHandler : BtEngineGattCore.ProtocolHandler {
         value: ByteArray,
     ) {
         notificationCount += 1
-        val expected = ch.uuid == BluetoothIds.UUID_RSC_MEASUREMENT
+        val expected = ch.uuid == SigUuids.UUID_RSC_MEASUREMENT
         if (!expected) unexpectedNotificationCount += 1
 
         val message =

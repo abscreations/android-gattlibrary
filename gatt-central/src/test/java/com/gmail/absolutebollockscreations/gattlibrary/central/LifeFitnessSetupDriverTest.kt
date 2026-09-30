@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 /**
  * Phase 6 work unit 6.5b part 2 — the transcript running against a link.
@@ -33,18 +34,18 @@ class LifeFitnessSetupDriverTest {
 
     private fun inventory() = listOf(
         LifeFitnessFingerprint.ServiceInventory(
-            BluetoothIds.UUID_LF_CONTROL_SERVICE,
+            LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
             listOf(
-                ch(BluetoothIds.UUID_LF_CONTROL_1),
-                ch(BluetoothIds.UUID_LF_CONTROL_2),
-                ch(BluetoothIds.UUID_LF_STATUS, writable = false, notify = true, cccd = true),
+                ch(LifeFitnessUuids.UUID_LF_CONTROL_1),
+                ch(LifeFitnessUuids.UUID_LF_CONTROL_2),
+                ch(LifeFitnessUuids.UUID_LF_STATUS, writable = false, notify = true, cccd = true),
             ),
         ),
         LifeFitnessFingerprint.ServiceInventory(
-            BluetoothIds.UUID_LF_USER_SERVICE,
+            LifeFitnessUuids.UUID_LF_USER_SERVICE,
             listOf(
-                ch(BluetoothIds.UUID_LF_VENDOR_TOKEN_1),
-                ch(BluetoothIds.UUID_LF_VENDOR_TOKEN_2),
+                ch(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1),
+                ch(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2),
             ),
         ),
     )

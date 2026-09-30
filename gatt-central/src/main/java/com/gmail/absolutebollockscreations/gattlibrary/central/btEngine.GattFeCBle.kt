@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 internal enum class FeCGattOperationKind { ENABLE_NOTIFICATIONS }
 
@@ -26,7 +27,7 @@ internal fun planFeCDiscovery(
     servicePresent: Boolean,
     characteristicUuids: Set<UUID>,
 ): FeCDiscoveryPlan {
-    if (!servicePresent || BluetoothIds.UUID_FEC_MEASUREMENT !in characteristicUuids) {
+    if (!servicePresent || FecBleUuids.UUID_FEC_MEASUREMENT !in characteristicUuids) {
         return FeCDiscoveryPlan(
             activate = false,
             controlAvailable = false,
@@ -35,11 +36,11 @@ internal fun planFeCDiscovery(
     }
     return FeCDiscoveryPlan(
         activate = true,
-        controlAvailable = BluetoothIds.UUID_FEC_CONTROL in characteristicUuids,
+        controlAvailable = FecBleUuids.UUID_FEC_CONTROL in characteristicUuids,
         operations = listOf(
             FeCGattOperation(
                 FeCGattOperationKind.ENABLE_NOTIFICATIONS,
-                BluetoothIds.UUID_FEC_MEASUREMENT,
+                FecBleUuids.UUID_FEC_MEASUREMENT,
             ),
         ),
     )
@@ -87,11 +88,11 @@ internal fun feCCapabilityResponseTimedOut(
  */
 internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_FEC_SERVICE)
+    override val primaryServices: Set<UUID> = setOf(FecBleUuids.UUID_FEC_SERVICE)
 
     override val extraCharacteristics: Set<UUID> = setOf(
-        BluetoothIds.UUID_FEC_MEASUREMENT,
-        BluetoothIds.UUID_FEC_CONTROL,
+        FecBleUuids.UUID_FEC_MEASUREMENT,
+        FecBleUuids.UUID_FEC_CONTROL,
     )
 
     /** Link-scoped; dies with the link, same discipline as every other machine handler here. */
@@ -151,7 +152,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         gatt: BluetoothGatt,
         services: List<BluetoothGattService>,
     ): Boolean {
-        val fecService = services.firstOrNull { it.uuid == BluetoothIds.UUID_FEC_SERVICE }
+        val fecService = services.firstOrNull { it.uuid == FecBleUuids.UUID_FEC_SERVICE }
         val characteristicUuids = fecService?.characteristics.orEmpty().mapTo(linkedSetOf()) { it.uuid }
         val plan = planFeCDiscovery(fecService != null, characteristicUuids)
         if (!plan.activate) {
@@ -161,7 +162,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
             return false
         }
         val measurementChar = requireNotNull(
-            fecService?.getCharacteristic(BluetoothIds.UUID_FEC_MEASUREMENT),
+            fecService?.getCharacteristic(FecBleUuids.UUID_FEC_MEASUREMENT),
         )
 
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
@@ -212,7 +213,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (ch.uuid != BluetoothIds.UUID_FEC_MEASUREMENT) return
+        if (ch.uuid != FecBleUuids.UUID_FEC_MEASUREMENT) return
         val activeSession = session ?: return
 
         val arrivalMs = MonotonicMetricClock.SYSTEM.nowMs()
@@ -310,7 +311,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
         scheduler?.let {
             it.submit(
                 FeCControlTarget.RequestDataPage(
-                    requestedPage = BluetoothIds.FEC_PAGE_FE_CAPABILITIES,
+                    requestedPage = FecBleUuids.FEC_PAGE_FE_CAPABILITIES,
                 ),
             )
             capabilityRequestDeadlineMs = MonotonicMetricClock.SYSTEM.nowMs() + CAPABILITY_RESPONSE_TIMEOUT_MS

@@ -10,6 +10,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTr
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 internal data class FlywheelCharacteristicInventory(
     val properties: Int,
@@ -59,16 +61,16 @@ internal fun planFlywheelDiscovery(
     if (advertisementCandidateId != FLYWHEEL_CANDIDATE_ID) {
         return reject(FlywheelDiscoveryFailure.ADVERTISEMENT_IDENTITY_NOT_CONFIRMED)
     }
-    val characteristics = inventory.services[BluetoothIds.UUID_FLYWHEEL_SERVICE]
+    val characteristics = inventory.services[FlywheelUuids.UUID_FLYWHEEL_SERVICE]
         ?: return reject(FlywheelDiscoveryFailure.MISSING_SERVICE)
-    val tx = characteristics[BluetoothIds.UUID_FLYWHEEL_TX]
+    val tx = characteristics[FlywheelUuids.UUID_FLYWHEEL_TX]
         ?: return reject(FlywheelDiscoveryFailure.MISSING_TX)
     if (tx.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY == 0) {
         return reject(FlywheelDiscoveryFailure.TX_NOT_NOTIFY)
     }
     if (!tx.hasCccd) return reject(FlywheelDiscoveryFailure.TX_MISSING_CCCD)
 
-    val rx = characteristics[BluetoothIds.UUID_FLYWHEEL_RX]
+    val rx = characteristics[FlywheelUuids.UUID_FLYWHEEL_RX]
         ?: return reject(FlywheelDiscoveryFailure.MISSING_RX)
     val writeProperties = BluetoothGattCharacteristic.PROPERTY_WRITE or
         BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE
@@ -82,7 +84,7 @@ internal fun planFlywheelDiscovery(
         operations = listOf(
             FlywheelGattOperation(
                 kind = FlywheelGattOperationKind.ENABLE_NOTIFICATIONS,
-                characteristicUuid = BluetoothIds.UUID_FLYWHEEL_TX,
+                characteristicUuid = FlywheelUuids.UUID_FLYWHEEL_TX,
             ),
         ),
     )
@@ -94,7 +96,7 @@ internal fun List<BluetoothGattService>.toFlywheelInventory(): FlywheelGattInven
             service.uuid to service.characteristics.orEmpty().associate { characteristic ->
                 characteristic.uuid to FlywheelCharacteristicInventory(
                     properties = characteristic.properties,
-                    hasCccd = characteristic.getDescriptor(BluetoothIds.UUID_CCCD) != null,
+                    hasCccd = characteristic.getDescriptor(SigUuids.UUID_CCCD) != null,
                 )
             }
         },
@@ -223,10 +225,10 @@ internal class FlywheelSubscriptionGate(
  */
 @GattLibraryInternalApi
 class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_FLYWHEEL_SERVICE)
+    override val primaryServices: Set<UUID> = setOf(FlywheelUuids.UUID_FLYWHEEL_SERVICE)
     override val extraCharacteristics: Set<UUID> = setOf(
-        BluetoothIds.UUID_FLYWHEEL_TX,
-        BluetoothIds.UUID_FLYWHEEL_RX,
+        FlywheelUuids.UUID_FLYWHEEL_TX,
+        FlywheelUuids.UUID_FLYWHEEL_RX,
     )
 
     private var setupGate: FlywheelSubscriptionGate? = null
@@ -286,8 +288,8 @@ class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
             return false
         }
 
-        val service = services.first { it.uuid == BluetoothIds.UUID_FLYWHEEL_SERVICE }
-        val tx = requireNotNull(service.getCharacteristic(BluetoothIds.UUID_FLYWHEEL_TX))
+        val service = services.first { it.uuid == FlywheelUuids.UUID_FLYWHEEL_SERVICE }
+        val tx = requireNotNull(service.getCharacteristic(FlywheelUuids.UUID_FLYWHEEL_TX))
         structuralMatch = true
         disconnectDiagnostic.markActivated(context.connectionId)
         setupGate = FlywheelSubscriptionGate(context.connectionId, SUBSCRIPTION_TIMEOUT_MS).also {
@@ -318,7 +320,7 @@ class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (ch.uuid != BluetoothIds.UUID_FLYWHEEL_TX) return
+        if (ch.uuid != FlywheelUuids.UUID_FLYWHEEL_TX) return
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
         val gate = setupGate ?: return
         if (gate.connectionId != context.connectionId || gate.state != FlywheelSetupState.READY) return

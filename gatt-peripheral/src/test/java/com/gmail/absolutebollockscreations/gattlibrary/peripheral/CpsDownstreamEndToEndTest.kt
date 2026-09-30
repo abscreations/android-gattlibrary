@@ -20,6 +20,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.sensorOnlyProvide
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class CpsDownstreamEndToEndTest {
     @Test
@@ -28,7 +29,7 @@ class CpsDownstreamEndToEndTest {
         val fusion = MetricFusion(state)
         fusion.startSession(FusionPersona.RIDE, 100)
         val connection = ConnectionId("CPS", 2)
-        val source = MetricSourceId(connection, MetricProtocol.CPS, BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT)
+        val source = MetricSourceId(connection, MetricProtocol.CPS, SigUuids.UUID_CYCLING_POWER_MEASUREMENT)
         MetricEmitter(fusion, source, MetricSourceClass.CPS, 101).emit(MetricKind.POWER, 237.0)
         val tracker = CpsMeasurementTracker()
         tracker.accept(hex("30 00 EC 00 64 00 00 00 00 08 64 00 00 04"))
@@ -68,8 +69,8 @@ class CpsDownstreamEndToEndTest {
         val state = BtEngineState()
         val fusion = MetricFusion(state)
         fusion.startSession(FusionPersona.RIDE, 100)
-        val cps = MetricSourceId(ConnectionId("CPS", 1), MetricProtocol.CPS, BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT)
-        val csc = MetricSourceId(ConnectionId("CSC", 1), MetricProtocol.CSC, BluetoothIds.UUID_CSC_MEASUREMENT)
+        val cps = MetricSourceId(ConnectionId("CPS", 1), MetricProtocol.CPS, SigUuids.UUID_CYCLING_POWER_MEASUREMENT)
+        val csc = MetricSourceId(ConnectionId("CSC", 1), MetricProtocol.CSC, SigUuids.UUID_CSC_MEASUREMENT)
         MetricEmitter(fusion, cps, MetricSourceClass.CPS_CRANK, 101).emit(MetricKind.CADENCE, 92.0, quality = MetricQuality.DERIVED)
         MetricEmitter(fusion, csc, MetricSourceClass.CSC_CRANK, 102).emit(MetricKind.CADENCE, 88.0, quality = MetricQuality.DERIVED)
         assertEquals(cps, fusion.selectedSource(MetricKind.CADENCE))

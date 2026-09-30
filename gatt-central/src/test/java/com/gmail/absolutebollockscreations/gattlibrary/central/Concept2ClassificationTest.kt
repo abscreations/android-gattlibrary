@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * Phase 5a: the Erg Machine Type read must change what FitBridge shows, not merely what it
@@ -72,7 +73,7 @@ class Concept2ClassificationTest {
 
     /** The production path, minus the GATT callback edge. */
     private fun classify(state: BtEngineState, machineTypeOctet: Int?) {
-        val plan = planConcept2Identification(setOf(BluetoothIds.UUID_C2_MACHINE_TYPE))
+        val plan = planConcept2Identification(setOf(Concept2Uuids.UUID_C2_MACHINE_TYPE))
         assertEquals("the read must be planned before it can land", 1, plan.size)
 
         val value = machineTypeOctet?.let { byteArrayOf((it and 0xFF).toByte()) }
@@ -161,7 +162,7 @@ class Concept2ClassificationTest {
         // behaviour — the device stays unclassified and the user's session choice governs.
         assertTrue(planConcept2Identification(emptySet()).isEmpty())
         assertTrue(
-            planConcept2Identification(setOf(BluetoothIds.UUID_C2_SERIAL_NUMBER)).isEmpty(),
+            planConcept2Identification(setOf(Concept2Uuids.UUID_C2_SERIAL_NUMBER)).isEmpty(),
         )
     }
 

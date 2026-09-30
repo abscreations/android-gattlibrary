@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 /**
  * x70 production plumbing — plan §7, §11 obligation 0.
@@ -70,20 +71,20 @@ class SchwinnX70PlumbingTest {
     fun `the handler activates on its service and owns every characteristic it exposes`() {
         val active = activateMatchingProtocolHandlers(
             MACHINE_PROTOCOLS.map(factory::create),
-            setOf(BluetoothIds.UUID_X70_SERVICE),
+            setOf(SchwinnX70Uuids.UUID_X70_SERVICE),
             offer = { true },
         )
         assertEquals(1, active.size)
         assertTrue(active.single() is SchwinnX70ProtocolHandler)
 
         val handler = active.single()
-        assertEquals(setOf(BluetoothIds.UUID_X70_SERVICE), handler.primaryServices)
+        assertEquals(setOf(SchwinnX70Uuids.UUID_X70_SERVICE), handler.primaryServices)
         assertEquals(
             setOf(
-                BluetoothIds.UUID_X70_MEASUREMENT,
-                BluetoothIds.UUID_X70_SUPPLEMENTAL,
-                BluetoothIds.UUID_X70_SIBLING,
-                BluetoothIds.UUID_X70_CONTROL,
+                SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+                SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+                SchwinnX70Uuids.UUID_X70_SIBLING,
+                SchwinnX70Uuids.UUID_X70_CONTROL,
             ),
             handler.extraCharacteristics,
         )
@@ -159,14 +160,14 @@ class SchwinnX70PlumbingTest {
         // all. In this corpus the counter first moves between index 4 and index 5. Using two frames
         // that happen to be adjacent rather than two across which the machine turned was always
         // testing the wrong thing; it only passed because the old code invented a number.
-        handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[4], arrivalMs = 1_000L)
-        val second = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[5], arrivalMs = 1_800L)
+        handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_MEASUREMENT, frames[4], arrivalMs = 1_000L)
+        val second = handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_MEASUREMENT, frames[5], arrivalMs = 1_800L)
         assertTrue("a baseline existed and the crank turned, so metrics flow", second.any { it.metric == MetricKind.CADENCE })
 
         handler.resetLinkState()
 
         // After a reconnect the same frame must behave like the first frame of a link again.
-        val afterReset = handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, frames[5], arrivalMs = 9_000L)
+        val afterReset = handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_MEASUREMENT, frames[5], arrivalMs = 9_000L)
         // One revolution across 0.8 s is 75 rpm — a real pedalling rate, which is the point of
         // choosing a realistic interval rather than one that happens to satisfy the assertion.
         assertTrue(
@@ -180,7 +181,7 @@ class SchwinnX70PlumbingTest {
         val handler = SchwinnX70ProtocolHandler()
 
         handler.samplesForNotification(
-            BluetoothIds.UUID_X70_MEASUREMENT,
+            SchwinnX70Uuids.UUID_X70_MEASUREMENT,
             byteArrayOf(0x11, 0x20, 0x00),
             arrivalMs = 0L,
         )
@@ -216,13 +217,13 @@ class SchwinnX70PlumbingTest {
             SchwinnX70Measurement.SIBLING_TAGS.forEach { (offset, tag) -> frame[offset] = tag.toByte() }
         }
 
-        handler.samplesForNotification(BluetoothIds.UUID_X70_SUPPLEMENTAL, supplemental, arrivalMs = 0L)
-        val withHeld = handler.samplesForNotification(BluetoothIds.UUID_X70_SIBLING, sibling, arrivalMs = 100L)
+        handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL, supplemental, arrivalMs = 0L)
+        val withHeld = handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_SIBLING, sibling, arrivalMs = 100L)
         assertEquals(141.0, withHeld.single { it.metric == MetricKind.HEART_RATE }.value, 1e-9)
 
         handler.resetLinkState()
 
-        val afterReset = handler.samplesForNotification(BluetoothIds.UUID_X70_SIBLING, sibling, arrivalMs = 200L)
+        val afterReset = handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_SIBLING, sibling, arrivalMs = 200L)
         assertTrue(
             "a heart rate from a dead link must not attach to a live one",
             afterReset.none { it.metric == MetricKind.HEART_RATE },
@@ -251,17 +252,17 @@ class SchwinnX70PlumbingTest {
 
         val active = activateMatchingProtocolHandlers(
             listOf(ftms, x70),
-            setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_X70_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE, SchwinnX70Uuids.UUID_X70_SERVICE),
             offer = { true },
         )
         assertEquals(listOf(ftms, x70), active)
 
         for (characteristic in listOf(
-            BluetoothIds.UUID_X70_MEASUREMENT,
-            BluetoothIds.UUID_X70_SUPPLEMENTAL,
-            BluetoothIds.UUID_X70_SIBLING,
+            SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+            SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+            SchwinnX70Uuids.UUID_X70_SIBLING,
         )) {
-            val route = resolveProtocolHandlerRoute(active, characteristic, BluetoothIds.UUID_X70_SERVICE)
+            val route = resolveProtocolHandlerRoute(active, characteristic, SchwinnX70Uuids.UUID_X70_SERVICE)
             assertEquals("$characteristic must route to the x70 alone", listOf(x70), route.owners)
             assertEquals(HandlerOwnership.EXPLICIT_CHARACTERISTIC, route.ownership)
         }
@@ -288,7 +289,7 @@ class SchwinnX70PlumbingTest {
     fun `only the x70 handler activates when only its service is present`() {
         val active = activateMatchingProtocolHandlers(
             MACHINE_PROTOCOLS.map(factory::create),
-            setOf(BluetoothIds.UUID_X70_SERVICE),
+            setOf(SchwinnX70Uuids.UUID_X70_SERVICE),
             offer = { true },
         )
         assertEquals(1, active.size)
@@ -333,11 +334,11 @@ class SchwinnX70PlumbingTest {
         val handler = factory.create(ProtocolKey.SCHWINN_X70)
         assertEquals(
             "the setup write is the only characteristic this handler may write",
-            setOf(BluetoothIds.UUID_X70_CONTROL),
+            setOf(SchwinnX70Uuids.UUID_X70_CONTROL),
             handler.extraCharacteristics - setOf(
-                BluetoothIds.UUID_X70_MEASUREMENT,
-                BluetoothIds.UUID_X70_SUPPLEMENTAL,
-                BluetoothIds.UUID_X70_SIBLING,
+                SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+                SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+                SchwinnX70Uuids.UUID_X70_SIBLING,
             ),
         )
     }

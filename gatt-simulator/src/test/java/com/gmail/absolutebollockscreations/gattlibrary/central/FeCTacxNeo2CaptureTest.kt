@@ -8,6 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Consumers for the four Tacx Neo 2 HCI corpora extracted on 2026-08-25.
@@ -166,8 +167,8 @@ class FeCTacxNeo2CaptureTest {
     fun `the FE-C service carries the notify and control characteristics FitBridge expects`() {
         val fec = characteristicsOf("6e40fec1-b5a3-f393-e0a9-e50e24dcca9e")
 
-        assertTrue(fec.contains(BluetoothIds.UUID_FEC_MEASUREMENT.toString()))
-        assertTrue(fec.contains(BluetoothIds.UUID_FEC_CONTROL.toString()))
+        assertTrue(fec.contains(FecBleUuids.UUID_FEC_MEASUREMENT.toString()))
+        assertTrue(fec.contains(FecBleUuids.UUID_FEC_CONTROL.toString()))
     }
 
     @Test

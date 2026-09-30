@@ -5,6 +5,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 internal data class KayakFirstAdvertisingPlan(
     val localName: String,
@@ -66,7 +68,7 @@ internal object KayakFirstGattProfile {
 
     val characteristics = listOf(
         Characteristic(
-            uuid = BluetoothIds.UUID_KAYAK_FIRST_IO,
+            uuid = KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             writeWithResponse = true,
             writeWithoutResponse = true,
             notifiable = true,
@@ -75,12 +77,12 @@ internal object KayakFirstGattProfile {
     )
 
     fun buildService(): BluetoothGattService = BluetoothGattService(
-        BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
+        KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
         BluetoothGattService.SERVICE_TYPE_PRIMARY,
     ).also { service ->
         service.addCharacteristic(
             BluetoothGattCharacteristic(
-                BluetoothIds.UUID_KAYAK_FIRST_IO,
+                KayakFirstUuids.UUID_KAYAK_FIRST_IO,
                 // Physical-console captures exercise Write Command. TMIW 2.2.1 instead uses its
                 // default Write Request mode, so the virtual compatibility surface accepts both.
                 BluetoothGattCharacteristic.PROPERTY_WRITE or
@@ -90,7 +92,7 @@ internal object KayakFirstGattProfile {
             ).also { io ->
                 io.addDescriptor(
                     BluetoothGattDescriptor(
-                        BluetoothIds.UUID_CCCD,
+                        SigUuids.UUID_CCCD,
                         BluetoothGattDescriptor.PERMISSION_READ or
                             BluetoothGattDescriptor.PERMISSION_WRITE,
                     ),
@@ -100,5 +102,5 @@ internal object KayakFirstGattProfile {
     }
 
     fun acceptsWrite(characteristic: BluetoothGattCharacteristic, prepared: Boolean, offset: Int) =
-        characteristic.uuid == BluetoothIds.UUID_KAYAK_FIRST_IO && !prepared && offset == 0
+        characteristic.uuid == KayakFirstUuids.UUID_KAYAK_FIRST_IO && !prepared && offset == 0
 }

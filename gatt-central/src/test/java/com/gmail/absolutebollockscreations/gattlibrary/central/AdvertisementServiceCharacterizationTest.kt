@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class AdvertisementServiceCharacterizationTest {
 
@@ -9,8 +10,8 @@ class AdvertisementServiceCharacterizationTest {
     fun `HRM plus RSC advertisement retains both services on discovered device`() {
         val services = advertisedServiceTypes(
             advertisedUuids = setOf(
-                BluetoothIds.UUID_HRM_SERVICE,
-                BluetoothIds.UUID_RSC_SERVICE,
+                SigUuids.UUID_HRM_SERVICE,
+                SigUuids.UUID_RSC_SERVICE,
             ),
         )
         val device = BtEngineState.DiscoveredDevice(
@@ -37,7 +38,7 @@ class AdvertisementServiceCharacterizationTest {
             setOf(BtEngineState.BtServiceType.RSC),
             advertisedServiceTypes(
                 advertisedUuids = emptySet(),
-                serviceDataUuids = setOf(BluetoothIds.UUID_RSC_SERVICE),
+                serviceDataUuids = setOf(SigUuids.UUID_RSC_SERVICE),
             ),
         )
     }
@@ -48,7 +49,7 @@ class AdvertisementServiceCharacterizationTest {
             MatchObservation(
                 localName = "",
                 advertisedServiceUuids = setOf(
-                    CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE),
+                    CanonicalUuid.fromUuid(SigUuids.UUID_RSC_SERVICE),
                 ),
             ),
         )

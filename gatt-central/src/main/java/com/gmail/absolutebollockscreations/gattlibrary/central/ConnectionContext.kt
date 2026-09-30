@@ -9,6 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Identifies one physical-link lifetime, including reconnects to the same BLE address. */
 data class ConnectionId(
@@ -579,8 +584,8 @@ internal class ConnectionRegistry {
                 machineConnection = context.machineConnection,
                 machineIdentityFamily = machineIdentityFamily(context),
                 machineDeviceType = context.machineDeviceType
-                    ?: if (BluetoothIds.UUID_PRECOR_SERVICE in context.discoveredServiceUuids ||
-                        BluetoothIds.UUID_FLYWHEEL_SERVICE in context.discoveredServiceUuids
+                    ?: if (PrecorUuids.UUID_PRECOR_SERVICE in context.discoveredServiceUuids ||
+                        FlywheelUuids.UUID_FLYWHEEL_SERVICE in context.discoveredServiceUuids
                     ) {
                         BtEngineState.MachineDeviceType.BIKE
                     } else {
@@ -596,16 +601,16 @@ internal class ConnectionRegistry {
     private fun machineIdentityFamily(
         context: ConnectionContext,
     ): BtEngineState.MachineIdentityFamily? = when {
-        BluetoothIds.UUID_C2_ERG_SERVICE in context.discoveredServiceUuids ->
+        Concept2Uuids.UUID_C2_ERG_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.CONCEPT2_PM5
 
-        BluetoothIds.UUID_PRECOR_SERVICE in context.discoveredServiceUuids ->
+        PrecorUuids.UUID_PRECOR_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.PRECOR_SPINNER_CHRONO_POWER
 
-        BluetoothIds.UUID_FEC_SERVICE in context.discoveredServiceUuids ->
+        FecBleUuids.UUID_FEC_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.FE_C_OVER_BLE
 
-        BluetoothIds.UUID_FLYWHEEL_SERVICE in context.discoveredServiceUuids ->
+        FlywheelUuids.UUID_FLYWHEEL_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.FLYWHEEL_SPORTS
 
         context.handlers.filterIsInstance<KayakFirstProtocolHandler>()
@@ -665,10 +670,10 @@ private val ConnectionContext.connectionKey: String
 
 internal fun serviceTypeForUuid(uuid: UUID): BtEngineState.BtServiceType? = when (uuid) {
     FtmsUuids.UUID_FTMS_SERVICE -> BtEngineState.BtServiceType.FTMS
-    BluetoothIds.UUID_HRM_SERVICE -> BtEngineState.BtServiceType.HeartRate
-    BluetoothIds.UUID_CSC_SERVICE -> BtEngineState.BtServiceType.CSC
-    BluetoothIds.UUID_RSC_SERVICE -> BtEngineState.BtServiceType.RSC
-    BluetoothIds.UUID_POWER_SERVICE -> BtEngineState.BtServiceType.Power
-    BluetoothIds.UUID_GLUCOSE_SERVICE -> BtEngineState.BtServiceType.Glucose
+    SigUuids.UUID_HRM_SERVICE -> BtEngineState.BtServiceType.HeartRate
+    SigUuids.UUID_CSC_SERVICE -> BtEngineState.BtServiceType.CSC
+    SigUuids.UUID_RSC_SERVICE -> BtEngineState.BtServiceType.RSC
+    SigUuids.UUID_POWER_SERVICE -> BtEngineState.BtServiceType.Power
+    SigUuids.UUID_GLUCOSE_SERVICE -> BtEngineState.BtServiceType.Glucose
     else -> null
 }

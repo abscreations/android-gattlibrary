@@ -7,10 +7,10 @@ import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDebug
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_FEATURE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_MEASUREMENT
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_SERVICE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SENSOR_LOCATION
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_RSC_FEATURE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_RSC_MEASUREMENT
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_RSC_SERVICE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_SENSOR_LOCATION
 import java.util.UUID
 import timber.log.Timber
 

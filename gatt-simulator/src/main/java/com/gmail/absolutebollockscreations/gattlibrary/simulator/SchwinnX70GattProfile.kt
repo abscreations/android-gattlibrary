@@ -7,6 +7,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.SCHWINN_X70_INITIALISATION
 import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Legacy advertising plan for the Schwinn x70 personas, decoded from the captured advertisement.
@@ -77,7 +79,7 @@ internal data class SchwinnX70AdvertisingPlan(
         fun create(): SchwinnX70AdvertisingPlan {
             val name = SCHWINN_X70_ADVERTISED_NAME
             return SchwinnX70AdvertisingPlan(
-                serviceUuid = BluetoothIds.UUID_X70_SERVICE,
+                serviceUuid = SchwinnX70Uuids.UUID_X70_SERVICE,
                 localName = name,
                 // The captured name is in the scan response, not the advertisement. A client that
                 // does not collect scan responses sees a nameless device advertising one service
@@ -179,65 +181,65 @@ internal object SchwinnX70GattProfile {
 
     /** Notify characteristics, in the order a console arms and uses them. */
     val NOTIFY_CHARACTERISTICS: List<UUID> = listOf(
-        BluetoothIds.UUID_X70_AUX_STATUS,
-        BluetoothIds.UUID_X70_MEASUREMENT,
-        BluetoothIds.UUID_X70_SUPPLEMENTAL,
-        BluetoothIds.UUID_X70_SIBLING,
-        BluetoothIds.UUID_X70_UNUSED_B8,
-        BluetoothIds.UUID_X70_UNUSED_D5,
+        SchwinnX70Uuids.UUID_X70_AUX_STATUS,
+        SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+        SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+        SchwinnX70Uuids.UUID_X70_SIBLING,
+        SchwinnX70Uuids.UUID_X70_UNUSED_B8,
+        SchwinnX70Uuids.UUID_X70_UNUSED_D5,
     )
 
     /** The three that carry measurements. The other four are served and stay quiet. */
     val MEASUREMENT_CHARACTERISTICS: List<UUID> = listOf(
-        BluetoothIds.UUID_X70_MEASUREMENT,
-        BluetoothIds.UUID_X70_SUPPLEMENTAL,
-        BluetoothIds.UUID_X70_SIBLING,
+        SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+        SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+        SchwinnX70Uuids.UUID_X70_SIBLING,
     )
 
     fun manifest(): List<SchwinnX70GattService> = listOf(
         SchwinnX70GattService(
-            BluetoothIds.UUID_X70_SERVICE,
+            SchwinnX70Uuids.UUID_X70_SERVICE,
             listOf(
                 // **Write only.** This served both write types until 2026-08-19, on the argument
                 // that accepting both cost a property bit and removed a class of failure. That was
                 // a reasonable hedge under uncertainty and it is now simply wrong: the 570u
                 // inventory lists `write` alone.
-                notNotifying(BluetoothIds.UUID_X70_CONTROL, WRITE),
-                notifying(BluetoothIds.UUID_X70_MEASUREMENT),
-                notifying(BluetoothIds.UUID_X70_SUPPLEMENTAL),
-                notifying(BluetoothIds.UUID_X70_SIBLING),
+                notNotifying(SchwinnX70Uuids.UUID_X70_CONTROL, WRITE),
+                notifying(SchwinnX70Uuids.UUID_X70_MEASUREMENT),
+                notifying(SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL),
+                notifying(SchwinnX70Uuids.UUID_X70_SIBLING),
                 // Read **and** notify. Served notify-only until the inventory said otherwise.
                 SchwinnX70GattCharacteristic(
-                    BluetoothIds.UUID_X70_AUX_STATUS,
+                    SchwinnX70Uuids.UUID_X70_AUX_STATUS,
                     READ or NOTIFY,
                     notifies = true,
                     readValue = AUX_STATUS_FRAME,
                 ),
-                notifying(BluetoothIds.UUID_X70_UNUSED_B8),
-                notifying(BluetoothIds.UUID_X70_UNUSED_D5),
+                notifying(SchwinnX70Uuids.UUID_X70_UNUSED_B8),
+                notifying(SchwinnX70Uuids.UUID_X70_UNUSED_D5),
                 // **A write characteristic, served as one.** This was a notify characteristic with
                 // a CCCD until 2026-08-19 — a write surface presented as a read surface, which is
                 // the kind of error a simulator exists to avoid rather than introduce.
-                notNotifying(BluetoothIds.UUID_X70_WRITE_EC86, WRITE_NO_RESPONSE),
+                notNotifying(SchwinnX70Uuids.UUID_X70_WRITE_EC86, WRITE_NO_RESPONSE),
                 // Five characteristics nothing reads and nothing decodes. Served readable and
                 // empty: present, honest, and inventing no values.
-                emptyRead(BluetoothIds.UUID_X70_READ_E3F9),
-                SchwinnX70GattCharacteristic(BluetoothIds.UUID_X70_RW_5EC4, READ or WRITE, notifies = false),
-                emptyRead(BluetoothIds.UUID_X70_READ_4E34),
-                emptyRead(BluetoothIds.UUID_X70_READ_4ED1),
-                emptyRead(BluetoothIds.UUID_X70_READ_7241),
+                emptyRead(SchwinnX70Uuids.UUID_X70_READ_E3F9),
+                SchwinnX70GattCharacteristic(SchwinnX70Uuids.UUID_X70_RW_5EC4, READ or WRITE, notifies = false),
+                emptyRead(SchwinnX70Uuids.UUID_X70_READ_4E34),
+                emptyRead(SchwinnX70Uuids.UUID_X70_READ_4ED1),
+                emptyRead(SchwinnX70Uuids.UUID_X70_READ_7241),
             ),
         ),
         SchwinnX70GattService(
-            BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+            SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
             listOf(
-                reading(BluetoothIds.UUID_MANUFACTURER_NAME, SchwinnX70Identity.MANUFACTURER),
-                reading(BluetoothIds.UUID_MODEL_NUMBER, SchwinnX70Identity.MODEL_NUMBER),
-                reading(BluetoothIds.UUID_HARDWARE_REVISION, SchwinnX70Identity.HARDWARE_REVISION),
-                reading(BluetoothIds.UUID_FIRMWARE_REVISION, SchwinnX70Identity.FIRMWARE_REVISION),
-                reading(BluetoothIds.UUID_SOFTWARE_REVISION, SchwinnX70Identity.SOFTWARE_REVISION),
+                reading(SigUuids.UUID_MANUFACTURER_NAME, SchwinnX70Identity.MANUFACTURER),
+                reading(SigUuids.UUID_MODEL_NUMBER, SchwinnX70Identity.MODEL_NUMBER),
+                reading(SigUuids.UUID_HARDWARE_REVISION, SchwinnX70Identity.HARDWARE_REVISION),
+                reading(SigUuids.UUID_FIRMWARE_REVISION, SchwinnX70Identity.FIRMWARE_REVISION),
+                reading(SigUuids.UUID_SOFTWARE_REVISION, SchwinnX70Identity.SOFTWARE_REVISION),
                 SchwinnX70GattCharacteristic(
-                    BluetoothIds.UUID_PNP_ID,
+                    SigUuids.UUID_PNP_ID,
                     READ,
                     notifies = false,
                     readValue = SchwinnX70Identity.PNP_ID,
@@ -266,7 +268,7 @@ internal object SchwinnX70GattProfile {
                     if (spec.notifies) {
                         characteristic.addDescriptor(
                             BluetoothGattDescriptor(
-                                BluetoothIds.UUID_CCCD,
+                                SigUuids.UUID_CCCD,
                                 BluetoothGattDescriptor.PERMISSION_READ or
                                     BluetoothGattDescriptor.PERMISSION_WRITE,
                             ),

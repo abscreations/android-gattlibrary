@@ -4,6 +4,10 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.NordicUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.ZwiftUuids
 
 /** Field-level provenance carried into diagnostics and evidence exports. */
 internal enum class KickrEvidenceLabel { HCI, LOG, P, M, X, R, SYN }
@@ -159,7 +163,7 @@ internal data class KickrPersonaManifest(
             advertising = KickrAdvertisingPlan(
                 localName = "Wahoo KICKR AEE4",
                 advertisedServices = listOf(
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                    SigUuids.UUID_CYCLING_POWER_SERVICE,
                     FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 evidence = setOf(KickrEvidenceLabel.LOG),
@@ -175,7 +179,7 @@ internal data class KickrPersonaManifest(
             advertising = KickrAdvertisingPlan(
                 localName = "KICKR CORE C3FB",
                 advertisedServices = listOf(
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                    SigUuids.UUID_CYCLING_POWER_SERVICE,
                     FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 evidence = setOf(KickrEvidenceLabel.HCI),
@@ -189,11 +193,11 @@ internal data class KickrPersonaManifest(
             ),
             services = standardKickrServices(setOf(KickrEvidenceLabel.HCI)) + listOf(
                 service(
-                    BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE03,
+                    WahooUuids.UUID_WAHOO_KICKR_MARKER_EE03,
                     setOf(KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_WAHOO_KICKR_E00A, NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(WahooUuids.UUID_WAHOO_KICKR_E00A, NOTIFY, KickrEvidenceLabel.LOG),
                 ),
-                zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE, KickrEvidenceLabel.HCI),
+                zwiftService(WahooUuids.UUID_WAHOO_RIDEON_SERVICE, KickrEvidenceLabel.HCI),
             ),
             legacyAckMode = KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
             zwiftServiceForm = RideOnServiceForm.ORIGINAL,
@@ -206,7 +210,7 @@ internal data class KickrPersonaManifest(
                 // inserting the user's requested CORE 2 model marker into the simulator name.
                 localName = "KICKR CORE 2 1A2B",
                 advertisedServices = listOf(
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                    SigUuids.UUID_CYCLING_POWER_SERVICE,
                     FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 evidence = setOf(KickrEvidenceLabel.HCI, KickrEvidenceLabel.SYN),
@@ -225,11 +229,11 @@ internal data class KickrPersonaManifest(
                 // QZ reports this aggregate set but not its raw ADV/scan-response allocation. This
                 // split stays within both legacy packet budgets and is therefore explicitly SYN.
                 advertisedServices = listOf(
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                    SigUuids.UUID_CYCLING_POWER_SERVICE,
                     FtmsUuids.UUID_FTMS_SERVICE,
-                    BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+                    SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
                 ),
-                scanResponseServices = listOf(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE),
+                scanResponseServices = listOf(WahooUuids.UUID_WAHOO_RIDEON_SERVICE),
                 manufacturerId = 0x094A,
                 manufacturerData = byteArrayOf(0x06, 0x2E, 0xBE.toByte()),
                 evidence = setOf(KickrEvidenceLabel.LOG, KickrEvidenceLabel.SYN),
@@ -245,12 +249,12 @@ internal data class KickrPersonaManifest(
             val evidence = setOf(KickrEvidenceLabel.LOG)
             return listOf(
                 service(
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                    SigUuids.UUID_CYCLING_POWER_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_CYCLING_POWER_FEATURE, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_SENSOR_LOCATION, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT, WRITE_INDICATE, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_CYCLING_POWER_FEATURE, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_SENSOR_LOCATION, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_CYCLING_POWER_CONTROL_POINT, WRITE_INDICATE, KickrEvidenceLabel.LOG),
                 ),
                 service(
                     FtmsUuids.UUID_FTMS_SERVICE,
@@ -263,44 +267,44 @@ internal data class KickrPersonaManifest(
                     characteristic(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE_INDICATE, KickrEvidenceLabel.LOG),
                 ),
                 service(
-                    BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_SERVICE,
+                    ZwiftUuids.UUID_ZWIFT_HUB_SUPPORT_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_READ, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_NOTIFY, READ_NOTIFY, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_CONTROL, WRITE_INDICATE, KickrEvidenceLabel.LOG),
+                    characteristic(ZwiftUuids.UUID_ZWIFT_HUB_SUPPORT_READ, READ, KickrEvidenceLabel.LOG),
+                    characteristic(ZwiftUuids.UUID_ZWIFT_HUB_SUPPORT_NOTIFY, READ_NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(ZwiftUuids.UUID_ZWIFT_HUB_SUPPORT_CONTROL, WRITE_INDICATE, KickrEvidenceLabel.LOG),
                 ),
                 service(
-                    BluetoothIds.UUID_HRM_SERVICE,
+                    SigUuids.UUID_HRM_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_HEART_RATE_MEASUREMENT, NOTIFY, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_BODY_SENSOR_LOCATION, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_HEART_RATE_MEASUREMENT, NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_BODY_SENSOR_LOCATION, READ, KickrEvidenceLabel.LOG),
                 ),
                 service(
-                    BluetoothIds.UUID_NORDIC_UART_SERVICE,
+                    NordicUuids.UUID_NORDIC_UART_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_NORDIC_UART_RX, WRITE_WRITE_NR, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_NORDIC_UART_TX, NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(NordicUuids.UUID_NORDIC_UART_RX, WRITE_WRITE_NR, KickrEvidenceLabel.LOG),
+                    characteristic(NordicUuids.UUID_NORDIC_UART_TX, NOTIFY, KickrEvidenceLabel.LOG),
                 ),
                 service(
-                    BluetoothIds.UUID_SECURE_DFU_SERVICE,
+                    NordicUuids.UUID_SECURE_DFU_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_SECURE_DFU_CONTROL, WRITE_INDICATE, KickrEvidenceLabel.LOG),
+                    characteristic(NordicUuids.UUID_SECURE_DFU_CONTROL, WRITE_INDICATE, KickrEvidenceLabel.LOG),
                 ),
                 service(
-                    BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+                    SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_MANUFACTURER_NAME, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_MODEL_NUMBER, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_SERIAL_NUMBER, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_HARDWARE_REVISION, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_FIRMWARE_REVISION, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_MANUFACTURER_NAME, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_MODEL_NUMBER, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_SERIAL_NUMBER, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_HARDWARE_REVISION, READ, KickrEvidenceLabel.LOG),
+                    characteristic(SigUuids.UUID_FIRMWARE_REVISION, READ, KickrEvidenceLabel.LOG),
                 ),
                 service(
-                    BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
+                    WahooUuids.UUID_WAHOO_RIDEON_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX, NOTIFY, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX, WRITE_NR, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX, READ_INDICATE, KickrEvidenceLabel.LOG),
+                    characteristic(WahooUuids.UUID_WAHOO_RIDEON_ASYNC_TX, NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(WahooUuids.UUID_WAHOO_RIDEON_SYNC_RX, WRITE_NR, KickrEvidenceLabel.LOG),
+                    characteristic(WahooUuids.UUID_WAHOO_RIDEON_SYNC_TX, READ_INDICATE, KickrEvidenceLabel.LOG),
                 ),
             )
         }
@@ -312,10 +316,10 @@ internal data class KickrPersonaManifest(
         private fun capturedCore2Services(): List<KickrServiceManifest> {
             val evidence = setOf(KickrEvidenceLabel.LOG)
             val standard = standardKickrServices(evidence).associateBy { it.uuid }
-            val ee06 = requireNotNull(standard[BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE06]).let { service ->
+            val ee06 = requireNotNull(standard[WahooUuids.UUID_WAHOO_KICKR_MARKER_EE06]).let { service ->
                 service.copy(
                     characteristics = service.characteristics + characteristic(
-                        BluetoothIds.UUID_WAHOO_KICKR_E018,
+                        WahooUuids.UUID_WAHOO_KICKR_E018,
                         WRITE_NR_NOTIFY,
                         KickrEvidenceLabel.LOG,
                     ),
@@ -323,62 +327,62 @@ internal data class KickrPersonaManifest(
             }
             return listOf(
                 service(
-                    BluetoothIds.UUID_HRM_SERVICE,
+                    SigUuids.UUID_HRM_SERVICE,
                     evidence,
                     characteristic(
-                        BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+                        SigUuids.UUID_HEART_RATE_MEASUREMENT,
                         NOTIFY,
                         KickrEvidenceLabel.LOG,
                     ),
                     characteristic(
-                        BluetoothIds.UUID_BODY_SENSOR_LOCATION,
+                        SigUuids.UUID_BODY_SENSOR_LOCATION,
                         READ,
                         KickrEvidenceLabel.LOG,
                     ),
                 ),
-                requireNotNull(standard[BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE]),
-                requireNotNull(standard[BluetoothIds.UUID_USER_DATA_SERVICE]),
-                requireNotNull(standard[BluetoothIds.UUID_CYCLING_POWER_SERVICE]),
+                requireNotNull(standard[SigUuids.UUID_DEVICE_INFORMATION_SERVICE]),
+                requireNotNull(standard[SigUuids.UUID_USER_DATA_SERVICE]),
+                requireNotNull(standard[SigUuids.UUID_CYCLING_POWER_SERVICE]),
                 service(
-                    BluetoothIds.UUID_SECURE_DFU_SERVICE,
+                    NordicUuids.UUID_SECURE_DFU_SERVICE,
                     evidence,
                     characteristic(
-                        BluetoothIds.UUID_SECURE_DFU_CONTROL,
+                        NordicUuids.UUID_SECURE_DFU_CONTROL,
                         WRITE_INDICATE,
                         KickrEvidenceLabel.LOG,
                     ),
                 ),
-                zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE, KickrEvidenceLabel.LOG),
-                requireNotNull(standard[BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01]),
+                zwiftService(WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE, KickrEvidenceLabel.LOG),
+                requireNotNull(standard[WahooUuids.UUID_WAHOO_KICKR_MARKER_EE01]),
                 ee06,
                 requireNotNull(standard[FtmsUuids.UUID_FTMS_SERVICE]),
-                requireNotNull(standard[BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE0B]),
+                requireNotNull(standard[WahooUuids.UUID_WAHOO_KICKR_MARKER_EE0B]),
             )
         }
 
         private fun standardKickrServices(evidence: Set<KickrEvidenceLabel>): List<KickrServiceManifest> =
             listOf(
                 service(
-                    BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+                    SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_MANUFACTURER_NAME, READ, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_SERIAL_NUMBER, READ, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_HARDWARE_REVISION, READ, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_FIRMWARE_REVISION, READ, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_MANUFACTURER_NAME, READ, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_SERIAL_NUMBER, READ, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_HARDWARE_REVISION, READ, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_FIRMWARE_REVISION, READ, *evidence.toTypedArray()),
                 ),
                 service(
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                    SigUuids.UUID_CYCLING_POWER_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_CYCLING_POWER_FEATURE, READ, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_SENSOR_LOCATION, READ, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, WRITE_INDICATE, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT, WRITE_INDICATE, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_CYCLING_POWER_FEATURE, READ, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_SENSOR_LOCATION, READ, *evidence.toTypedArray()),
+                    characteristic(WahooUuids.UUID_WAHOO_KICKR_CONTROL, WRITE_INDICATE, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_CYCLING_POWER_CONTROL_POINT, WRITE_INDICATE, *evidence.toTypedArray()),
                 ),
                 service(
-                    BluetoothIds.UUID_USER_DATA_SERVICE,
+                    SigUuids.UUID_USER_DATA_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_USER_WEIGHT, READ_WRITE, *evidence.toTypedArray()),
+                    characteristic(SigUuids.UUID_USER_WEIGHT, READ_WRITE, *evidence.toTypedArray()),
                 ),
                 service(
                     FtmsUuids.UUID_FTMS_SERVICE,
@@ -392,20 +396,20 @@ internal data class KickrPersonaManifest(
                     characteristic(FtmsUuids.UUID_SUPPORTED_POWER_RANGE, READ, *evidence.toTypedArray()),
                 ),
                 service(
-                    BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01,
+                    WahooUuids.UUID_WAHOO_KICKR_MARKER_EE01,
                     evidence,
-                    characteristic(BluetoothIds.UUID_WAHOO_KICKR_E002, WRITE_NR_NOTIFY, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_WAHOO_KICKR_E004, NOTIFY, *evidence.toTypedArray()),
+                    characteristic(WahooUuids.UUID_WAHOO_KICKR_E002, WRITE_NR_NOTIFY, *evidence.toTypedArray()),
+                    characteristic(WahooUuids.UUID_WAHOO_KICKR_E004, NOTIFY, *evidence.toTypedArray()),
                 ),
                 service(
-                    BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE06,
+                    WahooUuids.UUID_WAHOO_KICKR_MARKER_EE06,
                     evidence,
-                    characteristic(BluetoothIds.UUID_WAHOO_KICKR_E023, WRITE_NR_NOTIFY, *evidence.toTypedArray()),
+                    characteristic(WahooUuids.UUID_WAHOO_KICKR_E023, WRITE_NR_NOTIFY, *evidence.toTypedArray()),
                 ),
                 service(
-                    BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE0B,
+                    WahooUuids.UUID_WAHOO_KICKR_MARKER_EE0B,
                     evidence,
-                    characteristic(BluetoothIds.UUID_WAHOO_KICKR_E037, WRITE_NR_NOTIFY, *evidence.toTypedArray()),
+                    characteristic(WahooUuids.UUID_WAHOO_KICKR_E037, WRITE_NR_NOTIFY, *evidence.toTypedArray()),
                 ),
             )
 
@@ -413,9 +417,9 @@ internal data class KickrPersonaManifest(
             service(
                 parent,
                 setOf(evidence),
-                characteristic(BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX, NOTIFY, evidence),
-                characteristic(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX, WRITE_NR, evidence),
-                characteristic(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX, INDICATE, evidence),
+                characteristic(WahooUuids.UUID_WAHOO_RIDEON_ASYNC_TX, NOTIFY, evidence),
+                characteristic(WahooUuids.UUID_WAHOO_RIDEON_SYNC_RX, WRITE_NR, evidence),
+                characteristic(WahooUuids.UUID_WAHOO_RIDEON_SYNC_TX, INDICATE, evidence),
             )
 
         private fun service(

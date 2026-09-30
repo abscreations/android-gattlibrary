@@ -7,6 +7,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Production planning, read decoding, emission, and same-link ownership for Phase 1 RSC. */
 class RscProductionPlumbingTest {
@@ -14,18 +15,18 @@ class RscProductionPlumbingTest {
     @Test
     fun `measurement is required and optional reads do not gate activation`() {
         val absent = planRscDiscovery(
-            setOf(BluetoothIds.UUID_RSC_FEATURE, BluetoothIds.UUID_SENSOR_LOCATION),
+            setOf(SigUuids.UUID_RSC_FEATURE, SigUuids.UUID_SENSOR_LOCATION),
         )
         assertFalse(absent.activate)
         assertTrue(absent.operations.isEmpty())
 
-        val measurementOnly = planRscDiscovery(setOf(BluetoothIds.UUID_RSC_MEASUREMENT))
+        val measurementOnly = planRscDiscovery(setOf(SigUuids.UUID_RSC_MEASUREMENT))
         assertTrue(measurementOnly.activate)
         assertEquals(
             listOf(
                 RscGattOperation(
                     RscGattOperationKind.ENABLE_NOTIFICATIONS,
-                    BluetoothIds.UUID_RSC_MEASUREMENT,
+                    SigUuids.UUID_RSC_MEASUREMENT,
                 ),
             ),
             measurementOnly.operations,
@@ -36,17 +37,17 @@ class RscProductionPlumbingTest {
     fun `subscription is queued before feature and sensor-location reads`() {
         val plan = planRscDiscovery(
             setOf(
-                BluetoothIds.UUID_RSC_MEASUREMENT,
-                BluetoothIds.UUID_RSC_FEATURE,
-                BluetoothIds.UUID_SENSOR_LOCATION,
+                SigUuids.UUID_RSC_MEASUREMENT,
+                SigUuids.UUID_RSC_FEATURE,
+                SigUuids.UUID_SENSOR_LOCATION,
             ),
         )
 
         assertEquals(
             listOf(
-                RscGattOperation(RscGattOperationKind.ENABLE_NOTIFICATIONS, BluetoothIds.UUID_RSC_MEASUREMENT),
-                RscGattOperation(RscGattOperationKind.READ, BluetoothIds.UUID_RSC_FEATURE),
-                RscGattOperation(RscGattOperationKind.READ, BluetoothIds.UUID_SENSOR_LOCATION),
+                RscGattOperation(RscGattOperationKind.ENABLE_NOTIFICATIONS, SigUuids.UUID_RSC_MEASUREMENT),
+                RscGattOperation(RscGattOperationKind.READ, SigUuids.UUID_RSC_FEATURE),
+                RscGattOperation(RscGattOperationKind.READ, SigUuids.UUID_SENSOR_LOCATION),
             ),
             plan.operations,
         )
@@ -56,23 +57,23 @@ class RscProductionPlumbingTest {
     fun `feature and location reads decode success and remain best effort on failure`() {
         assertEquals(
             RscReadOutcome.Features(0x0007),
-            decodeRscRead(BluetoothIds.UUID_RSC_FEATURE, byteArrayOf(0x07, 0x00), success = true),
+            decodeRscRead(SigUuids.UUID_RSC_FEATURE, byteArrayOf(0x07, 0x00), success = true),
         )
         assertEquals(
             RscReadOutcome.SensorLocation(0x01, footMounted = true),
-            decodeRscRead(BluetoothIds.UUID_SENSOR_LOCATION, byteArrayOf(0x01), success = true),
+            decodeRscRead(SigUuids.UUID_SENSOR_LOCATION, byteArrayOf(0x01), success = true),
         )
         assertEquals(
             RscReadOutcome.SensorLocation(0x0E, footMounted = false),
-            decodeRscRead(BluetoothIds.UUID_SENSOR_LOCATION, byteArrayOf(0x0E), success = true),
+            decodeRscRead(SigUuids.UUID_SENSOR_LOCATION, byteArrayOf(0x0E), success = true),
         )
         assertEquals(
-            RscReadOutcome.Unavailable(BluetoothIds.UUID_RSC_FEATURE),
-            decodeRscRead(BluetoothIds.UUID_RSC_FEATURE, byteArrayOf(0x07), success = true),
+            RscReadOutcome.Unavailable(SigUuids.UUID_RSC_FEATURE),
+            decodeRscRead(SigUuids.UUID_RSC_FEATURE, byteArrayOf(0x07), success = true),
         )
         assertEquals(
-            RscReadOutcome.Unavailable(BluetoothIds.UUID_SENSOR_LOCATION),
-            decodeRscRead(BluetoothIds.UUID_SENSOR_LOCATION, ByteArray(0), success = false),
+            RscReadOutcome.Unavailable(SigUuids.UUID_SENSOR_LOCATION),
+            decodeRscRead(SigUuids.UUID_SENSOR_LOCATION, ByteArray(0), success = false),
         )
         assertEquals(RscReadOutcome.Ignored, decodeRscRead(UUID.randomUUID(), ByteArray(0), false))
     }
@@ -85,7 +86,7 @@ class RscProductionPlumbingTest {
         val source = MetricSourceId(
             ConnectionId("RUNPOD", 7),
             MetricProtocol.RSC,
-            BluetoothIds.UUID_RSC_MEASUREMENT,
+            SigUuids.UUID_RSC_MEASUREMENT,
         )
 
         emitRscMetrics(
@@ -110,8 +111,8 @@ class RscProductionPlumbingTest {
     @Test
     fun `RSC CCCD failure prevents readiness and HRM plus RSC remain distinct owners`() {
         val cccd = CccdState()
-        val service = BluetoothIds.UUID_RSC_SERVICE
-        cccd.mergeEnablePlan(listOf(CccdTarget(service, BluetoothIds.UUID_RSC_MEASUREMENT)))
+        val service = SigUuids.UUID_RSC_SERVICE
+        cccd.mergeEnablePlan(listOf(CccdTarget(service, SigUuids.UUID_RSC_MEASUREMENT)))
         cccd.incrementPending()
         cccd.markEnablePlanFailed()
         assertFalse(cccd.completePending())
@@ -122,13 +123,13 @@ class RscProductionPlumbingTest {
         val handlers = listOf(hrm, rsc)
         val rscRoute = resolveProtocolHandlerRoute(
             handlers,
-            BluetoothIds.UUID_RSC_MEASUREMENT,
-            BluetoothIds.UUID_RSC_SERVICE,
+            SigUuids.UUID_RSC_MEASUREMENT,
+            SigUuids.UUID_RSC_SERVICE,
         )
         val hrmRoute = resolveProtocolHandlerRoute(
             handlers,
-            BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
-            BluetoothIds.UUID_HRM_SERVICE,
+            SigUuids.UUID_HEART_RATE_MEASUREMENT,
+            SigUuids.UUID_HRM_SERVICE,
         )
 
         assertEquals(listOf(rsc), rscRoute.owners)

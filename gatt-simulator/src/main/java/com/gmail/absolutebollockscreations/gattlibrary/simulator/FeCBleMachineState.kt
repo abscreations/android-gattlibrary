@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /** Persona-specific bounds for the deterministic simulator workout, not physical-product claims. */
 data class FeCSyntheticWorkoutRange(
@@ -39,7 +40,7 @@ enum class FeCEquipmentType(
     val workoutRange: FeCSyntheticWorkoutRange,
 ) {
     TRAINER(
-        BluetoothIds.FEC_EQUIPMENT_TRAINER,
+        FecBleUuids.FEC_EQUIPMENT_TRAINER,
         "Trainer",
         supportsControl = true,
         includesCpsOverlay = true,
@@ -53,7 +54,7 @@ enum class FeCEquipmentType(
         ),
     ),
     STATIONARY_BIKE(
-        BluetoothIds.FEC_EQUIPMENT_STATIONARY_BIKE,
+        FecBleUuids.FEC_EQUIPMENT_STATIONARY_BIKE,
         "Stationary Bike",
         supportsControl = false,
         includesCpsOverlay = true,
@@ -67,7 +68,7 @@ enum class FeCEquipmentType(
         ),
     ),
     TREADMILL(
-        BluetoothIds.FEC_EQUIPMENT_TREADMILL,
+        FecBleUuids.FEC_EQUIPMENT_TREADMILL,
         "Treadmill",
         supportsControl = false,
         includesCpsOverlay = false,
@@ -81,7 +82,7 @@ enum class FeCEquipmentType(
         ),
     ),
     ELLIPTICAL(
-        BluetoothIds.FEC_EQUIPMENT_ELLIPTICAL,
+        FecBleUuids.FEC_EQUIPMENT_ELLIPTICAL,
         "Elliptical",
         supportsControl = false,
         includesCpsOverlay = false,
@@ -95,7 +96,7 @@ enum class FeCEquipmentType(
         ),
     ),
     ROWER(
-        BluetoothIds.FEC_EQUIPMENT_ROWER,
+        FecBleUuids.FEC_EQUIPMENT_ROWER,
         "Rower",
         supportsControl = false,
         includesCpsOverlay = false,
@@ -109,7 +110,7 @@ enum class FeCEquipmentType(
         ),
     ),
     CLIMBER(
-        BluetoothIds.FEC_EQUIPMENT_CLIMBER,
+        FecBleUuids.FEC_EQUIPMENT_CLIMBER,
         "Climber",
         supportsControl = false,
         includesCpsOverlay = false,
@@ -123,7 +124,7 @@ enum class FeCEquipmentType(
         ),
     ),
     NORDIC_SKIER(
-        BluetoothIds.FEC_EQUIPMENT_NORDIC_SKIER,
+        FecBleUuids.FEC_EQUIPMENT_NORDIC_SKIER,
         "Nordic Skier",
         supportsControl = false,
         includesCpsOverlay = false,

@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * One canonical metric derived from a decoded FE-C page, in FitBridge units. Mirrors
@@ -196,27 +197,27 @@ internal object FeCMetricMapper {
      * behavior, with ski equipment identity retained separately on the connection context.
      */
     fun activityTypeFor(equipmentType: Int): ActivityType? = when (equipmentType) {
-        BluetoothIds.FEC_EQUIPMENT_TREADMILL -> ActivityType.TREADMILL
-        BluetoothIds.FEC_EQUIPMENT_ELLIPTICAL -> ActivityType.ELLIPTICAL
-        BluetoothIds.FEC_EQUIPMENT_ROWER -> ActivityType.ROWING
-        BluetoothIds.FEC_EQUIPMENT_CLIMBER -> ActivityType.STAIRCLIMBER
-        BluetoothIds.FEC_EQUIPMENT_NORDIC_SKIER -> ActivityType.ROWING
+        FecBleUuids.FEC_EQUIPMENT_TREADMILL -> ActivityType.TREADMILL
+        FecBleUuids.FEC_EQUIPMENT_ELLIPTICAL -> ActivityType.ELLIPTICAL
+        FecBleUuids.FEC_EQUIPMENT_ROWER -> ActivityType.ROWING
+        FecBleUuids.FEC_EQUIPMENT_CLIMBER -> ActivityType.STAIRCLIMBER
+        FecBleUuids.FEC_EQUIPMENT_NORDIC_SKIER -> ActivityType.ROWING
         // FEC_EQUIPMENT_STATIONARY_BIKE == FEC_EQUIPMENT_TRAINER == 25 on the wire (the ANT+
         // spec gives Trainer and Stationary Bike the same equipment-type value - see
         // BluetoothIds' doc on FEC_EQUIPMENT_STATIONARY_BIKE); one `when` branch covers both,
         // since a duplicate-valued branch would be unreachable dead code, not a second case.
-        BluetoothIds.FEC_EQUIPMENT_TRAINER -> ActivityType.BIKING
+        FecBleUuids.FEC_EQUIPMENT_TRAINER -> ActivityType.BIKING
         else -> null
     }
 
     /** Presentation identity kept separate from the session/provider activity mapping above. */
     fun machineDeviceTypeFor(equipmentType: Int): BtEngineState.MachineDeviceType? = when (equipmentType) {
-        BluetoothIds.FEC_EQUIPMENT_TREADMILL -> BtEngineState.MachineDeviceType.TREADMILL
-        BluetoothIds.FEC_EQUIPMENT_ELLIPTICAL -> BtEngineState.MachineDeviceType.ELLIPTICAL
-        BluetoothIds.FEC_EQUIPMENT_ROWER -> BtEngineState.MachineDeviceType.ROWER
-        BluetoothIds.FEC_EQUIPMENT_CLIMBER -> BtEngineState.MachineDeviceType.STAIR_CLIMBER
-        BluetoothIds.FEC_EQUIPMENT_NORDIC_SKIER -> BtEngineState.MachineDeviceType.SKI_ERG
-        BluetoothIds.FEC_EQUIPMENT_TRAINER -> BtEngineState.MachineDeviceType.BIKE
+        FecBleUuids.FEC_EQUIPMENT_TREADMILL -> BtEngineState.MachineDeviceType.TREADMILL
+        FecBleUuids.FEC_EQUIPMENT_ELLIPTICAL -> BtEngineState.MachineDeviceType.ELLIPTICAL
+        FecBleUuids.FEC_EQUIPMENT_ROWER -> BtEngineState.MachineDeviceType.ROWER
+        FecBleUuids.FEC_EQUIPMENT_CLIMBER -> BtEngineState.MachineDeviceType.STAIR_CLIMBER
+        FecBleUuids.FEC_EQUIPMENT_NORDIC_SKIER -> BtEngineState.MachineDeviceType.SKI_ERG
+        FecBleUuids.FEC_EQUIPMENT_TRAINER -> BtEngineState.MachineDeviceType.BIKE
         else -> null
     }
 }

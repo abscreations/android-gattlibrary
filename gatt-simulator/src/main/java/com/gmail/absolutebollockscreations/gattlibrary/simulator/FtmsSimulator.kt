@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 /**
  * Debug-only synthetic data source.
@@ -1141,9 +1142,9 @@ class FtmsSimulator(
             distanceMeters = sample.distanceMeters?.toDouble() ?: 0.0,
         )
         val frames = listOf(
-            BluetoothIds.UUID_X70_SUPPLEMENTAL to session.encoder.encodeSupplemental(state),
-            BluetoothIds.UUID_X70_SIBLING to session.encoder.encodeSibling(state),
-            BluetoothIds.UUID_X70_MEASUREMENT to session.encoder.encodeMain(state),
+            SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL to session.encoder.encodeSupplemental(state),
+            SchwinnX70Uuids.UUID_X70_SIBLING to session.encoder.encodeSibling(state),
+            SchwinnX70Uuids.UUID_X70_MEASUREMENT to session.encoder.encodeMain(state),
         )
         session.encoder.completeTick()
         peripheral.publishSchwinnX70(frames)

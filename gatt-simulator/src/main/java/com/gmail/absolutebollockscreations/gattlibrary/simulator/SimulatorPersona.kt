@@ -6,6 +6,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Protocol-level identity selected by the debug peripheral simulator. */
 sealed interface SimulatorPersona {
@@ -577,14 +578,14 @@ private fun concept2ExtendedStatus3Threshold(machine: Concept2Machine): Float = 
  * number, erg machine type and the two transport-hint characteristics.
  */
 private fun modernDeviceInformation(): List<UUID> = listOf(
-    BluetoothIds.UUID_C2_MODEL_NUMBER,
-    BluetoothIds.UUID_C2_SERIAL_NUMBER,
-    BluetoothIds.UUID_C2_HARDWARE_REVISION,
-    BluetoothIds.UUID_C2_FIRMWARE_REVISION,
-    BluetoothIds.UUID_C2_MANUFACTURER_NAME,
-    BluetoothIds.UUID_C2_MACHINE_TYPE,
-    BluetoothIds.UUID_C2_ATT_RECEIVE_MTU,
-    BluetoothIds.UUID_C2_LL_MAX_TX_RX_BYTES,
+    Concept2Uuids.UUID_C2_MODEL_NUMBER,
+    Concept2Uuids.UUID_C2_SERIAL_NUMBER,
+    Concept2Uuids.UUID_C2_HARDWARE_REVISION,
+    Concept2Uuids.UUID_C2_FIRMWARE_REVISION,
+    Concept2Uuids.UUID_C2_MANUFACTURER_NAME,
+    Concept2Uuids.UUID_C2_MACHINE_TYPE,
+    Concept2Uuids.UUID_C2_ATT_RECEIVE_MTU,
+    Concept2Uuids.UUID_C2_LL_MAX_TX_RX_BYTES,
 )
 
 /**
@@ -593,23 +594,23 @@ private fun modernDeviceInformation(): List<UUID> = listOf(
  * expose `0x003C`, `0x003E`, `0x003F`, or the `CE060040` heart-rate receive service.
  */
 private fun modernErgCharacteristics() = listOf(
-    c2Notify(BluetoothIds.UUID_C2_GENERAL_STATUS),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
+    c2Notify(Concept2Uuids.UUID_C2_GENERAL_STATUS),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2),
     Concept2CharacteristicManifest(
-        BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE,
+        Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE,
         readable = true,
         writable = true,
     ),
-    c2Notify(BluetoothIds.UUID_C2_STROKE_DATA),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
-    c2Notify(BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL),
-    c2Notify(BluetoothIds.UUID_C2_WORKOUT_SUMMARY),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
-    c2Notify(BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO),
-    c2Notify(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
-    c2Notify(BluetoothIds.UUID_C2_FORCE_CURVE_DATA),
+    c2Notify(Concept2Uuids.UUID_C2_STROKE_DATA),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA),
+    c2Notify(Concept2Uuids.UUID_C2_SPLIT_INTERVAL_DATA),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_SPLIT_INTERVAL),
+    c2Notify(Concept2Uuids.UUID_C2_WORKOUT_SUMMARY),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
+    c2Notify(Concept2Uuids.UUID_C2_HEART_RATE_BELT_INFO),
+    c2Notify(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION),
+    c2Notify(Concept2Uuids.UUID_C2_FORCE_CURVE_DATA),
 )
 
 /**
@@ -622,10 +623,10 @@ private fun modernErgCharacteristics() = listOf(
  * the hardware makes the same point more forcefully by not implementing it at all.
  */
 private fun preFtmsDeviceInformation(): List<UUID> = listOf(
-    BluetoothIds.UUID_C2_SERIAL_NUMBER,
-    BluetoothIds.UUID_C2_HARDWARE_REVISION,
-    BluetoothIds.UUID_C2_FIRMWARE_REVISION,
-    BluetoothIds.UUID_C2_MANUFACTURER_NAME,
+    Concept2Uuids.UUID_C2_SERIAL_NUMBER,
+    Concept2Uuids.UUID_C2_HARDWARE_REVISION,
+    Concept2Uuids.UUID_C2_FIRMWARE_REVISION,
+    Concept2Uuids.UUID_C2_MANUFACTURER_NAME,
 )
 
 /**
@@ -639,22 +640,22 @@ private fun preFtmsDeviceInformation(): List<UUID> = listOf(
  * make `0x003E` require offsets past our 12-octet payload.
  */
 private fun preFtmsErgCharacteristics() = listOf(
-    c2Notify(BluetoothIds.UUID_C2_GENERAL_STATUS),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
+    c2Notify(Concept2Uuids.UUID_C2_GENERAL_STATUS),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2),
     Concept2CharacteristicManifest(
-        BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE,
+        Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE,
         readable = true,
         writable = true,
     ),
-    c2Notify(BluetoothIds.UUID_C2_STROKE_DATA),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
-    c2Notify(BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL),
-    c2Notify(BluetoothIds.UUID_C2_WORKOUT_SUMMARY),
-    c2Notify(BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
-    c2Notify(BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO),
-    c2Notify(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
+    c2Notify(Concept2Uuids.UUID_C2_STROKE_DATA),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA),
+    c2Notify(Concept2Uuids.UUID_C2_SPLIT_INTERVAL_DATA),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_SPLIT_INTERVAL),
+    c2Notify(Concept2Uuids.UUID_C2_WORKOUT_SUMMARY),
+    c2Notify(Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY),
+    c2Notify(Concept2Uuids.UUID_C2_HEART_RATE_BELT_INFO),
+    c2Notify(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION),
 )
 
 private fun c2Notify(uuid: UUID) = Concept2CharacteristicManifest(uuid, notifiable = true)

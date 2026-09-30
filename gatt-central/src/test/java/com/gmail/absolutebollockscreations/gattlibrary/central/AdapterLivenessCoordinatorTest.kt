@@ -12,6 +12,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * The §0.7a integration that Phase 0.7a never shipped.
@@ -150,7 +152,7 @@ class AdapterLivenessCoordinatorTest {
     fun `a PM5 serving FTMS and the Erg service selects only Concept2`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
-            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, Concept2Uuids.UUID_C2_ERG_SERVICE),
         )
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
@@ -167,7 +169,7 @@ class AdapterLivenessCoordinatorTest {
     fun `a silent Concept2 stream never falls back to FTMS`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
-            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, Concept2Uuids.UUID_C2_ERG_SERVICE),
         )
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
@@ -181,7 +183,7 @@ class AdapterLivenessCoordinatorTest {
     @Test
     fun `an FTMS sample cannot satisfy native-only PM5 liveness`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
-        val ctx = context(services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE))
+        val ctx = context(services = setOf(FtmsUuids.UUID_FTMS_SERVICE, Concept2Uuids.UUID_C2_ERG_SERVICE))
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
         coordinator.onSample(sample(ctx, atMs = 400L))
         assertEquals(AdapterPolicyState.AWAITING_DATA, coordinator.stateOf(ctx.connectionId))
@@ -192,7 +194,7 @@ class AdapterLivenessCoordinatorTest {
     @Test
     fun `a Concept2-only PM is driven by the proprietary path from the start`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
-        val ctx = context(services = setOf(BluetoothIds.UUID_C2_ERG_SERVICE))
+        val ctx = context(services = setOf(Concept2Uuids.UUID_C2_ERG_SERVICE))
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
 
@@ -206,13 +208,13 @@ class AdapterLivenessCoordinatorTest {
     fun `native Concept2 measurements satisfy PM5 liveness`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
-            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, Concept2Uuids.UUID_C2_ERG_SERVICE),
         )
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
         coordinator.onSample(sample(ctx, atMs = 400L).copy(
             sourceId = MetricSourceId(ctx.connectionId, MetricProtocol.VENDOR,
-                BluetoothIds.UUID_C2_GENERAL_STATUS),
+                Concept2Uuids.UUID_C2_GENERAL_STATUS),
             protocol = MetricProtocol.VENDOR,
             sourceClass = MetricSourceClass.VENDOR_NATIVE,
         ))
@@ -235,7 +237,7 @@ class AdapterLivenessCoordinatorTest {
         // The generic ranks remain unchanged, but FTMS is excluded before the policy ranks them.
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
-            services = setOf(BluetoothIds.UUID_C2_ERG_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
+            services = setOf(Concept2Uuids.UUID_C2_ERG_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
         )
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
 
@@ -249,7 +251,7 @@ class AdapterLivenessCoordinatorTest {
     @Test
     fun `a machine with neither service registers no candidate`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
-        val ctx = context(services = setOf(BluetoothIds.UUID_HRM_SERVICE))
+        val ctx = context(services = setOf(SigUuids.UUID_HRM_SERVICE))
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
         coordinator.tick(10_000L)
@@ -291,7 +293,7 @@ class AdapterLivenessCoordinatorTest {
     @Test
     fun `a machine without the FTMS service produces no candidate`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
-        val ctx = context(services = setOf(BluetoothIds.UUID_HRM_SERVICE))
+        val ctx = context(services = setOf(SigUuids.UUID_HRM_SERVICE))
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
 

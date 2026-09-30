@@ -8,6 +8,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class CscProductionPlumbingTest {
 
@@ -15,8 +16,8 @@ class CscProductionPlumbingTest {
     fun `Measurement and Feature are both mandatory`() {
         listOf(
             emptySet(),
-            setOf(BluetoothIds.UUID_CSC_MEASUREMENT),
-            setOf(BluetoothIds.UUID_CSC_FEATURE),
+            setOf(SigUuids.UUID_CSC_MEASUREMENT),
+            setOf(SigUuids.UUID_CSC_FEATURE),
         ).forEach { characteristics ->
             val plan = planCscDiscovery(characteristics)
             assertFalse(plan.activate)
@@ -28,20 +29,20 @@ class CscProductionPlumbingTest {
     fun `Feature read precedes Measurement subscription`() {
         val plan = planCscDiscovery(
             setOf(
-                BluetoothIds.UUID_CSC_MEASUREMENT,
-                BluetoothIds.UUID_CSC_FEATURE,
-                BluetoothIds.UUID_SENSOR_LOCATION,
-                BluetoothIds.UUID_SC_CONTROL_POINT,
+                SigUuids.UUID_CSC_MEASUREMENT,
+                SigUuids.UUID_CSC_FEATURE,
+                SigUuids.UUID_SENSOR_LOCATION,
+                SigUuids.UUID_SC_CONTROL_POINT,
             ),
         )
 
         assertTrue(plan.activate)
         assertEquals(
             listOf(
-                CscGattOperation(CscGattOperationKind.READ, BluetoothIds.UUID_CSC_FEATURE),
+                CscGattOperation(CscGattOperationKind.READ, SigUuids.UUID_CSC_FEATURE),
                 CscGattOperation(
                     CscGattOperationKind.ENABLE_NOTIFICATIONS,
-                    BluetoothIds.UUID_CSC_MEASUREMENT,
+                    SigUuids.UUID_CSC_MEASUREMENT,
                 ),
             ),
             plan.operations,
@@ -51,7 +52,7 @@ class CscProductionPlumbingTest {
     @Test
     fun `Feature read decodes unsigned bits and authoritative roles`() {
         val wheel = decodeCscFeatureRead(
-            BluetoothIds.UUID_CSC_FEATURE,
+            SigUuids.UUID_CSC_FEATURE,
             byteArrayOf(0x01, 0x00),
             success = true,
         ) as CscFeatureReadOutcome.Features
@@ -60,7 +61,7 @@ class CscProductionPlumbingTest {
         assertEquals(BtEngineState.CscRoleSource.FEATURE, wheel.capability?.source)
 
         val highBits = decodeCscFeatureRead(
-            BluetoothIds.UUID_CSC_FEATURE,
+            SigUuids.UUID_CSC_FEATURE,
             byteArrayOf(0x03, 0x80.toByte()),
             success = true,
         ) as CscFeatureReadOutcome.Features
@@ -73,7 +74,7 @@ class CscProductionPlumbingTest {
         assertEquals(
             CscFeatureReadOutcome.Unavailable,
             decodeCscFeatureRead(
-                BluetoothIds.UUID_CSC_FEATURE,
+                SigUuids.UUID_CSC_FEATURE,
                 byteArrayOf(0x03),
                 success = true,
             ),
@@ -81,13 +82,13 @@ class CscProductionPlumbingTest {
         assertEquals(
             CscFeatureReadOutcome.Unavailable,
             decodeCscFeatureRead(
-                BluetoothIds.UUID_CSC_FEATURE,
+                SigUuids.UUID_CSC_FEATURE,
                 byteArrayOf(0x03, 0x00),
                 success = false,
             ),
         )
         val zero = decodeCscFeatureRead(
-            BluetoothIds.UUID_CSC_FEATURE,
+            SigUuids.UUID_CSC_FEATURE,
             byteArrayOf(0x00, 0x00),
             success = true,
         ) as CscFeatureReadOutcome.Features
@@ -114,7 +115,7 @@ class CscProductionPlumbingTest {
     fun `CSC activates alone or beside HRM on one link`() {
         val cscOnly = activateMatchingProtocolHandlers(
             candidates = listOf(CscProtocolHandler(), HrmProtocolHandler()),
-            discoveredServiceUuids = setOf(BluetoothIds.UUID_CSC_SERVICE),
+            discoveredServiceUuids = setOf(SigUuids.UUID_CSC_SERVICE),
             offer = { true },
         )
         assertEquals(1, cscOnly.size)
@@ -123,8 +124,8 @@ class CscProductionPlumbingTest {
         val combined = activateMatchingProtocolHandlers(
             candidates = listOf(CscProtocolHandler(), HrmProtocolHandler()),
             discoveredServiceUuids = setOf(
-                BluetoothIds.UUID_CSC_SERVICE,
-                BluetoothIds.UUID_HRM_SERVICE,
+                SigUuids.UUID_CSC_SERVICE,
+                SigUuids.UUID_HRM_SERVICE,
             ),
             offer = { true },
         )
@@ -139,13 +140,13 @@ class CscProductionPlumbingTest {
         val hrm = HrmProtocolHandler()
         val measurementRoute = resolveProtocolHandlerRoute(
             listOf(hrm, csc),
-            BluetoothIds.UUID_CSC_MEASUREMENT,
-            BluetoothIds.UUID_CSC_SERVICE,
+            SigUuids.UUID_CSC_MEASUREMENT,
+            SigUuids.UUID_CSC_SERVICE,
         )
         val featureRoute = resolveProtocolHandlerRoute(
             listOf(hrm, csc),
-            BluetoothIds.UUID_CSC_FEATURE,
-            BluetoothIds.UUID_CSC_SERVICE,
+            SigUuids.UUID_CSC_FEATURE,
+            SigUuids.UUID_CSC_SERVICE,
         )
 
         assertEquals(listOf(csc), measurementRoute.owners)
@@ -170,7 +171,7 @@ class CscProductionPlumbingTest {
     fun `CSC CCCD failure prevents readiness`() {
         val cccd = CccdState()
         cccd.mergeEnablePlan(
-            listOf(CccdTarget(BluetoothIds.UUID_CSC_SERVICE, BluetoothIds.UUID_CSC_MEASUREMENT)),
+            listOf(CccdTarget(SigUuids.UUID_CSC_SERVICE, SigUuids.UUID_CSC_MEASUREMENT)),
         )
         cccd.incrementPending()
         cccd.markEnablePlanFailed()

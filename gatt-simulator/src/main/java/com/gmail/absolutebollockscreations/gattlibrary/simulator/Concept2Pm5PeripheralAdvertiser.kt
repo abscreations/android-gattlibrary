@@ -39,6 +39,8 @@ import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** PM5-only Android GATT server with capture-bounded C2a short-frame CSAFE transport. */
 internal class Concept2Pm5PeripheralAdvertiser(
@@ -114,10 +116,10 @@ internal class Concept2Pm5PeripheralAdvertiser(
     }
 
     private fun isStrokeFrame(frame: Frame): Boolean =
-        frame.uuid == BluetoothIds.UUID_C2_STROKE_DATA ||
-            frame.uuid == BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA ||
-            frame.uuid == BluetoothIds.UUID_C2_FORCE_CURVE_DATA ||
-            (frame.uuid == BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION &&
+        frame.uuid == Concept2Uuids.UUID_C2_STROKE_DATA ||
+            frame.uuid == Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA ||
+            frame.uuid == Concept2Uuids.UUID_C2_FORCE_CURVE_DATA ||
+            (frame.uuid == Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION &&
                 frame.value.firstOrNull()?.let { (it.toInt() and 0xFF) in STROKE_IDS } == true)
 
     fun hasWorkoutMeasurementSubscription(): Boolean =
@@ -137,7 +139,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
         clients.values.forEach { client ->
             client.session.resetCsafeWorkoutState()
             synchronized(client) {
-                client.pending.removeIf { it.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE }
+                client.pending.removeIf { it.uuid == Concept2Uuids.UUID_C2_CSAFE_RESPONSE }
             }
         }
     }
@@ -380,8 +382,8 @@ internal class Concept2Pm5PeripheralAdvertiser(
         ) {
             val client = clients[device.address.lowercase()] ?: Client(device).also { clients[device.address.lowercase()] = it }
             val value = when (characteristic.uuid) {
-                BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE -> byteArrayOf(client.session.sampleRate.toByte())
-                BluetoothIds.UUID_C2_CSAFE_RESPONSE -> client.session.csafeResponse
+                Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE -> byteArrayOf(client.session.sampleRate.toByte())
+                Concept2Uuids.UUID_C2_CSAFE_RESPONSE -> client.session.csafeResponse
                 FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> profile?.readFtms(characteristic.uuid)
                 else -> profile?.readDeviceInformation(characteristic.uuid, 0, client.mtu)
             }
@@ -401,7 +403,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
             val structurallyWritable = !preparedWrite && offset == 0
             var csafeNotification: ByteArray? = null
             val status = when (characteristic.uuid) {
-                BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE -> {
+                Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE -> {
                     val ok = structurallyWritable && value.size == 1 &&
                         client.session.setSampleRate(value[0].toInt() and 0xFF)
                     if (ok) {
@@ -410,14 +412,14 @@ internal class Concept2Pm5PeripheralAdvertiser(
                     }
                     if (ok) BluetoothGatt.GATT_SUCCESS else BluetoothGatt.GATT_FAILURE
                 }
-                BluetoothIds.UUID_C2_HEART_RATE_RECEIVE -> {
+                Concept2Uuids.UUID_C2_HEART_RATE_RECEIVE -> {
                     if (structurallyWritable && client.session.setHeartRateInput(value)) {
                         BluetoothGatt.GATT_SUCCESS
                     } else {
                         BluetoothGatt.GATT_FAILURE
                     }
                 }
-                BluetoothIds.UUID_C2_CSAFE_REQUEST -> {
+                Concept2Uuids.UUID_C2_CSAFE_REQUEST -> {
                     if (!structurallyWritable) {
                         BluetoothGatt.GATT_FAILURE
                     } else {
@@ -452,7 +454,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
                 enqueue(
                     client,
                     Frame(
-                        BluetoothIds.UUID_C2_CSAFE_RESPONSE,
+                        Concept2Uuids.UUID_C2_CSAFE_RESPONSE,
                         it,
                         conflatable = false,
                         transactional = true,
@@ -463,7 +465,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
 
         override fun onDescriptorReadRequest(device: BluetoothDevice, requestId: Int, offset: Int, descriptor: BluetoothGattDescriptor) {
             val client = clients[device.address.lowercase()]
-            val value = if (descriptor.uuid == BluetoothIds.UUID_CCCD && client != null) {
+            val value = if (descriptor.uuid == SigUuids.UUID_CCCD && client != null) {
                 if (client.session.isSubscribed(descriptor.characteristic.uuid)) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
             } else null
             respondRead(device, requestId, offset, value)
@@ -481,7 +483,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
             val client = clients[device.address.lowercase()] ?: Client(device).also { clients[device.address.lowercase()] = it }
             val enable = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-            val ok = descriptor.uuid == BluetoothIds.UUID_CCCD && !preparedWrite && offset == 0 && (enable || disable)
+            val ok = descriptor.uuid == SigUuids.UUID_CCCD && !preparedWrite && offset == 0 && (enable || disable)
             if (ok) client.session.setSubscribed(descriptor.characteristic.uuid, enable)
             if (ok && descriptor.characteristic.uuid == FtmsUuids.UUID_ROWING_MACHINE_DATA) {
                 client.nextFtmsDueMs = 0L
@@ -490,7 +492,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
                 }
             }
             if (responseNeeded) server?.sendResponse(device, requestId, if (ok) BluetoothGatt.GATT_SUCCESS else BluetoothGatt.GATT_FAILURE, 0, null)
-            if (ok && enable && descriptor.characteristic.uuid == BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3) {
+            if (ok && enable && descriptor.characteristic.uuid == Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3) {
                 latest?.let {
                     enqueueAdditionalStatus3(
                         client,
@@ -580,7 +582,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
         }
         client.session.nextMuxId(liveIds)?.let { id ->
             Concept2Pm5Encoder.multiplexed(id, snapshot)?.let {
-                enqueue(client, Frame(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, it, true))
+                enqueue(client, Frame(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION, it, true))
             }
         }
         if (snapshot.splitSequence > client.lastSplitSequence) {
@@ -593,13 +595,13 @@ internal class Concept2Pm5PeripheralAdvertiser(
         }
         if (forceCurveAvailable(persona?.machine, snapshot) &&
             snapshot.forceCurveSequence > client.lastForceCurveSequence &&
-            client.session.isSubscribed(BluetoothIds.UUID_C2_FORCE_CURVE_DATA)
+            client.session.isSubscribed(Concept2Uuids.UUID_C2_FORCE_CURVE_DATA)
         ) {
             client.lastForceCurveSequence = snapshot.forceCurveSequence
             enqueueSequence(
                 client,
                 Concept2Pm5Encoder.forceCurve(snapshot).map {
-                    Frame(BluetoothIds.UUID_C2_FORCE_CURVE_DATA, it, false)
+                    Frame(Concept2Uuids.UUID_C2_FORCE_CURVE_DATA, it, false)
                 },
             )
         }
@@ -622,7 +624,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
         force: Boolean,
         nowMs: Long,
     ) {
-        val uuid = BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3
+        val uuid = Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3
         if (!client.session.isSubscribed(uuid)) return
         val value = Concept2Pm5Encoder.individual(uuid, snapshot) ?: return
         if (client.session.shouldEmitAdditionalStatus3(value, force)) {
@@ -638,8 +640,8 @@ internal class Concept2Pm5PeripheralAdvertiser(
             when {
                 client.session.isSubscribed(individual) ->
                     Concept2Pm5Encoder.individual(individual, snapshot)?.let { Frame(individual, it, false) }
-                client.session.isSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION) ->
-                    Concept2Pm5Encoder.multiplexed(id, snapshot)?.let { Frame(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, it, false) }
+                client.session.isSubscribed(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION) ->
+                    Concept2Pm5Encoder.multiplexed(id, snapshot)?.let { Frame(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION, it, false) }
                 else -> null
             }
         }
@@ -697,10 +699,10 @@ internal class Concept2Pm5PeripheralAdvertiser(
             }
         } ?: return
         val serviceUuid = when (frame.uuid) {
-            BluetoothIds.UUID_C2_CSAFE_RESPONSE -> BluetoothIds.UUID_C2_PM_CONTROL_SERVICE
+            Concept2Uuids.UUID_C2_CSAFE_RESPONSE -> Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE
             FtmsUuids.UUID_ROWING_MACHINE_DATA,
             FtmsUuids.UUID_BIKING_DATA -> FtmsUuids.UUID_FTMS_SERVICE
-            else -> BluetoothIds.UUID_C2_ERG_SERVICE
+            else -> Concept2Uuids.UUID_C2_ERG_SERVICE
         }
         val characteristic = server?.getService(serviceUuid)?.getCharacteristic(frame.uuid)
         if (characteristic == null || !notify(client.device, characteristic, frame.value)) {

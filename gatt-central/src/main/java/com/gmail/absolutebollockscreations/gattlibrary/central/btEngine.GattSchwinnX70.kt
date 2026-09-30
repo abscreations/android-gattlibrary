@@ -10,6 +10,7 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 /**
  * Schwinn x70 protocol handler — 170 / 270 / 570 (plan §7), measurement-only.
@@ -61,7 +62,7 @@ import java.util.UUID
 @GattLibraryInternalApi
 class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_X70_SERVICE)
+    override val primaryServices: Set<UUID> = setOf(SchwinnX70Uuids.UUID_X70_SERVICE)
 
     /**
      * The characteristics this handler decodes, plus the one it writes.
@@ -82,10 +83,10 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
      * this set stays exactly what the handler touches.
      */
     override val extraCharacteristics: Set<UUID> = setOf(
-        BluetoothIds.UUID_X70_MEASUREMENT,
-        BluetoothIds.UUID_X70_SUPPLEMENTAL,
-        BluetoothIds.UUID_X70_SIBLING,
-        BluetoothIds.UUID_X70_CONTROL,
+        SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+        SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+        SchwinnX70Uuids.UUID_X70_SIBLING,
+        SchwinnX70Uuids.UUID_X70_CONTROL,
     )
 
     /**
@@ -170,7 +171,7 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
             return false
         }
 
-        val service = services.first { it.uuid == BluetoothIds.UUID_X70_SERVICE }
+        val service = services.first { it.uuid == SchwinnX70Uuids.UUID_X70_SERVICE }
         for (target in targets) {
             service.characteristics
                 .firstOrNull { it.uuid == target.characteristicUuid }
@@ -187,11 +188,11 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // it. That is the opposite of the Life Fitness ordering, where the captures show the
         // measurement CCCDs armed only after the proprietary exchange — evidence decides each, and
         // neither order is a house style.
-        if (!initialisationWritten && inventory[BluetoothIds.UUID_X70_SERVICE]
-                ?.contains(BluetoothIds.UUID_X70_CONTROL) == true
+        if (!initialisationWritten && inventory[SchwinnX70Uuids.UUID_X70_SERVICE]
+                ?.contains(SchwinnX70Uuids.UUID_X70_CONTROL) == true
         ) {
             initialisationWritten = true
-            engine.pushWrite(context, SCHWINN_X70_INITIALISATION, BluetoothIds.UUID_X70_CONTROL)
+            engine.pushWrite(context, SCHWINN_X70_INITIALISATION, SchwinnX70Uuids.UUID_X70_CONTROL)
         }
         return true
     }
@@ -254,9 +255,9 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         arrivalMs: Long,
         athleteMassKg: Double = SchwinnX70PowerModel.DEFAULT_ATHLETE_MASS_KG,
     ): List<SchwinnX70Sample> = when (characteristic) {
-        BluetoothIds.UUID_X70_MEASUREMENT -> mainSamples(value, arrivalMs, athleteMassKg)
-        BluetoothIds.UUID_X70_SUPPLEMENTAL -> supplementalSamples(value)
-        BluetoothIds.UUID_X70_SIBLING -> siblingSamples(value, arrivalMs)
+        SchwinnX70Uuids.UUID_X70_MEASUREMENT -> mainSamples(value, arrivalMs, athleteMassKg)
+        SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL -> supplementalSamples(value)
+        SchwinnX70Uuids.UUID_X70_SIBLING -> siblingSamples(value, arrivalMs)
         else -> emptyList()
     }
 
@@ -434,11 +435,11 @@ val SCHWINN_X70_INITIALISATION: ByteArray = byteArrayOf(
  * matcher side and this function guards on the subscription side.
  */
 internal fun planSchwinnX70Discovery(inventory: Map<UUID, Set<UUID>>): List<CccdTarget> {
-    val characteristics = inventory[BluetoothIds.UUID_X70_SERVICE] ?: return emptyList()
+    val characteristics = inventory[SchwinnX70Uuids.UUID_X70_SERVICE] ?: return emptyList()
     return listOf(
-        BluetoothIds.UUID_X70_MEASUREMENT,
-        BluetoothIds.UUID_X70_SUPPLEMENTAL,
-        BluetoothIds.UUID_X70_SIBLING,
+        SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+        SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+        SchwinnX70Uuids.UUID_X70_SIBLING,
     ).filter { it in characteristics }
-        .map { CccdTarget(serviceUuid = BluetoothIds.UUID_X70_SERVICE, characteristicUuid = it) }
+        .map { CccdTarget(serviceUuid = SchwinnX70Uuids.UUID_X70_SERVICE, characteristicUuid = it) }
 }

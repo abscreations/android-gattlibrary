@@ -9,6 +9,8 @@ import timber.log.Timber
 import java.util.TimeZone
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 internal data class KayakFirstCharacteristicInventory(
     val properties: Int,
@@ -46,9 +48,9 @@ internal fun planKayakFirstDiscovery(
     if (advertisementCandidateId != KAYAK_FIRST_CANDIDATE_ID) {
         return reject(KayakFirstDiscoveryFailure.ADVERTISEMENT_CANDIDATE_MISSING)
     }
-    val service = inventory.services[BluetoothIds.UUID_KAYAK_FIRST_SERVICE]
+    val service = inventory.services[KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE]
         ?: return reject(KayakFirstDiscoveryFailure.MISSING_SERVICE)
-    val io = service[BluetoothIds.UUID_KAYAK_FIRST_IO]
+    val io = service[KayakFirstUuids.UUID_KAYAK_FIRST_IO]
         ?: return reject(KayakFirstDiscoveryFailure.MISSING_IO)
     if (io.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY == 0) {
         return reject(KayakFirstDiscoveryFailure.IO_NOT_NOTIFY)
@@ -65,8 +67,8 @@ internal fun planKayakFirstDiscovery(
         failure = null,
         notificationTarget = if (io.hasCccd) {
             CccdTarget(
-                BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
-                BluetoothIds.UUID_KAYAK_FIRST_IO,
+                KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
+                KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             )
         } else {
             null
@@ -80,7 +82,7 @@ internal fun List<BluetoothGattService>.toKayakFirstInventory(): KayakFirstGattI
             service.uuid to service.characteristics.orEmpty().associate { characteristic ->
                 characteristic.uuid to KayakFirstCharacteristicInventory(
                     properties = characteristic.properties,
-                    hasCccd = characteristic.getDescriptor(BluetoothIds.UUID_CCCD) != null,
+                    hasCccd = characteristic.getDescriptor(SigUuids.UUID_CCCD) != null,
                 )
             }
         },
@@ -97,8 +99,8 @@ internal class KayakFirstProtocolHandler(
     private var displayConfiguration: KayakFirstDisplayConfiguration =
         KayakFirstDisplayConfiguration.DEFAULT,
 ) : BtEngineGattCore.ProtocolHandler {
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_KAYAK_FIRST_SERVICE)
-    override val extraCharacteristics: Set<UUID> = setOf(BluetoothIds.UUID_KAYAK_FIRST_IO)
+    override val primaryServices: Set<UUID> = setOf(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE)
+    override val extraCharacteristics: Set<UUID> = setOf(KayakFirstUuids.UUID_KAYAK_FIRST_IO)
 
     private var assembler = KayakFirstFrameAssembler()
     @Volatile
@@ -196,8 +198,8 @@ internal class KayakFirstProtocolHandler(
             return false
         }
 
-        val service = services.first { it.uuid == BluetoothIds.UUID_KAYAK_FIRST_SERVICE }
-        val io = requireNotNull(service.getCharacteristic(BluetoothIds.UUID_KAYAK_FIRST_IO))
+        val service = services.first { it.uuid == KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE }
+        val io = requireNotNull(service.getCharacteristic(KayakFirstUuids.UUID_KAYAK_FIRST_IO))
         // Snapshot only when this generation begins setup. A later settings edit is deliberately
         // inert until reconnect, so command 5 is never invented as a mid-workout update.
         engine.kayakFirstDisplayConfiguration?.let { displayConfiguration = it }
@@ -214,8 +216,8 @@ internal class KayakFirstProtocolHandler(
                 engine.state.lifeFitnessProfile.weightKg.toDouble()
             }
             setupProgressConnectionId = null
-            if (inventory.services[BluetoothIds.UUID_KAYAK_FIRST_SERVICE]
-                    ?.get(BluetoothIds.UUID_KAYAK_FIRST_IO)?.hasCccd == true
+            if (inventory.services[KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE]
+                    ?.get(KayakFirstUuids.UUID_KAYAK_FIRST_IO)?.hasCccd == true
             ) {
                 engine.enableNotifications(context, io)
             } else {
@@ -266,7 +268,7 @@ internal class KayakFirstProtocolHandler(
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (ch.uuid != BluetoothIds.UUID_KAYAK_FIRST_IO) return
+        if (ch.uuid != KayakFirstUuids.UUID_KAYAK_FIRST_IO) return
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
         if (generation == KayakFirstGeneration.ORANGE) {
             onOrangeBytes(engine, gatt, context, value)
@@ -434,7 +436,7 @@ internal class KayakFirstProtocolHandler(
         )
         val emitter = engine.metricEmitterFor(
             gatt,
-            BluetoothIds.UUID_KAYAK_FIRST_IO,
+            KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             MetricProtocol.VENDOR,
             MetricSourceClass.VENDOR_NATIVE,
             nowMs,
@@ -450,7 +452,7 @@ internal class KayakFirstProtocolHandler(
         }
         val derivedEmitter = engine.metricEmitterFor(
             gatt,
-            BluetoothIds.UUID_KAYAK_FIRST_IO,
+            KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             MetricProtocol.VENDOR,
             MetricSourceClass.DERIVED,
             nowMs,
@@ -551,7 +553,7 @@ internal class KayakFirstProtocolHandler(
         val nowMs = MonotonicMetricClock.SYSTEM.nowMs()
         val emitter = engine.metricEmitterFor(
             gatt,
-            BluetoothIds.UUID_KAYAK_FIRST_IO,
+            KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             MetricProtocol.VENDOR,
             MetricSourceClass.DERIVED,
             nowMs,
@@ -607,7 +609,7 @@ internal class KayakFirstProtocolHandler(
         engine.pushWrite(
             context,
             command.bytes(),
-            BluetoothIds.UUID_KAYAK_FIRST_IO,
+            KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             writeMode = StackEntry.WriteMode.WITHOUT_RESPONSE,
             onComplete = { success ->
                 if (!success) {
@@ -698,7 +700,7 @@ internal class KayakFirstProtocolHandler(
             engine.pushWrite(
                 context,
                 transaction.chunks[index],
-                BluetoothIds.UUID_KAYAK_FIRST_IO,
+                KayakFirstUuids.UUID_KAYAK_FIRST_IO,
                 writeMode = StackEntry.WriteMode.WITHOUT_RESPONSE,
                 onComplete = completion@{ success ->
                     val current = engine.state.connectionRegistry.contextFor(transaction.connectionId)
@@ -781,7 +783,7 @@ internal class KayakFirstProtocolHandler(
             engine.pushWrite(
                 context,
                 transaction.chunks[index],
-                BluetoothIds.UUID_KAYAK_FIRST_IO,
+                KayakFirstUuids.UUID_KAYAK_FIRST_IO,
                 writeMode = StackEntry.WriteMode.WITHOUT_RESPONSE,
                 onComplete = completion@{ success ->
                     val current = engine.state.connectionRegistry.contextFor(transaction.connectionId)

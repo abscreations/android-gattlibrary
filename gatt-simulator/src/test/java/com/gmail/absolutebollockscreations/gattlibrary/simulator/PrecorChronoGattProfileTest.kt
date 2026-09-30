@@ -6,13 +6,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 class PrecorChronoGattProfileTest {
     @Test
     fun `advertising fixture reproduces the captured physical Chrono identity`() {
         val plan = PrecorChronoAdvertisingPlan.create()
 
-        assertEquals(BluetoothIds.UUID_PRECOR_SERVICE, plan.serviceUuid)
+        assertEquals(PrecorUuids.UUID_PRECOR_SERVICE, plan.serviceUuid)
         assertEquals("CHRONO 0", plan.localName)
         assertTrue(plan.includeNameInAdvertising)
         assertTrue(plan.includeTxPowerInScanResponse)
@@ -28,7 +29,7 @@ class PrecorChronoGattProfileTest {
     fun `Gatt manifest exposes one notify-only measurement and no control surface`() {
         val characteristic = PrecorChronoGattProfile.characteristics.single()
 
-        assertEquals(BluetoothIds.UUID_PRECOR_MEASUREMENT, characteristic.uuid)
+        assertEquals(PrecorUuids.UUID_PRECOR_MEASUREMENT, characteristic.uuid)
         assertFalse(characteristic.readable)
         assertFalse(characteristic.writable)
         assertTrue(characteristic.notifiable)

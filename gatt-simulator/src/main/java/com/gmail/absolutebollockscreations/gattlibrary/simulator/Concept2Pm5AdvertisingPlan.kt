@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Legacy-PDU advertisement layout for a PM5 persona, kept separate from FTMS budgeting. */
 internal data class Concept2Pm5AdvertisingPlan(
@@ -45,7 +46,7 @@ internal data class Concept2Pm5AdvertisingPlan(
                     advertisingServiceUuids = emptyList(),
                     scanResponseServiceUuids = listOf(
                         FtmsUuids.UUID_FTMS_SERVICE,
-                        BluetoothIds.UUID_C2_DISCOVERY_SERVICE,
+                        Concept2Uuids.UUID_C2_DISCOVERY_SERVICE,
                     ),
                     scanResponseFtmsServiceData = ftmsData,
                     // Android owns the Flags structure. Unlike the PM5 controller, its public
@@ -60,7 +61,7 @@ internal data class Concept2Pm5AdvertisingPlan(
                 localName = persona.advertisedName,
                 includeNameInAdvertisement = false,
                 includeTxPowerInAdvertisement = false,
-                advertisingServiceUuids = listOf(BluetoothIds.UUID_C2_DISCOVERY_SERVICE),
+                advertisingServiceUuids = listOf(Concept2Uuids.UUID_C2_DISCOVERY_SERVICE),
                 scanResponseServiceUuids = emptyList(),
                 scanResponseFtmsServiceData = null,
                 advertisingBytes = FLAGS_STRUCTURE_BYTES + UUID128_STRUCTURE_BYTES,

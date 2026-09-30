@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * Pure PM5 GATT description and offset-aware Device Information values.
@@ -18,18 +19,18 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
     val services: Map<UUID, List<Concept2CharacteristicManifest>> = buildMap {
         if (persona.compatibility.exposesFtms) {
             // Registration order reproduces the captured post-GAP/GATT handle order.
-            put(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE, modernPmControlManifest)
+            put(Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE, modernPmControlManifest)
         }
         put(
-            BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE,
+            Concept2Uuids.UUID_C2_DEVICE_INFO_SERVICE,
             persona.compatibility.deviceInformation.map {
                 Concept2CharacteristicManifest(it, readable = true)
             },
         )
-        if (!persona.compatibility.exposesFtms) put(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE, pmControlManifest)
-        put(BluetoothIds.UUID_C2_ERG_SERVICE, persona.compatibility.characteristics)
+        if (!persona.compatibility.exposesFtms) put(Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE, pmControlManifest)
+        put(Concept2Uuids.UUID_C2_ERG_SERVICE, persona.compatibility.characteristics)
         if (persona.compatibility.exposesHeartRateReceive) {
-            put(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE, heartRateReceiveManifest)
+            put(Concept2Uuids.UUID_C2_HEART_RATE_RECEIVE_SERVICE, heartRateReceiveManifest)
         }
         if (persona.compatibility.exposesFtms) {
             put(FtmsUuids.UUID_FTMS_SERVICE, ftmsManifest(persona.machine))
@@ -46,18 +47,18 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
         if (offset < 0) return null
         if (uuid !in persona.compatibility.deviceInformation) return null
         val value = when (uuid) {
-            BluetoothIds.UUID_C2_MODEL_NUMBER -> fixedAscii("PM5", 16)
-            BluetoothIds.UUID_C2_SERIAL_NUMBER -> fixedAscii(persona.compatibility.serialNumber, 9)
-            BluetoothIds.UUID_C2_HARDWARE_REVISION ->
+            Concept2Uuids.UUID_C2_MODEL_NUMBER -> fixedAscii("PM5", 16)
+            Concept2Uuids.UUID_C2_SERIAL_NUMBER -> fixedAscii(persona.compatibility.serialNumber, 9)
+            Concept2Uuids.UUID_C2_HARDWARE_REVISION ->
                 fixedAscii(persona.compatibility.hardwareRevision, 3)
-            BluetoothIds.UUID_C2_FIRMWARE_REVISION ->
+            Concept2Uuids.UUID_C2_FIRMWARE_REVISION ->
                 fixedAscii(persona.compatibility.firmwareIdentity, 20)
-            BluetoothIds.UUID_C2_MANUFACTURER_NAME -> fixedAscii("Concept2", 16)
-            BluetoothIds.UUID_C2_MACHINE_TYPE -> byteArrayOf(persona.machine.wireMachineType.toByte())
-            BluetoothIds.UUID_C2_ATT_RECEIVE_MTU -> u16Wrapping(negotiatedMtu.coerceIn(23, 517))
+            Concept2Uuids.UUID_C2_MANUFACTURER_NAME -> fixedAscii("Concept2", 16)
+            Concept2Uuids.UUID_C2_MACHINE_TYPE -> byteArrayOf(persona.machine.wireMachineType.toByte())
+            Concept2Uuids.UUID_C2_ATT_RECEIVE_MTU -> u16Wrapping(negotiatedMtu.coerceIn(23, 517))
             // Android does not expose the controller's active DLE maximum to a GATT server.
             // The 1.30 baseline therefore declares the conservative BLE default (27 octets).
-            BluetoothIds.UUID_C2_LL_MAX_TX_RX_BYTES -> u16Wrapping(27)
+            Concept2Uuids.UUID_C2_LL_MAX_TX_RX_BYTES -> u16Wrapping(27)
             else -> return null
         }
         return if (offset <= value.size) value.copyOfRange(offset, value.size) else null
@@ -71,9 +72,9 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
 
     companion object {
         val pmControlManifest: List<Concept2CharacteristicManifest> = listOf(
-            Concept2CharacteristicManifest(BluetoothIds.UUID_C2_CSAFE_REQUEST, writable = true),
+            Concept2CharacteristicManifest(Concept2Uuids.UUID_C2_CSAFE_REQUEST, writable = true),
             Concept2CharacteristicManifest(
-                BluetoothIds.UUID_C2_CSAFE_RESPONSE,
+                Concept2Uuids.UUID_C2_CSAFE_RESPONSE,
                 readable = true,
                 notifiable = true,
             ),
@@ -82,18 +83,18 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
         /** Exact `0x0C` request and `0x10` response properties from PM5 431225189. */
         val modernPmControlManifest: List<Concept2CharacteristicManifest> = listOf(
             Concept2CharacteristicManifest(
-                BluetoothIds.UUID_C2_CSAFE_REQUEST,
+                Concept2Uuids.UUID_C2_CSAFE_REQUEST,
                 writable = true,
                 writeWithoutResponse = true,
             ),
             Concept2CharacteristicManifest(
-                BluetoothIds.UUID_C2_CSAFE_RESPONSE,
+                Concept2Uuids.UUID_C2_CSAFE_RESPONSE,
                 notifiable = true,
             ),
         )
 
         val heartRateReceiveManifest: List<Concept2CharacteristicManifest> = listOf(
-            Concept2CharacteristicManifest(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE, writable = true),
+            Concept2CharacteristicManifest(Concept2Uuids.UUID_C2_HEART_RATE_RECEIVE, writable = true),
         )
 
         fun ftmsManifest(machine: Concept2Machine): List<Concept2CharacteristicManifest> = listOf(

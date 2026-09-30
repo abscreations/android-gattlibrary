@@ -9,6 +9,7 @@ import org.junit.Test
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.sqrt
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 /**
  * Schwinn x70 coverage against the QZ debug-log corpus — evidence record
@@ -353,7 +354,7 @@ class SchwinnX70QzSessionTest {
             assertEquals(
                 "recognised is not decoded: no metric is produced",
                 emptyList<SchwinnX70Sample>(),
-                handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, marker.packet, arrivalMs = 0L),
+                handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_MEASUREMENT, marker.packet, arrivalMs = 0L),
             )
         }
         assertEquals("and none of them is corruption", 0, handler.rejectedFrameCount())
@@ -372,7 +373,7 @@ class SchwinnX70QzSessionTest {
         assertFalse("a foreign 5-octet frame is not absorbed", SchwinnX70Measurement.isStreamMarker(wrongPrefix))
 
         val handler = SchwinnX70ProtocolHandler()
-        handler.samplesForNotification(BluetoothIds.UUID_X70_MEASUREMENT, wrongPrefix, arrivalMs = 0L)
+        handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_MEASUREMENT, wrongPrefix, arrivalMs = 0L)
         assertEquals("it is rejected, as it should be", 1, handler.rejectedFrameCount())
         assertEquals(0, handler.streamMarkerCount())
 
@@ -401,7 +402,7 @@ class SchwinnX70QzSessionTest {
 
         for (record in main) {
             handler.samplesForNotification(
-                BluetoothIds.UUID_X70_MEASUREMENT,
+                SchwinnX70Uuids.UUID_X70_MEASUREMENT,
                 record.packet,
                 arrivalMs = record.tMs.toLong(),
             )
@@ -430,23 +431,23 @@ class SchwinnX70QzSessionTest {
         assertEquals(
             "the observed inventory is thirteen characteristics",
             13,
-            BluetoothIds.X70_OBSERVED_CHARACTERISTICS.size,
+            SchwinnX70Uuids.X70_OBSERVED_CHARACTERISTICS.size,
         )
         assertEquals(
             "and they are distinct",
-            BluetoothIds.X70_OBSERVED_CHARACTERISTICS.size,
-            BluetoothIds.X70_OBSERVED_CHARACTERISTICS.toSet().size,
+            SchwinnX70Uuids.X70_OBSERVED_CHARACTERISTICS.size,
+            SchwinnX70Uuids.X70_OBSERVED_CHARACTERISTICS.toSet().size,
         )
 
         val everything = mapOf(
-            BluetoothIds.UUID_X70_SERVICE to BluetoothIds.X70_OBSERVED_CHARACTERISTICS.toSet(),
+            SchwinnX70Uuids.UUID_X70_SERVICE to SchwinnX70Uuids.X70_OBSERVED_CHARACTERISTICS.toSet(),
         )
         assertEquals(
             "a console offering all thirteen is subscribed to for exactly the three measurement streams",
             listOf(
-                BluetoothIds.UUID_X70_MEASUREMENT,
-                BluetoothIds.UUID_X70_SUPPLEMENTAL,
-                BluetoothIds.UUID_X70_SIBLING,
+                SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+                SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+                SchwinnX70Uuids.UUID_X70_SIBLING,
             ),
             planSchwinnX70Discovery(everything).map { it.characteristicUuid },
         )
@@ -456,7 +457,7 @@ class SchwinnX70QzSessionTest {
         val aux = allSlices.values.flatMap { it.on("aux35") }.first()
         assertEquals(
             emptyList<SchwinnX70Sample>(),
-            handler.samplesForNotification(BluetoothIds.UUID_X70_AUX_STATUS, aux.packet, arrivalMs = 0L),
+            handler.samplesForNotification(SchwinnX70Uuids.UUID_X70_AUX_STATUS, aux.packet, arrivalMs = 0L),
         )
         assertEquals("an unrouted characteristic is not corruption", 0, handler.rejectedFrameCount())
     }
@@ -662,9 +663,9 @@ class SchwinnX70QzSessionTest {
         // could supply.
         val handler = SchwinnX70ProtocolHandler()
         val uuids = mapOf(
-            "main" to BluetoothIds.UUID_X70_MEASUREMENT,
-            "supplemental" to BluetoothIds.UUID_X70_SUPPLEMENTAL,
-            "sibling" to BluetoothIds.UUID_X70_SIBLING,
+            "main" to SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+            "supplemental" to SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+            "sibling" to SchwinnX70Uuids.UUID_X70_SIBLING,
         )
         val produced = mutableMapOf<MetricKind, Int>()
         var markers = 0

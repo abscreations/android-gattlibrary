@@ -8,6 +8,7 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 internal enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
 
@@ -63,13 +64,13 @@ internal class KickrPeripheralSession(
     @Synchronized
     fun handleLegacyControl(value: ByteArray): KickrLegacyControlOutcome? {
         val server = legacy ?: return null
-        if (subscription(BluetoothIds.UUID_WAHOO_KICKR_CONTROL) != PeripheralConnection.CccdMode.INDICATE ||
+        if (subscription(WahooUuids.UUID_WAHOO_KICKR_CONTROL) != PeripheralConnection.CccdMode.INDICATE ||
             route !in setOf(null, KickrControlRoute.LEGACY_WAHOO)
         ) return null
         val outcome = server.handle(value)
         if (!outcome.accepted || !acquire(KickrControlRoute.LEGACY_WAHOO)) return outcome
         outcome.response?.let { response ->
-            enqueueCoalesced(KickrTxFrame(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, response, true))
+            enqueueCoalesced(KickrTxFrame(WahooUuids.UUID_WAHOO_KICKR_CONTROL, response, true))
         }
         return outcome
     }

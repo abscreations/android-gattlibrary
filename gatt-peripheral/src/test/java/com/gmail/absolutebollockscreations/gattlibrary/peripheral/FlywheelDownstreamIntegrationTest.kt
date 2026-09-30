@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 
 class FlywheelDownstreamIntegrationTest {
     @Test
@@ -38,7 +39,7 @@ class FlywheelDownstreamIntegrationTest {
     fun `Flywheel capabilities include derived motion but no resistance or targets`() {
         val measurements = providerMeasurementCapabilities(
             FtmsMachineProfile.INDOOR_BIKE,
-            setOf(BluetoothIds.UUID_FLYWHEEL_SERVICE),
+            setOf(FlywheelUuids.UUID_FLYWHEEL_SERVICE),
         )
         assertTrue(measurements.averageSpeed)
         assertTrue(measurements.cadence)

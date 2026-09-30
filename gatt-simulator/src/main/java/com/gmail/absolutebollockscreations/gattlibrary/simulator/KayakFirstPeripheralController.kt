@@ -34,6 +34,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoo
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Debug peripheral for the capture-corroborated KayakFirst FFE0/FFE1 console surface. */
 internal class KayakFirstPeripheralController(
@@ -246,7 +248,7 @@ internal class KayakFirstPeripheralController(
 
         override fun onDescriptorReadRequest(device: BluetoothDevice, requestId: Int, offset: Int, descriptor: BluetoothGattDescriptor) {
             val client = clients[device.address.lowercase()]
-            val value = if (client != null && descriptor.uuid == BluetoothIds.UUID_CCCD && descriptor.characteristic.uuid == BluetoothIds.UUID_KAYAK_FIRST_IO) {
+            val value = if (client != null && descriptor.uuid == SigUuids.UUID_CCCD && descriptor.characteristic.uuid == KayakFirstUuids.UUID_KAYAK_FIRST_IO) {
                 if (client.subscribed) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
             } else null
             when {
@@ -260,7 +262,7 @@ internal class KayakFirstPeripheralController(
             val client = clients[device.address.lowercase()]
             val enable = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-            val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD && descriptor.characteristic.uuid == BluetoothIds.UUID_KAYAK_FIRST_IO && !preparedWrite && offset == 0 && (enable || disable)
+            val valid = client != null && descriptor.uuid == SigUuids.UUID_CCCD && descriptor.characteristic.uuid == KayakFirstUuids.UUID_KAYAK_FIRST_IO && !preparedWrite && offset == 0 && (enable || disable)
             if (valid) {
                 client.subscribed = enable
                 if (disable) synchronized(client) { client.queue.clear() }
@@ -421,7 +423,7 @@ internal class KayakFirstPeripheralController(
             if (client.inFlight || !client.subscribed) return
             client.queue.removeFirstOrNull()?.also { client.inFlight = true }
         } ?: return
-        val io = server?.getService(BluetoothIds.UUID_KAYAK_FIRST_SERVICE)?.getCharacteristic(BluetoothIds.UUID_KAYAK_FIRST_IO)
+        val io = server?.getService(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE)?.getCharacteristic(KayakFirstUuids.UUID_KAYAK_FIRST_IO)
         if (io == null || !notify(client.device, io, payload)) synchronized(client) { client.inFlight = false }
     }
 
@@ -445,8 +447,8 @@ internal class KayakFirstPeripheralController(
         }.getOrElse { KayakFirstAdvertisingPlan.create(localName = activePersona.advertisedName) }
         val settings = AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY).setConnectable(true).setTimeout(0).setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH).build()
         val data = AdvertiseData.Builder()
-            .addServiceUuid(ParcelUuid(BluetoothIds.UUID_KAYAK_FIRST_SERVICE))
-            .addServiceUuid(ParcelUuid(BluetoothIds.UUID_KAYAK_FIRST_IO))
+            .addServiceUuid(ParcelUuid(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE))
+            .addServiceUuid(ParcelUuid(KayakFirstUuids.UUID_KAYAK_FIRST_IO))
             .addManufacturerData(plan.manufacturerId, plan.manufacturerPayload)
             .build()
         val scan = AdvertiseData.Builder()

@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Measurement-only GATT server matching the Flywheel Nordic-UART surface. */
 internal class FlywheelSportsPeripheralAdvertiser(
@@ -169,8 +171,8 @@ internal class FlywheelSportsPeripheralAdvertiser(
             device: BluetoothDevice, requestId: Int, offset: Int, descriptor: BluetoothGattDescriptor,
         ) {
             val client = clients[device.address.lowercase()]
-            val value = if (descriptor.uuid == BluetoothIds.UUID_CCCD &&
-                descriptor.characteristic.uuid == BluetoothIds.UUID_FLYWHEEL_TX && client != null
+            val value = if (descriptor.uuid == SigUuids.UUID_CCCD &&
+                descriptor.characteristic.uuid == FlywheelUuids.UUID_FLYWHEEL_TX && client != null
             ) {
                 if (client.subscribed) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
@@ -194,8 +196,8 @@ internal class FlywheelSportsPeripheralAdvertiser(
             val client = clients[device.address.lowercase()]
             val enable = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-            val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
-                descriptor.characteristic.uuid == BluetoothIds.UUID_FLYWHEEL_TX &&
+            val valid = client != null && descriptor.uuid == SigUuids.UUID_CCCD &&
+                descriptor.characteristic.uuid == FlywheelUuids.UUID_FLYWHEEL_TX &&
                 !preparedWrite && offset == 0 && (enable || disable)
             if (valid) {
                 client.subscribed = enable
@@ -284,8 +286,8 @@ internal class FlywheelSportsPeripheralAdvertiser(
             if (client.inFlight) return
             client.pending?.also { client.pending = null; client.inFlight = true }
         } ?: return
-        val characteristic = server?.getService(BluetoothIds.UUID_FLYWHEEL_SERVICE)
-            ?.getCharacteristic(BluetoothIds.UUID_FLYWHEEL_TX)
+        val characteristic = server?.getService(FlywheelUuids.UUID_FLYWHEEL_SERVICE)
+            ?.getCharacteristic(FlywheelUuids.UUID_FLYWHEEL_TX)
         if (characteristic == null || !notify(client.device, characteristic, frame)) {
             synchronized(client) { client.inFlight = false }
         }

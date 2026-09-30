@@ -101,7 +101,7 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_BIKING_DATA
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_CCCD
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_CCCD
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_ELLIPTICAL_DATA
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_FEATURE
@@ -119,6 +119,7 @@ import timber.log.Timber
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 @GattLibraryInternalApi
 class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
@@ -286,7 +287,7 @@ class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
         // The Life Fitness status subscription is the one transcript step that completes here
         // rather than on a characteristic write, because arming a CCCD is a descriptor write.
-        if (charUuid == BluetoothIds.UUID_LF_STATUS) {
+        if (charUuid == LifeFitnessUuids.UUID_LF_STATUS) {
             engine.advanceLifeFitnessSetup(gatt, status == BluetoothGatt.GATT_SUCCESS)
         }
     }

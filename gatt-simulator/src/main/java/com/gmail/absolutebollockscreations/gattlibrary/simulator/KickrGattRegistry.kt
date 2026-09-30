@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Mechanical Android translation of the evidence-labelled pure KICKR manifest. */
 internal object KickrGattRegistry {
@@ -46,7 +47,7 @@ internal object KickrGattRegistry {
     }
 
     private fun cccd() = BluetoothGattDescriptor(
-        BluetoothIds.UUID_CCCD,
+        SigUuids.UUID_CCCD,
         BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
     )
 }

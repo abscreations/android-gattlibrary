@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 class PrecorDiscoveryPlanTest {
     @Test
@@ -20,7 +21,7 @@ class PrecorDiscoveryPlanTest {
     fun `discovery declines when the Precor measurement characteristic is absent`() {
         assertTrue(
             planPrecorDiscovery(
-                mapOf(BluetoothIds.UUID_PRECOR_SERVICE to setOf(UUID.randomUUID())),
+                mapOf(PrecorUuids.UUID_PRECOR_SERVICE to setOf(UUID.randomUUID())),
             ).isEmpty(),
         )
     }
@@ -33,16 +34,16 @@ class PrecorDiscoveryPlanTest {
         assertEquals(
             listOf(
                 CccdTarget(
-                    BluetoothIds.UUID_PRECOR_SERVICE,
-                    BluetoothIds.UUID_PRECOR_MEASUREMENT,
+                    PrecorUuids.UUID_PRECOR_SERVICE,
+                    PrecorUuids.UUID_PRECOR_MEASUREMENT,
                 ),
             ),
             planPrecorDiscovery(
                 linkedMapOf(
                     extraService to setOf(extraCharacteristic),
-                    BluetoothIds.UUID_PRECOR_SERVICE to linkedSetOf(
+                    PrecorUuids.UUID_PRECOR_SERVICE to linkedSetOf(
                         extraCharacteristic,
-                        BluetoothIds.UUID_PRECOR_MEASUREMENT,
+                        PrecorUuids.UUID_PRECOR_MEASUREMENT,
                     ),
                 ),
             ),

@@ -12,16 +12,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class LegacyGattCharacterizationTest {
 
     @Test
     fun `Concept2 discovery excludes FTMS activation but preserves native and sensor handlers`() {
         val ftms = RecordingHandler(setOf(FtmsUuids.UUID_FTMS_SERVICE))
-        val concept2 = RecordingHandler(setOf(BluetoothIds.UUID_C2_ERG_SERVICE))
-        val hrm = RecordingHandler(setOf(BluetoothIds.UUID_HRM_SERVICE))
-        val services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE,
-            BluetoothIds.UUID_HRM_SERVICE)
+        val concept2 = RecordingHandler(setOf(Concept2Uuids.UUID_C2_ERG_SERVICE))
+        val hrm = RecordingHandler(setOf(SigUuids.UUID_HRM_SERVICE))
+        val services = setOf(FtmsUuids.UUID_FTMS_SERVICE, Concept2Uuids.UUID_C2_ERG_SERVICE,
+            SigUuids.UUID_HRM_SERVICE)
         val offered = mutableListOf<BtEngineGattCore.ProtocolHandler>()
 
         assertEquals(listOf(concept2, hrm), matchingProtocolHandlers(listOf(ftms, concept2, hrm), services))
@@ -52,7 +54,7 @@ class LegacyGattCharacterizationTest {
         assertSame(hrmGatt, connected.current(LegacyConnectionRole.HRM))
 
         val ftmsHandler = RecordingHandler(setOf(FtmsUuids.UUID_FTMS_SERVICE))
-        val hrmHandler = RecordingHandler(setOf(BluetoothIds.UUID_HRM_SERVICE))
+        val hrmHandler = RecordingHandler(setOf(SigUuids.UUID_HRM_SERVICE))
         val handlers = listOf(ftmsHandler, hrmHandler)
 
         assertEquals(
@@ -61,7 +63,7 @@ class LegacyGattCharacterizationTest {
         )
         assertEquals(
             listOf(hrmHandler),
-            matchingProtocolHandlers(handlers, setOf(BluetoothIds.UUID_HRM_SERVICE)),
+            matchingProtocolHandlers(handlers, setOf(SigUuids.UUID_HRM_SERVICE)),
         )
 
         val state = BtEngineState().apply {

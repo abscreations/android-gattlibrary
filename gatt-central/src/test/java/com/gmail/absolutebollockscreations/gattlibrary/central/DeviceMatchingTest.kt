@@ -7,6 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class DeviceMatchingTest {
     @Test
@@ -22,7 +25,7 @@ class DeviceMatchingTest {
     @Test
     fun `SIG assigned numbers expand only into canonical Bluetooth base UUIDs`() {
         assertTrue(
-            CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE) in
+            CanonicalUuid.fromUuid(SigUuids.UUID_RSC_SERVICE) in
                 DeviceMatcherRegistry.standard().registeredServices(),
         )
     }
@@ -32,7 +35,7 @@ class DeviceMatchingTest {
         val candidates = rankedServiceCandidates(
             MatchObservation(
                 localName = "",
-                advertisedServiceUuids = setOf(CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE)),
+                advertisedServiceUuids = setOf(CanonicalUuid.fromUuid(SigUuids.UUID_RSC_SERVICE)),
             ),
         )
 
@@ -44,7 +47,7 @@ class DeviceMatchingTest {
     fun `service data alone produces a ranked candidate`() {
         val candidates = rankedServiceCandidates(
             MatchObservation(
-                serviceDataUuids = setOf(CanonicalUuid.fromUuid(BluetoothIds.UUID_CSC_SERVICE)),
+                serviceDataUuids = setOf(CanonicalUuid.fromUuid(SigUuids.UUID_CSC_SERVICE)),
             ),
         )
 
@@ -56,9 +59,9 @@ class DeviceMatchingTest {
     fun `multi-service ranking is deterministic and retains every candidate`() {
         val observation = MatchObservation(
             advertisedServiceUuids = setOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_HRM_SERVICE),
+                CanonicalUuid.fromUuid(SigUuids.UUID_HRM_SERVICE),
                 CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE),
+                CanonicalUuid.fromUuid(SigUuids.UUID_RSC_SERVICE),
             ),
         )
         val candidates = rankedServiceCandidates(observation)
@@ -77,7 +80,7 @@ class DeviceMatchingTest {
                 localName = "Garmin HRM-Pro",
                 advertisedServiceUuids = setOf(
                     CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
-                    CanonicalUuid.fromUuid(BluetoothIds.UUID_HRM_SERVICE),
+                    CanonicalUuid.fromUuid(SigUuids.UUID_HRM_SERVICE),
                 ),
             ),
         )
@@ -97,7 +100,7 @@ class DeviceMatchingTest {
         )
 
         assertTrue(candidates.isEmpty())
-        assertFalse(vendorUuid == CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE))
+        assertFalse(vendorUuid == CanonicalUuid.fromUuid(SigUuids.UUID_RSC_SERVICE))
     }
 
     @Test
@@ -166,17 +169,17 @@ class DeviceMatchingTest {
 
         for (sig in listOf(
             FtmsUuids.UUID_FTMS_SERVICE,
-            BluetoothIds.UUID_HRM_SERVICE,
-            BluetoothIds.UUID_CSC_SERVICE,
-            BluetoothIds.UUID_RSC_SERVICE,
-            BluetoothIds.UUID_POWER_SERVICE,
+            SigUuids.UUID_HRM_SERVICE,
+            SigUuids.UUID_CSC_SERVICE,
+            SigUuids.UUID_RSC_SERVICE,
+            SigUuids.UUID_POWER_SERVICE,
         )) {
             assertTrue("$sig must remain scannable", sig in filter)
         }
 
         for (vendor in listOf(
-            BluetoothIds.UUID_C2_DISCOVERY_SERVICE,
-            BluetoothIds.UUID_PRECOR_SERVICE,
+            Concept2Uuids.UUID_C2_DISCOVERY_SERVICE,
+            PrecorUuids.UUID_PRECOR_SERVICE,
         )) {
             assertTrue("$vendor must be scannable", vendor in filter)
         }

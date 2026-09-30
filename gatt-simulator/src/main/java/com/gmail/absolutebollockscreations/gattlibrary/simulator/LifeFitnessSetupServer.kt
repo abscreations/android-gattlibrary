@@ -3,6 +3,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.TreeMap
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Pure, per-link server-side mirror of the Phase 6 Life Fitness setup transcript. */
 internal class LifeFitnessSetupServer {
@@ -15,16 +17,16 @@ internal class LifeFitnessSetupServer {
     )
 
     private val requiredProfiles = listOf(
-        BluetoothIds.UUID_USER_FIRST_NAME,
-        BluetoothIds.UUID_USER_LAST_NAME,
-        BluetoothIds.UUID_USER_EMAIL,
-        BluetoothIds.UUID_USER_AGE,
-        BluetoothIds.UUID_USER_GENDER,
-        BluetoothIds.UUID_USER_LANGUAGE,
-        BluetoothIds.UUID_LF_VENDOR_TOKEN_1,
-        BluetoothIds.UUID_LF_VENDOR_TOKEN_2,
-        BluetoothIds.UUID_USER_WEIGHT,
-        BluetoothIds.UUID_USER_HEIGHT,
+        SigUuids.UUID_USER_FIRST_NAME,
+        SigUuids.UUID_USER_LAST_NAME,
+        SigUuids.UUID_USER_EMAIL,
+        SigUuids.UUID_USER_AGE,
+        SigUuids.UUID_USER_GENDER,
+        SigUuids.UUID_USER_LANGUAGE,
+        LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1,
+        LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2,
+        SigUuids.UUID_USER_WEIGHT,
+        SigUuids.UUID_USER_HEIGHT,
     )
     private val received = LinkedHashSet<UUID>()
     @Volatile
@@ -33,8 +35,8 @@ internal class LifeFitnessSetupServer {
 
     @Synchronized
     fun write(characteristic: UUID, value: ByteArray): Result {
-        if (characteristic == BluetoothIds.UUID_LF_CONTROL_1) return control1(value)
-        if (characteristic == BluetoothIds.UUID_LF_CONTROL_2) return control2(value)
+        if (characteristic == LifeFitnessUuids.UUID_LF_CONTROL_1) return control1(value)
+        if (characteristic == LifeFitnessUuids.UUID_LF_CONTROL_2) return control2(value)
         if (characteristic !in requiredProfiles || stage !in setOf(Stage.SESSION_OPEN, Stage.PROFILE_RECEIVING)) {
             return reject()
         }
@@ -66,14 +68,14 @@ internal class LifeFitnessSetupServer {
     }
 
     private fun validProfile(uuid: UUID, value: ByteArray): Boolean = when (uuid) {
-        BluetoothIds.UUID_LF_VENDOR_TOKEN_1 -> validVendorToken(value)
-        BluetoothIds.UUID_LF_VENDOR_TOKEN_2 -> value.size == 1 && value[0].toInt() in 0..1
-        BluetoothIds.UUID_USER_AGE -> value.size <= 2
-        BluetoothIds.UUID_USER_GENDER -> value.isEmpty() || value.size == 1
-        BluetoothIds.UUID_USER_WEIGHT,
-        BluetoothIds.UUID_USER_HEIGHT,
+        LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1 -> validVendorToken(value)
+        LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2 -> value.size == 1 && value[0].toInt() in 0..1
+        SigUuids.UUID_USER_AGE -> value.size <= 2
+        SigUuids.UUID_USER_GENDER -> value.isEmpty() || value.size == 1
+        SigUuids.UUID_USER_WEIGHT,
+        SigUuids.UUID_USER_HEIGHT,
         -> value.isEmpty() || value.size == 2
-        BluetoothIds.UUID_USER_LANGUAGE -> value.isEmpty() || value.size in 1..8
+        SigUuids.UUID_USER_LANGUAGE -> value.isEmpty() || value.size in 1..8
         else -> value.size <= MAX_PROFILE_BYTES
     }
 

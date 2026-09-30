@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Collections
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Real-time tests for [FeCControlScheduler]'s cadence and coalescing, per plan §16.6/§9.9.
@@ -35,7 +36,7 @@ class FeCControlSchedulerTest {
             operationName: String,
         ): Boolean {
             assertEquals(GattWriteMode.WITHOUT_RESPONSE, mode)
-            assertEquals(BluetoothIds.UUID_FEC_CONTROL, uuid)
+            assertEquals(FecBleUuids.UUID_FEC_CONTROL, uuid)
             writes.add(payload)
             return true
         }
@@ -61,14 +62,14 @@ class FeCControlSchedulerTest {
     fun `a data-page request is dispatched through the same bounded FEC3 scheduler`() = runBlocking {
         val transport = RecordingTransport()
         val scheduler = FeCControlScheduler(transport, minIntervalMs = intervalMs)
-        scheduler.submit(FeCControlTarget.RequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES))
+        scheduler.submit(FeCControlTarget.RequestDataPage(FecBleUuids.FEC_PAGE_FE_CAPABILITIES))
         scheduler.start()
         delay(intervalMs * 4)
         scheduler.stop()
 
         assertEquals(1, transport.writes.size)
         assertArrayEquals(
-            FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES),
+            FeCControlEncoder.encodeRequestDataPage(FecBleUuids.FEC_PAGE_FE_CAPABILITIES),
             transport.writes.single(),
         )
     }

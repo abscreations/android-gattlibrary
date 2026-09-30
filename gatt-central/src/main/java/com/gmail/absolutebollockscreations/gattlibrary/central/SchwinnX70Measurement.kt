@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u48
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 /**
  * Bounds-checked decoders for the Schwinn x70 family — 170, 270 and 570 (plan §7).
@@ -88,7 +89,7 @@ object SchwinnX70Measurement {
      * The console's stream marker: a 5-octet frame on the measurement characteristic.
      *
      * **Registered 2026-08-18 to stop counting a legitimate frame as corruption.** `05 09 01 01 00`
-     * and `05 09 01 03 00` arrive on [BluetoothIds.UUID_X70_MEASUREMENT], self-describe their
+     * and `05 09 01 03 00` arrive on [SchwinnX70Uuids.UUID_X70_MEASUREMENT], self-describe their
      * length in byte 0, and appear in four of five captured sessions — as the **first**
      * main-characteristic frame of the link in both single-connection ones. [parseMain] requires
      * exactly 17 octets, so before this existed every one of them incremented the handler's
@@ -119,7 +120,7 @@ object SchwinnX70Measurement {
     /**
      * Whether [data] is the measurement characteristic's stream marker rather than a measurement.
      *
-     * Callers must only ask this of a frame that arrived on [BluetoothIds.UUID_X70_MEASUREMENT].
+     * Callers must only ask this of a frame that arrived on [SchwinnX70Uuids.UUID_X70_MEASUREMENT].
      * Length alone is not identity anywhere in this family, and QZ's length-only dispatch is the
      * defect §7 exists to avoid repeating.
      */

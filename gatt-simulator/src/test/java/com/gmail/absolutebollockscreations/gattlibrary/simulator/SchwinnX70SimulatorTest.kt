@@ -13,6 +13,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Schwinn x70 simulator — work units X70-S1 (persona, advertising, GATT, gate) and X70-S3
@@ -61,12 +63,12 @@ class SchwinnX70SimulatorTest {
         // the same identifier FitBridge scans for. A simulator advertising a UUID nobody filters on
         // is a device that cannot be found, which is the V11 shape.
         assertEquals(
-            BluetoothIds.UUID_X70_SERVICE,
+            SchwinnX70Uuids.UUID_X70_SERVICE,
             SchwinnX70AdvertisingPlan.create().serviceUuid,
         )
         assertEquals(
             "3bf58980-3a2f-11e6-9011-0002a5d5c51b",
-            BluetoothIds.UUID_X70_SERVICE.toString(),
+            SchwinnX70Uuids.UUID_X70_SERVICE.toString(),
         )
     }
 
@@ -83,11 +85,11 @@ class SchwinnX70SimulatorTest {
     fun `the service exposes the captured thirteen-characteristic surface`() {
         run {
             val services = SchwinnX70GattProfile.manifest()
-            val family = services.single { it.uuid == BluetoothIds.UUID_X70_SERVICE }
+            val family = services.single { it.uuid == SchwinnX70Uuids.UUID_X70_SERVICE }
 
             assertEquals(
                 "the service exposes thirteen characteristics",
-                BluetoothIds.X70_OBSERVED_CHARACTERISTICS.toSet(),
+                SchwinnX70Uuids.X70_OBSERVED_CHARACTERISTICS.toSet(),
                 family.characteristics.map { it.uuid }.toSet(),
             )
 
@@ -100,7 +102,7 @@ class SchwinnX70SimulatorTest {
 
             // **Write only, from the 570u inventory.** An earlier revision served both write types
             // as a hedge; the evidence arrived and the hedge became a divergence.
-            val control = family.characteristics.single { it.uuid == BluetoothIds.UUID_X70_CONTROL }
+            val control = family.characteristics.single { it.uuid == SchwinnX70Uuids.UUID_X70_CONTROL }
             assertFalse("the control characteristic does not notify", control.notifies)
             assertEquals(
                 "write, and not write-without-response",
@@ -118,9 +120,9 @@ class SchwinnX70SimulatorTest {
             assertEquals(
                 "three writable characteristics, as the inventory shows",
                 setOf(
-                    BluetoothIds.UUID_X70_CONTROL,
-                    BluetoothIds.UUID_X70_RW_5EC4,
-                    BluetoothIds.UUID_X70_WRITE_EC86,
+                    SchwinnX70Uuids.UUID_X70_CONTROL,
+                    SchwinnX70Uuids.UUID_X70_RW_5EC4,
+                    SchwinnX70Uuids.UUID_X70_WRITE_EC86,
                 ),
                 writable,
             )
@@ -132,7 +134,7 @@ class SchwinnX70SimulatorTest {
         // The captures show notification only. A readable measurement characteristic would invite a
         // client to poll a value the console never serves that way.
         val family = SchwinnX70GattProfile.manifest()
-            .single { it.uuid == BluetoothIds.UUID_X70_SERVICE }
+            .single { it.uuid == SchwinnX70Uuids.UUID_X70_SERVICE }
         val measurementStreams = family.characteristics.filter {
             it.uuid in SchwinnX70GattProfile.MEASUREMENT_CHARACTERISTICS
         }
@@ -147,7 +149,7 @@ class SchwinnX70SimulatorTest {
 
         // The aux characteristic is read *and* notify — served notify-only until the 570u
         // inventory said otherwise.
-        val aux = family.characteristics.single { it.uuid == BluetoothIds.UUID_X70_AUX_STATUS }
+        val aux = family.characteristics.single { it.uuid == SchwinnX70Uuids.UUID_X70_AUX_STATUS }
         assertEquals(
             BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
             aux.properties,
@@ -164,7 +166,7 @@ class SchwinnX70SimulatorTest {
             assertFalse(served.contains(FtmsUuids.UUID_FTMS_SERVICE))
             assertEquals(
                 "only the family service and Device Information",
-                setOf(BluetoothIds.UUID_X70_SERVICE, BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE),
+                setOf(SchwinnX70Uuids.UUID_X70_SERVICE, SigUuids.UUID_DEVICE_INFORMATION_SERVICE),
                 served,
             )
         }
@@ -179,11 +181,11 @@ class SchwinnX70SimulatorTest {
             val values = SchwinnX70GattProfile.readValues()
             assertEquals(
                 SchwinnX70Identity.FIRMWARE_REVISION,
-                values[BluetoothIds.UUID_FIRMWARE_REVISION]?.toString(Charsets.UTF_8),
+                values[SigUuids.UUID_FIRMWARE_REVISION]?.toString(Charsets.UTF_8),
             )
             // NUL-padded to nineteen octets, as the console sends it. TMIW's `contains` check
             // never noticed; a byte-exact simulator has to.
-            val manufacturer = values[BluetoothIds.UUID_MANUFACTURER_NAME]
+            val manufacturer = values[SigUuids.UUID_MANUFACTURER_NAME]
             assertEquals("the padded wire length", 19, manufacturer?.size)
             assertTrue(
                 "and it still contains the name a client greps for",
@@ -191,9 +193,9 @@ class SchwinnX70SimulatorTest {
             )
             assertEquals(
                 "SCHWINN 170/270",
-                values[BluetoothIds.UUID_MODEL_NUMBER]?.toString(Charsets.UTF_8),
+                values[SigUuids.UUID_MODEL_NUMBER]?.toString(Charsets.UTF_8),
             )
-            assertNotNull("the PnP ID is served", values[BluetoothIds.UUID_PNP_ID])
+            assertNotNull("the PnP ID is served", values[SigUuids.UUID_PNP_ID])
         }
     }
 

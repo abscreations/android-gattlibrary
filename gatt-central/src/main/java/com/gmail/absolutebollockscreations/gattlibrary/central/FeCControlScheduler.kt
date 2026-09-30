@@ -12,6 +12,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicReference
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * One coalesced target for FEC3, per Unit 9.9 of `docs/fe-c-ble_central_implementation.md`.
@@ -162,7 +163,7 @@ internal class FeCControlScheduler(
             // transport.write() enqueues before it suspends, so the check has to happen here.
             currentCoroutineContext().ensureActive()
             transport.write(
-                uuid = BluetoothIds.UUID_FEC_CONTROL,
+                uuid = FecBleUuids.UUID_FEC_CONTROL,
                 payload = frame,
                 mode = GattWriteMode.WITHOUT_RESPONSE,
                 timeoutMs = WRITE_TIMEOUT_MS,

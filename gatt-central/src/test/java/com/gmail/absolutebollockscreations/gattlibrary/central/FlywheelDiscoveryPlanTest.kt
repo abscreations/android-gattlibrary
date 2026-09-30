@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 
 class FlywheelDiscoveryPlanTest {
     private val notify = BluetoothGattCharacteristic.PROPERTY_NOTIFY
@@ -23,12 +24,12 @@ class FlywheelDiscoveryPlanTest {
                 listOf(
                     FlywheelGattOperation(
                         FlywheelGattOperationKind.ENABLE_NOTIFICATIONS,
-                        BluetoothIds.UUID_FLYWHEEL_TX,
+                        FlywheelUuids.UUID_FLYWHEEL_TX,
                     ),
                 ),
                 plan.operations,
             )
-            assertTrue(plan.operations.none { it.characteristicUuid == BluetoothIds.UUID_FLYWHEEL_RX })
+            assertTrue(plan.operations.none { it.characteristicUuid == FlywheelUuids.UUID_FLYWHEEL_RX })
         }
     }
 
@@ -51,8 +52,8 @@ class FlywheelDiscoveryPlanTest {
             FlywheelGattInventory(
                 mapOf(
                     wrongBase to mapOf(
-                        BluetoothIds.UUID_FLYWHEEL_TX to characteristic(notify, true),
-                        BluetoothIds.UUID_FLYWHEEL_RX to characteristic(writeNoResponse, false),
+                        FlywheelUuids.UUID_FLYWHEEL_TX to characteristic(notify, true),
+                        FlywheelUuids.UUID_FLYWHEEL_RX to characteristic(writeNoResponse, false),
                     ),
                 ),
             ) to FlywheelDiscoveryFailure.MISSING_SERVICE,
@@ -106,12 +107,12 @@ class FlywheelDiscoveryPlanTest {
         extras: Map<UUID, Map<UUID, FlywheelCharacteristicInventory>> = emptyMap(),
     ): FlywheelGattInventory {
         val characteristics = linkedMapOf<UUID, FlywheelCharacteristicInventory>()
-        if (includeTx) characteristics[BluetoothIds.UUID_FLYWHEEL_TX] =
+        if (includeTx) characteristics[FlywheelUuids.UUID_FLYWHEEL_TX] =
             characteristic(txProperties, txHasCccd)
-        if (includeRx) characteristics[BluetoothIds.UUID_FLYWHEEL_RX] =
+        if (includeRx) characteristics[FlywheelUuids.UUID_FLYWHEEL_RX] =
             characteristic(rxProperties, false)
         return FlywheelGattInventory(
-            extras + (BluetoothIds.UUID_FLYWHEEL_SERVICE to characteristics),
+            extras + (FlywheelUuids.UUID_FLYWHEEL_SERVICE to characteristics),
         )
     }
 

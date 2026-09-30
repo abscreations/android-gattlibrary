@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import org.junit.Assert.*
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 class Concept2StartupTest {
     private fun hex(s: String) = s.split(" ").map { it.toInt(16).toByte() }.toByteArray()
@@ -73,7 +74,7 @@ class Concept2StartupTest {
         val connection = ConnectionId("PM5_TEST", 1)
         fun emit(distance: Double, at: Long, mux: Boolean = true) {
             val emitter = MetricEmitter(fusion, MetricSourceId(connection, MetricProtocol.VENDOR,
-                if (mux) BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION else BluetoothIds.UUID_C2_GENERAL_STATUS),
+                if (mux) Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION else Concept2Uuids.UUID_C2_GENERAL_STATUS),
                 MetricSourceClass.VENDOR_NATIVE, at)
             emitter.emit(MetricKind.DISTANCE, distance, nativeCumulative = distance)
         }

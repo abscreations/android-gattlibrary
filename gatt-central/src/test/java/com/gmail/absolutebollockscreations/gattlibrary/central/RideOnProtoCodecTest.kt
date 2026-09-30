@@ -5,12 +5,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 class RideOnProtoCodecTest {
     @Test
     fun `UUID contract and service-specific handshakes are exact`() {
-        assertEquals(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE, RideOnUuids.ORIGINAL_SERVICE)
-        assertEquals(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE, RideOnUuids.CORE2_SERVICE)
+        assertEquals(WahooUuids.UUID_WAHOO_RIDEON_SERVICE, RideOnUuids.ORIGINAL_SERVICE)
+        assertEquals(WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE, RideOnUuids.CORE2_SERVICE)
         assertArrayEquals(hex("52 69 64 65 4F 6E 02 02"), RideOnUuids.HANDSHAKE_ORIGINAL)
         assertArrayEquals(hex("52 69 64 65 4F 6E 02 03"), RideOnUuids.HANDSHAKE_CORE2)
     }

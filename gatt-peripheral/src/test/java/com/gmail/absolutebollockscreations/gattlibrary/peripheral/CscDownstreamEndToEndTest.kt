@@ -21,6 +21,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class CscDownstreamEndToEndTest {
 
@@ -144,7 +145,7 @@ class CscDownstreamEndToEndTest {
         connection: ConnectionId,
         metrics: List<CscDerivedMetric>,
     ) {
-        val source = MetricSourceId(connection, MetricProtocol.CSC, BluetoothIds.UUID_CSC_MEASUREMENT)
+        val source = MetricSourceId(connection, MetricProtocol.CSC, SigUuids.UUID_CSC_MEASUREMENT)
         metrics.forEach { metric ->
             MetricEmitter(fusion, source, metric.sourceClass, arrivalMs = 101).emit(
                 metric.metric,

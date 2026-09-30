@@ -112,6 +112,7 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 private const val PHASE_05_TAG = "Phase05Hw"
 
@@ -910,7 +911,7 @@ object BtEngineGattCore {
                     descriptor.uuid,
                     descriptor,
                 )
-                descriptor.uuid == BluetoothIds.UUID_CCCD ->
+                descriptor.uuid == SigUuids.UUID_CCCD ->
                     engine.handleCccdWriteFailureRecovery(
                         context,
                         gatt,
@@ -928,7 +929,7 @@ object BtEngineGattCore {
                 )
             }
 
-            if (descriptor.uuid == BluetoothIds.UUID_CCCD) {
+            if (descriptor.uuid == SigUuids.UUID_CCCD) {
                 CaptureHooks.cccd(
                     connectionId = context.connectionId,
                     descriptor = descriptor,
@@ -939,7 +940,7 @@ object BtEngineGattCore {
 
             // Decrement only for the matching successful CCCD completion on this context.
             var cccdPlanBecameReady = false
-            if (completionMatched && status == GATT_SUCCESS && descriptor.uuid == BluetoothIds.UUID_CCCD) {
+            if (completionMatched && status == GATT_SUCCESS && descriptor.uuid == SigUuids.UUID_CCCD) {
                 cccdPlanBecameReady = engine.state.connectionRegistry.completeCccdWrite(context)
                 val pending = context.cccd.pendingWrites
                 Timber.tag(BtEngineState.TAG).d("CCCD written for %s → pending=%d", charUuid, pending)

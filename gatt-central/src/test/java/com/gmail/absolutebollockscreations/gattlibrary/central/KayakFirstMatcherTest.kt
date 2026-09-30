@@ -6,11 +6,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 
 class KayakFirstMatcherTest {
     private val registry = DeviceMatcherRegistry.standard()
-    private val service = CanonicalUuid.fromUuid(BluetoothIds.UUID_KAYAK_FIRST_SERVICE)
-    private val io = CanonicalUuid.fromUuid(BluetoothIds.UUID_KAYAK_FIRST_IO)
+    private val service = CanonicalUuid.fromUuid(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE)
+    private val io = CanonicalUuid.fromUuid(KayakFirstUuids.UUID_KAYAK_FIRST_IO)
 
     @Test
     fun `advertised FFE0 admits only a provisional rowing machine candidate`() {
@@ -124,7 +125,7 @@ class KayakFirstMatcherTest {
         assertEquals("sig.ftms", candidates.first().candidateId)
         assertTrue(candidates.any { it.candidateId == KAYAK_FIRST_CANDIDATE_ID })
         assertTrue(service in registry.scanFilterServiceUuids())
-        assertTrue(BluetoothIds.UUID_KAYAK_FIRST_SERVICE in hardwareScanServiceUuids())
+        assertTrue(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE in hardwareScanServiceUuids())
     }
 
     private fun candidate(observation: MatchObservation): RankedMatchCandidate =

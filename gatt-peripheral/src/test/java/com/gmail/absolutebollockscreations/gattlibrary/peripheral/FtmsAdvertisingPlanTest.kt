@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class FtmsAdvertisingPlanTest {
 
@@ -58,8 +59,8 @@ class FtmsAdvertisingPlanTest {
         assertEquals(
             listOf(
                 FtmsUuids.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_CSC_SERVICE,
-                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                SigUuids.UUID_CSC_SERVICE,
+                SigUuids.UUID_CYCLING_POWER_SERVICE,
             ),
             plan.serviceUuids,
         )

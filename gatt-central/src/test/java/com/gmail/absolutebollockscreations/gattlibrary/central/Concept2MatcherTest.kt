@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * Plan §11.1 matcher obligations for the Concept2 PM — positive, negative, ambiguous, and
@@ -22,7 +23,7 @@ class Concept2MatcherTest {
 
     private fun uuid(u: java.util.UUID) = CanonicalUuid.fromUuid(u)
 
-    private val ergService = uuid(BluetoothIds.UUID_C2_ERG_SERVICE)
+    private val ergService = uuid(Concept2Uuids.UUID_C2_ERG_SERVICE)
     private val ftmsService = uuid(FtmsUuids.UUID_FTMS_SERVICE)
 
     private fun candidates(observation: MatchObservation) =
@@ -47,9 +48,9 @@ class Concept2MatcherTest {
                 localName = "PM5 430123 RowErg",
                 discoveredServiceUuids = setOf(ergService),
                 discoveredCharacteristicUuids = setOf(
-                    uuid(BluetoothIds.UUID_C2_GENERAL_STATUS),
-                    uuid(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
-                    uuid(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
+                    uuid(Concept2Uuids.UUID_C2_GENERAL_STATUS),
+                    uuid(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1),
+                    uuid(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION),
                 ),
             ),
         ).single()
@@ -72,11 +73,11 @@ class Concept2MatcherTest {
         // No other vendor uses this base UUID, so a single characteristic is decisive. Tested
         // per characteristic because a PM on older firmware may expose only some of them.
         for (characteristic in listOf(
-            BluetoothIds.UUID_C2_GENERAL_STATUS,
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
-            BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
-            BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
+            Concept2Uuids.UUID_C2_GENERAL_STATUS,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA,
+            Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
         )) {
             val ids = idsOf(
                 MatchObservation(discoveredCharacteristicUuids = setOf(uuid(characteristic))),

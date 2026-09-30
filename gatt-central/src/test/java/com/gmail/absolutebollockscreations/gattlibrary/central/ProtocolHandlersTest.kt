@@ -9,6 +9,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class ProtocolHandlersTest {
 
@@ -115,8 +117,8 @@ class ProtocolHandlersTest {
         assertEquals(2, first.size)
         assertTrue(first[0] is HrmProtocolHandler)
         assertTrue(first[1] is TestEchoHandler)
-        assertEquals(setOf(BluetoothIds.UUID_RSC_SERVICE), first[1].primaryServices)
-        assertEquals(setOf(BluetoothIds.UUID_RSC_MEASUREMENT), first[1].extraCharacteristics)
+        assertEquals(setOf(SigUuids.UUID_RSC_SERVICE), first[1].primaryServices)
+        assertEquals(setOf(SigUuids.UUID_RSC_MEASUREMENT), first[1].extraCharacteristics)
         assertNotSame(first[0], second[0])
         assertNotSame(first[1], second[1])
     }
@@ -275,8 +277,8 @@ class ProtocolHandlersTest {
         assertTrue(
             resolveProtocolHandlerRoute(
                 listOf(ftms),
-                characteristicUuid = BluetoothIds.UUID_LF_B90_WRITE_F4E8,
-                serviceUuid = BluetoothIds.UUID_LF_CONTROL_SERVICE,
+                characteristicUuid = LifeFitnessUuids.UUID_LF_B90_WRITE_F4E8,
+                serviceUuid = LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
             ).owners.isEmpty(),
         )
     }

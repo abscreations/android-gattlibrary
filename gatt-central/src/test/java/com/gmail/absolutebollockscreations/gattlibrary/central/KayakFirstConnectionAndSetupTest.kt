@@ -11,6 +11,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 
 class KayakFirstConnectionAndSetupTest {
     private val notify = BluetoothGattCharacteristic.PROPERTY_NOTIFY
@@ -23,7 +25,7 @@ class KayakFirstConnectionAndSetupTest {
         assertTrue(plan.activate)
         assertNull(plan.failure)
         assertEquals(
-            CccdTarget(BluetoothIds.UUID_KAYAK_FIRST_SERVICE, BluetoothIds.UUID_KAYAK_FIRST_IO),
+            CccdTarget(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE, KayakFirstUuids.UUID_KAYAK_FIRST_IO),
             plan.notificationTarget,
         )
     }
@@ -57,7 +59,7 @@ class KayakFirstConnectionAndSetupTest {
                 KayakFirstGattInventory(
                     mapOf(
                         wrongParent to mapOf(
-                            BluetoothIds.UUID_KAYAK_FIRST_IO to characteristic(),
+                            KayakFirstUuids.UUID_KAYAK_FIRST_IO to characteristic(),
                         ),
                     ),
                 ),
@@ -348,16 +350,16 @@ class KayakFirstConnectionAndSetupTest {
 
         val route = resolveProtocolHandlerRoute(
             listOf(first),
-            BluetoothIds.UUID_KAYAK_FIRST_IO,
-            BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
+            KayakFirstUuids.UUID_KAYAK_FIRST_IO,
+            KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
         )
         assertEquals(HandlerOwnership.EXPLICIT_CHARACTERISTIC, route.ownership)
         assertSame(first, route.owners.single())
         assertTrue(
             resolveProtocolHandlerRoute(
                 listOf(first),
-                BluetoothIds.UUID_FLYWHEEL_TX,
-                BluetoothIds.UUID_FLYWHEEL_SERVICE,
+                FlywheelUuids.UUID_FLYWHEEL_TX,
+                FlywheelUuids.UUID_FLYWHEEL_SERVICE,
             ).owners.isEmpty(),
         )
     }
@@ -395,16 +397,16 @@ class KayakFirstConnectionAndSetupTest {
             listOf(kayak),
             resolveProtocolHandlerRoute(
                 handlers,
-                BluetoothIds.UUID_KAYAK_FIRST_IO,
-                BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
+                KayakFirstUuids.UUID_KAYAK_FIRST_IO,
+                KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
             ).owners,
         )
         assertEquals(
             listOf(flywheel),
             resolveProtocolHandlerRoute(
                 handlers,
-                BluetoothIds.UUID_FLYWHEEL_TX,
-                BluetoothIds.UUID_FLYWHEEL_SERVICE,
+                FlywheelUuids.UUID_FLYWHEEL_TX,
+                FlywheelUuids.UUID_FLYWHEEL_SERVICE,
             ).owners,
         )
     }
@@ -421,7 +423,7 @@ class KayakFirstConnectionAndSetupTest {
             connectionState = MutableStateFlow(LinkState.CONNECTED),
             discoveredServiceUuids = linkedSetOf(
                 FtmsUuids.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
+                KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
             ),
             handlers = mutableListOf(handler),
         )
@@ -440,12 +442,12 @@ class KayakFirstConnectionAndSetupTest {
         extras: Map<UUID, Map<UUID, KayakFirstCharacteristicInventory>> = emptyMap(),
     ): KayakFirstGattInventory {
         val characteristics = if (includeIo) {
-            mapOf(BluetoothIds.UUID_KAYAK_FIRST_IO to characteristic(ioProperties, hasCccd))
+            mapOf(KayakFirstUuids.UUID_KAYAK_FIRST_IO to characteristic(ioProperties, hasCccd))
         } else {
             emptyMap()
         }
         return KayakFirstGattInventory(
-            extras + (BluetoothIds.UUID_KAYAK_FIRST_SERVICE to characteristics),
+            extras + (KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE to characteristics),
         )
     }
 

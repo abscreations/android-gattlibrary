@@ -3,6 +3,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * The Life Fitness setup transcript: an ordered list of GATT operations and the rules for
@@ -47,19 +49,19 @@ object LifeFitnessSetup {
      * added setup field from silently becoming unroutable.
      */
     val CALLBACK_CHARACTERISTICS: Set<UUID> = setOf(
-        BluetoothIds.UUID_LF_STATUS,
-        BluetoothIds.UUID_LF_CONTROL_1,
-        BluetoothIds.UUID_LF_CONTROL_2,
-        BluetoothIds.UUID_USER_FIRST_NAME,
-        BluetoothIds.UUID_USER_LAST_NAME,
-        BluetoothIds.UUID_USER_EMAIL,
-        BluetoothIds.UUID_USER_AGE,
-        BluetoothIds.UUID_USER_GENDER,
-        BluetoothIds.UUID_USER_LANGUAGE,
-        BluetoothIds.UUID_LF_VENDOR_TOKEN_1,
-        BluetoothIds.UUID_LF_VENDOR_TOKEN_2,
-        BluetoothIds.UUID_USER_WEIGHT,
-        BluetoothIds.UUID_USER_HEIGHT,
+        LifeFitnessUuids.UUID_LF_STATUS,
+        LifeFitnessUuids.UUID_LF_CONTROL_1,
+        LifeFitnessUuids.UUID_LF_CONTROL_2,
+        SigUuids.UUID_USER_FIRST_NAME,
+        SigUuids.UUID_USER_LAST_NAME,
+        SigUuids.UUID_USER_EMAIL,
+        SigUuids.UUID_USER_AGE,
+        SigUuids.UUID_USER_GENDER,
+        SigUuids.UUID_USER_LANGUAGE,
+        LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1,
+        LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2,
+        SigUuids.UUID_USER_WEIGHT,
+        SigUuids.UUID_USER_HEIGHT,
     )
 
     /**
@@ -174,7 +176,7 @@ object LifeFitnessSetup {
             Op(
                 OpKind.CONTROL_WRITE,
                 control,
-                BluetoothIds.UUID_LF_CONTROL_1,
+                LifeFitnessUuids.UUID_LF_CONTROL_1,
                 byteArrayOf(CONTROL_1_OPEN),
                 "control 1 open",
             ),
@@ -183,22 +185,22 @@ object LifeFitnessSetup {
         // The profile block, in the order both references write it. Names and email are plain
         // UTF-8 with no terminator; the rest are fixed-width SIG encodings. See [utf8] and
         // [ageWireUnits] for why those two differ from TMIW.
-        add(profileOp(user, BluetoothIds.UUID_USER_FIRST_NAME, utf8(profile.firstName), "first name"))
-        add(profileOp(user, BluetoothIds.UUID_USER_LAST_NAME, utf8(profile.lastName), "last name"))
-        add(profileOp(user, BluetoothIds.UUID_USER_EMAIL, utf8(profile.email), "email"))
-        add(profileOp(user, BluetoothIds.UUID_USER_AGE, u16Wrapping(ageWireUnits(ageYears)), "age"))
-        add(profileOp(user, BluetoothIds.UUID_USER_GENDER, byteArrayOf(profile.gender.toByte()), "gender"))
-        add(profileOp(user, BluetoothIds.UUID_USER_LANGUAGE, LANGUAGE, "language"))
-        add(profileOp(user, BluetoothIds.UUID_LF_VENDOR_TOKEN_1, VENDOR_TOKEN, "vendor token 1"))
-        add(profileOp(user, BluetoothIds.UUID_LF_VENDOR_TOKEN_2, VENDOR_TOKEN_2, "vendor token 2"))
-        add(profileOp(user, BluetoothIds.UUID_USER_WEIGHT, u16Wrapping(profile.weightWireUnits), "weight"))
-        add(profileOp(user, BluetoothIds.UUID_USER_HEIGHT, u16Wrapping(profile.heightWireUnits), "height"))
+        add(profileOp(user, SigUuids.UUID_USER_FIRST_NAME, utf8(profile.firstName), "first name"))
+        add(profileOp(user, SigUuids.UUID_USER_LAST_NAME, utf8(profile.lastName), "last name"))
+        add(profileOp(user, SigUuids.UUID_USER_EMAIL, utf8(profile.email), "email"))
+        add(profileOp(user, SigUuids.UUID_USER_AGE, u16Wrapping(ageWireUnits(ageYears)), "age"))
+        add(profileOp(user, SigUuids.UUID_USER_GENDER, byteArrayOf(profile.gender.toByte()), "gender"))
+        add(profileOp(user, SigUuids.UUID_USER_LANGUAGE, LANGUAGE, "language"))
+        add(profileOp(user, LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1, VENDOR_TOKEN, "vendor token 1"))
+        add(profileOp(user, LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2, VENDOR_TOKEN_2, "vendor token 2"))
+        add(profileOp(user, SigUuids.UUID_USER_WEIGHT, u16Wrapping(profile.weightWireUnits), "weight"))
+        add(profileOp(user, SigUuids.UUID_USER_HEIGHT, u16Wrapping(profile.heightWireUnits), "height"))
 
         add(
             Op(
                 OpKind.CONTROL_WRITE,
                 control,
-                BluetoothIds.UUID_LF_CONTROL_2,
+                LifeFitnessUuids.UUID_LF_CONTROL_2,
                 CONTROL_2_MAGIC,
                 "control 2 magic",
             ),
@@ -207,7 +209,7 @@ object LifeFitnessSetup {
             Op(
                 OpKind.CONTROL_WRITE,
                 control,
-                BluetoothIds.UUID_LF_CONTROL_1,
+                LifeFitnessUuids.UUID_LF_CONTROL_1,
                 byteArrayOf(CONTROL_1_CLOSE),
                 "control 1 close",
             ),

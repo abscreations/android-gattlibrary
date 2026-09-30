@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Bounds-safe PM5 1.30 measurement encoders. */
 internal object Concept2Pm5Encoder {
@@ -38,18 +39,18 @@ internal object Concept2Pm5Encoder {
     )
 
     fun individual(uuid: UUID, s: Concept2Pm5Snapshot): ByteArray? = when (uuid) {
-        BluetoothIds.UUID_C2_GENERAL_STATUS -> generalStatus(s)
-        BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1 -> additionalStatus1(s, multiplexed = false)
-        BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2 -> additionalStatus2(s, multiplexed = false)
-        BluetoothIds.UUID_C2_STROKE_DATA -> strokeData(s, multiplexed = false)
-        BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA -> additionalStrokeData(s, multiplexed = false)
-        BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA -> splitIntervalData(s)
-        BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL -> additionalSplitInterval(s)
-        BluetoothIds.UUID_C2_WORKOUT_SUMMARY -> workoutSummary(s, multiplexed = false)
-        BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY -> additionalWorkoutSummary(s, multiplexed = false)
-        BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO -> heartRateBeltInformation()
-        BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2 -> additionalWorkoutSummary2(s)
-        BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3 -> additionalStatus3(s)
+        Concept2Uuids.UUID_C2_GENERAL_STATUS -> generalStatus(s)
+        Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1 -> additionalStatus1(s, multiplexed = false)
+        Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2 -> additionalStatus2(s, multiplexed = false)
+        Concept2Uuids.UUID_C2_STROKE_DATA -> strokeData(s, multiplexed = false)
+        Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA -> additionalStrokeData(s, multiplexed = false)
+        Concept2Uuids.UUID_C2_SPLIT_INTERVAL_DATA -> splitIntervalData(s)
+        Concept2Uuids.UUID_C2_ADDITIONAL_SPLIT_INTERVAL -> additionalSplitInterval(s)
+        Concept2Uuids.UUID_C2_WORKOUT_SUMMARY -> workoutSummary(s, multiplexed = false)
+        Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY -> additionalWorkoutSummary(s, multiplexed = false)
+        Concept2Uuids.UUID_C2_HEART_RATE_BELT_INFO -> heartRateBeltInformation()
+        Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2 -> additionalWorkoutSummary2(s)
+        Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3 -> additionalStatus3(s)
         else -> null
     }
 

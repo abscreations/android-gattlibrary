@@ -6,6 +6,8 @@ import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 internal data class FlywheelSportsAdvertisingPlan(
     val serviceUuid: UUID,
@@ -24,7 +26,7 @@ internal data class FlywheelSportsAdvertisingPlan(
         fun create(): FlywheelSportsAdvertisingPlan {
             val name = SimulatorPersona.FlywheelSports.advertisedName
             return FlywheelSportsAdvertisingPlan(
-                serviceUuid = BluetoothIds.UUID_FLYWHEEL_SERVICE,
+                serviceUuid = FlywheelUuids.UUID_FLYWHEEL_SERVICE,
                 localName = name,
                 advertisingBytes = 3 + 2 + name.toByteArray(Charsets.UTF_8).size,
                 scanResponseBytes = 18,
@@ -44,20 +46,20 @@ internal object FlywheelSportsGattProfile {
     )
 
     val characteristics = listOf(
-        Characteristic(BluetoothIds.UUID_FLYWHEEL_RX, false, true, true, false, false),
-        Characteristic(BluetoothIds.UUID_FLYWHEEL_TX, false, false, false, true, true),
+        Characteristic(FlywheelUuids.UUID_FLYWHEEL_RX, false, true, true, false, false),
+        Characteristic(FlywheelUuids.UUID_FLYWHEEL_TX, false, false, false, true, true),
     )
 
     fun acceptsInertRxWrite(uuid: UUID, preparedWrite: Boolean, offset: Int): Boolean =
-        uuid == BluetoothIds.UUID_FLYWHEEL_RX && !preparedWrite && offset == 0
+        uuid == FlywheelUuids.UUID_FLYWHEEL_RX && !preparedWrite && offset == 0
 
     fun buildService(): BluetoothGattService = BluetoothGattService(
-        BluetoothIds.UUID_FLYWHEEL_SERVICE,
+        FlywheelUuids.UUID_FLYWHEEL_SERVICE,
         BluetoothGattService.SERVICE_TYPE_PRIMARY,
     ).also { service ->
         service.addCharacteristic(
             BluetoothGattCharacteristic(
-                BluetoothIds.UUID_FLYWHEEL_RX,
+                FlywheelUuids.UUID_FLYWHEEL_RX,
                 BluetoothGattCharacteristic.PROPERTY_WRITE or
                     BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
                 BluetoothGattCharacteristic.PERMISSION_WRITE,
@@ -65,13 +67,13 @@ internal object FlywheelSportsGattProfile {
         )
         service.addCharacteristic(
             BluetoothGattCharacteristic(
-                BluetoothIds.UUID_FLYWHEEL_TX,
+                FlywheelUuids.UUID_FLYWHEEL_TX,
                 BluetoothGattCharacteristic.PROPERTY_NOTIFY,
                 0,
             ).also { tx ->
                 tx.addDescriptor(
                     BluetoothGattDescriptor(
-                        BluetoothIds.UUID_CCCD,
+                        SigUuids.UUID_CCCD,
                         BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
                     ),
                 )

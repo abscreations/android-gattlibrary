@@ -5,6 +5,15 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 /**
  * Every registered family must be reachable end to end. Plan §11, new obligation.
@@ -67,10 +76,10 @@ class DeviceReachabilityTest {
         val filter = hardwareScanServiceUuids().toSet()
 
         assertTrue("FTMS", FtmsUuids.UUID_FTMS_SERVICE in filter)
-        assertTrue("Concept2 must be scannable", BluetoothIds.UUID_C2_DISCOVERY_SERVICE in filter)
-        assertTrue("Precor must be scannable", BluetoothIds.UUID_PRECOR_SERVICE in filter)
-        assertTrue("Schwinn x70 must be scannable", BluetoothIds.UUID_X70_SERVICE in filter)
-        assertTrue("Kayak First must be scannable", BluetoothIds.UUID_KAYAK_FIRST_SERVICE in filter)
+        assertTrue("Concept2 must be scannable", Concept2Uuids.UUID_C2_DISCOVERY_SERVICE in filter)
+        assertTrue("Precor must be scannable", PrecorUuids.UUID_PRECOR_SERVICE in filter)
+        assertTrue("Schwinn x70 must be scannable", SchwinnX70Uuids.UUID_X70_SERVICE in filter)
+        assertTrue("Kayak First must be scannable", KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE in filter)
     }
 
     // ── Schwinn x70 admission (plan §7) ──────────────────────────────────────────
@@ -99,7 +108,7 @@ class DeviceReachabilityTest {
         )
         assertEquals(
             "the registered service must be the one the console actually advertises",
-            BluetoothIds.UUID_X70_SERVICE,
+            SchwinnX70Uuids.UUID_X70_SERVICE,
             decoded,
         )
 
@@ -139,15 +148,15 @@ class DeviceReachabilityTest {
         // 170 does the reverse. Requiring all four would reject both real consoles — a family that
         // fingerprints perfectly against a device that does not exist.
         val console270 = setOf(
-            uuid(BluetoothIds.UUID_X70_SERVICE),
-            uuid(BluetoothIds.UUID_X70_MEASUREMENT),
-            uuid(BluetoothIds.UUID_X70_CONTROL),
+            uuid(SchwinnX70Uuids.UUID_X70_SERVICE),
+            uuid(SchwinnX70Uuids.UUID_X70_MEASUREMENT),
+            uuid(SchwinnX70Uuids.UUID_X70_CONTROL),
         )
         val console170 = setOf(
-            uuid(BluetoothIds.UUID_X70_SERVICE),
-            uuid(BluetoothIds.UUID_X70_SUPPLEMENTAL),
-            uuid(BluetoothIds.UUID_X70_SIBLING),
-            uuid(BluetoothIds.UUID_X70_CONTROL),
+            uuid(SchwinnX70Uuids.UUID_X70_SERVICE),
+            uuid(SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL),
+            uuid(SchwinnX70Uuids.UUID_X70_SIBLING),
+            uuid(SchwinnX70Uuids.UUID_X70_CONTROL),
         )
 
         for ((label, discovered) in listOf("270/570" to console270, "170" to console170)) {
@@ -169,11 +178,11 @@ class DeviceReachabilityTest {
         // three different third groups, so no helper could generate them and an alias comparison
         // would match unrelated UUIDs from any vendor that happened to reuse those four hex digits.
         val all = listOf(
-            BluetoothIds.UUID_X70_SERVICE,
-            BluetoothIds.UUID_X70_MEASUREMENT,
-            BluetoothIds.UUID_X70_CONTROL,
-            BluetoothIds.UUID_X70_SUPPLEMENTAL,
-            BluetoothIds.UUID_X70_SIBLING,
+            SchwinnX70Uuids.UUID_X70_SERVICE,
+            SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+            SchwinnX70Uuids.UUID_X70_CONTROL,
+            SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+            SchwinnX70Uuids.UUID_X70_SIBLING,
         )
 
         assertEquals("all five identifiers are distinct", all.size, all.toSet().size)
@@ -184,7 +193,7 @@ class DeviceReachabilityTest {
         assertEquals("no identifier is an alias substitution of another", all.size, suffixes.toSet().size)
 
         // And the advertised service is on a different base entirely from the four characteristics.
-        val serviceSecondGroup = BluetoothIds.UUID_X70_SERVICE.toString().split('-')[1]
+        val serviceSecondGroup = SchwinnX70Uuids.UUID_X70_SERVICE.toString().split('-')[1]
         assertEquals("3a2f", serviceSecondGroup)
         for (characteristic in all.drop(1)) {
             assertEquals(
@@ -201,8 +210,8 @@ class DeviceReachabilityTest {
         // accepted because both are exclusively Concept2's and nothing establishes that no
         // firmware advertises the Erg service. Narrowing to one would be a guess.
         for (advertised in listOf(
-            BluetoothIds.UUID_C2_DISCOVERY_SERVICE,
-            BluetoothIds.UUID_C2_ERG_SERVICE,
+            Concept2Uuids.UUID_C2_DISCOVERY_SERVICE,
+            Concept2Uuids.UUID_C2_ERG_SERVICE,
         )) {
             val ids = registry.rankedCandidates(
                 MatchObservation(advertisedServiceUuids = setOf(uuid(advertised))),
@@ -221,7 +230,7 @@ class DeviceReachabilityTest {
         val candidates = registry.rankedCandidates(
             MatchObservation(
                 localName = "PM5 430343693",
-                advertisedServiceUuids = setOf(uuid(BluetoothIds.UUID_C2_DISCOVERY_SERVICE)),
+                advertisedServiceUuids = setOf(uuid(Concept2Uuids.UUID_C2_DISCOVERY_SERVICE)),
             ),
         )
 
@@ -235,7 +244,7 @@ class DeviceReachabilityTest {
         // matching and handler activation both key on the Erg service and must be unaffected.
         val candidates = registry.rankedCandidates(
             MatchObservation(
-                discoveredServiceUuids = setOf(uuid(BluetoothIds.UUID_C2_ERG_SERVICE)),
+                discoveredServiceUuids = setOf(uuid(Concept2Uuids.UUID_C2_ERG_SERVICE)),
             ),
         )
 
@@ -274,9 +283,9 @@ class DeviceReachabilityTest {
         val registered = registry.scanFilterServiceUuids().toSet()
 
         for (proprietary in listOf(
-            BluetoothIds.UUID_LF_CONTROL_SERVICE,
-            BluetoothIds.UUID_LF_USER_SERVICE,
-            BluetoothIds.UUID_LF_STATUS,
+            LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
+            LifeFitnessUuids.UUID_LF_USER_SERVICE,
+            LifeFitnessUuids.UUID_LF_STATUS,
         )) {
             assertFalse("$proprietary is not advertised and must not be scanned for", proprietary in filter)
             assertFalse("$proprietary must not be a registry match key", uuid(proprietary) in registered)
@@ -351,12 +360,12 @@ class DeviceReachabilityTest {
     fun `machine role is declared, not inferred from a SIG enum`() {
         val expected = mapOf(
             FtmsUuids.UUID_FTMS_SERVICE to true,
-            BluetoothIds.UUID_C2_DISCOVERY_SERVICE to true,
-            BluetoothIds.UUID_PRECOR_SERVICE to true,
-            BluetoothIds.UUID_HRM_SERVICE to false,
-            BluetoothIds.UUID_CSC_SERVICE to false,
-            BluetoothIds.UUID_RSC_SERVICE to false,
-            BluetoothIds.UUID_CYCLING_POWER_SERVICE to false,
+            Concept2Uuids.UUID_C2_DISCOVERY_SERVICE to true,
+            PrecorUuids.UUID_PRECOR_SERVICE to true,
+            SigUuids.UUID_HRM_SERVICE to false,
+            SigUuids.UUID_CSC_SERVICE to false,
+            SigUuids.UUID_RSC_SERVICE to false,
+            SigUuids.UUID_CYCLING_POWER_SERVICE to false,
         )
 
         for ((service, isMachine) in expected) {
@@ -372,7 +381,7 @@ class DeviceReachabilityTest {
         val hrm = registry.rankedCandidates(
             MatchObservation(
                 localName = "Garmin HRM-Pro",
-                advertisedServiceUuids = setOf(uuid(BluetoothIds.UUID_HRM_SERVICE)),
+                advertisedServiceUuids = setOf(uuid(SigUuids.UUID_HRM_SERVICE)),
             ),
         ).single()
 
@@ -391,18 +400,18 @@ class DeviceReachabilityTest {
 
         val machineServices = listOf(
             FtmsUuids.UUID_FTMS_SERVICE,
-            BluetoothIds.UUID_C2_ERG_SERVICE,
-            BluetoothIds.UUID_PRECOR_SERVICE,
-            BluetoothIds.UUID_X70_SERVICE,
-            BluetoothIds.UUID_FEC_SERVICE,
-            BluetoothIds.UUID_FLYWHEEL_SERVICE,
-            BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
+            Concept2Uuids.UUID_C2_ERG_SERVICE,
+            PrecorUuids.UUID_PRECOR_SERVICE,
+            SchwinnX70Uuids.UUID_X70_SERVICE,
+            FecBleUuids.UUID_FEC_SERVICE,
+            FlywheelUuids.UUID_FLYWHEEL_SERVICE,
+            KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
             // Legacy KICKR shares CPS with ordinary power meters. This equality asserts only
             // that its machine handler/candidate chain covers CPS; the Phase-10 fingerprint
             // tests separately prove that bare CPS never activates the candidate.
-            BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-            BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
-            BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE,
+            SigUuids.UUID_CYCLING_POWER_SERVICE,
+            WahooUuids.UUID_WAHOO_RIDEON_SERVICE,
+            WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE,
         )
 
         for (service in machineServices) {
@@ -426,15 +435,15 @@ class DeviceReachabilityTest {
         // every defect above took.
         val adapterServices = setOf(
             FtmsUuids.UUID_FTMS_SERVICE,
-            BluetoothIds.UUID_C2_ERG_SERVICE,
-            BluetoothIds.UUID_PRECOR_SERVICE,
-            BluetoothIds.UUID_X70_SERVICE,
-            BluetoothIds.UUID_FEC_SERVICE,
-            BluetoothIds.UUID_FLYWHEEL_SERVICE,
-            BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
-            BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-            BluetoothIds.UUID_WAHOO_RIDEON_SERVICE,
-            BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE,
+            Concept2Uuids.UUID_C2_ERG_SERVICE,
+            PrecorUuids.UUID_PRECOR_SERVICE,
+            SchwinnX70Uuids.UUID_X70_SERVICE,
+            FecBleUuids.UUID_FEC_SERVICE,
+            FlywheelUuids.UUID_FLYWHEEL_SERVICE,
+            KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
+            SigUuids.UUID_CYCLING_POWER_SERVICE,
+            WahooUuids.UUID_WAHOO_RIDEON_SERVICE,
+            WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE,
         )
         val handlerServices = HandlerFactory.standard(enablePhase05HardwareTest = false)
             .let { factory -> MACHINE_PROTOCOLS.map(factory::create) }

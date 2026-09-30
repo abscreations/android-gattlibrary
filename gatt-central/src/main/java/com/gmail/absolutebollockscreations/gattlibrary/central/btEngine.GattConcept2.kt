@@ -8,6 +8,8 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Concept2 PM measurement handler with the user-authorized Just Row startup (plan §5a/D11).
@@ -30,20 +32,20 @@ import java.util.UUID
 @GattLibraryInternalApi
 class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_C2_ERG_SERVICE)
+    override val primaryServices: Set<UUID> = setOf(Concept2Uuids.UUID_C2_ERG_SERVICE)
 
     override val extraCharacteristics: Set<UUID> = setOf(
-        BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
-        BluetoothIds.UUID_C2_GENERAL_STATUS,
-        BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
-        BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
-        BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+        Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
+        Concept2Uuids.UUID_C2_GENERAL_STATUS,
+        Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1,
+        Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2,
+        Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA,
         // Read-only identification, not a notification source. Owned so the read callback
         // routes here rather than to whichever handler happens to claim the Device Info
         // service; it is never subscribed.
-        BluetoothIds.UUID_C2_MACHINE_TYPE,
-        BluetoothIds.UUID_C2_CSAFE_REQUEST,
-        BluetoothIds.UUID_C2_CSAFE_RESPONSE,
+        Concept2Uuids.UUID_C2_MACHINE_TYPE,
+        Concept2Uuids.UUID_C2_CSAFE_REQUEST,
+        Concept2Uuids.UUID_C2_CSAFE_RESPONSE,
     )
 
     private var path: Concept2DeliveryPath? = null
@@ -78,7 +80,7 @@ class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         gatt: BluetoothGatt,
         services: List<BluetoothGattService>,
     ): Boolean {
-        val service = services.firstOrNull { it.uuid == BluetoothIds.UUID_C2_ERG_SERVICE }
+        val service = services.firstOrNull { it.uuid == Concept2Uuids.UUID_C2_ERG_SERVICE }
             ?: return false
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
             Timber.tag(BtEngineState.TAG).w("Concept2 discovery ignored for unregistered GATT")
@@ -104,11 +106,11 @@ class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         )
         // Queue response CCCD before the one setup write, and setup before measurement CCCDs.
         // Each operation stays on this physical context's serialized, generation-bound queue.
-        val control = services.firstOrNull { it.uuid == BluetoothIds.UUID_C2_PM_CONTROL_SERVICE }
-        val request = control?.getCharacteristic(BluetoothIds.UUID_C2_CSAFE_REQUEST)
-        val response = control?.getCharacteristic(BluetoothIds.UUID_C2_CSAFE_RESPONSE)
+        val control = services.firstOrNull { it.uuid == Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE }
+        val request = control?.getCharacteristic(Concept2Uuids.UUID_C2_CSAFE_REQUEST)
+        val response = control?.getCharacteristic(Concept2Uuids.UUID_C2_CSAFE_RESPONSE)
         val mode = concept2StartupWriteMode(request?.properties ?: 0, response?.properties ?: 0,
-            response?.getDescriptor(BluetoothIds.UUID_CCCD) != null)
+            response?.getDescriptor(SigUuids.UUID_CCCD) != null)
         if (request != null && response != null && mode != null) {
             engine.enableNotifications(context, response)
             val issuedStartup = startup
@@ -145,7 +147,7 @@ class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         //
         // Nothing depends on the answer arriving before the first frame. A late classification
         // simply refines a device row; a session already under way keeps the user's selection.
-        services.firstOrNull { it.uuid == BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE }?.let { info ->
+        services.firstOrNull { it.uuid == Concept2Uuids.UUID_C2_DEVICE_INFO_SERVICE }?.let { info ->
             val infoCharacteristics = info.characteristics.associateBy { it.uuid }
             planConcept2Identification(infoCharacteristics.keys).forEach { operation ->
                 engine.pushRead(context, operation.characteristicUuid)
@@ -161,7 +163,7 @@ class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (ch.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE) {
+        if (ch.uuid == Concept2Uuids.UUID_C2_CSAFE_RESPONSE) {
             startup.tick(MonotonicMetricClock.SYSTEM.nowMs())
             if (startup.acceptAcknowledgement(value)) {
                 Timber.tag(BtEngineState.TAG).i("Concept2 Just Row startup acknowledged")
@@ -169,14 +171,14 @@ class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
             return
         }
         val reading = when (ch.uuid) {
-            BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION -> Concept2Measurement.multiplexed(value)
-            BluetoothIds.UUID_C2_GENERAL_STATUS ->
+            Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION -> Concept2Measurement.multiplexed(value)
+            Concept2Uuids.UUID_C2_GENERAL_STATUS ->
                 Concept2Measurement.parse(Concept2Measurement.Id.GENERAL_STATUS, value)
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1 ->
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1 ->
                 Concept2Measurement.parse(Concept2Measurement.Id.ADDITIONAL_STATUS_1, value)
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2 ->
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2 ->
                 Concept2Measurement.parse(Concept2Measurement.Id.ADDITIONAL_STATUS_2, value)
-            BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA ->
+            Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA ->
                 Concept2Measurement.parse(Concept2Measurement.Id.ADDITIONAL_STROKE_DATA, value)
             else -> return
         }
@@ -241,7 +243,7 @@ class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         value: ByteArray,
         status: Int,
     ) {
-        if (ch.uuid != BluetoothIds.UUID_C2_MACHINE_TYPE) return
+        if (ch.uuid != Concept2Uuids.UUID_C2_MACHINE_TYPE) return
         if (status != BluetoothGatt.GATT_SUCCESS) {
             Timber.tag(BtEngineState.TAG).w(
                 "Concept2 machine-type read failed (status=%d); classification falls back to the name",
@@ -312,7 +314,7 @@ class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         if (!concept2FallbackDecision(activePath, framesReceived, elapsed)) return
 
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
-        val service = gatt.getService(BluetoothIds.UUID_C2_ERG_SERVICE) ?: return
+        val service = gatt.getService(Concept2Uuids.UUID_C2_ERG_SERVICE) ?: return
         val characteristics = service.characteristics.associateBy { it.uuid }
         val operations = planConcept2IndividualFallback(availableCharacteristics)
         if (operations.isEmpty()) {

@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * Subscription planning, persona selection and fallback policy for the Concept2 PM (plan §5a).
@@ -44,11 +45,11 @@ internal data class Concept2DiscoveryPlan(
 internal fun planConcept2Identification(
     deviceInfoCharacteristicUuids: Set<UUID>,
 ): List<Concept2GattOperation> =
-    if (BluetoothIds.UUID_C2_MACHINE_TYPE in deviceInfoCharacteristicUuids) {
+    if (Concept2Uuids.UUID_C2_MACHINE_TYPE in deviceInfoCharacteristicUuids) {
         listOf(
             Concept2GattOperation(
                 Concept2GattOperationKind.READ,
-                BluetoothIds.UUID_C2_MACHINE_TYPE,
+                Concept2Uuids.UUID_C2_MACHINE_TYPE,
             ),
         )
     } else {
@@ -57,10 +58,10 @@ internal fun planConcept2Identification(
 
 /** The four characteristics FitBridge consumes, in identifier order. */
 internal val CONCEPT2_CONSUMED_CHARACTERISTICS: List<UUID> = listOf(
-    BluetoothIds.UUID_C2_GENERAL_STATUS,
-    BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
-    BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
-    BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+    Concept2Uuids.UUID_C2_GENERAL_STATUS,
+    Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1,
+    Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2,
+    Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA,
 )
 
 /**
@@ -84,14 +85,14 @@ internal val CONCEPT2_CONSUMED_CHARACTERISTICS: List<UUID> = listOf(
  * never speaks is handled by [concept2FallbackDecision].
  */
 internal fun planConcept2Discovery(characteristicUuids: Set<UUID>): Concept2DiscoveryPlan {
-    if (BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION in characteristicUuids) {
+    if (Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION in characteristicUuids) {
         return Concept2DiscoveryPlan(
             activate = true,
             path = Concept2DeliveryPath.MULTIPLEXED,
             operations = listOf(
                 Concept2GattOperation(
                     Concept2GattOperationKind.ENABLE_NOTIFICATIONS,
-                    BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
+                    Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
                 ),
             ),
         )

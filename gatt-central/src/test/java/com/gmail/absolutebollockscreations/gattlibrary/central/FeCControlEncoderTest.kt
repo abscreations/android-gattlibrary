@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Byte-exact tests for [FeCControlEncoder], per plan §16.6.
@@ -19,7 +20,7 @@ class FeCControlEncoderTest {
 
     @Test
     fun `encodeRequestDataPage requests page 54 twice as broadcast responses`() {
-        val wire = FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES)
+        val wire = FeCControlEncoder.encodeRequestDataPage(FecBleUuids.FEC_PAGE_FE_CAPABILITIES)
         assertArrayEquals(
             bytes(0xA4, 0x09, 0x4F, 0x05, 0x46, 0xFF, 0xFF, 0xFF, 0xFF, 0x02, 0x36, 0x01, 0x94),
             wire,
@@ -144,7 +145,7 @@ class FeCControlEncoderTest {
             FeCControlEncoder.encodeTargetPower(100.0),
             FeCControlEncoder.encodeWindResistance(),
             FeCControlEncoder.encodeTrackResistance(0.0, 0.004),
-            FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES),
+            FeCControlEncoder.encodeRequestDataPage(FecBleUuids.FEC_PAGE_FE_CAPABILITIES),
         )
         for (wire in pages) {
             assertArrayEquals(byteArrayOf(0x4F), byteArrayOf(wire[2]))

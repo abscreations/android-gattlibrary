@@ -7,25 +7,26 @@ import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import java.util.UUID
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 internal enum class CpsGattOperationKind { READ, ENABLE_NOTIFICATIONS }
 internal data class CpsGattOperation(val kind: CpsGattOperationKind, val characteristicUuid: UUID)
 internal data class CpsDiscoveryPlan(val activate: Boolean, val operations: List<CpsGattOperation>)
 
 internal fun planCpsDiscovery(characteristicUuids: Set<UUID>): CpsDiscoveryPlan {
-    if (BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT !in characteristicUuids) {
+    if (SigUuids.UUID_CYCLING_POWER_MEASUREMENT !in characteristicUuids) {
         return CpsDiscoveryPlan(false, emptyList())
     }
     return CpsDiscoveryPlan(
         true,
         buildList {
-            if (BluetoothIds.UUID_CYCLING_POWER_FEATURE in characteristicUuids) {
-                add(CpsGattOperation(CpsGattOperationKind.READ, BluetoothIds.UUID_CYCLING_POWER_FEATURE))
+            if (SigUuids.UUID_CYCLING_POWER_FEATURE in characteristicUuids) {
+                add(CpsGattOperation(CpsGattOperationKind.READ, SigUuids.UUID_CYCLING_POWER_FEATURE))
             }
-            if (BluetoothIds.UUID_SENSOR_LOCATION in characteristicUuids) {
-                add(CpsGattOperation(CpsGattOperationKind.READ, BluetoothIds.UUID_SENSOR_LOCATION))
+            if (SigUuids.UUID_SENSOR_LOCATION in characteristicUuids) {
+                add(CpsGattOperation(CpsGattOperationKind.READ, SigUuids.UUID_SENSOR_LOCATION))
             }
-            add(CpsGattOperation(CpsGattOperationKind.ENABLE_NOTIFICATIONS, BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT))
+            add(CpsGattOperation(CpsGattOperationKind.ENABLE_NOTIFICATIONS, SigUuids.UUID_CYCLING_POWER_MEASUREMENT))
         },
     )
 }
@@ -39,7 +40,7 @@ internal sealed interface CpsReadOutcome {
 
 internal fun decodeCpsRead(characteristicUuid: UUID, value: ByteArray, success: Boolean): CpsReadOutcome =
     when (characteristicUuid) {
-        BluetoothIds.UUID_CYCLING_POWER_FEATURE -> if (!success || value.size < 4) {
+        SigUuids.UUID_CYCLING_POWER_FEATURE -> if (!success || value.size < 4) {
             CpsReadOutcome.Unavailable(characteristicUuid)
         } else {
             CpsReadOutcome.Features(
@@ -47,7 +48,7 @@ internal fun decodeCpsRead(characteristicUuid: UUID, value: ByteArray, success: 
                     ((value[2].toLong() and 0xFF) shl 16) or ((value[3].toLong() and 0xFF) shl 24),
             )
         }
-        BluetoothIds.UUID_SENSOR_LOCATION -> if (!success || value.isEmpty()) {
+        SigUuids.UUID_SENSOR_LOCATION -> if (!success || value.isEmpty()) {
             CpsReadOutcome.Unavailable(characteristicUuid)
         } else {
             CpsReadOutcome.SensorLocation(value[0].toInt() and 0xFF)
@@ -64,11 +65,11 @@ internal class CpsProtocolHandler(
 ) : BtEngineGattCore.ProtocolHandler {
     private var sessionGeneration: Long? = null
 
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE)
+    override val primaryServices: Set<UUID> = setOf(SigUuids.UUID_CYCLING_POWER_SERVICE)
     override val extraCharacteristics: Set<UUID> = setOf(
-        BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
-        BluetoothIds.UUID_CYCLING_POWER_FEATURE,
-        BluetoothIds.UUID_SENSOR_LOCATION,
+        SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
+        SigUuids.UUID_CYCLING_POWER_FEATURE,
+        SigUuids.UUID_SENSOR_LOCATION,
     )
 
     internal fun acceptMeasurement(value: ByteArray): CpsMeasurementTracker.Update? = tracker.accept(value)
@@ -85,7 +86,7 @@ internal class CpsProtocolHandler(
         gatt: BluetoothGatt,
         services: List<BluetoothGattService>,
     ): Boolean {
-        val service = services.firstOrNull { it.uuid == BluetoothIds.UUID_CYCLING_POWER_SERVICE }
+        val service = services.firstOrNull { it.uuid == SigUuids.UUID_CYCLING_POWER_SERVICE }
             ?: return false
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
             Timber.tag(BtEngineState.TAG).w("CPS discovery ignored for unregistered GATT")
@@ -116,7 +117,7 @@ internal class CpsProtocolHandler(
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (ch.uuid != BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT) return
+        if (ch.uuid != SigUuids.UUID_CYCLING_POWER_MEASUREMENT) return
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
             Timber.tag(BtEngineState.TAG).w("CPS measurement ignored for unregistered GATT")
             return

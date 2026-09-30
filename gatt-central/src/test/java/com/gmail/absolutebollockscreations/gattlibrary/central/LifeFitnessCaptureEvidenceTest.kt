@@ -6,6 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Consumers for the four capture-derived Life Fitness fixtures extracted on 2026-08-25.
@@ -98,9 +100,9 @@ class LifeFitnessCaptureEvidenceTest {
     )
 
     private fun shipped() = LifeFitnessSetup.transcript(
-        control = BluetoothIds.UUID_LF_CONTROL_SERVICE,
-        user = BluetoothIds.UUID_LF_USER_SERVICE,
-        status = BluetoothIds.UUID_LF_STATUS,
+        control = LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
+        user = LifeFitnessUuids.UUID_LF_USER_SERVICE,
+        status = LifeFitnessUuids.UUID_LF_STATUS,
         profile = profile,
         ageYears = 41,
     )
@@ -279,13 +281,13 @@ class LifeFitnessCaptureEvidenceTest {
     fun `the vendor UUID constants are the ones the machine actually exposes`() {
         // D52 keeps runtime pair validation, but the constants themselves were read out of TMIW
         // and QZ source. This binds each of them to an observed GATT.
-        val control = characteristicUuids(BluetoothIds.UUID_LF_CONTROL_SERVICE)
-        val user = characteristicUuids(BluetoothIds.UUID_LF_USER_SERVICE)
+        val control = characteristicUuids(LifeFitnessUuids.UUID_LF_CONTROL_SERVICE)
+        val user = characteristicUuids(LifeFitnessUuids.UUID_LF_USER_SERVICE)
 
         for (uuid in listOf(
-            BluetoothIds.UUID_LF_STATUS,
-            BluetoothIds.UUID_LF_CONTROL_1,
-            BluetoothIds.UUID_LF_CONTROL_2,
+            LifeFitnessUuids.UUID_LF_STATUS,
+            LifeFitnessUuids.UUID_LF_CONTROL_1,
+            LifeFitnessUuids.UUID_LF_CONTROL_2,
         )) {
             assertTrue("$uuid must live under the control service", control.contains(uuid))
         }
@@ -293,22 +295,22 @@ class LifeFitnessCaptureEvidenceTest {
         // Both vendor tokens are children of the USER service, not the control service, which is
         // where the shipped transcript already targets them. Asserted because getting this wrong
         // produces a write that lands nowhere rather than an obvious failure.
-        assertTrue(user.contains(BluetoothIds.UUID_LF_VENDOR_TOKEN_1))
-        assertTrue(user.contains(BluetoothIds.UUID_LF_VENDOR_TOKEN_2))
-        assertFalse(control.contains(BluetoothIds.UUID_LF_VENDOR_TOKEN_1))
-        assertFalse(control.contains(BluetoothIds.UUID_LF_VENDOR_TOKEN_2))
+        assertTrue(user.contains(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1))
+        assertTrue(user.contains(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2))
+        assertFalse(control.contains(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1))
+        assertFalse(control.contains(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2))
 
         // The SIG User Data characteristics are children of the vendor user service, not of a
         // 0x181C User Data service. A UUID-only lookup would not find them on this machine.
         for (uuid in listOf(
-            BluetoothIds.UUID_USER_FIRST_NAME,
-            BluetoothIds.UUID_USER_LAST_NAME,
-            BluetoothIds.UUID_USER_EMAIL,
-            BluetoothIds.UUID_USER_AGE,
-            BluetoothIds.UUID_USER_GENDER,
-            BluetoothIds.UUID_USER_LANGUAGE,
-            BluetoothIds.UUID_USER_WEIGHT,
-            BluetoothIds.UUID_USER_HEIGHT,
+            SigUuids.UUID_USER_FIRST_NAME,
+            SigUuids.UUID_USER_LAST_NAME,
+            SigUuids.UUID_USER_EMAIL,
+            SigUuids.UUID_USER_AGE,
+            SigUuids.UUID_USER_GENDER,
+            SigUuids.UUID_USER_LANGUAGE,
+            SigUuids.UUID_USER_WEIGHT,
+            SigUuids.UUID_USER_HEIGHT,
         )) {
             assertTrue("$uuid must live under the vendor user service", user.contains(uuid))
         }
@@ -389,11 +391,11 @@ class LifeFitnessCaptureEvidenceTest {
         // handshake against characteristics it does not have.
         val discover = load("life_fitness_issue_3374_discover_se_inventory")
         val discoverService = arr(discover["services"])
-            .single { UUID.fromString(FixtureJson.string(it["uuid"])) == BluetoothIds.UUID_LF_CONTROL_SERVICE }
+            .single { UUID.fromString(FixtureJson.string(it["uuid"])) == LifeFitnessUuids.UUID_LF_CONTROL_SERVICE }
         val discoverCharacteristics = arr(discoverService["characteristics"])
             .map { UUID.fromString(FixtureJson.string(it["uuid"])) }.toSet()
 
-        val canonical = characteristicUuids(BluetoothIds.UUID_LF_CONTROL_SERVICE)
+        val canonical = characteristicUuids(LifeFitnessUuids.UUID_LF_CONTROL_SERVICE)
 
         assertTrue("the service UUID is shared", discoverCharacteristics.isNotEmpty() && canonical.isNotEmpty())
         assertTrue(

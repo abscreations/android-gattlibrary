@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Plan §16.1's "obligation zero" for FE-C over BLE: the mandatory production-plumbing chain
@@ -30,7 +31,7 @@ class FeCProductionPlumbingTest {
 
     private fun context(
         generation: Long = 1L,
-        services: Set<UUID> = setOf(BluetoothIds.UUID_FEC_SERVICE),
+        services: Set<UUID> = setOf(FecBleUuids.UUID_FEC_SERVICE),
     ): ConnectionContext = ConnectionContext(
         connectionId = ConnectionId(address = "AA:BB:CC:DD:EE:FE", linkGeneration = generation),
         address = "AA:BB:CC:DD:EE:FE",
@@ -77,7 +78,7 @@ class FeCProductionPlumbingTest {
 
         val activeWithFec = activateMatchingProtocolHandlers(
             listOf(ftms, fec),
-            setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE, FecBleUuids.UUID_FEC_SERVICE),
             offer = { true },
         )
         assertEquals("a device may serve both FTMS and FEC1", 2, activeWithFec.size)
@@ -98,8 +99,8 @@ class FeCProductionPlumbingTest {
 
         val route = resolveProtocolHandlerRoute(
             active,
-            BluetoothIds.UUID_FEC_MEASUREMENT,
-            BluetoothIds.UUID_FEC_SERVICE,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_SERVICE,
         )
         assertEquals(listOf(fec), route.owners)
         assertSame(fec, route.owners.single())
@@ -144,7 +145,7 @@ class FeCProductionPlumbingTest {
         // Plan §6.2: preference between two certain matches is expressed via rank, not weight.
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
-            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
+            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, FecBleUuids.UUID_FEC_SERVICE),
         )
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)
@@ -160,7 +161,7 @@ class FeCProductionPlumbingTest {
     fun `a silent FTMS advertisement falls back to FE-C instead of dying`() {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val ctx = context(
-            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
+            services = setOf(FtmsUuids.UUID_FTMS_SERVICE, FecBleUuids.UUID_FEC_SERVICE),
         )
 
         coordinator.onSubscriptionsComplete(ctx, nowMs = 0L)

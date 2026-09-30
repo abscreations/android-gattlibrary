@@ -9,25 +9,32 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import android.os.ParcelUuid
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.NordicUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.ZwiftUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
- * Central registry of all Bluetooth SIG Assigned Numbers (UUIDs) and
- * CSC/CPS opcodes used inside the FitBridge Bluetooth stack. FTMS identifiers and vocabulary
- * (UUIDs, opcodes, status codes, data flags, machine profile) moved to gatt-core `core.ftms` in LIB-19a.
- *
- * This file is meant to be the **single source of truth** for:
- *  1. Services we *scan* for (to detect device capabilities)
- *  2. Services/characteristics we *enable notifications/indications* on
- *  3. Characteristics we *read* for capability/range info
- *  4. Characteristics we *write* to (FTMS Control Point, HRM Control Point, CSC/CP CP)
+ * Android-side wrappers for the identifiers gatt-core owns. Every UUID, opcode and vocabulary constant
+ * moved to gatt-core (`core.ftms` in LIB-19a; `core.ids` in LIB-19b: SigUuids, Concept2Uuids,
+ * PrecorUuids, SchwinnX70Uuids, LifeFitnessUuids, WahooUuids, ZwiftUuids, NordicUuids,
+ * FlywheelUuids, KayakFirstUuids, FecBleUuids). What remains here needs Android types
+ * (`ParcelUuid` scan-filter values) or the capture policy (diagnostically retained characteristics).
  *
  * ──────────────────────────────────────────────────────────────────────────────
  * ORGANIZATION
  * ──────────────────────────────────────────────────────────────────────────────
- *  • [BluetoothIds]         → Non-FTMS Bluetooth UUIDs and vendor vocabulary
+ *  • [BluetoothIds]         → ParcelUuid scan-filter values and the diagnostic retention list
  *  • [BtServiceProfiles]    → Ancillary service-level enums and constants
  *                              (service modes, device names,
  *                               max clients, default notify interval, FMF presets)
@@ -36,431 +43,24 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
  */
 
 // ============================================================================
-// 1) BluetoothIds — UUIDs, opcodes, status codes, and unit scales
+// 1) BluetoothIds — ParcelUuid wrappers and capture retention list
 // ============================================================================
 object BluetoothIds {
 
-    // ─────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────
-    /** Build a 128-bit UUID from a 16-bit Assigned Number. */
-    private fun shortUuid(hex: Int): UUID =
-        UUID.fromString(String.format("0000%04X-0000-1000-8000-00805F9B34FB", hex))
 
     // ─────────────────────────────────────────────────────────────
     // FTMS (Fitness Machine Service 0x1826)
     // ─────────────────────────────────────────────────────────────
     /** FTMS service, from core so central, peripheral and simulator share one definition (LIB-19a). */
     val FTMS_SERVICE_PARCEL: ParcelUuid = ParcelUuid(FtmsUuids.UUID_FTMS_SERVICE) // for scan filter
-
-    // Additional standard services present in every captured legacy Life Fitness console.
-    val UUID_DEVICE_INFORMATION_SERVICE: UUID = shortUuid(0x180A)
-    val UUID_BOND_MANAGEMENT_SERVICE: UUID = shortUuid(0x181E)
-    val UUID_BOND_MANAGEMENT_CONTROL_POINT: UUID = shortUuid(0x2AA4)
-    val UUID_BOND_MANAGEMENT_FEATURE: UUID = shortUuid(0x2AA5)
-    val UUID_MANUFACTURER_NAME: UUID = shortUuid(0x2A29)
-    val UUID_MODEL_NUMBER: UUID = shortUuid(0x2A24)
-    val UUID_SERIAL_NUMBER: UUID = shortUuid(0x2A25)
-    val UUID_HARDWARE_REVISION: UUID = shortUuid(0x2A27)
-    val UUID_FIRMWARE_REVISION: UUID = shortUuid(0x2A26)
-    val UUID_SOFTWARE_REVISION: UUID = shortUuid(0x2A28)
-    val UUID_PNP_ID: UUID = shortUuid(0x2A50)
-    val UUID_USER_DATA_SERVICE: UUID = shortUuid(0x181C)
-    val UUID_LF_SECONDARY_SERVICE: UUID = shortUuid(0xFE13)
-
-    // ─────────────────────────────────────────────────────────────
-    // Heart Rate (Service 0x180D)
-    // ─────────────────────────────────────────────────────────────
-    val UUID_HRM_SERVICE: UUID         = shortUuid(0x180D)
-    val HRM_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_HRM_SERVICE)
-
-    val UUID_HEART_RATE_MEASUREMENT: UUID   = shortUuid(0x2A37) // notify
-    val UUID_BODY_SENSOR_LOCATION: UUID     = shortUuid(0x2A38) // read
-    val UUID_HEART_RATE_CONTROL_POINT: UUID = shortUuid(0x2A39) // write (optional)
-
-    // ─────────────────────────────────────────────────────────────
-    // Cycling Speed & Cadence (Service 0x1816)
-    // ─────────────────────────────────────────────────────────────
-    val UUID_CSC_SERVICE: UUID         = shortUuid(0x1816)
-    val CSC_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_CSC_SERVICE)
-
-    // CSC Characteristics
-    val UUID_CSC_MEASUREMENT: UUID  = shortUuid(0x2A5B) // notify
-    val UUID_CSC_FEATURE: UUID      = shortUuid(0x2A5C) // read
-    val UUID_SENSOR_LOCATION: UUID  = shortUuid(0x2A5D) // read (shared by CSC & CPS)
-    val UUID_SC_CONTROL_POINT: UUID = shortUuid(0x2A55) // write / indicate
-
-    // ─────────────────────────────────────────────────────────────
-    // Battery (Service 0x180F)
-    // ─────────────────────────────────────────────────────────────
-    // Present on the captured Stryd footpods, which notify the level rather than
-    // only exposing it for reading.
-    val UUID_BATTERY_SERVICE: UUID = shortUuid(0x180F)
-    val UUID_BATTERY_LEVEL: UUID   = shortUuid(0x2A19) // read / notify
-
-    // ─────────────────────────────────────────────────────────────
-    // Running Speed & Cadence (Service 0x1814)
-    // ─────────────────────────────────────────────────────────────
-    val UUID_RSC_SERVICE: UUID         = shortUuid(0x1814)
-    val RSC_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_RSC_SERVICE)
-    val UUID_RSC_MEASUREMENT: UUID     = shortUuid(0x2A53) // notify
-    val UUID_RSC_FEATURE: UUID         = shortUuid(0x2A54) // read
-    // UUID_SENSOR_LOCATION (0x2A5D) and UUID_SC_CONTROL_POINT (0x2A55) are shared above.
-
-    // ─────────────────────────────────────────────────────────────
-    // Cycling Power (Service 0x1818)
-    // ─────────────────────────────────────────────────────────────
-    val UUID_POWER_SERVICE: UUID        = shortUuid(0x1818)
-    val POWER_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_POWER_SERVICE)
-
-    // Alias for clarity on service side
-    val UUID_CYCLING_POWER_SERVICE: UUID         = UUID_POWER_SERVICE
+    val HRM_SERVICE_PARCEL: ParcelUuid = ParcelUuid(SigUuids.UUID_HRM_SERVICE)
+    val CSC_SERVICE_PARCEL: ParcelUuid = ParcelUuid(SigUuids.UUID_CSC_SERVICE)
+    val RSC_SERVICE_PARCEL: ParcelUuid = ParcelUuid(SigUuids.UUID_RSC_SERVICE)
+    val POWER_SERVICE_PARCEL: ParcelUuid = ParcelUuid(SigUuids.UUID_POWER_SERVICE)
     val CYCLING_POWER_SERVICE_PARCEL: ParcelUuid = POWER_SERVICE_PARCEL
-
-    // CPS Characteristics
-    val UUID_CYCLING_POWER_MEASUREMENT: UUID   = shortUuid(0x2A63) // notify
-    val UUID_CYCLING_POWER_FEATURE: UUID       = shortUuid(0x2A65) // read
-    val UUID_CYCLING_POWER_CONTROL_POINT: UUID = shortUuid(0x2A66) // write / indicate
-
-    // ─────────────────────────────────────────────────────────────
-    // Wahoo KICKR proprietary control fingerprints (Phase 10)
-    // ─────────────────────────────────────────────────────────────
-    // Full UUIDs are transcribed from the corroborated sources and retained capture inventory
-    // recorded in docs/KICKR_PROPRIETARY_GATT_PORT_DESIGN.md. The two EE services are marker
-    // evidence only. Legacy commands belong exclusively to A026E005 under CPS.
-    val UUID_WAHOO_KICKR_MARKER_EE01: UUID =
-        UUID.fromString("a026ee01-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_MARKER_EE03: UUID =
-        UUID.fromString("a026ee03-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_MARKER_EE06: UUID =
-        UUID.fromString("a026ee06-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_MARKER_EE0B: UUID =
-        UUID.fromString("a026ee0b-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_CONTROL: UUID =
-        UUID.fromString("a026e005-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_E002: UUID =
-        UUID.fromString("a026e002-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_E004: UUID =
-        UUID.fromString("a026e004-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_E00A: UUID =
-        UUID.fromString("a026e00a-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_E023: UUID =
-        UUID.fromString("a026e023-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_E018: UUID =
-        UUID.fromString("a026e018-0a7d-4ab3-97fa-f1500f9feb8b")
-    val UUID_WAHOO_KICKR_E037: UUID =
-        UUID.fromString("a026e037-0a7d-4ab3-97fa-f1500f9feb8b")
-
-    // Physical CORE 2 QZ discovery, 2025-12-04. Inventory only: FitBridge never performs DFU.
-    val UUID_SECURE_DFU_SERVICE: UUID = shortUuid(0xFE59)
-    val UUID_SECURE_DFU_CONTROL: UUID =
-        UUID.fromString("8ec90003-f315-4f60-9fb8-838830daea50")
-
-    // Physical Zwift Hub QZ discovery, repeated 2025-10-22. Inventory only: the captures do not
-    // establish either proprietary service's application protocol.
-    val UUID_ZWIFT_HUB_SUPPORT_SERVICE: UUID =
-        UUID.fromString("c4630001-003f-4cec-8994-e489b04d857f")
-    val UUID_ZWIFT_HUB_SUPPORT_READ: UUID =
-        UUID.fromString("c4632b03-003f-4cec-8994-e489b04d857f")
-    val UUID_ZWIFT_HUB_SUPPORT_NOTIFY: UUID =
-        UUID.fromString("c4632b05-003f-4cec-8994-e489b04d857f")
-    val UUID_ZWIFT_HUB_SUPPORT_CONTROL: UUID =
-        UUID.fromString("c4632b04-003f-4cec-8994-e489b04d857f")
-    val UUID_NORDIC_UART_SERVICE: UUID =
-        UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
-    val UUID_NORDIC_UART_RX: UUID =
-        UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
-    val UUID_NORDIC_UART_TX: UUID =
-        UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e")
-
-    // Recorded now for inventory/diagnostics only. RideOn activation and writes are a separate
-    // future backend and must not be inferred from these constants existing.
-    val UUID_WAHOO_RIDEON_SERVICE: UUID =
-        UUID.fromString("00000001-19ca-4651-86e5-fa29dcdd09d1")
-    val UUID_WAHOO_RIDEON_CORE2_SERVICE: UUID = shortUuid(0xFC82)
-    val UUID_WAHOO_RIDEON_ASYNC_TX: UUID =
-        UUID.fromString("00000002-19ca-4651-86e5-fa29dcdd09d1")
-    val UUID_WAHOO_RIDEON_SYNC_RX: UUID =
-        UUID.fromString("00000003-19ca-4651-86e5-fa29dcdd09d1")
-    val UUID_WAHOO_RIDEON_SYNC_TX: UUID =
-        UUID.fromString("00000004-19ca-4651-86e5-fa29dcdd09d1")
-
-    // ─────────────────────────────────────────────────────────────
-    // Concept2 PM (proprietary, base CE06xxxx-43E5-11E4-916C-0800200C9A66)
-    // ─────────────────────────────────────────────────────────────
-    /**
-     * Build a Concept2 PM UUID from its 16-bit alias.
-     *
-     * The base is quoted from the *Concept2 PM Bluetooth Smart Communication Interface
-     * Definition*, revision 1.30 — `docs/PM5_BluetoothSmartInterfaceDefinition.pdf` — and not
-     * inferred from TMIW's four-character aliases. Plan §10 forbids deriving a 128-bit UUID
-     * from an alias, and §5a requires this confirmation to "actually be done, not assumed".
-     * See `docs/evidence/phase-5/2026-08-10-concept2-pm5-uuid-resolution.md`.
-     */
-    private fun concept2Uuid(alias: Int): UUID =
-        UUID.fromString(String.format("CE06%04X-43E5-11E4-916C-0800200C9A66", alias).lowercase())
-
-    val UUID_C2_DISCOVERY_SERVICE: UUID    = concept2Uuid(0x0000)
-    val C2_DISCOVERY_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_C2_DISCOVERY_SERVICE)
-
-    val UUID_C2_DEVICE_INFO_SERVICE: UUID  = concept2Uuid(0x0010)
-    val UUID_C2_MODEL_NUMBER: UUID         = concept2Uuid(0x0011)
-    val UUID_C2_SERIAL_NUMBER: UUID        = concept2Uuid(0x0012)
-    val UUID_C2_HARDWARE_REVISION: UUID    = concept2Uuid(0x0013)
-    val UUID_C2_FIRMWARE_REVISION: UUID    = concept2Uuid(0x0014)
-    val UUID_C2_MANUFACTURER_NAME: UUID    = concept2Uuid(0x0015)
-    val UUID_C2_MACHINE_TYPE: UUID         = concept2Uuid(0x0016)
-    val UUID_C2_ATT_RECEIVE_MTU: UUID      = concept2Uuid(0x0017)
-    val UUID_C2_LL_MAX_TX_RX_BYTES: UUID   = concept2Uuid(0x0018)
-
-    val UUID_C2_PM_CONTROL_SERVICE: UUID   = concept2Uuid(0x0020)
-    val UUID_C2_CSAFE_REQUEST: UUID        = concept2Uuid(0x0021) // write, up to 20 B
-    val UUID_C2_CSAFE_RESPONSE: UUID       = concept2Uuid(0x0022) // read + notify for ErgData compatibility
-
-    val UUID_C2_ERG_SERVICE: UUID          = concept2Uuid(0x0030)
-    val C2_ERG_SERVICE_PARCEL: ParcelUuid  = ParcelUuid(UUID_C2_ERG_SERVICE)
-
-    val UUID_C2_GENERAL_STATUS: UUID          = concept2Uuid(0x0031) // notify, 19 B
-    val UUID_C2_ADDITIONAL_STATUS_1: UUID     = concept2Uuid(0x0032) // notify, 17 B
-    val UUID_C2_ADDITIONAL_STATUS_2: UUID     = concept2Uuid(0x0033) // notify, 20 B
-    val UUID_C2_STATUS_SAMPLE_RATE: UUID      = concept2Uuid(0x0034) // read/write, 1 B
-    val UUID_C2_STROKE_DATA: UUID             = concept2Uuid(0x0035) // notify, 20 B
-    val UUID_C2_ADDITIONAL_STROKE_DATA: UUID  = concept2Uuid(0x0036) // notify, 15 B
-    val UUID_C2_SPLIT_INTERVAL_DATA: UUID     = concept2Uuid(0x0037) // notify, 18 B
-    val UUID_C2_ADDITIONAL_SPLIT_INTERVAL: UUID = concept2Uuid(0x0038) // notify, 19 B
-    val UUID_C2_WORKOUT_SUMMARY: UUID         = concept2Uuid(0x0039) // notify, 20 B
-    val UUID_C2_ADDITIONAL_WORKOUT_SUMMARY: UUID = concept2Uuid(0x003A) // notify, 19 B
-    val UUID_C2_HEART_RATE_BELT_INFO: UUID    = concept2Uuid(0x003B) // notify, 6 B
-    val UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2: UUID = concept2Uuid(0x003C) // notify, 10 B
-    val UUID_C2_FORCE_CURVE_DATA: UUID        = concept2Uuid(0x003D) // notify, 2..20 B
-    val UUID_C2_ADDITIONAL_STATUS_3: UUID      = concept2Uuid(0x003E) // notify, 12 B
-    val UUID_C2_LOGGED_WORKOUT: UUID           = concept2Uuid(0x003F) // notify, 15 B
-
-    val UUID_C2_HEART_RATE_RECEIVE_SERVICE: UUID = concept2Uuid(0x0040)
-    val UUID_C2_HEART_RATE_RECEIVE: UUID         = concept2Uuid(0x0041) // write, 20 B
-
-    /**
-     * Multiplexed information, up to 20 B: an identification byte followed by that ID's
-     * firmware-specific payload. Several multiplexed layouts deliberately differ from their
-     * individual characteristic (D41).
-     */
-    val UUID_C2_MULTIPLEXED_INFORMATION: UUID = concept2Uuid(0x0080)
-
-    // ─────────────────────────────────────────────────────────────
-    // Precor Spinner Chrono Power (proprietary, plan §5b)
-    // ─────────────────────────────────────────────────────────────
-    /**
-     * Precor Chrono service and measurement UUIDs.
-     *
-     * **Written out in full, deliberately.** The Concept2 block above builds its UUIDs from a
-     * base and an alias because Concept2's published specification *defines* that base and
-     * thirty-odd aliases within it. Nothing comparable exists here: two identifiers were read
-     * from a source project and there is no published Precor document behind them. A
-     * `precorUuid(alias)` helper would present two extracted facts as if they were an
-     * enumerable namespace, which is the §8.4 error in a more respectable costume — writing
-     * both constants out means no third UUID can ever be produced by calling the helper with a
-     * number nobody has seen.
-     *
-     * Source: QZ `src/devices/chronobike/chronobike.cpp` — `serviceScanDone()` and
-     * `stateChanged()` — with the identical pair independently repeated in
-     * `src/devices/truetreadmill/truetreadmill.cpp`. Resolved 2026-08-12; plan §10.
-     *
-     * The base coincides with Wahoo's `a026xxxx-0a7d-4ab3-97fa-f1500f9feb8b`, which is an
-     * observation about two vendors' recorded identifiers and not a rule for deriving a third.
-     */
-    val UUID_PRECOR_SERVICE: UUID =
-        UUID.fromString("a026ee07-0a7d-4ab3-97fa-f1500f9feb8b")
-    val PRECOR_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_PRECOR_SERVICE)
-
-    /** Notify, exactly 19 B, prefixed `53 59 16`. */
-    val UUID_PRECOR_MEASUREMENT: UUID =
-        UUID.fromString("a026e01d-0a7d-4ab3-97fa-f1500f9feb8b")
-
-    // ─────────────────────────────────────────────────────────────
-    // Schwinn x70 — 170 / 270 / 570 (proprietary, plan §7)
-    // ─────────────────────────────────────────────────────────────
-    /**
-     * Written out in full for the same reason as the Precor and Life Fitness sets, and here the
-     * reason has teeth: **TMIW stores these as four-character aliases** (`8980`, `82a0`, `b3c0`,
-     * `f580`) and matches on characters 5–8 of whatever UUID it is handed. §8.4 exists because of
-     * exactly this. Note that the five identifiers below do **not** share a base — `3bf58980` sits
-     * on `-3a2f-11e6-9011-`, while the other four sit on `-9803-11e3-` with three *different*
-     * third groups. No helper could generate them.
-     *
-     * Source: QZ issue #1365 nRF Connect GATT screenshots and HCI, and TMIW issue #240's 270 and
-     * 570u nRF Connect logs, archived at `docs/evidence/phase-7/`. Every string is transcribed
-     * from a GATT inventory; none is constructed from an alias.
-     *
-     * ## Two consoles, not one — and this is the whole shape of Phase 7
-     *
-     * The captures agree. A **170** emits paired 20-byte notifications on [UUID_X70_SUPPLEMENTAL]
-     * and 14-byte notifications on [UUID_X70_SIBLING], in equal counts, and **no 17-byte stream at
-     * all**. A **270** and a submitter-labelled **570u** emit 17-byte notifications on
-     * [UUID_X70_MEASUREMENT]. TMIW implements only the 17-byte path and QZ only the 170 pair;
-     * neither project is wrong, and neither alone covers the family.
-     *
-     * Dispatch by exact characteristic and accepted length. Never by length alone — that is QZ's
-     * one structural defect here (`Q_UNUSED(characteristic)`), and it is why a 20-byte frame from
-     * any source would be read as this family's supplemental frame.
-     */
-    val UUID_X70_SERVICE: UUID =
-        UUID.fromString("3bf58980-3a2f-11e6-9011-0002a5d5c51b")
-
-    /** Notify. The 17-byte main stream — 270 and 570 consoles only. */
-    val UUID_X70_MEASUREMENT: UUID =
-        UUID.fromString("5c7d82a0-9803-11e3-8a6c-0002a5d5c51b")
-
-    /** Write. Initialization; starts the notification streams. See V17. */
-    val UUID_X70_CONTROL: UUID =
-        UUID.fromString("1717b3c0-9803-11e3-90e1-0002a5d5c51b")
-
-    /** Notify. 20-byte frames carrying heart rate at 16 and resistance at 18 (V16). */
-    val UUID_X70_SUPPLEMENTAL: UUID =
-        UUID.fromString("6be8f580-9803-11e3-ab03-0002a5d5c51b")
-
-    /**
-     * Notify. 14-byte frames; speed and power on a 170 (V15a, published under D72).
-     *
-     * TMIW has no parser for this characteristic and does not name it. It is here because two
-     * independent physical captures observe it carrying 698 notifications paired one-for-one with
-     * the supplemental stream.
-     */
-    val UUID_X70_SIBLING: UUID =
-        UUID.fromString("a46a4a80-9803-11e3-8f3c-0002a5d5c51b")
-
-    /**
-     * Notify. A 4-octet `01 1f 00 00`, and **the first notification the console sends on the
-     * link**, ahead of every measurement frame.
-     *
-     * Registered on 2026-08-18 from QZ debug logs, which record each notification with its
-     * characteristic. The payload is byte-identical on two physically distinct consoles and appears
-     * exactly once per session.
-     *
-     * **Deliberately not subscribed to.** [planSchwinnX70Discovery] arms the three measurement
-     * streams and this is not one: nothing decodes `01 1f 00 00`, so a subscription would deliver a
-     * frame no consumer can use. That is the shape of defect §11 obligation 0 exists to catch, and
-     * adding it here to look thorough would be committing it deliberately. The constant exists so
-     * the inventory is complete and so a decoder arriving later has a name to attach to.
-     */
-    val UUID_X70_AUX_STATUS: UUID =
-        UUID.fromString("35ddd0a0-9803-11e3-9a8b-0002a5d5c51b")
-
-    /**
-     * Notify. **QZ subscribes to both of these and neither ever notified** across 11,373 captured
-     * notifications on one console and 8,552 on another.
-     *
-     * Registered for the same reason as [UUID_X70_AUX_STATUS] and subscribed to for none: an empty
-     * stream is not evidence of a stream. Silence in three sessions is also not proof they are
-     * always silent, which is why they are named rather than dismissed.
-     */
-    val UUID_X70_UNUSED_B8: UUID =
-        UUID.fromString("b8066ec0-9803-11e3-8346-0002a5d5c51b")
-
-    /** Notify. See [UUID_X70_UNUSED_B8] — subscribed by QZ, never observed notifying. */
-    val UUID_X70_UNUSED_D5: UUID =
-        UUID.fromString("d57cda20-9803-11e3-8426-0002a5d5c51b")
-
-    /**
-     * **Write without response.** Recorded as a notify characteristic until 2026-08-19 and it is
-     * not one.
-     *
-     * A 570u GATT inventory — the first full characteristic table this family has produced, and
-     * byte-identical across two physically distinct consoles — lists this as
-     * `writeWithoutResponse` only. The earlier note that nothing had ever subscribed to it was
-     * true and misleading: nothing can. **The family therefore exposes three writable
-     * characteristics, not one**, which is a wider control surface than §7 recorded. FitBridge
-     * writes none of them but the initialization command.
-     */
-    val UUID_X70_WRITE_EC86: UUID =
-        UUID.fromString("ec865fc0-9803-11e3-8bf6-0002a5d5c51b")
-
-    /**
-     * Read only. Five characteristics the family exposes that no project reads and nothing decodes.
-     *
-     * Registered 2026-08-19 from the 570u inventory. Named by role and alias rather than by
-     * function, because their function is unknown and a speculative name would outlive the
-     * speculation.
-     */
-    val UUID_X70_READ_E3F9: UUID =
-        UUID.fromString("e3f9af20-2674-11e3-879e-0002a5d5c51b")
-
-    /** **Read and write.** The family's second writable characteristic. See [UUID_X70_WRITE_EC86]. */
-    val UUID_X70_RW_5EC4: UUID =
-        UUID.fromString("5ec4e520-9804-11e3-b4b9-0002a5d5c51b")
-
-    /** Read only. See [UUID_X70_READ_E3F9]. */
-    val UUID_X70_READ_4E34: UUID =
-        UUID.fromString("4e349c00-999e-11e3-b341-0002a5d5c51b")
-
-    /**
-     * Read only. Previously seen exactly once in a QZ log and recorded as unresolved; the 570u
-     * inventory shows it is an ordinary readable characteristic of the service.
-     */
-    val UUID_X70_READ_4ED1: UUID =
-        UUID.fromString("4ed124e0-9803-11e3-b14c-0002a5d5c51b")
-
-    /** Read only. See [UUID_X70_READ_E3F9]. */
-    val UUID_X70_READ_7241: UUID =
-        UUID.fromString("7241b880-a560-11e3-9f31-0002a5d5c51b")
-
-    /**
-     * Every characteristic the family exposes under [UUID_X70_SERVICE] — **thirteen, not eight**.
-     *
-     * Corrected 2026-08-19 from a complete 570u service discovery, identical on two physically
-     * distinct consoles. FitBridge decodes three of these and writes one; the other nine are named
-     * so the inventory is honest about the gap rather than silent about it.
-     */
-    val X70_OBSERVED_CHARACTERISTICS: List<UUID> = listOf(
-        UUID_X70_CONTROL,
-        UUID_X70_MEASUREMENT,
-        UUID_X70_SUPPLEMENTAL,
-        UUID_X70_SIBLING,
-        UUID_X70_AUX_STATUS,
-        UUID_X70_UNUSED_B8,
-        UUID_X70_UNUSED_D5,
-        UUID_X70_WRITE_EC86,
-        UUID_X70_READ_E3F9,
-        UUID_X70_RW_5EC4,
-        UUID_X70_READ_4E34,
-        UUID_X70_READ_4ED1,
-        UUID_X70_READ_7241,
-    )
-
-    // ─────────────────────────────────────────────────────────────
-    // User Data Service characteristics (SIG 0x181C), written during Life Fitness setup
-    // ─────────────────────────────────────────────────────────────
-    /**
-     * **These are ordinary SIG characteristics and they carry the personal data**, which is the
-     * part of Phase 6 easiest to get wrong. The seven proprietary Life Fitness UUIDs are control
-     * plumbing and vendor tokens; a user's name, email, age, gender, weight and height go to
-     * these standard ones on the Life Fitness user service.
-     *
-     * A redaction registry that covers only the proprietary UUIDs would therefore protect the
-     * tokens and publish the person. All of them are registered in `SensitiveCharacteristics`.
-     */
-    val UUID_USER_FIRST_NAME: UUID = shortUuid(0x2A8A)
-    val UUID_USER_LAST_NAME: UUID  = shortUuid(0x2A90)
-    val UUID_USER_EMAIL: UUID      = shortUuid(0x2A87)
-    val UUID_USER_AGE: UUID        = shortUuid(0x2A80)
-    val UUID_USER_GENDER: UUID     = shortUuid(0x2A8C)
-    val UUID_USER_LANGUAGE: UUID   = shortUuid(0x2AA2)
-    val UUID_USER_WEIGHT: UUID     = shortUuid(0x2A98)
-    val UUID_USER_HEIGHT: UUID     = shortUuid(0x2A8E)
-    val UUID_USER_DATE_OF_BIRTH: UUID = shortUuid(0x2A85)
-    val UUID_USER_VO2_MAX: UUID = shortUuid(0x2A96)
-    val UUID_USER_MAX_RECOMMENDED_HEART_RATE: UUID = shortUuid(0x2A91)
-
-    /** Every user-data characteristic the Life Fitness transcript writes, in transcript order. */
-    val USER_PROFILE_CHARACTERISTICS: List<UUID> = listOf(
-        UUID_USER_FIRST_NAME,
-        UUID_USER_LAST_NAME,
-        UUID_USER_EMAIL,
-        UUID_USER_AGE,
-        UUID_USER_GENDER,
-        UUID_USER_LANGUAGE,
-        UUID_USER_WEIGHT,
-        UUID_USER_HEIGHT,
-    )
+    val C2_DISCOVERY_SERVICE_PARCEL: ParcelUuid = ParcelUuid(Concept2Uuids.UUID_C2_DISCOVERY_SERVICE)
+    val C2_ERG_SERVICE_PARCEL: ParcelUuid  = ParcelUuid(Concept2Uuids.UUID_C2_ERG_SERVICE)
+    val PRECOR_SERVICE_PARCEL: ParcelUuid = ParcelUuid(PrecorUuids.UUID_PRECOR_SERVICE)
 
     /**
      * Body metrics that are deliberately **not** redaction-registered (D102).
@@ -479,188 +79,10 @@ object BluetoothIds {
      * value would appear in a bug report's *explanation*, not merely in its data.
      */
     val DIAGNOSTICALLY_RETAINED_CHARACTERISTICS: List<UUID> = listOf(
-        UUID_USER_WEIGHT,
-        UUID_USER_HEIGHT,
+        SigUuids.UUID_USER_WEIGHT,
+        SigUuids.UUID_USER_HEIGHT,
     )
-
-    // ─────────────────────────────────────────────────────────────
-    // Life Fitness proprietary setup (plan §6, D54)
-    // ─────────────────────────────────────────────────────────────
-    /**
-     * Written out in full for the same reason as the Precor pair: these are seven extracted
-     * facts, not an enumerable namespace, and no helper should be able to manufacture an
-     * eighth. Note that they do **not** share one base — `ce78e85e` differs from the
-     * `5da5____-9cb2-11e5-…` family in both its first and second groups, and the two parent
-     * services are a third base again. §8.4 exists because someone assumed otherwise.
-     *
-     * Source: QZ issue #1018 (nRF Connect inventory plus two physical HCI captures) and TMIW
-     * issue #462 (official-app HCI across four personas), archived at
-     * `docs/evidence/phase-6/2022-11-11-life-fitness-qz-gatt-and-setup-evidence.md` and
-     * `docs/evidence/phase-6/2024-05-15-life-fitness-tmiw-multi-persona-hci.md`.
-     *
-     * **These are the canonical captured parents, not a match requirement.** D52's runtime
-     * same-parent characteristic rule remains the admission test so a firmware variant with
-     * different parent UUIDs can still complete setup; these constants are preferred positive
-     * evidence when the discovered inventory happens to match. See `LifeFitnessFingerprint`.
-     */
-    val UUID_LF_CONTROL_SERVICE: UUID =
-        UUID.fromString("fb694b90-f49e-4597-8306-171bba78f846")
-    val UUID_LF_USER_SERVICE: UUID =
-        UUID.fromString("fb694b91-f49e-4597-8306-171bba78f846")
-
-    /** Notify/indicate status. Observed `07` then `04 01`; never a setup-completion gate. */
-    val UUID_LF_STATUS: UUID =
-        UUID.fromString("5da551de-9cb2-11e5-8994-feff819cdc9f")
-
-    /** Write: `[0x01]` opens the sequence, `[0x02]` closes it. */
-    val UUID_LF_CONTROL_1: UUID =
-        UUID.fromString("5da558dc-9cb2-11e5-8994-feff819cdc9f")
-
-    /** Write: the seven-octet `00 00 00 01 b8 5b 5d` magic. */
-    val UUID_LF_CONTROL_2: UUID =
-        UUID.fromString("5da569e2-9cb2-11e5-8994-feff819cdc9f")
-
-    /** Write: vendor token 1, a 32-byte ASCII hex string. Sensitive; redaction-registered. */
-    val UUID_LF_VENDOR_TOKEN_1: UUID =
-        UUID.fromString("5da54cf2-9cb2-11e5-8994-feff819cdc9f")
-
-    /** Write: vendor token 2, `[0x00]`. Sensitive; redaction-registered. */
-    val UUID_LF_VENDOR_TOKEN_2: UUID =
-        UUID.fromString("ce78e85e-9cb6-11e5-8994-feff819cdc9f")
-
-    /** Capture-only discovery surface shared by all four issue #462 personas. */
-    val UUID_LF_FD00_SERVICE: UUID =
-        UUID.fromString("0000fd00-ebae-4526-9511-8357c35d7be2")
-    val UUID_LF_FD01: UUID = UUID.fromString("0000fd01-ebae-4526-9511-8357c35d7be2")
-    val UUID_LF_FD02: UUID = UUID.fromString("0000fd02-ebae-4526-9511-8357c35d7be2")
-    val UUID_LF_FD05: UUID = UUID.fromString("0000fd05-ebae-4526-9511-8357c35d7be2")
-
-    val UUID_LF_B90_READ_5AA9: UUID = UUID.fromString("5da55aa9-9cb2-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_RW_NOTIFY_52A6: UUID = UUID.fromString("5da552a6-9cb2-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_NOTIFY_5AA8: UUID = UUID.fromString("5da55aa8-9cb2-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_READ_ECA0: UUID = UUID.fromString("ce78eca0-9cb6-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_READ_EF5C: UUID = UUID.fromString("ce78ef5c-9cb6-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_WRITE_F4E8: UUID = UUID.fromString("ce78f4e8-9cb6-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_WRITE_F164: UUID = UUID.fromString("ce78f164-9cb6-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_WRITE_F330: UUID = UUID.fromString("ce78f330-9cb6-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_WRITE_FB00: UUID = UUID.fromString("ce78fb00-9cb6-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_WRITE_FD94: UUID = UUID.fromString("ce78fd94-9cb6-11e5-8994-feff819cdc9f")
-    val UUID_LF_B90_WRITE_6AB6: UUID = UUID.fromString("5da56ab6-9cb2-11e5-8994-feff819cdc9f")
-
-    // ─────────────────────────────────────────────────────────────
-    // Glucose (Service 0x1808)
-    // ─────────────────────────────────────────────────────────────
-    val UUID_GLUCOSE_SERVICE: UUID         = shortUuid(0x1808)
-    val GLUCOSE_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_GLUCOSE_SERVICE)
-
-    // ─────────────────────────────────────────────────────────────
-    // Descriptors
-    // ─────────────────────────────────────────────────────────────
-    /** Client Characteristic Configuration Descriptor (CCCD) */
-    val UUID_CCCD: UUID = shortUuid(0x2902)
-
-    // ─────────────────────────────────────────────────────────────
-    // Flywheel Sports (Nordic UART transport; gymnasticon v1.4.1, MIT)
-    // ─────────────────────────────────────────────────────────────
-    /** Exact served/advertised service. Do not confuse this with FE-C's `6E40FEC1-...`. */
-    val UUID_FLYWHEEL_SERVICE: UUID =
-        UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-
-    /** Writable transport endpoint. Discovered for identity only; FitBridge sends no commands. */
-    val UUID_FLYWHEEL_RX: UUID =
-        UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
-
-    /** Notify + CCCD statistics endpoint. */
-    val UUID_FLYWHEEL_TX: UUID =
-        UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
-
-    // ─────────────────────────────────────────────────────────────
-    // Kayak First paddle console (SIG-base serial bridge; Phase 8)
-    // ─────────────────────────────────────────────────────────────
-    /** Full service UUID observed in the physical console inventory and advertisement. */
-    val UUID_KAYAK_FIRST_SERVICE: UUID =
-        UUID.fromString("0000FFE0-0000-1000-8000-00805F9B34FB")
-
-    /** Same-parent bidirectional endpoint: write without response plus notify and CCCD. */
-    val UUID_KAYAK_FIRST_IO: UUID =
-        UUID.fromString("0000FFE1-0000-1000-8000-00805F9B34FB")
-
-    // ─────────────────────────────────────────────────────────────
-    // FE-C over BLE (Tacx transport; ANT+ FE-C carried over a Nordic-UART-derived service)
-    // ─────────────────────────────────────────────────────────────
-    /**
-     * FE-C over BLE primary service, per `docs/How-to FE-C over BLE v1_0_0.pdf`.
-     *
-     * **Generic FE-C-over-BLE protocol identity, not a Tacx-model-specific one.** Page 16 of the
-     * ANT+ FE-C payload declares equipment type, so one GATT surface serves all seven defined
-     * equipment personas without a model-specific driver. See
-     * `docs/fe-c-ble_simulator_implementation.md` and `docs/fe-c-ble_central_implementation.md`.
-     */
-    val UUID_FEC_SERVICE: UUID =
-        UUID.fromString("6E40FEC1-B5A3-F393-E0A9-E50E24DCCA9E")
-
-    /** Notify + CCCD. Machine -> central: one complete ANT serial message per notification. */
-    val UUID_FEC_MEASUREMENT: UUID =
-        UUID.fromString("6E40FEC2-B5A3-F393-E0A9-E50E24DCCA9E")
-
-    /** Write without response. Central -> machine: FE-C control pages 48/49/50/51/55. */
-    val UUID_FEC_CONTROL: UUID =
-        UUID.fromString("6E40FEC3-B5A3-F393-E0A9-E50E24DCCA9E")
-
-    // ANT serial envelope (sync + length + msg-id + channel + 8 page bytes + XOR checksum).
-    const val FEC_ANT_SYNC: Int = 0xA4
-    const val FEC_ANT_MSG_BROADCAST_DATA: Int = 0x4E
-    const val FEC_ANT_MSG_ACKNOWLEDGED_DATA: Int = 0x4F
-    const val FEC_DEFAULT_CHANNEL: Int = 0x05
-
-    // FE-C data pages (machine -> central).
-    const val FEC_PAGE_GENERAL_FE_DATA: Int = 0x10
-    const val FEC_PAGE_GENERAL_SETTINGS: Int = 0x11
-    const val FEC_PAGE_GENERAL_METABOLIC_DATA: Int = 0x12
-    const val FEC_PAGE_SPECIFIC_TREADMILL_DATA: Int = 0x13
-    const val FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA: Int = 0x14
-    const val FEC_PAGE_SPECIFIC_ROWER_DATA: Int = 0x16
-    const val FEC_PAGE_SPECIFIC_CLIMBER_DATA: Int = 0x17
-    const val FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA: Int = 0x18
-    const val FEC_PAGE_SPECIFIC_TRAINER_DATA: Int = 0x19
-    const val FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA: Int = 0x1A
-    const val FEC_PAGE_FE_CAPABILITIES: Int = 0x36
-    const val FEC_PAGE_MANUFACTURER_INFORMATION: Int = 0x50
-    const val FEC_PAGE_PRODUCT_INFORMATION: Int = 0x51
-
-    // FE-C control pages (central -> machine).
-    const val FEC_PAGE_BASIC_RESISTANCE: Int = 0x30
-    const val FEC_PAGE_TARGET_POWER: Int = 0x31
-    const val FEC_PAGE_WIND_RESISTANCE: Int = 0x32
-    const val FEC_PAGE_TRACK_RESISTANCE: Int = 0x33
-    const val FEC_PAGE_USER_CONFIGURATION: Int = 0x37
-    const val FEC_PAGE_REQUEST_DATA_PAGE: Int = 0x46
-
-    /**
-     * Page 16 byte 1, low 5 bits. The simulator emits all seven defined equipment personas, and
-     * the central side must likewise decode whatever a real machine reports. See
-     * `docs/fe-c-ble_central_implementation.md` §2.4/§9.
-     *
-     * Per the official ANT+ FE-C spec (D000001231 Rev 5.0, Table 8-7), wire value 21 is
-     * "Reserved - Do Not Use" for this field, NOT Stationary Bike: Stationary Bike shares
-     * equipment type 25 with Trainer (the spec's own wording is "Trainer/StationaryBike"), and
-     * a stationary bike's specific data is required to use data page 25 (Specific Trainer Data)
-     * too - data page 21 (the *page*, a different "21" from this equipment-type byte) is
-     * separately deprecated/reserved for Stationary Bike and shall not be transmitted (§8.6.3).
-     * [FEC_EQUIPMENT_STATIONARY_BIKE] previously used the reserved value 21 here, which is
-     * itself a spec violation independent of that deprecated page - fixed to the shared wire
-     * value 25 discovered while implementing spec-accurate pages 19/22.
-     */
-    const val FEC_EQUIPMENT_TREADMILL: Int = 19
-    const val FEC_EQUIPMENT_ELLIPTICAL: Int = 20
-    const val FEC_EQUIPMENT_RESERVED_21: Int = 21
-    const val FEC_EQUIPMENT_ROWER: Int = 22
-    const val FEC_EQUIPMENT_CLIMBER: Int = 23
-    const val FEC_EQUIPMENT_NORDIC_SKIER: Int = 24
-    const val FEC_EQUIPMENT_TRAINER: Int = 25
-
-    /** Shares [FEC_EQUIPMENT_TRAINER]'s wire value 25 - see the class doc above. */
-    const val FEC_EQUIPMENT_STATIONARY_BIKE: Int = FEC_EQUIPMENT_TRAINER
+    val GLUCOSE_SERVICE_PARCEL: ParcelUuid = ParcelUuid(SigUuids.UUID_GLUCOSE_SERVICE)
 }
 
 // ============================================================================

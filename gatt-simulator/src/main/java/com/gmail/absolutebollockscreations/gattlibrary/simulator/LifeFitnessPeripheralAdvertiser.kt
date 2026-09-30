@@ -31,6 +31,8 @@ import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Setup-gated multi-service GATT server reconstructed from the Phase 6 capture set. */
 internal class LifeFitnessPeripheralAdvertiser(
@@ -266,7 +268,7 @@ internal class LifeFitnessPeripheralAdvertiser(
             descriptor: BluetoothGattDescriptor,
         ) {
             val client = clients[device.address.lowercase()]
-            val value = if (descriptor.uuid == BluetoothIds.UUID_CCCD && client != null) {
+            val value = if (descriptor.uuid == SigUuids.UUID_CCCD && client != null) {
                 if (descriptor.characteristic.uuid in client.subscriptions) {
                     BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 } else {
@@ -293,7 +295,7 @@ internal class LifeFitnessPeripheralAdvertiser(
                 value.contentEquals(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
             val characteristicUuid = descriptor.characteristic.uuid
-            val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
+            val valid = client != null && descriptor.uuid == SigUuids.UUID_CCCD &&
                 !preparedWrite && offset == 0 && (enable || disable)
             if (valid) {
                 if (enable) client.subscriptions += characteristicUuid else client.subscriptions -= characteristicUuid
@@ -342,7 +344,7 @@ internal class LifeFitnessPeripheralAdvertiser(
         }
         if (result?.accepted == true) {
             LifeFitnessNotificationPolicy.setupStatusReply(result)?.let { status ->
-                enqueue(client, BluetoothIds.UUID_LF_STATUS, status)
+                enqueue(client, LifeFitnessUuids.UUID_LF_STATUS, status)
             }
             if (result.stage == LifeFitnessSetupServer.Stage.UNLOCKED) {
                 val measurementUuid = machine?.measurementUuid
@@ -440,13 +442,13 @@ internal class LifeFitnessPeripheralAdvertiser(
         return when (uuid) {
             FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> lifeFitnessFeatureValue(activeMachine)
             FtmsUuids.UUID_TRAINING_STATUS -> client?.trainingStatus ?: TRAINING_PRE_WORKOUT
-            BluetoothIds.UUID_MANUFACTURER_NAME -> "Life Fitness".toByteArray()
-            BluetoothIds.UUID_MODEL_NUMBER -> activeMachine.displayName.toByteArray()
-            BluetoothIds.UUID_SERIAL_NUMBER -> activeMachine.syntheticName.toByteArray()
-            BluetoothIds.UUID_HARDWARE_REVISION -> "SIM".toByteArray()
-            BluetoothIds.UUID_FIRMWARE_REVISION -> "SIMULATED".toByteArray()
-            BluetoothIds.UUID_SOFTWARE_REVISION -> "FitBridge".toByteArray()
-            BluetoothIds.UUID_PNP_ID -> byteArrayOf(0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00)
+            SigUuids.UUID_MANUFACTURER_NAME -> "Life Fitness".toByteArray()
+            SigUuids.UUID_MODEL_NUMBER -> activeMachine.displayName.toByteArray()
+            SigUuids.UUID_SERIAL_NUMBER -> activeMachine.syntheticName.toByteArray()
+            SigUuids.UUID_HARDWARE_REVISION -> "SIM".toByteArray()
+            SigUuids.UUID_FIRMWARE_REVISION -> "SIMULATED".toByteArray()
+            SigUuids.UUID_SOFTWARE_REVISION -> "FitBridge".toByteArray()
+            SigUuids.UUID_PNP_ID -> byteArrayOf(0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00)
             in USER_CHARACTERISTICS -> byteArrayOf()
             else -> null
         }
@@ -542,7 +544,7 @@ internal class LifeFitnessPeripheralAdvertiser(
 
     private fun anySubscribed(): Boolean = clients.values.any(Client::measurementSubscribed)
     private fun anyStatusSubscribed(): Boolean =
-        clients.values.any { BluetoothIds.UUID_LF_STATUS in it.subscriptions }
+        clients.values.any { LifeFitnessUuids.UUID_LF_STATUS in it.subscriptions }
     private fun currentStage(): LifeFitnessSetupServer.Stage? = clients.values.firstOrNull()?.setup?.stage
 
     companion object {
@@ -551,19 +553,19 @@ internal class LifeFitnessPeripheralAdvertiser(
         private val TRAINING_ACTIVE = byteArrayOf(0x0D, 0x00)
         private val TRAINING_POST_WORKOUT = byteArrayOf(0x0F, 0x00)
         private val USER_CHARACTERISTICS = setOf(
-            BluetoothIds.UUID_USER_FIRST_NAME,
-            BluetoothIds.UUID_USER_LAST_NAME,
-            BluetoothIds.UUID_USER_EMAIL,
-            BluetoothIds.UUID_USER_DATE_OF_BIRTH,
-            BluetoothIds.UUID_USER_AGE,
-            BluetoothIds.UUID_USER_GENDER,
-            BluetoothIds.UUID_USER_LANGUAGE,
-            BluetoothIds.UUID_USER_VO2_MAX,
-            BluetoothIds.UUID_USER_MAX_RECOMMENDED_HEART_RATE,
-            BluetoothIds.UUID_LF_VENDOR_TOKEN_1,
-            BluetoothIds.UUID_LF_VENDOR_TOKEN_2,
-            BluetoothIds.UUID_USER_WEIGHT,
-            BluetoothIds.UUID_USER_HEIGHT,
+            SigUuids.UUID_USER_FIRST_NAME,
+            SigUuids.UUID_USER_LAST_NAME,
+            SigUuids.UUID_USER_EMAIL,
+            SigUuids.UUID_USER_DATE_OF_BIRTH,
+            SigUuids.UUID_USER_AGE,
+            SigUuids.UUID_USER_GENDER,
+            SigUuids.UUID_USER_LANGUAGE,
+            SigUuids.UUID_USER_VO2_MAX,
+            SigUuids.UUID_USER_MAX_RECOMMENDED_HEART_RATE,
+            LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1,
+            LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2,
+            SigUuids.UUID_USER_WEIGHT,
+            SigUuids.UUID_USER_HEIGHT,
         )
     }
 }

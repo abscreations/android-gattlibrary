@@ -8,6 +8,10 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 /** Stable measurement capabilities for one GATT database lifetime. */
 data class FtmsMeasurementCapabilities(
@@ -227,22 +231,22 @@ fun providerMeasurementCapabilities(
         keiserMSeriesMeasurementCapabilities
 
     profile == FtmsMachineProfile.INDOOR_BIKE &&
-        BluetoothIds.UUID_FLYWHEEL_SERVICE in upstreamServiceUuids &&
+        FlywheelUuids.UUID_FLYWHEEL_SERVICE in upstreamServiceUuids &&
         FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         flywheelMeasurementCapabilities
 
     profile == FtmsMachineProfile.INDOOR_ROWER &&
-        BluetoothIds.UUID_KAYAK_FIRST_SERVICE in upstreamServiceUuids &&
+        KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE in upstreamServiceUuids &&
         FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         kayakFirstMeasurementCapabilities
 
     profile == FtmsMachineProfile.TREADMILL &&
-        BluetoothIds.UUID_FEC_SERVICE in upstreamServiceUuids &&
+        FecBleUuids.UUID_FEC_SERVICE in upstreamServiceUuids &&
         FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         feCTreadmillMeasurementCapabilities
 
     profile == FtmsMachineProfile.INDOOR_BIKE &&
-        BluetoothIds.UUID_PRECOR_SERVICE in upstreamServiceUuids &&
+        PrecorUuids.UUID_PRECOR_SERVICE in upstreamServiceUuids &&
         FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         precorChronoMeasurementCapabilities
 

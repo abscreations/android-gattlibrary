@@ -4,10 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 
 class FlywheelMatcherTest {
     private val registry = DeviceMatcherRegistry.standard()
-    private val service = CanonicalUuid.fromUuid(BluetoothIds.UUID_FLYWHEEL_SERVICE)
+    private val service = CanonicalUuid.fromUuid(FlywheelUuids.UUID_FLYWHEEL_SERVICE)
 
     @Test
     fun `exact name and full service create an evidence-bearing machine candidate`() {
@@ -49,7 +51,7 @@ class FlywheelMatcherTest {
             ),
             MatchObservation(
                 localName = "Flywheel 1",
-                advertisedServiceUuids = setOf(CanonicalUuid.fromUuid(BluetoothIds.UUID_FEC_SERVICE)),
+                advertisedServiceUuids = setOf(CanonicalUuid.fromUuid(FecBleUuids.UUID_FEC_SERVICE)),
             ),
         )
 
@@ -59,12 +61,12 @@ class FlywheelMatcherTest {
             )
         }
         assertFalse(similarBase == service)
-        assertFalse(BluetoothIds.UUID_FEC_SERVICE == BluetoothIds.UUID_FLYWHEEL_SERVICE)
+        assertFalse(FecBleUuids.UUID_FEC_SERVICE == FlywheelUuids.UUID_FLYWHEEL_SERVICE)
     }
 
     @Test
     fun `Flywheel service is present in the registry-derived radio filter`() {
         assertTrue(service in registry.scanFilterServiceUuids())
-        assertTrue(BluetoothIds.UUID_FLYWHEEL_SERVICE in hardwareScanServiceUuids())
+        assertTrue(FlywheelUuids.UUID_FLYWHEEL_SERVICE in hardwareScanServiceUuids())
     }
 }

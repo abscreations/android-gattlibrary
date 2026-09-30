@@ -45,6 +45,7 @@ import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Exact eight-octet value returned by the downstream Fitness Machine Feature (`0x2ACC`).
@@ -748,7 +749,7 @@ internal class FtmsPeripheralAdvertiser(
                         "CSC",
                     )
 
-                service.uuid == BluetoothIds.UUID_CSC_SERVICE ->
+                service.uuid == SigUuids.UUID_CSC_SERVICE ->
                     publishAdditionalService(
                         request,
                         CyclingServiceRegistry.buildCyclingPowerService(),
@@ -990,7 +991,7 @@ internal class FtmsPeripheralAdvertiser(
             when {
                 conn == null -> status = BluetoothGatt.GATT_FAILURE
                 !responseNeeded -> status = GattProtocol.REQUEST_NOT_SUPPORTED
-                descriptor.uuid != BluetoothIds.UUID_CCCD || characteristic == null ->
+                descriptor.uuid != SigUuids.UUID_CCCD || characteristic == null ->
                     status = BluetoothGatt.GATT_WRITE_NOT_PERMITTED
 
                 preparedWrite -> status = GattProtocol.REQUEST_NOT_SUPPORTED
@@ -1066,7 +1067,7 @@ internal class FtmsPeripheralAdvertiser(
                 server.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, 0, null)
                 return
             }
-            if (descriptor.uuid != BluetoothIds.UUID_CCCD) {
+            if (descriptor.uuid != SigUuids.UUID_CCCD) {
                 server.sendResponse(device, requestId, BluetoothGatt.GATT_READ_NOT_PERMITTED, 0, null)
                 return
             }
@@ -1111,13 +1112,13 @@ internal class FtmsPeripheralAdvertiser(
                 FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE -> targets.resistanceRange?.encodeS16()
                 FtmsUuids.UUID_SUPPORTED_HEART_RATE_RANGE -> targets.heartRateRange?.encodeU8()
                 FtmsUuids.UUID_SUPPORTED_POWER_RANGE -> targets.powerRange?.encodeS16()
-                BluetoothIds.UUID_CSC_FEATURE ->
+                SigUuids.UUID_CSC_FEATURE ->
                     CyclingSensorEncoders.cscFeature().takeIf { cyclingConfig.enabled }
 
-                BluetoothIds.UUID_CYCLING_POWER_FEATURE ->
+                SigUuids.UUID_CYCLING_POWER_FEATURE ->
                     CyclingSensorEncoders.cyclingPowerFeature().takeIf { cyclingConfig.enabled }
 
-                BluetoothIds.UUID_SENSOR_LOCATION ->
+                SigUuids.UUID_SENSOR_LOCATION ->
                     CyclingSensorEncoders.sensorLocation().takeIf { cyclingConfig.enabled }
 
                 else -> null
@@ -1192,7 +1193,7 @@ internal class FtmsPeripheralAdvertiser(
                 payload = value,
                 withoutResponse = !responseNeeded,
             )
-            if (characteristic.uuid == BluetoothIds.UUID_SC_CONTROL_POINT) {
+            if (characteristic.uuid == SigUuids.UUID_SC_CONTROL_POINT) {
                 handleCscControlPointWrite(
                     server = server,
                     conn = conn,
@@ -1392,7 +1393,7 @@ internal class FtmsPeripheralAdvertiser(
             try {
                 sendTx(
                     conn = conn,
-                    characteristicUuid = BluetoothIds.UUID_SC_CONTROL_POINT,
+                    characteristicUuid = SigUuids.UUID_SC_CONTROL_POINT,
                     payload = response,
                     confirm = true,
                     priority = GattTxQueue.Priority.CONTROL,
@@ -1689,7 +1690,7 @@ internal class FtmsPeripheralAdvertiser(
         if (!conn.cscMeasurementSubscribed) return GattTxQueue.Outcome.FAILED
         return sendPayload(
             conn = conn,
-            characteristicUuid = BluetoothIds.UUID_CSC_MEASUREMENT,
+            characteristicUuid = SigUuids.UUID_CSC_MEASUREMENT,
             frames = listOf(payload),
             confirm = false,
             priority = GattTxQueue.Priority.DATA,
@@ -1705,7 +1706,7 @@ internal class FtmsPeripheralAdvertiser(
         if (!conn.cyclingPowerMeasurementSubscribed) return GattTxQueue.Outcome.FAILED
         return sendPayload(
             conn = conn,
-            characteristicUuid = BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+            characteristicUuid = SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
             frames = listOf(payload),
             confirm = false,
             priority = GattTxQueue.Priority.DATA,
@@ -1791,19 +1792,19 @@ internal class FtmsPeripheralAdvertiser(
             FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT -> conn.controlPointSubscribed
             FtmsUuids.UUID_FITNESS_MACHINE_STATUS -> conn.statusSubscribed
             FtmsUuids.UUID_TRAINING_STATUS -> conn.trainingStatusSubscribed
-            BluetoothIds.UUID_CSC_MEASUREMENT -> conn.cscMeasurementSubscribed
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT -> conn.cyclingPowerMeasurementSubscribed
-            BluetoothIds.UUID_SC_CONTROL_POINT -> conn.cscControlPointSubscribed
+            SigUuids.UUID_CSC_MEASUREMENT -> conn.cscMeasurementSubscribed
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT -> conn.cyclingPowerMeasurementSubscribed
+            SigUuids.UUID_SC_CONTROL_POINT -> conn.cscControlPointSubscribed
             else -> false
         }
         if (!stillSubscribed) return false
         val server = gattServer ?: return false
         val serviceUuid = when (request.characteristicUuid) {
-            BluetoothIds.UUID_CSC_MEASUREMENT,
-            BluetoothIds.UUID_SC_CONTROL_POINT,
-            -> BluetoothIds.UUID_CSC_SERVICE
+            SigUuids.UUID_CSC_MEASUREMENT,
+            SigUuids.UUID_SC_CONTROL_POINT,
+            -> SigUuids.UUID_CSC_SERVICE
 
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT -> BluetoothIds.UUID_CYCLING_POWER_SERVICE
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT -> SigUuids.UUID_CYCLING_POWER_SERVICE
             else -> FtmsUuids.UUID_FTMS_SERVICE
         }
         val characteristic = server.getService(serviceUuid)

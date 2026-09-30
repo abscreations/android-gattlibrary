@@ -5,6 +5,14 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import java.util.Locale
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 @GattLibraryInternalApi
 const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
@@ -604,8 +612,8 @@ class DeviceMatcherRegistry private constructor(
                 ),
                 sigDefinition("sig.cps", 0x1818, 0x2a63..0x2a63, KnownBleService.CPS, 500),
                 wahooKickrDefinition(),
-                rideOnDefinition("vendor.wahoo.rideon.original", BluetoothIds.UUID_WAHOO_RIDEON_SERVICE),
-                rideOnDefinition("vendor.wahoo.rideon.core2", BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE),
+                rideOnDefinition("vendor.wahoo.rideon.original", WahooUuids.UUID_WAHOO_RIDEON_SERVICE),
+                rideOnDefinition("vendor.wahoo.rideon.core2", WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE),
                 sigDefinition(
                     "sig.hrm",
                     0x180d,
@@ -699,12 +707,12 @@ class DeviceMatcherRegistry private constructor(
          */
         private fun wahooKickrDefinition() = MatchDefinition(
             candidateId = "vendor.wahoo.kickr.legacy",
-            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_CYCLING_POWER_SERVICE),
+            serviceUuid = CanonicalUuid.fromUuid(SigUuids.UUID_CYCLING_POWER_SERVICE),
             knownService = null,
             preference = 125,
             localNamePatterns = listOf(Regex("^KICKR(?:\\s|$)", RegexOption.IGNORE_CASE)),
             personaCharacteristicUuids = setOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_KICKR_CONTROL),
+                CanonicalUuid.fromUuid(WahooUuids.UUID_WAHOO_KICKR_CONTROL),
             ),
             machineRole = true,
             requiredEvidenceAlternatives = listOf(
@@ -721,12 +729,12 @@ class DeviceMatcherRegistry private constructor(
          */
         private fun flywheelDefinition() = MatchDefinition(
             candidateId = FLYWHEEL_CANDIDATE_ID,
-            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_FLYWHEEL_SERVICE),
+            serviceUuid = CanonicalUuid.fromUuid(FlywheelUuids.UUID_FLYWHEEL_SERVICE),
             preference = 140,
             localNamePatterns = listOf(Regex("^Flywheel 1$", RegexOption.IGNORE_CASE)),
             personaCharacteristicUuids = setOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_FLYWHEEL_RX),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_FLYWHEEL_TX),
+                CanonicalUuid.fromUuid(FlywheelUuids.UUID_FLYWHEEL_RX),
+                CanonicalUuid.fromUuid(FlywheelUuids.UUID_FLYWHEEL_TX),
             ),
             machineRole = true,
             advertisedActivityType = ActivityType.BIKING,
@@ -749,12 +757,12 @@ class DeviceMatcherRegistry private constructor(
          */
         private fun kayakFirstDefinition() = MatchDefinition(
             candidateId = KAYAK_FIRST_CANDIDATE_ID,
-            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_KAYAK_FIRST_SERVICE),
+            serviceUuid = CanonicalUuid.fromUuid(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE),
             preference = 135,
             localNamePatterns = listOf(Regex("^[\\x20-\\x7E]{8}$")),
             manufacturerCompanyIds = setOf(KAYAK_FIRST_MANUFACTURER_ID),
             personaCharacteristicUuids = setOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_KAYAK_FIRST_IO),
+                CanonicalUuid.fromUuid(KayakFirstUuids.UUID_KAYAK_FIRST_IO),
             ),
             manufacturerPayloadRule = ManufacturerPayloadRule { companyId, payload ->
                 companyId == KAYAK_FIRST_MANUFACTURER_ID &&
@@ -777,9 +785,9 @@ class DeviceMatcherRegistry private constructor(
             preference = 130,
             localNamePatterns = listOf(Regex("^KICKR CORE", RegexOption.IGNORE_CASE)),
             personaCharacteristicUuids = setOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX),
+                CanonicalUuid.fromUuid(WahooUuids.UUID_WAHOO_RIDEON_ASYNC_TX),
+                CanonicalUuid.fromUuid(WahooUuids.UUID_WAHOO_RIDEON_SYNC_RX),
+                CanonicalUuid.fromUuid(WahooUuids.UUID_WAHOO_RIDEON_SYNC_TX),
             ),
             machineRole = true,
             requiredEvidenceAlternatives = listOf(
@@ -816,7 +824,7 @@ class DeviceMatcherRegistry private constructor(
          */
         private fun concept2Definition() = MatchDefinition(
             candidateId = "vendor.concept2.pm",
-            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ERG_SERVICE),
+            serviceUuid = CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_ERG_SERVICE),
             // **Both, deliberately — this is V1's resolution applied to a second family.**
             //
             // Concept2's specification says the base UUID `CE060000-…` is what a PM puts in its
@@ -837,18 +845,18 @@ class DeviceMatcherRegistry private constructor(
             // Narrowing this to the base UUID alone would have been a guess dressed as rigour —
             // and three of this repository's own tests said so immediately.
             advertisedServiceUuids = setOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_DISCOVERY_SERVICE),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ERG_SERVICE),
+                CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_DISCOVERY_SERVICE),
+                CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_ERG_SERVICE),
             ),
             machineRole = true,
             knownService = null,
             preference = 150,
             personaCharacteristicUuids = linkedSetOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_GENERAL_STATUS),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION),
+                CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_GENERAL_STATUS),
+                CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1),
+                CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2),
+                CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA),
+                CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION),
             ),
         )
 
@@ -886,7 +894,7 @@ class DeviceMatcherRegistry private constructor(
          */
         private fun precorDefinition() = MatchDefinition(
             candidateId = "vendor.precor.chrono",
-            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_PRECOR_SERVICE),
+            serviceUuid = CanonicalUuid.fromUuid(PrecorUuids.UUID_PRECOR_SERVICE),
             // User-approved tier-S evidence substitution (2026-08-12): the official Precor
             // Spinning Connect client discovers and consumes FitBridge's Chrono simulator when
             // it advertises this served service UUID. That establishes a valid discovery route
@@ -896,7 +904,7 @@ class DeviceMatcherRegistry private constructor(
             knownService = null,
             preference = 140,
             personaCharacteristicUuids = linkedSetOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_PRECOR_MEASUREMENT),
+                CanonicalUuid.fromUuid(PrecorUuids.UUID_PRECOR_MEASUREMENT),
             ),
         )
 
@@ -920,7 +928,7 @@ class DeviceMatcherRegistry private constructor(
          * **The name also cannot do the job it would be added for.** The interesting question is
          * not "is this a Schwinn" but "is this a 170 or a 270", and the console answers
          * `SCHWINN 170/270` to both. That distinction is only observable from which characteristics
-         * notify — 17 bytes on [BluetoothIds.UUID_X70_MEASUREMENT] for a 270, paired 20- and
+         * notify — 17 bytes on [SchwinnX70Uuids.UUID_X70_MEASUREMENT] for a 270, paired 20- and
          * 14-byte streams for a 170 — which is a post-subscription fact, not a matcher input.
          *
          * All four notify/write characteristics are listed as persona characteristics so that a
@@ -929,15 +937,15 @@ class DeviceMatcherRegistry private constructor(
          */
         private fun schwinnX70Definition() = MatchDefinition(
             candidateId = "vendor.schwinn.x70",
-            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SERVICE),
+            serviceUuid = CanonicalUuid.fromUuid(SchwinnX70Uuids.UUID_X70_SERVICE),
             machineRole = true,
             knownService = null,
             preference = 130,
             personaCharacteristicUuids = linkedSetOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_MEASUREMENT),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SUPPLEMENTAL),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_SIBLING),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_X70_CONTROL),
+                CanonicalUuid.fromUuid(SchwinnX70Uuids.UUID_X70_MEASUREMENT),
+                CanonicalUuid.fromUuid(SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL),
+                CanonicalUuid.fromUuid(SchwinnX70Uuids.UUID_X70_SIBLING),
+                CanonicalUuid.fromUuid(SchwinnX70Uuids.UUID_X70_CONTROL),
             ),
         )
 
@@ -953,13 +961,13 @@ class DeviceMatcherRegistry private constructor(
          */
         private fun fecDefinition() = MatchDefinition(
             candidateId = "vendor.fec.ble",
-            serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_FEC_SERVICE),
+            serviceUuid = CanonicalUuid.fromUuid(FecBleUuids.UUID_FEC_SERVICE),
             machineRole = true,
             knownService = null,
             preference = 120,
             personaCharacteristicUuids = linkedSetOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_FEC_MEASUREMENT),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_FEC_CONTROL),
+                CanonicalUuid.fromUuid(FecBleUuids.UUID_FEC_MEASUREMENT),
+                CanonicalUuid.fromUuid(FecBleUuids.UUID_FEC_CONTROL),
             ),
         )
 

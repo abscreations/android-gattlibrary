@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class MetricParserEmissionTest {
     private val connection = ConnectionId("AA:BB:CC:DD:EE:10", 10L)
@@ -169,7 +170,7 @@ class MetricParserEmissionTest {
             byteArrayOf(0x1E, 150.toByte(), 100, 0, 0, 4),
         )!!
         val harness = harness(
-            characteristic = BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
+            characteristic = SigUuids.UUID_HEART_RATE_MEASUREMENT,
             protocol = MetricProtocol.HRM,
             sourceClass = MetricSourceClass.HRM,
         )

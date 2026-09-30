@@ -18,6 +18,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 /** Phase 5b §11.8: proprietary notification through fusion into FTMS Indoor Bike bytes. */
 class PrecorDownstreamEndToEndTest {
@@ -30,7 +31,7 @@ class PrecorDownstreamEndToEndTest {
         val source = MetricSourceId(
             ConnectionId("C0:00:00:00:00:01", 1),
             MetricProtocol.VENDOR,
-            BluetoothIds.UUID_PRECOR_MEASUREMENT,
+            PrecorUuids.UUID_PRECOR_MEASUREMENT,
         )
         val reading = requireNotNull(
             PrecorMeasurement.parse(
@@ -114,7 +115,7 @@ class PrecorDownstreamEndToEndTest {
         val profile = FtmsMachineProfile.INDOOR_BIKE
         val capabilities = providerMeasurementCapabilities(
             profile,
-            setOf(BluetoothIds.UUID_PRECOR_SERVICE),
+            setOf(PrecorUuids.UUID_PRECOR_SERVICE),
         )
         val measurementWord = u32(
             buildFtmsFeaturePayload(
@@ -145,7 +146,7 @@ class PrecorDownstreamEndToEndTest {
         assertTrue(
             providerMeasurementCapabilities(
                 profile,
-                setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
+                setOf(FtmsUuids.UUID_FTMS_SERVICE, PrecorUuids.UUID_PRECOR_SERVICE),
             ).resistance,
         )
     }

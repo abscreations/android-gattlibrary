@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
 import kotlin.math.pow
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 
 class KayakFirstOrangeProtocolTest {
     @Test
@@ -42,8 +43,8 @@ class KayakFirstOrangeProtocolTest {
     fun `legacy Orange discovery tolerates absent CCCD without weakening Blue`() {
         val inventory = KayakFirstGattInventory(
             mapOf(
-                BluetoothIds.UUID_KAYAK_FIRST_SERVICE to mapOf(
-                    BluetoothIds.UUID_KAYAK_FIRST_IO to KayakFirstCharacteristicInventory(
+                KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE to mapOf(
+                    KayakFirstUuids.UUID_KAYAK_FIRST_IO to KayakFirstCharacteristicInventory(
                         properties = BluetoothGattCharacteristic.PROPERTY_NOTIFY or
                             BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
                         hasCccd = false,

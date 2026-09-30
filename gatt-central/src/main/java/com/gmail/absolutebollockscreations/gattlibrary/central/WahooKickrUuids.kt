@@ -1,6 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 /**
  * Phase-10 legacy KICKR wire vocabulary.
@@ -11,16 +13,16 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  */
 @GattLibraryInternalApi
 object WahooKickrUuids {
-    val CYCLING_POWER_SERVICE = BluetoothIds.UUID_CYCLING_POWER_SERVICE
-    val MARKER_EE01 = BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01
-    val MARKER_EE0B = BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE0B
-    val CONTROL = BluetoothIds.UUID_WAHOO_KICKR_CONTROL
+    val CYCLING_POWER_SERVICE = SigUuids.UUID_CYCLING_POWER_SERVICE
+    val MARKER_EE01 = WahooUuids.UUID_WAHOO_KICKR_MARKER_EE01
+    val MARKER_EE0B = WahooUuids.UUID_WAHOO_KICKR_MARKER_EE0B
+    val CONTROL = WahooUuids.UUID_WAHOO_KICKR_CONTROL
 
-    val RIDEON_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_SERVICE
-    val RIDEON_CORE2_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE
-    val RIDEON_ASYNC_TX = BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX
-    val RIDEON_SYNC_RX = BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX
-    val RIDEON_SYNC_TX = BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX
+    val RIDEON_SERVICE = WahooUuids.UUID_WAHOO_RIDEON_SERVICE
+    val RIDEON_CORE2_SERVICE = WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE
+    val RIDEON_ASYNC_TX = WahooUuids.UUID_WAHOO_RIDEON_ASYNC_TX
+    val RIDEON_SYNC_RX = WahooUuids.UUID_WAHOO_RIDEON_SYNC_RX
+    val RIDEON_SYNC_TX = WahooUuids.UUID_WAHOO_RIDEON_SYNC_TX
 
     const val OPCODE_UNLOCK = 0x20
     const val OPCODE_RESISTANCE = 0x40

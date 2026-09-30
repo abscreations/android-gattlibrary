@@ -11,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 class Concept2Pm5IdentityTest {
     @Test
@@ -45,7 +46,7 @@ class Concept2Pm5IdentityTest {
             assertTrue(plan.includeTxPowerInAdvertisement)
             assertTrue(plan.advertisingServiceUuids.isEmpty())
             assertEquals(
-                listOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_DISCOVERY_SERVICE),
+                listOf(FtmsUuids.UUID_FTMS_SERVICE, Concept2Uuids.UUID_C2_DISCOVERY_SERVICE),
                 plan.scanResponseServiceUuids,
             )
             assertArrayEquals(
@@ -64,24 +65,24 @@ class Concept2Pm5IdentityTest {
     fun `device information has documented widths machine values and offset behavior`() {
         Concept2Machine.entries.forEach { machine ->
             val profile = Concept2Pm5GattProfile(SimulatorPersona.Concept2Pm5(machine))
-            assertEquals(9, profile.readDeviceInformation(BluetoothIds.UUID_C2_SERIAL_NUMBER, 0)!!.size)
-            assertEquals(3, profile.readDeviceInformation(BluetoothIds.UUID_C2_HARDWARE_REVISION, 0)!!.size)
-            assertEquals(20, profile.readDeviceInformation(BluetoothIds.UUID_C2_FIRMWARE_REVISION, 0)!!.size)
+            assertEquals(9, profile.readDeviceInformation(Concept2Uuids.UUID_C2_SERIAL_NUMBER, 0)!!.size)
+            assertEquals(3, profile.readDeviceInformation(Concept2Uuids.UUID_C2_HARDWARE_REVISION, 0)!!.size)
+            assertEquals(20, profile.readDeviceInformation(Concept2Uuids.UUID_C2_FIRMWARE_REVISION, 0)!!.size)
             assertArrayEquals(
                 machine.let { SimulatorPersona.Concept2Pm5(it).compatibility.firmwareIdentity }
                     .toByteArray(Charsets.US_ASCII),
-                profile.readDeviceInformation(BluetoothIds.UUID_C2_FIRMWARE_REVISION, 0),
+                profile.readDeviceInformation(Concept2Uuids.UUID_C2_FIRMWARE_REVISION, 0),
             )
-            assertEquals(16, profile.readDeviceInformation(BluetoothIds.UUID_C2_MANUFACTURER_NAME, 0)!!.size)
-            assertEquals(16, profile.readDeviceInformation(BluetoothIds.UUID_C2_MODEL_NUMBER, 0)!!.size)
+            assertEquals(16, profile.readDeviceInformation(Concept2Uuids.UUID_C2_MANUFACTURER_NAME, 0)!!.size)
+            assertEquals(16, profile.readDeviceInformation(Concept2Uuids.UUID_C2_MODEL_NUMBER, 0)!!.size)
             assertArrayEquals(
                 byteArrayOf(machine.wireMachineType.toByte()),
-                profile.readDeviceInformation(BluetoothIds.UUID_C2_MACHINE_TYPE, 0),
+                profile.readDeviceInformation(Concept2Uuids.UUID_C2_MACHINE_TYPE, 0),
             )
-            assertArrayEquals(byteArrayOf(0x05, 0x02), profile.readDeviceInformation(BluetoothIds.UUID_C2_ATT_RECEIVE_MTU, 0, 517))
-            assertArrayEquals(byteArrayOf(0x02), profile.readDeviceInformation(BluetoothIds.UUID_C2_ATT_RECEIVE_MTU, 1, 517))
-            assertArrayEquals(byteArrayOf(), profile.readDeviceInformation(BluetoothIds.UUID_C2_SERIAL_NUMBER, 9))
-            assertNull(profile.readDeviceInformation(BluetoothIds.UUID_C2_SERIAL_NUMBER, 10))
+            assertArrayEquals(byteArrayOf(0x05, 0x02), profile.readDeviceInformation(Concept2Uuids.UUID_C2_ATT_RECEIVE_MTU, 0, 517))
+            assertArrayEquals(byteArrayOf(0x02), profile.readDeviceInformation(Concept2Uuids.UUID_C2_ATT_RECEIVE_MTU, 1, 517))
+            assertArrayEquals(byteArrayOf(), profile.readDeviceInformation(Concept2Uuids.UUID_C2_SERIAL_NUMBER, 9))
+            assertNull(profile.readDeviceInformation(Concept2Uuids.UUID_C2_SERIAL_NUMBER, 10))
             assertNull(profile.readDeviceInformation(UUID.randomUUID(), 0))
         }
     }
@@ -96,48 +97,48 @@ class Concept2Pm5IdentityTest {
         ).services
         assertEquals(
             listOf(
-                BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE,
-                BluetoothIds.UUID_C2_PM_CONTROL_SERVICE,
-                BluetoothIds.UUID_C2_ERG_SERVICE,
+                Concept2Uuids.UUID_C2_DEVICE_INFO_SERVICE,
+                Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE,
+                Concept2Uuids.UUID_C2_ERG_SERVICE,
             ),
             services.keys.toList(),
         )
-        assertFalse(services.containsKey(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE))
+        assertFalse(services.containsKey(Concept2Uuids.UUID_C2_HEART_RATE_RECEIVE_SERVICE))
 
         // Device Information as the pre-FTMS unit exposes it: 0x0012-0x0015 and nothing else.
         assertEquals(
             listOf(
-                BluetoothIds.UUID_C2_SERIAL_NUMBER,
-                BluetoothIds.UUID_C2_HARDWARE_REVISION,
-                BluetoothIds.UUID_C2_FIRMWARE_REVISION,
-                BluetoothIds.UUID_C2_MANUFACTURER_NAME,
+                Concept2Uuids.UUID_C2_SERIAL_NUMBER,
+                Concept2Uuids.UUID_C2_HARDWARE_REVISION,
+                Concept2Uuids.UUID_C2_FIRMWARE_REVISION,
+                Concept2Uuids.UUID_C2_MANUFACTURER_NAME,
             ),
-            services.getValue(BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE).map { it.uuid },
+            services.getValue(Concept2Uuids.UUID_C2_DEVICE_INFO_SERVICE).map { it.uuid },
         )
 
-        val control = services.getValue(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE)
+        val control = services.getValue(Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE)
         assertEquals(2, control.size)
         assertEquals(
             Triple(false, true, false),
-            control.single { it.uuid == BluetoothIds.UUID_C2_CSAFE_REQUEST }
+            control.single { it.uuid == Concept2Uuids.UUID_C2_CSAFE_REQUEST }
                 .let { Triple(it.readable, it.writable, it.notifiable) },
         )
         assertEquals(
             Triple(true, false, true),
-            control.single { it.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE }
+            control.single { it.uuid == Concept2Uuids.UUID_C2_CSAFE_RESPONSE }
                 .let { Triple(it.readable, it.writable, it.notifiable) },
         )
 
-        val erg = services.getValue(BluetoothIds.UUID_C2_ERG_SERVICE)
-        assertTrue(erg.all { !it.writable || it.uuid == BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE })
+        val erg = services.getValue(Concept2Uuids.UUID_C2_ERG_SERVICE)
+        assertTrue(erg.all { !it.writable || it.uuid == Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE })
         // 0x003C-0x003F are absent on the pre-FTMS unit. 0x003D and 0x003E matter most:
         // ErgData subscribes to whichever of them it finds, and a failed subscription fails
         // its initialization, so not publishing them removes that branch outright.
         listOf(
-            BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2,
-            BluetoothIds.UUID_C2_FORCE_CURVE_DATA,
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3,
-            BluetoothIds.UUID_C2_LOGGED_WORKOUT,
+            Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2,
+            Concept2Uuids.UUID_C2_FORCE_CURVE_DATA,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3,
+            Concept2Uuids.UUID_C2_LOGGED_WORKOUT,
         ).forEach { absent -> assertTrue(erg.none { it.uuid == absent }) }
         assertEquals(
             listOf(0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x80),
@@ -155,9 +156,9 @@ class Concept2Pm5IdentityTest {
             val services = Concept2Pm5GattProfile(persona).services
             assertEquals(
                 listOf(
-                    BluetoothIds.UUID_C2_PM_CONTROL_SERVICE,
-                    BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE,
-                    BluetoothIds.UUID_C2_ERG_SERVICE,
+                    Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE,
+                    Concept2Uuids.UUID_C2_DEVICE_INFO_SERVICE,
+                    Concept2Uuids.UUID_C2_ERG_SERVICE,
                     FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 services.keys.toList(),
@@ -165,10 +166,10 @@ class Concept2Pm5IdentityTest {
             assertEquals(
                 listOf(0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B,
                     0x80, 0x3D),
-                services.getValue(BluetoothIds.UUID_C2_ERG_SERVICE).map { it.lowByte() },
+                services.getValue(Concept2Uuids.UUID_C2_ERG_SERVICE).map { it.lowByte() },
             )
-            assertEquals(8, services.getValue(BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE).size)
-            assertFalse(services.containsKey(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE))
+            assertEquals(8, services.getValue(Concept2Uuids.UUID_C2_DEVICE_INFO_SERVICE).size)
+            assertFalse(services.containsKey(Concept2Uuids.UUID_C2_HEART_RATE_RECEIVE_SERVICE))
             assertEquals(
                 listOf(
                     FtmsUuids.UUID_FITNESS_MACHINE_FEATURE,
@@ -187,24 +188,24 @@ class Concept2Pm5IdentityTest {
             val services = Concept2Pm5GattProfile(
                 SimulatorPersona.Concept2Pm5(compatibility.machine, compatibility),
             ).services
-            val info = services.getValue(BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE).map { it.uuid }
-            val control = services.getValue(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE)
-            val erg = services.getValue(BluetoothIds.UUID_C2_ERG_SERVICE)
+            val info = services.getValue(Concept2Uuids.UUID_C2_DEVICE_INFO_SERVICE).map { it.uuid }
+            val control = services.getValue(Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE)
+            val erg = services.getValue(Concept2Uuids.UUID_C2_ERG_SERVICE)
             listOf(
-                BluetoothIds.UUID_C2_SERIAL_NUMBER,
-                BluetoothIds.UUID_C2_HARDWARE_REVISION,
-                BluetoothIds.UUID_C2_FIRMWARE_REVISION,
+                Concept2Uuids.UUID_C2_SERIAL_NUMBER,
+                Concept2Uuids.UUID_C2_HARDWARE_REVISION,
+                Concept2Uuids.UUID_C2_FIRMWARE_REVISION,
             ).forEach { assertTrue(it in info) }
-            assertTrue(control.any { it.uuid == BluetoothIds.UUID_C2_CSAFE_REQUEST && it.writable })
-            control.single { it.uuid == BluetoothIds.UUID_C2_CSAFE_RESPONSE }.let {
+            assertTrue(control.any { it.uuid == Concept2Uuids.UUID_C2_CSAFE_REQUEST && it.writable })
+            control.single { it.uuid == Concept2Uuids.UUID_C2_CSAFE_RESPONSE }.let {
                 assertEquals(
                     compatibility.gattSurface == Concept2Pm5GattSurface.PRE_FTMS,
                     it.readable,
                 )
                 assertTrue(it.notifiable)
             }
-            assertTrue(erg.any { it.uuid == BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE && it.writable })
-            assertTrue(erg.any { it.uuid == BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION && it.notifiable })
+            assertTrue(erg.any { it.uuid == Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE && it.writable })
+            assertTrue(erg.any { it.uuid == Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION && it.notifiable })
             // Never published on either surface; ErgData is observed skipping it cleanly.
             assertTrue(erg.none { it.uuid.toString().startsWith("ce060043") })
         }
@@ -218,9 +219,9 @@ class Concept2Pm5IdentityTest {
             assertTrue(plan.localName.startsWith("PM"))
             if (compatibility.gattSurface == Concept2Pm5GattSurface.MODERN) {
                 assertTrue(FtmsUuids.UUID_FTMS_SERVICE in plan.scanResponseServiceUuids)
-                assertTrue(BluetoothIds.UUID_C2_DISCOVERY_SERVICE in plan.scanResponseServiceUuids)
+                assertTrue(Concept2Uuids.UUID_C2_DISCOVERY_SERVICE in plan.scanResponseServiceUuids)
             } else {
-                assertEquals(listOf(BluetoothIds.UUID_C2_DISCOVERY_SERVICE), plan.advertisingServiceUuids)
+                assertEquals(listOf(Concept2Uuids.UUID_C2_DISCOVERY_SERVICE), plan.advertisingServiceUuids)
                 assertEquals(3 + 18, plan.advertisingBytes)
                 assertEquals(2 + plan.localName.length, plan.scanResponseBytes)
             }
@@ -232,11 +233,11 @@ class Concept2Pm5IdentityTest {
         val persona = SimulatorPersona.Concept2Pm5(Concept2Machine.ROW_ERG)
         val profile = Concept2Pm5GattProfile(persona)
         assertEquals("PM5 431225189 Row", persona.advertisedName)
-        assertArrayEquals("431225189".toByteArray(), profile.readDeviceInformation(BluetoothIds.UUID_C2_SERIAL_NUMBER, 0))
-        assertArrayEquals("903".toByteArray(), profile.readDeviceInformation(BluetoothIds.UUID_C2_HARDWARE_REVISION, 0))
+        assertArrayEquals("431225189".toByteArray(), profile.readDeviceInformation(Concept2Uuids.UUID_C2_SERIAL_NUMBER, 0))
+        assertArrayEquals("903".toByteArray(), profile.readDeviceInformation(Concept2Uuids.UUID_C2_HARDWARE_REVISION, 0))
         assertArrayEquals(
             "8200-000409-207.000\u0000".toByteArray(),
-            profile.readDeviceInformation(BluetoothIds.UUID_C2_FIRMWARE_REVISION, 0),
+            profile.readDeviceInformation(Concept2Uuids.UUID_C2_FIRMWARE_REVISION, 0),
         )
         assertArrayEquals(
             byteArrayOf(0xA6.toByte(), 0x56, 0, 0, 0, 0, 0, 0),

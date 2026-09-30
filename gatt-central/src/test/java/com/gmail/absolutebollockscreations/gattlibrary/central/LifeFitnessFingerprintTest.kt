@@ -12,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 /**
  * Phase 6 work unit 6.1 — plan §6, §11 obligations 0 and 1, D52 and D54.
@@ -29,28 +30,28 @@ class LifeFitnessFingerprintTest {
     ) = CharacteristicInventory(uuid, writable, notifyOrIndicate, hasCccd)
 
     private fun status(notifyOrIndicate: Boolean = true, hasCccd: Boolean = true) =
-        ch(BluetoothIds.UUID_LF_STATUS, writable = false, notifyOrIndicate = notifyOrIndicate, hasCccd = hasCccd)
+        ch(LifeFitnessUuids.UUID_LF_STATUS, writable = false, notifyOrIndicate = notifyOrIndicate, hasCccd = hasCccd)
 
     private fun controlService(
-        uuid: UUID = BluetoothIds.UUID_LF_CONTROL_SERVICE,
+        uuid: UUID = LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
         extra: List<CharacteristicInventory> = listOf(status()),
         writable: Boolean = true,
     ) = ServiceInventory(
         uuid,
         listOf(
-            ch(BluetoothIds.UUID_LF_CONTROL_1, writable = writable),
-            ch(BluetoothIds.UUID_LF_CONTROL_2, writable = writable),
+            ch(LifeFitnessUuids.UUID_LF_CONTROL_1, writable = writable),
+            ch(LifeFitnessUuids.UUID_LF_CONTROL_2, writable = writable),
         ) + extra,
     )
 
     private fun userService(
-        uuid: UUID = BluetoothIds.UUID_LF_USER_SERVICE,
+        uuid: UUID = LifeFitnessUuids.UUID_LF_USER_SERVICE,
         writable: Boolean = true,
     ) = ServiceInventory(
         uuid,
         listOf(
-            ch(BluetoothIds.UUID_LF_VENDOR_TOKEN_1, writable = writable),
-            ch(BluetoothIds.UUID_LF_VENDOR_TOKEN_2, writable = writable),
+            ch(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1, writable = writable),
+            ch(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2, writable = writable),
         ),
     )
 
@@ -84,9 +85,9 @@ class LifeFitnessFingerprintTest {
             LifeFitnessFingerprint.identify(noise() + controlService() + userService()),
         )
 
-        assertEquals(BluetoothIds.UUID_LF_CONTROL_SERVICE, resolved.controlService)
-        assertEquals(BluetoothIds.UUID_LF_USER_SERVICE, resolved.userService)
-        assertEquals(BluetoothIds.UUID_LF_STATUS, resolved.statusCharacteristic)
+        assertEquals(LifeFitnessUuids.UUID_LF_CONTROL_SERVICE, resolved.controlService)
+        assertEquals(LifeFitnessUuids.UUID_LF_USER_SERVICE, resolved.userService)
+        assertEquals(LifeFitnessUuids.UUID_LF_STATUS, resolved.statusCharacteristic)
         assertTrue(resolved.canonicalParents)
     }
 
@@ -110,7 +111,7 @@ class LifeFitnessFingerprintTest {
         assertEquals(variantUser, resolved.userService)
         assertFalse("parents differ from the captured pair", resolved.canonicalParents)
         assertEquals("status is scoped to the resolved parent, not the captured one",
-            BluetoothIds.UUID_LF_STATUS, resolved.statusCharacteristic)
+            LifeFitnessUuids.UUID_LF_STATUS, resolved.statusCharacteristic)
     }
 
     @Test
@@ -145,8 +146,8 @@ class LifeFitnessFingerprintTest {
     @Test
     fun `an incomplete pair declines as incomplete, not as a different family`() {
         val halfControl = ServiceInventory(
-            BluetoothIds.UUID_LF_CONTROL_SERVICE,
-            listOf(ch(BluetoothIds.UUID_LF_CONTROL_1)),
+            LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
+            listOf(ch(LifeFitnessUuids.UUID_LF_CONTROL_1)),
         )
 
         assertEquals(
@@ -168,11 +169,11 @@ class LifeFitnessFingerprintTest {
     fun `a split parent declines even though both characteristics exist`() {
         val first = ServiceInventory(
             UUID.fromString("11111111-0000-0000-0000-000000000000"),
-            listOf(ch(BluetoothIds.UUID_LF_CONTROL_1)),
+            listOf(ch(LifeFitnessUuids.UUID_LF_CONTROL_1)),
         )
         val second = ServiceInventory(
             UUID.fromString("22222222-0000-0000-0000-000000000000"),
-            listOf(ch(BluetoothIds.UUID_LF_CONTROL_2)),
+            listOf(ch(LifeFitnessUuids.UUID_LF_CONTROL_2)),
         )
 
         assertEquals(
@@ -208,11 +209,11 @@ class LifeFitnessFingerprintTest {
         // looking at characteristic flags for a layout fault.
         val first = ServiceInventory(
             UUID.fromString("11111111-0000-0000-0000-000000000000"),
-            listOf(ch(BluetoothIds.UUID_LF_CONTROL_1, writable = false)),
+            listOf(ch(LifeFitnessUuids.UUID_LF_CONTROL_1, writable = false)),
         )
         val second = ServiceInventory(
             UUID.fromString("22222222-0000-0000-0000-000000000000"),
-            listOf(ch(BluetoothIds.UUID_LF_CONTROL_2, writable = false)),
+            listOf(ch(LifeFitnessUuids.UUID_LF_CONTROL_2, writable = false)),
         )
 
         assertEquals(
@@ -256,16 +257,16 @@ class LifeFitnessFingerprintTest {
         // lifeFitnessUuid(alias) helper sees immediately that no single base exists.
         fun base(u: UUID) = u.toString().substringAfter('-')
 
-        assertEquals(base(BluetoothIds.UUID_LF_CONTROL_1), base(BluetoothIds.UUID_LF_CONTROL_2))
+        assertEquals(base(LifeFitnessUuids.UUID_LF_CONTROL_1), base(LifeFitnessUuids.UUID_LF_CONTROL_2))
         assertNotEquals(
             "ce78e85e sits on a different base from the 5da5 group",
-            base(BluetoothIds.UUID_LF_VENDOR_TOKEN_1),
-            base(BluetoothIds.UUID_LF_VENDOR_TOKEN_2),
+            base(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1),
+            base(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2),
         )
         assertNotEquals(
             "the parents are a third base again",
-            base(BluetoothIds.UUID_LF_CONTROL_SERVICE),
-            base(BluetoothIds.UUID_LF_CONTROL_1),
+            base(LifeFitnessUuids.UUID_LF_CONTROL_SERVICE),
+            base(LifeFitnessUuids.UUID_LF_CONTROL_1),
         )
     }
 
@@ -280,7 +281,7 @@ class LifeFitnessFingerprintTest {
         )
 
         assertNull(resolved.statusCharacteristic)
-        assertEquals(BluetoothIds.UUID_LF_CONTROL_SERVICE, resolved.controlService)
+        assertEquals(LifeFitnessUuids.UUID_LF_CONTROL_SERVICE, resolved.controlService)
     }
 
     @Test

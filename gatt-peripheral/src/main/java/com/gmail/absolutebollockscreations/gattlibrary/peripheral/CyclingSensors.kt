@@ -15,6 +15,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Saturating
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Native CSC (0x1816) and Cycling Power (0x1818) sensor emulation for the Indoor
@@ -268,14 +269,14 @@ internal object CscControlPoint {
 /** Builds the optional native CSC and CPS services for the Indoor Bike persona. */
 object CyclingServiceRegistry {
     fun buildCscService(): BluetoothGattService = BluetoothGattService(
-        BluetoothIds.UUID_CSC_SERVICE,
+        SigUuids.UUID_CSC_SERVICE,
         BluetoothGattService.SERVICE_TYPE_PRIMARY,
     ).apply {
-        addCharacteristic(notify(BluetoothIds.UUID_CSC_MEASUREMENT))
-        addCharacteristic(readOnly(BluetoothIds.UUID_CSC_FEATURE))
+        addCharacteristic(notify(SigUuids.UUID_CSC_MEASUREMENT))
+        addCharacteristic(readOnly(SigUuids.UUID_CSC_FEATURE))
         addCharacteristic(
             BluetoothGattCharacteristic(
-                BluetoothIds.UUID_SC_CONTROL_POINT,
+                SigUuids.UUID_SC_CONTROL_POINT,
                 BluetoothGattCharacteristic.PROPERTY_WRITE or
                     BluetoothGattCharacteristic.PROPERTY_INDICATE,
                 BluetoothGattCharacteristic.PERMISSION_WRITE,
@@ -284,16 +285,16 @@ object CyclingServiceRegistry {
     }
 
     fun buildCyclingPowerService(): BluetoothGattService = BluetoothGattService(
-        BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+        SigUuids.UUID_CYCLING_POWER_SERVICE,
         BluetoothGattService.SERVICE_TYPE_PRIMARY,
     ).apply {
-        addCharacteristic(notify(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT))
-        addCharacteristic(readOnly(BluetoothIds.UUID_CYCLING_POWER_FEATURE))
-        addCharacteristic(readOnly(BluetoothIds.UUID_SENSOR_LOCATION))
+        addCharacteristic(notify(SigUuids.UUID_CYCLING_POWER_MEASUREMENT))
+        addCharacteristic(readOnly(SigUuids.UUID_CYCLING_POWER_FEATURE))
+        addCharacteristic(readOnly(SigUuids.UUID_SENSOR_LOCATION))
     }
 
     private fun cccd() = BluetoothGattDescriptor(
-        BluetoothIds.UUID_CCCD,
+        SigUuids.UUID_CCCD,
         BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
     )
 

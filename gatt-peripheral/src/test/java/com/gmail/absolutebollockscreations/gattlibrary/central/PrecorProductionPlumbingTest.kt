@@ -11,6 +11,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 /**
  * Precor Chrono registration, matching, ownership and control honesty — plan §5b, §11.1,
@@ -31,7 +33,7 @@ class PrecorProductionPlumbingTest {
     fun `an advertised Precor service matches the Chrono candidate and nothing else`() {
         val ids = idsOf(
             MatchObservation(
-                advertisedServiceUuids = setOf(uuid(BluetoothIds.UUID_PRECOR_SERVICE)),
+                advertisedServiceUuids = setOf(uuid(PrecorUuids.UUID_PRECOR_SERVICE)),
             ),
         )
 
@@ -43,9 +45,9 @@ class PrecorProductionPlumbingTest {
         val match = registry.rankedCandidates(
             MatchObservation(
                 localName = "CHRONO",
-                discoveredServiceUuids = setOf(uuid(BluetoothIds.UUID_PRECOR_SERVICE)),
+                discoveredServiceUuids = setOf(uuid(PrecorUuids.UUID_PRECOR_SERVICE)),
                 discoveredCharacteristicUuids = setOf(
-                    uuid(BluetoothIds.UUID_PRECOR_MEASUREMENT),
+                    uuid(PrecorUuids.UUID_PRECOR_MEASUREMENT),
                 ),
             ),
         ).single()
@@ -78,7 +80,7 @@ class PrecorProductionPlumbingTest {
         val ids = idsOf(
             MatchObservation(
                 localName = "ASSAULT TREADMILL 1",
-                discoveredServiceUuids = setOf(uuid(BluetoothIds.UUID_PRECOR_SERVICE)),
+                discoveredServiceUuids = setOf(uuid(PrecorUuids.UUID_PRECOR_SERVICE)),
             ),
         )
         assertEquals(listOf("vendor.precor.chrono"), ids)
@@ -100,7 +102,7 @@ class PrecorProductionPlumbingTest {
         val ids = idsOf(
             MatchObservation(
                 localName = "PM5 430343693",
-                advertisedServiceUuids = setOf(uuid(BluetoothIds.UUID_C2_ERG_SERVICE)),
+                advertisedServiceUuids = setOf(uuid(Concept2Uuids.UUID_C2_ERG_SERVICE)),
             ),
         )
 
@@ -113,15 +115,15 @@ class PrecorProductionPlumbingTest {
             MatchObservation(
                 advertisedServiceUuids = setOf(
                     uuid(FtmsUuids.UUID_FTMS_SERVICE),
-                    uuid(BluetoothIds.UUID_PRECOR_SERVICE),
+                    uuid(PrecorUuids.UUID_PRECOR_SERVICE),
                 ),
                 discoveredServiceUuids = setOf(
                     uuid(FtmsUuids.UUID_FTMS_SERVICE),
-                    uuid(BluetoothIds.UUID_PRECOR_SERVICE),
+                    uuid(PrecorUuids.UUID_PRECOR_SERVICE),
                 ),
                 discoveredCharacteristicUuids = setOf(
                     uuid(FtmsUuids.UUID_BIKING_DATA),
-                    uuid(BluetoothIds.UUID_PRECOR_MEASUREMENT),
+                    uuid(PrecorUuids.UUID_PRECOR_MEASUREMENT),
                 ),
             ),
         )
@@ -140,11 +142,11 @@ class PrecorProductionPlumbingTest {
         // connects. Pinning both strings is the cheapest possible guard against it.
         assertEquals(
             "a026ee07-0a7d-4ab3-97fa-f1500f9feb8b",
-            BluetoothIds.UUID_PRECOR_SERVICE.toString(),
+            PrecorUuids.UUID_PRECOR_SERVICE.toString(),
         )
         assertEquals(
             "a026e01d-0a7d-4ab3-97fa-f1500f9feb8b",
-            BluetoothIds.UUID_PRECOR_MEASUREMENT.toString(),
+            PrecorUuids.UUID_PRECOR_MEASUREMENT.toString(),
         )
     }
 
@@ -200,7 +202,7 @@ class PrecorProductionPlumbingTest {
 
         val onChrono = activateMatchingProtocolHandlers(
             candidates,
-            setOf(BluetoothIds.UUID_PRECOR_SERVICE),
+            setOf(PrecorUuids.UUID_PRECOR_SERVICE),
             offer = { true },
         )
         assertEquals(1, onChrono.size)
@@ -223,7 +225,7 @@ class PrecorProductionPlumbingTest {
 
         val active = activateMatchingProtocolHandlers(
             listOf(ftms, precor),
-            setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE, PrecorUuids.UUID_PRECOR_SERVICE),
             offer = { true },
         )
 
@@ -232,8 +234,8 @@ class PrecorProductionPlumbingTest {
             listOf(precor),
             resolveProtocolHandlerRoute(
                 active,
-                BluetoothIds.UUID_PRECOR_MEASUREMENT,
-                BluetoothIds.UUID_PRECOR_SERVICE,
+                PrecorUuids.UUID_PRECOR_MEASUREMENT,
+                PrecorUuids.UUID_PRECOR_SERVICE,
             ).owners,
         )
         assertEquals(
@@ -254,8 +256,8 @@ class PrecorProductionPlumbingTest {
 
         val route = resolveProtocolHandlerRoute(
             active,
-            BluetoothIds.UUID_PRECOR_MEASUREMENT,
-            BluetoothIds.UUID_PRECOR_SERVICE,
+            PrecorUuids.UUID_PRECOR_MEASUREMENT,
+            PrecorUuids.UUID_PRECOR_SERVICE,
         )
         assertEquals(listOf(precor), route.owners)
         assertEquals(HandlerOwnership.EXPLICIT_CHARACTERISTIC, route.ownership)
@@ -269,7 +271,7 @@ class PrecorProductionPlumbingTest {
     fun `the Precor handler owns no writable characteristic`() {
         val precor = PrecorProtocolHandler()
 
-        assertEquals(setOf(BluetoothIds.UUID_PRECOR_MEASUREMENT), precor.extraCharacteristics)
+        assertEquals(setOf(PrecorUuids.UUID_PRECOR_MEASUREMENT), precor.extraCharacteristics)
         assertFalse(
             "no FTMS control point may be reachable through a proprietary measurement handler",
             FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT in precor.extraCharacteristics,

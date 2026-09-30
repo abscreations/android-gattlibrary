@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Lifecycle, gait integration and adapter-name owner for the Stryd footpod simulator peripheral.
@@ -90,7 +91,7 @@ internal class StrydFootpodPeripheralController(
         val gait = strides.update(speedMps, nowMs)
 
         advertiser.publish(
-            BluetoothIds.UUID_RSC_MEASUREMENT,
+            SigUuids.UUID_RSC_MEASUREMENT,
             StrydFootpodEncoder.rscMeasurement(
                 speedMps = gait.speedMps,
                 cadenceStridesPerMinute = gait.cadenceStridesPerMinute,
@@ -100,7 +101,7 @@ internal class StrydFootpodPeripheralController(
             ),
         )
         advertiser.publish(
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
             StrydFootpodEncoder.cyclingPowerMeasurement(
                 instantaneousPowerWatts = sample.powerWatts ?: 0,
                 cumulativeStrides = gait.cumulativeStrides,
@@ -114,7 +115,7 @@ internal class StrydFootpodPeripheralController(
         if (due || level != lastBatteryPercent) {
             lastBatteryPublishMs = nowMs
             lastBatteryPercent = level
-            advertiser.publish(BluetoothIds.UUID_BATTERY_LEVEL, byteArrayOf(level.toByte()))
+            advertiser.publish(SigUuids.UUID_BATTERY_LEVEL, byteArrayOf(level.toByte()))
         }
     }
 

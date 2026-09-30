@@ -10,6 +10,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingService
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Full UUIDs observed in the Neo GATT discovery; none are alias-derived. */
 internal object TacxGattIds {
@@ -51,7 +53,7 @@ internal fun tacxAdvertisingPlan(identity: FeCBleSimulatorIdentity, includeCps: 
     when (identity) {
         FeCBleSimulatorIdentity.TACX_NEO -> TacxAdvertisingPlan(
             advertiseServices = emptyList(),
-            scanResponseServices = listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_CSC_SERVICE, BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
+            scanResponseServices = listOf(SigUuids.UUID_CYCLING_POWER_SERVICE, SigUuids.UUID_CSC_SERVICE, SigUuids.UUID_DEVICE_INFORMATION_SERVICE, FecBleUuids.UUID_FEC_SERVICE),
             includeNameInAdvertisement = true,
             capturedAppearance = 0x0480,
         )
@@ -59,8 +61,8 @@ internal fun tacxAdvertisingPlan(identity: FeCBleSimulatorIdentity, includeCps: 
             advertiseServices = emptyList(),
             scanResponseServices = listOf(
                 FtmsUuids.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                BluetoothIds.UUID_FEC_SERVICE,
+                SigUuids.UUID_CYCLING_POWER_SERVICE,
+                FecBleUuids.UUID_FEC_SERVICE,
             ),
             manufacturerId = 0x0689,
             manufacturerData = byteArrayOf(0x29, 0x80.toByte()),
@@ -71,8 +73,8 @@ internal fun tacxAdvertisingPlan(identity: FeCBleSimulatorIdentity, includeCps: 
         )
         FeCBleSimulatorIdentity.GENERIC -> TacxAdvertisingPlan(
             advertiseServices = buildList {
-                add(BluetoothIds.UUID_FEC_SERVICE)
-                if (includeCps) add(BluetoothIds.UUID_CYCLING_POWER_SERVICE)
+                add(FecBleUuids.UUID_FEC_SERVICE)
+                if (includeCps) add(SigUuids.UUID_CYCLING_POWER_SERVICE)
             },
             scanResponseServices = emptyList(),
             includeNameInAdvertisement = false,
@@ -81,15 +83,15 @@ internal fun tacxAdvertisingPlan(identity: FeCBleSimulatorIdentity, includeCps: 
 
 /** Captured read values plus deliberately conservative synthetic values needed for discovery. */
 internal fun tacxReadValue(identity: FeCBleSimulatorIdentity, uuid: UUID, includeCps: Boolean): ByteArray? = when (uuid) {
-    BluetoothIds.UUID_MANUFACTURER_NAME -> if (identity == FeCBleSimulatorIdentity.GENERIC) null else "Tacx".toByteArray()
-    BluetoothIds.UUID_MODEL_NUMBER -> when (identity) {
+    SigUuids.UUID_MANUFACTURER_NAME -> if (identity == FeCBleSimulatorIdentity.GENERIC) null else "Tacx".toByteArray()
+    SigUuids.UUID_MODEL_NUMBER -> when (identity) {
         FeCBleSimulatorIdentity.TACX_NEO -> "Neo".toByteArray()
         FeCBleSimulatorIdentity.TACX_FLUX_2 -> "T2980".toByteArray()
         FeCBleSimulatorIdentity.GENERIC -> null
     }
-    BluetoothIds.UUID_SERIAL_NUMBER -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) identity.syntheticSerial.toByteArray() else null
-    BluetoothIds.UUID_HARDWARE_REVISION -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) "0".toByteArray() else null
-    BluetoothIds.UUID_FIRMWARE_REVISION -> when (identity) {
+    SigUuids.UUID_SERIAL_NUMBER -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) identity.syntheticSerial.toByteArray() else null
+    SigUuids.UUID_HARDWARE_REVISION -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) "0".toByteArray() else null
+    SigUuids.UUID_FIRMWARE_REVISION -> when (identity) {
         FeCBleSimulatorIdentity.TACX_NEO -> "0.7.4".toByteArray()
         FeCBleSimulatorIdentity.TACX_FLUX_2 -> "3.3.45".toByteArray()
         FeCBleSimulatorIdentity.GENERIC -> null
@@ -103,12 +105,12 @@ internal fun tacxReadValue(identity: FeCBleSimulatorIdentity, uuid: UUID, includ
     FtmsUuids.UUID_SUPPORTED_POWER_RANGE -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
         TACX_FLUX_2_SYNTHETIC_POWER_RANGE.copyOf()
     } else null
-    BluetoothIds.UUID_CYCLING_POWER_FEATURE -> if (includeCps) {
+    SigUuids.UUID_CYCLING_POWER_FEATURE -> if (includeCps) {
         if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) TACX_FLUX_2_CPS_FEATURE.copyOf()
         else CyclingSensorEncoders.cyclingPowerFeature()
     } else null
-    BluetoothIds.UUID_CSC_FEATURE -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) CyclingSensorEncoders.cscFeature() else null
-    BluetoothIds.UUID_SENSOR_LOCATION -> if (includeCps || identity == FeCBleSimulatorIdentity.TACX_NEO) CyclingSensorEncoders.sensorLocation() else null
+    SigUuids.UUID_CSC_FEATURE -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) CyclingSensorEncoders.cscFeature() else null
+    SigUuids.UUID_SENSOR_LOCATION -> if (includeCps || identity == FeCBleSimulatorIdentity.TACX_NEO) CyclingSensorEncoders.sensorLocation() else null
     TacxGattIds.CHAR_AC01 -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) byteArrayOf(0) else null
     else -> null
 }
@@ -131,49 +133,49 @@ internal object FeCBleGattProfile {
         FeCBleSimulatorIdentity.GENERIC -> emptyList()
         FeCBleSimulatorIdentity.TACX_NEO -> listOf(
             fecDefinition(includeControl),
-            dService(BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE, dChar(BluetoothIds.UUID_MANUFACTURER_NAME, READ), dChar(BluetoothIds.UUID_MODEL_NUMBER, READ), dChar(BluetoothIds.UUID_SERIAL_NUMBER, READ), dChar(BluetoothIds.UUID_HARDWARE_REVISION, READ), dChar(BluetoothIds.UUID_FIRMWARE_REVISION, READ)),
-            dService(BluetoothIds.UUID_CSC_SERVICE, dChar(BluetoothIds.UUID_CSC_MEASUREMENT, NOTIFY, BluetoothIds.UUID_CCCD), dChar(BluetoothIds.UUID_CSC_FEATURE, READ), dChar(BluetoothIds.UUID_SENSOR_LOCATION, READ)),
-            dService(BluetoothIds.UUID_CYCLING_POWER_SERVICE, dChar(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, BluetoothIds.UUID_CCCD), dChar(BluetoothIds.UUID_CYCLING_POWER_FEATURE, READ), dChar(BluetoothIds.UUID_SENSOR_LOCATION, READ), dChar(TacxGattIds.CYCLING_POWER_VECTOR, NOTIFY, BluetoothIds.UUID_CCCD), dChar(BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT, WRITE or INDICATE, BluetoothIds.UUID_CCCD)),
+            dService(SigUuids.UUID_DEVICE_INFORMATION_SERVICE, dChar(SigUuids.UUID_MANUFACTURER_NAME, READ), dChar(SigUuids.UUID_MODEL_NUMBER, READ), dChar(SigUuids.UUID_SERIAL_NUMBER, READ), dChar(SigUuids.UUID_HARDWARE_REVISION, READ), dChar(SigUuids.UUID_FIRMWARE_REVISION, READ)),
+            dService(SigUuids.UUID_CSC_SERVICE, dChar(SigUuids.UUID_CSC_MEASUREMENT, NOTIFY, SigUuids.UUID_CCCD), dChar(SigUuids.UUID_CSC_FEATURE, READ), dChar(SigUuids.UUID_SENSOR_LOCATION, READ)),
+            dService(SigUuids.UUID_CYCLING_POWER_SERVICE, dChar(SigUuids.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, SigUuids.UUID_CCCD), dChar(SigUuids.UUID_CYCLING_POWER_FEATURE, READ), dChar(SigUuids.UUID_SENSOR_LOCATION, READ), dChar(TacxGattIds.CYCLING_POWER_VECTOR, NOTIFY, SigUuids.UUID_CCCD), dChar(SigUuids.UUID_CYCLING_POWER_CONTROL_POINT, WRITE or INDICATE, SigUuids.UUID_CCCD)),
             dService(TacxGattIds.SERVICE_A501, dChar(TacxGattIds.CHAR_AC01, READ or WRITE, TacxGattIds.PRESENTATION_FORMAT)),
         )
         FeCBleSimulatorIdentity.TACX_FLUX_2 -> listOf(
             dService(
-                BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
-                dChar(BluetoothIds.UUID_FIRMWARE_REVISION, READ),
-                dChar(BluetoothIds.UUID_MANUFACTURER_NAME, READ),
-                dChar(BluetoothIds.UUID_MODEL_NUMBER, READ),
+                SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
+                dChar(SigUuids.UUID_FIRMWARE_REVISION, READ),
+                dChar(SigUuids.UUID_MANUFACTURER_NAME, READ),
+                dChar(SigUuids.UUID_MODEL_NUMBER, READ),
             ),
             dService(
                 TacxGattIds.SERVICE_A605,
                 dChar(TacxGattIds.CHAR_AB01, WRITE, TacxGattIds.USER_DESCRIPTION),
-                dChar(TacxGattIds.CHAR_AB02, NOTIFY, TacxGattIds.USER_DESCRIPTION, BluetoothIds.UUID_CCCD),
+                dChar(TacxGattIds.CHAR_AB02, NOTIFY, TacxGattIds.USER_DESCRIPTION, SigUuids.UUID_CCCD),
                 dChar(TacxGattIds.CHAR_AB21, WRITE or WRITE_NR, TacxGattIds.USER_DESCRIPTION),
-                dChar(TacxGattIds.CHAR_AB22, NOTIFY, TacxGattIds.USER_DESCRIPTION, BluetoothIds.UUID_CCCD),
+                dChar(TacxGattIds.CHAR_AB22, NOTIFY, TacxGattIds.USER_DESCRIPTION, SigUuids.UUID_CCCD),
             ),
             dService(TacxGattIds.SERVICE_A501, dChar(TacxGattIds.CHAR_AC01, READ or WRITE, TacxGattIds.PRESENTATION_FORMAT)),
             dService(
-                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                dChar(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, BluetoothIds.UUID_CCCD),
-                dChar(BluetoothIds.UUID_CYCLING_POWER_FEATURE, READ),
-                dChar(BluetoothIds.UUID_SENSOR_LOCATION, READ),
-                dChar(BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT, WRITE or INDICATE, BluetoothIds.UUID_CCCD),
+                SigUuids.UUID_CYCLING_POWER_SERVICE,
+                dChar(SigUuids.UUID_CYCLING_POWER_MEASUREMENT, NOTIFY, SigUuids.UUID_CCCD),
+                dChar(SigUuids.UUID_CYCLING_POWER_FEATURE, READ),
+                dChar(SigUuids.UUID_SENSOR_LOCATION, READ),
+                dChar(SigUuids.UUID_CYCLING_POWER_CONTROL_POINT, WRITE or INDICATE, SigUuids.UUID_CCCD),
             ),
             dService(
                 FtmsUuids.UUID_FTMS_SERVICE,
-                dChar(FtmsUuids.UUID_BIKING_DATA, NOTIFY, BluetoothIds.UUID_CCCD),
+                dChar(FtmsUuids.UUID_BIKING_DATA, NOTIFY, SigUuids.UUID_CCCD),
                 dChar(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE, READ),
                 dChar(FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE, READ),
                 dChar(FtmsUuids.UUID_SUPPORTED_POWER_RANGE, READ),
-                dChar(FtmsUuids.UUID_FITNESS_MACHINE_STATUS, NOTIFY, BluetoothIds.UUID_CCCD),
-                dChar(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE or INDICATE, BluetoothIds.UUID_CCCD),
+                dChar(FtmsUuids.UUID_FITNESS_MACHINE_STATUS, NOTIFY, SigUuids.UUID_CCCD),
+                dChar(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE or INDICATE, SigUuids.UUID_CCCD),
             ),
             fecDefinition(includeControl),
         )
     }
 
-    private fun fecDefinition(includeControl: Boolean) = dService(BluetoothIds.UUID_FEC_SERVICE, *listOfNotNull(
-        dChar(BluetoothIds.UUID_FEC_MEASUREMENT, NOTIFY, BluetoothIds.UUID_CCCD),
-        if (includeControl) dChar(BluetoothIds.UUID_FEC_CONTROL, WRITE or WRITE_NR) else null,
+    private fun fecDefinition(includeControl: Boolean) = dService(FecBleUuids.UUID_FEC_SERVICE, *listOfNotNull(
+        dChar(FecBleUuids.UUID_FEC_MEASUREMENT, NOTIFY, SigUuids.UUID_CCCD),
+        if (includeControl) dChar(FecBleUuids.UUID_FEC_CONTROL, WRITE or WRITE_NR) else null,
     ).toTypedArray())
 
     private fun dService(uuid: UUID, vararg characteristics: TacxGattCharacteristicDefinition) = TacxGattServiceDefinition(uuid, characteristics.toList())
@@ -188,15 +190,15 @@ internal object FeCBleGattProfile {
                     (if (item.properties and (WRITE or WRITE_NR) != 0) BluetoothGattCharacteristic.PERMISSION_WRITE else 0),
             )
             item.descriptors.forEach { uuid ->
-                characteristic.addDescriptor(BluetoothGattDescriptor(uuid, if (uuid == BluetoothIds.UUID_CCCD) BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE else BluetoothGattDescriptor.PERMISSION_READ))
+                characteristic.addDescriptor(BluetoothGattDescriptor(uuid, if (uuid == SigUuids.UUID_CCCD) BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE else BluetoothGattDescriptor.PERMISSION_READ))
             }
             addCharacteristic(characteristic)
         }
     }
 
-    private fun fec(includeControl: Boolean) = primary(BluetoothIds.UUID_FEC_SERVICE, listOfNotNull(
-        characteristic(BluetoothIds.UUID_FEC_MEASUREMENT, NOTIFY, cccd = true),
-        if (includeControl) characteristic(BluetoothIds.UUID_FEC_CONTROL, WRITE_NR) else null,
+    private fun fec(includeControl: Boolean) = primary(FecBleUuids.UUID_FEC_SERVICE, listOfNotNull(
+        characteristic(FecBleUuids.UUID_FEC_MEASUREMENT, NOTIFY, cccd = true),
+        if (includeControl) characteristic(FecBleUuids.UUID_FEC_CONTROL, WRITE_NR) else null,
     ))
 
     private fun primary(uuid: UUID, characteristics: List<BluetoothGattCharacteristic>) = BluetoothGattService(uuid, BluetoothGattService.SERVICE_TYPE_PRIMARY).apply {
@@ -210,7 +212,7 @@ internal object FeCBleGattProfile {
             (if (properties and READ != 0) BluetoothGattCharacteristic.PERMISSION_READ else 0) or
                 (if (properties and (WRITE or WRITE_NR) != 0) BluetoothGattCharacteristic.PERMISSION_WRITE else 0),
         ).apply {
-            if (cccd) addDescriptor(BluetoothGattDescriptor(BluetoothIds.UUID_CCCD, BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE))
+            if (cccd) addDescriptor(BluetoothGattDescriptor(SigUuids.UUID_CCCD, BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE))
         }
 }
 

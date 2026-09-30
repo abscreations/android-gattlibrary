@@ -30,6 +30,8 @@ import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** One characteristic's bounded FIFO. Stale frames are dropped in favour of current ones. */
 internal class SchwinnX70NotificationQueue(private val capacity: Int = 6) {
@@ -258,7 +260,7 @@ internal class SchwinnX70PeripheralAdvertiser(
             value: ByteArray,
         ) {
             val client = clients[device.address.lowercase()]
-            val isControl = characteristic.uuid == BluetoothIds.UUID_X70_CONTROL
+            val isControl = characteristic.uuid == SchwinnX70Uuids.UUID_X70_CONTROL
             val accepted = client != null && isControl && !preparedWrite && offset == 0 &&
                 SchwinnX70SetupGate.accepts(value)
 
@@ -292,7 +294,7 @@ internal class SchwinnX70PeripheralAdvertiser(
         ) {
             val client = clients[device.address.lowercase()]
             val armed = client?.subscriptions?.contains(descriptor.characteristic.uuid) == true
-            val whole = if (descriptor.uuid == BluetoothIds.UUID_CCCD && client != null) {
+            val whole = if (descriptor.uuid == SigUuids.UUID_CCCD && client != null) {
                 if (armed) {
                     BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 } else {
@@ -318,7 +320,7 @@ internal class SchwinnX70PeripheralAdvertiser(
             val target = descriptor.characteristic.uuid
             val enable = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-            val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
+            val valid = client != null && descriptor.uuid == SigUuids.UUID_CCCD &&
                 target in SchwinnX70GattProfile.NOTIFY_CHARACTERISTICS &&
                 !preparedWrite && offset == 0 && (enable || disable)
 
@@ -360,15 +362,15 @@ internal class SchwinnX70PeripheralAdvertiser(
      */
     private fun openReadyStreams(client: Client) {
         val opening = mutableListOf<Pair<UUID, ByteArray>>()
-        if (BluetoothIds.UUID_X70_AUX_STATUS in client.subscriptions &&
-            client.opened.add(BluetoothIds.UUID_X70_AUX_STATUS)
+        if (SchwinnX70Uuids.UUID_X70_AUX_STATUS in client.subscriptions &&
+            client.opened.add(SchwinnX70Uuids.UUID_X70_AUX_STATUS)
         ) {
-            opening += BluetoothIds.UUID_X70_AUX_STATUS to SchwinnX70GattProfile.AUX_STATUS_FRAME.copyOf()
+            opening += SchwinnX70Uuids.UUID_X70_AUX_STATUS to SchwinnX70GattProfile.AUX_STATUS_FRAME.copyOf()
         }
-        if (BluetoothIds.UUID_X70_MEASUREMENT in client.subscriptions &&
-            client.opened.add(BluetoothIds.UUID_X70_MEASUREMENT)
+        if (SchwinnX70Uuids.UUID_X70_MEASUREMENT in client.subscriptions &&
+            client.opened.add(SchwinnX70Uuids.UUID_X70_MEASUREMENT)
         ) {
-            opening += BluetoothIds.UUID_X70_MEASUREMENT to markerFrame()
+            opening += SchwinnX70Uuids.UUID_X70_MEASUREMENT to markerFrame()
         }
         // Only the streams actually opened are marked. Marking all seven would mean a client that
         // arms the aux CCCD *after* writing the control command never receives the frame that is
@@ -479,7 +481,7 @@ internal class SchwinnX70PeripheralAdvertiser(
             if (client.inFlight) return
             client.pending.poll()?.also { client.inFlight = true }
         } ?: return
-        val characteristic = server?.getService(BluetoothIds.UUID_X70_SERVICE)
+        val characteristic = server?.getService(SchwinnX70Uuids.UUID_X70_SERVICE)
             ?.getCharacteristic(entry.first)
         if (characteristic == null || !notify(client.device, characteristic, entry.second)) {
             synchronized(client) { client.inFlight = false }

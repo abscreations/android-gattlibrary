@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothDevice
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Per-connection state for one downstream client.
@@ -270,11 +271,11 @@ class PeripheralConnection(
         trainingStatusSubscribed =
             subscriptions.mode(FtmsUuids.UUID_TRAINING_STATUS) == CccdMode.NOTIFY
         cscMeasurementSubscribed =
-            subscriptions.mode(BluetoothIds.UUID_CSC_MEASUREMENT) == CccdMode.NOTIFY
+            subscriptions.mode(SigUuids.UUID_CSC_MEASUREMENT) == CccdMode.NOTIFY
         cyclingPowerMeasurementSubscribed =
-            subscriptions.mode(BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT) == CccdMode.NOTIFY
+            subscriptions.mode(SigUuids.UUID_CYCLING_POWER_MEASUREMENT) == CccdMode.NOTIFY
         cscControlPointSubscribed =
-            subscriptions.mode(BluetoothIds.UUID_SC_CONTROL_POINT) == CccdMode.INDICATE
+            subscriptions.mode(SigUuids.UUID_SC_CONTROL_POINT) == CccdMode.INDICATE
     }
 
     companion object {

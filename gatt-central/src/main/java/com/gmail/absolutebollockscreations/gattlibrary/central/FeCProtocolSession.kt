@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Rollover-corrected, unit-scaled snapshot of what an FE-C over BLE session has decoded so
@@ -110,7 +111,7 @@ class FeCProtocolSession(
 
     override fun onPacket(characteristicUuid: UUID, payload: ByteArray, arrivalMs: Long) {
         if (closed) return
-        if (characteristicUuid != BluetoothIds.UUID_FEC_MEASUREMENT) return
+        if (characteristicUuid != FecBleUuids.UUID_FEC_MEASUREMENT) return
 
         when (val result = FeCFrameCodec.decode(payload)) {
             is FeCFrameDecodeResult.Rejected -> {

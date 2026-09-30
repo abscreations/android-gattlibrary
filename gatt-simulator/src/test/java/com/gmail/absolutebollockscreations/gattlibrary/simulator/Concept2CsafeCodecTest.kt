@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 class Concept2CsafeCodecTest {
     @Test
@@ -361,7 +362,7 @@ class Concept2CsafeCodecTest {
         val subscribed = Concept2Pm5Session()
         val other = Concept2Pm5Session()
         val terminate = hex("F1 76 04 13 02 01 02 60 F2")
-        subscribed.setSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE, true)
+        subscribed.setSubscribed(Concept2Uuids.UUID_C2_CSAFE_RESPONSE, true)
 
         val result = subscribed.acceptCsafeRequest(terminate, 100)
 
@@ -371,7 +372,7 @@ class Concept2CsafeCodecTest {
         )
         assertNull(other.notificationForAcceptedCsafe(result))
         subscribed.reset()
-        assertFalse(subscribed.isSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE))
+        assertFalse(subscribed.isSubscribed(Concept2Uuids.UUID_C2_CSAFE_RESPONSE))
         assertNull(subscribed.csafeResponse)
     }
 
@@ -379,12 +380,12 @@ class Concept2CsafeCodecTest {
     fun `workout reset clears CSAFE configuration but retains response subscription`() {
         val session = Concept2Pm5Session()
         val terminate = hex("F1 76 04 13 02 01 02 60 F2")
-        session.setSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE, true)
+        session.setSubscribed(Concept2Uuids.UUID_C2_CSAFE_RESPONSE, true)
         assertTrue(session.acceptCsafeRequest(terminate, 100) is Concept2CsafeLink.RequestResult.Accepted)
 
         session.resetCsafeWorkoutState()
 
-        assertTrue(session.isSubscribed(BluetoothIds.UUID_C2_CSAFE_RESPONSE))
+        assertTrue(session.isSubscribed(Concept2Uuids.UUID_C2_CSAFE_RESPONSE))
         assertNull(session.csafeResponse)
         assertNull(session.csafeHandshakeState.workoutType)
         assertNull(session.csafeHandshakeState.screenType)

@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 
 /**
@@ -27,7 +28,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * [Decision.Ready] carries a transcript targeted at whatever parents the fingerprint resolved.
  * D54 records canonical values and D52 keeps the runtime rule precisely so a firmware variant
  * that moves its characteristics still completes setup; building the transcript against
- * `BluetoothIds.UUID_LF_CONTROL_SERVICE` would quietly undo that.
+ * `LifeFitnessUuids.UUID_LF_CONTROL_SERVICE` would quietly undo that.
  */
 @GattLibraryInternalApi
 class LifeFitnessSetupCoordinator {

@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 /**
  * Schwinn x70 fusion provenance (§11 obligation 6) and bounds rejection (§11 obligation 11b).
@@ -99,9 +100,9 @@ class SchwinnX70FusionAndBoundsTest {
     private fun emittedFromCapture(): List<Emission> {
         val handler = SchwinnX70ProtocolHandler()
         val uuids = mapOf(
-            "main" to BluetoothIds.UUID_X70_MEASUREMENT,
-            "supplemental" to BluetoothIds.UUID_X70_SUPPLEMENTAL,
-            "sibling" to BluetoothIds.UUID_X70_SIBLING,
+            "main" to SchwinnX70Uuids.UUID_X70_MEASUREMENT,
+            "supplemental" to SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
+            "sibling" to SchwinnX70Uuids.UUID_X70_SIBLING,
         )
         return interleaved270().flatMap { record ->
             val uuid = uuids[record.channel] ?: return@flatMap emptyList()
@@ -118,8 +119,8 @@ class SchwinnX70FusionAndBoundsTest {
         // source on the characteristic, so the measured reading and the modelled one compete.
         assertNotEquals(
             "the sibling and main streams must not collapse into one source",
-            sourceFor(BluetoothIds.UUID_X70_SIBLING),
-            sourceFor(BluetoothIds.UUID_X70_MEASUREMENT),
+            sourceFor(SchwinnX70Uuids.UUID_X70_SIBLING),
+            sourceFor(SchwinnX70Uuids.UUID_X70_MEASUREMENT),
         )
     }
 
@@ -129,20 +130,20 @@ class SchwinnX70FusionAndBoundsTest {
         fusion.setPersona(FusionPersona.RIDE, 0)
 
         fusion.submit(
-            sample(MetricKind.POWER, 210.0, MetricQuality.ESTIMATED, BluetoothIds.UUID_X70_MEASUREMENT, 1_000),
+            sample(MetricKind.POWER, 210.0, MetricQuality.ESTIMATED, SchwinnX70Uuids.UUID_X70_MEASUREMENT, 1_000),
         )
         assertEquals(
             "with nothing better available the estimate is used",
-            sourceFor(BluetoothIds.UUID_X70_MEASUREMENT),
+            sourceFor(SchwinnX70Uuids.UUID_X70_MEASUREMENT),
             fusion.selectedSource(MetricKind.POWER),
         )
 
         fusion.submit(
-            sample(MetricKind.POWER, 104.0, MetricQuality.NATIVE, BluetoothIds.UUID_X70_SIBLING, 1_050),
+            sample(MetricKind.POWER, 104.0, MetricQuality.NATIVE, SchwinnX70Uuids.UUID_X70_SIBLING, 1_050),
         )
         assertEquals(
             "the measured reading takes over",
-            sourceFor(BluetoothIds.UUID_X70_SIBLING),
+            sourceFor(SchwinnX70Uuids.UUID_X70_SIBLING),
             fusion.selectedSource(MetricKind.POWER),
         )
     }
@@ -156,7 +157,7 @@ class SchwinnX70FusionAndBoundsTest {
         fusion.setPersona(FusionPersona.RIDE, 0)
 
         fusion.submit(
-            sample(MetricKind.POWER, 104.0, MetricQuality.NATIVE, BluetoothIds.UUID_X70_SIBLING, 2_000),
+            sample(MetricKind.POWER, 104.0, MetricQuality.NATIVE, SchwinnX70Uuids.UUID_X70_SIBLING, 2_000),
         )
         for (tick in 1..10) {
             fusion.submit(
@@ -164,7 +165,7 @@ class SchwinnX70FusionAndBoundsTest {
                     MetricKind.POWER,
                     210.0,
                     MetricQuality.ESTIMATED,
-                    BluetoothIds.UUID_X70_MEASUREMENT,
+                    SchwinnX70Uuids.UUID_X70_MEASUREMENT,
                     2_000 + tick * 100L,
                 ),
             )
@@ -173,13 +174,13 @@ class SchwinnX70FusionAndBoundsTest {
                     MetricKind.POWER,
                     104.0,
                     MetricQuality.NATIVE,
-                    BluetoothIds.UUID_X70_SIBLING,
+                    SchwinnX70Uuids.UUID_X70_SIBLING,
                     2_050 + tick * 100L,
                 ),
             )
             assertEquals(
                 "tick $tick: the measurement must hold the metric",
-                sourceFor(BluetoothIds.UUID_X70_SIBLING),
+                sourceFor(SchwinnX70Uuids.UUID_X70_SIBLING),
                 fusion.selectedSource(MetricKind.POWER),
             )
         }
@@ -193,13 +194,13 @@ class SchwinnX70FusionAndBoundsTest {
         fusion.setPersona(FusionPersona.RIDE, 0)
 
         fusion.submit(
-            sample(MetricKind.SPEED, 31.0, MetricQuality.ESTIMATED, BluetoothIds.UUID_X70_MEASUREMENT, 1_000),
+            sample(MetricKind.SPEED, 31.0, MetricQuality.ESTIMATED, SchwinnX70Uuids.UUID_X70_MEASUREMENT, 1_000),
         )
         fusion.submit(
-            sample(MetricKind.SPEED, 17.2, MetricQuality.NATIVE, BluetoothIds.UUID_X70_SIBLING, 1_050),
+            sample(MetricKind.SPEED, 17.2, MetricQuality.NATIVE, SchwinnX70Uuids.UUID_X70_SIBLING, 1_050),
         )
         assertEquals(
-            sourceFor(BluetoothIds.UUID_X70_SIBLING),
+            sourceFor(SchwinnX70Uuids.UUID_X70_SIBLING),
             fusion.selectedSource(MetricKind.SPEED),
         )
     }
@@ -241,12 +242,12 @@ class SchwinnX70FusionAndBoundsTest {
         assertEquals("no captured value is implausible", 0, rejected)
         assertEquals(
             "the measured stream owns power at the end of a real session",
-            sourceFor(BluetoothIds.UUID_X70_SIBLING),
+            sourceFor(SchwinnX70Uuids.UUID_X70_SIBLING),
             fusion.selectedSource(MetricKind.POWER),
         )
         assertEquals(
             "and speed",
-            sourceFor(BluetoothIds.UUID_X70_SIBLING),
+            sourceFor(SchwinnX70Uuids.UUID_X70_SIBLING),
             fusion.selectedSource(MetricKind.SPEED),
         )
     }
@@ -323,7 +324,7 @@ class SchwinnX70FusionAndBoundsTest {
 
         val absurd = bound!!.max * 10.0 + 1.0
         val outcome = fusion.submit(
-            sample(metric, absurd, MetricQuality.NATIVE, BluetoothIds.UUID_X70_SIBLING, 1_000),
+            sample(metric, absurd, MetricQuality.NATIVE, SchwinnX70Uuids.UUID_X70_SIBLING, 1_000),
         )
 
         assertEquals("$metric at $absurd must be rejected", FusionSubmission.REJECTED_IMPLAUSIBLE, outcome)
@@ -337,9 +338,9 @@ class SchwinnX70FusionAndBoundsTest {
         assertEquals(
             "$metric: a sane follow-up from the same stream is accepted",
             FusionSubmission.ACCEPTED,
-            fusion.submit(sample(metric, sane, MetricQuality.NATIVE, BluetoothIds.UUID_X70_SIBLING, 2_000)),
+            fusion.submit(sample(metric, sane, MetricQuality.NATIVE, SchwinnX70Uuids.UUID_X70_SIBLING, 2_000)),
         )
-        assertEquals(sourceFor(BluetoothIds.UUID_X70_SIBLING), fusion.selectedSource(metric))
+        assertEquals(sourceFor(SchwinnX70Uuids.UUID_X70_SIBLING), fusion.selectedSource(metric))
     }
 
     @Test
@@ -378,7 +379,7 @@ class SchwinnX70FusionAndBoundsTest {
             "fusion would publish an absurd energy total without complaint",
             FusionSubmission.ACCEPTED,
             fusion.submit(
-                sample(MetricKind.ENERGY, 500_000.0, MetricQuality.NATIVE, BluetoothIds.UUID_X70_MEASUREMENT, 1_000),
+                sample(MetricKind.ENERGY, 500_000.0, MetricQuality.NATIVE, SchwinnX70Uuids.UUID_X70_MEASUREMENT, 1_000),
             ),
         )
 

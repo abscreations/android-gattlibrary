@@ -93,7 +93,7 @@ import android.bluetooth.BluetoothStatusCodes
 import android.os.Build
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_CCCD
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_CCCD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

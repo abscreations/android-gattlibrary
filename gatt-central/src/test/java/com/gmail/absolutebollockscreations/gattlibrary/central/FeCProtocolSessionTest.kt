@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 class FeCProtocolSessionTest {
 
@@ -16,7 +17,7 @@ class FeCProtocolSessionTest {
 
     private fun send(session: FeCProtocolSession, vararg page: Int) {
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, bytes(*page)),
             arrivalMs = 0L,
         )
@@ -34,7 +35,7 @@ class FeCProtocolSessionTest {
     fun `decodes a page 16 notification into the snapshot`() {
         val session = newSession()
         val payload = FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 25, 40, 120, 0x88, 0x13, 145, 0x34))
-        session.onPacket(BluetoothIds.UUID_FEC_MEASUREMENT, payload, arrivalMs = 0L)
+        session.onPacket(FecBleUuids.UUID_FEC_MEASUREMENT, payload, arrivalMs = 0L)
 
         val snap = session.snapshot
         assertEquals(25, snap.equipmentType)
@@ -54,10 +55,10 @@ class FeCProtocolSessionTest {
             5,
             bytes(0x10, 25, elapsedRaw, 0, 0, 0, 0xFF, 0x00),
         )
-        session.onPacket(BluetoothIds.UUID_FEC_MEASUREMENT, page16(40), arrivalMs = 0L)
+        session.onPacket(FecBleUuids.UUID_FEC_MEASUREMENT, page16(40), arrivalMs = 0L)
         assertEquals(10.0, session.snapshot.elapsedTimeSeconds!!, 1e-9)
 
-        session.onPacket(BluetoothIds.UUID_FEC_MEASUREMENT, page16(44), arrivalMs = 1000L)
+        session.onPacket(FecBleUuids.UUID_FEC_MEASUREMENT, page16(44), arrivalMs = 1000L)
         assertEquals(11.0, session.snapshot.elapsedTimeSeconds!!, 1e-9)
     }
 
@@ -65,11 +66,11 @@ class FeCProtocolSessionTest {
     fun `malformed frame is ignored without throwing and without changing the snapshot`() {
         val session = newSession()
         val good = FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 25, 40, 120, 0x88, 0x13, 145, 0x34))
-        session.onPacket(BluetoothIds.UUID_FEC_MEASUREMENT, good, arrivalMs = 0L)
+        session.onPacket(FecBleUuids.UUID_FEC_MEASUREMENT, good, arrivalMs = 0L)
         val before = session.snapshot
 
         val corrupted = good.copyOf().also { it[it.size - 1] = (it[it.size - 1].toInt() xor 0x01).toByte() }
-        session.onPacket(BluetoothIds.UUID_FEC_MEASUREMENT, corrupted, arrivalMs = 1L)
+        session.onPacket(FecBleUuids.UUID_FEC_MEASUREMENT, corrupted, arrivalMs = 1L)
 
         assertEquals(before, session.snapshot)
         assertNull(session.lastAppliedPage)
@@ -79,22 +80,22 @@ class FeCProtocolSessionTest {
     fun `page 25 and common identity pages merge into the same snapshot as page 16`() {
         val session = newSession()
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 25, 40, 120, 0x88, 0x13, 145, 0x34)),
             arrivalMs = 0L,
         )
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, bytes(0x19, 0x0A, 0x55, 0xB0, 0x04, 0xFA, 0x50, 0x31)),
             arrivalMs = 1L,
         )
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, bytes(0x50, 0xFF, 0xFF, 0x01, 0x59, 0x00, 0xF0, 0x0A)),
             arrivalMs = 2L,
         )
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, bytes(0x51, 0xFF, 0x01, 0x02, 0xEF, 0xCD, 0xAB, 0x89)),
             arrivalMs = 3L,
         )
@@ -159,7 +160,7 @@ class FeCProtocolSessionTest {
     fun `close discards state and further packets are ignored`() {
         val session = newSession()
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 25, 40, 120, 0x88, 0x13, 145, 0x34)),
             arrivalMs = 0L,
         )
@@ -169,7 +170,7 @@ class FeCProtocolSessionTest {
         assertNull(session.snapshot.equipmentType)
 
         session.onPacket(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
             FeCFrameCodec.encode(0x4E, 5, bytes(0x10, 21, 1, 1, 0, 0, 100, 0x00)),
             arrivalMs = 5L,
         )

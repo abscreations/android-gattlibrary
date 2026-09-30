@@ -3,6 +3,12 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 
 /**
  * Drives [MachineAdapterPolicy] for live connections (plan §0.7a).
@@ -311,7 +317,7 @@ class AdapterLivenessCoordinator(
                     ),
                 )
             }
-            if (BluetoothIds.UUID_C2_ERG_SERVICE in services) {
+            if (Concept2Uuids.UUID_C2_ERG_SERVICE in services) {
                 add(
                     MachineAdapterCandidate(
                         adapterId = CONCEPT2_ADAPTER_ID,
@@ -322,7 +328,7 @@ class AdapterLivenessCoordinator(
                                     // A full 128-bit vendor UUID, resolved from Concept2's
                                     // published specification rather than a four-character
                                     // alias — see the Phase 5a evidence record.
-                                    structuralValue = BluetoothIds.UUID_C2_ERG_SERVICE.toString(),
+                                    structuralValue = Concept2Uuids.UUID_C2_ERG_SERVICE.toString(),
                                     // Keep the established evidence weight; the native-only
                                     // policy is exclusion, not an artificial ranking boost.
                                     weight = 40,
@@ -337,7 +343,7 @@ class AdapterLivenessCoordinator(
                     ),
                 )
             }
-            if (BluetoothIds.UUID_PRECOR_SERVICE in services) {
+            if (PrecorUuids.UUID_PRECOR_SERVICE in services) {
                 add(
                     MachineAdapterCandidate(
                         adapterId = PRECOR_ADAPTER_ID,
@@ -347,7 +353,7 @@ class AdapterLivenessCoordinator(
                                     kind = MatchEvidenceKind.GATT_SERVICE,
                                     // Full 128-bit vendor UUID, read from QZ and recorded in
                                     // plan §10 — not derived from TMIW's `ee07` alias.
-                                    structuralValue = BluetoothIds.UUID_PRECOR_SERVICE.toString(),
+                                    structuralValue = PrecorUuids.UUID_PRECOR_SERVICE.toString(),
                                     // Same weight as the other two structural facts, for the
                                     // reason spelled out on the Concept2 fact above: weight
                                     // expresses how certain the identification is, and all
@@ -365,7 +371,7 @@ class AdapterLivenessCoordinator(
                     ),
                 )
             }
-            if (BluetoothIds.UUID_X70_SERVICE in services) {
+            if (SchwinnX70Uuids.UUID_X70_SERVICE in services) {
                 add(
                     MachineAdapterCandidate(
                         adapterId = SCHWINN_X70_ADAPTER_ID,
@@ -376,7 +382,7 @@ class AdapterLivenessCoordinator(
                                     // Full 128-bit vendor UUID, transcribed from the user-supplied
                                     // advertisement capture rather than built from TMIW's `8980`
                                     // alias — §8.4, and see the Phase 7 evidence record.
-                                    structuralValue = BluetoothIds.UUID_X70_SERVICE.toString(),
+                                    structuralValue = SchwinnX70Uuids.UUID_X70_SERVICE.toString(),
                                     // Same weight as the other structural facts: all four are
                                     // certain identifications, and preference between certain
                                     // matches is `rank`'s job.
@@ -399,7 +405,7 @@ class AdapterLivenessCoordinator(
                     ),
                 )
             }
-            if (BluetoothIds.UUID_FEC_SERVICE in services) {
+            if (FecBleUuids.UUID_FEC_SERVICE in services) {
                 add(
                     MachineAdapterCandidate(
                         adapterId = FEC_ADAPTER_ID,
@@ -407,7 +413,7 @@ class AdapterLivenessCoordinator(
                             listOf(
                                 MatchEvidenceFact(
                                     kind = MatchEvidenceKind.GATT_SERVICE,
-                                    structuralValue = BluetoothIds.UUID_FEC_SERVICE.toString(),
+                                    structuralValue = FecBleUuids.UUID_FEC_SERVICE.toString(),
                                     // Same weight as the other vendor facts: a certain structural
                                     // identification. Preference against standard FTMS on the same
                                     // link is `rank`'s job (plan §6.2), not this fact's.
@@ -434,7 +440,7 @@ class AdapterLivenessCoordinator(
                             listOf(
                                 MatchEvidenceFact(
                                     kind = MatchEvidenceKind.GATT_CHARACTERISTIC,
-                                    structuralValue = BluetoothIds.UUID_FLYWHEEL_TX.toString(),
+                                    structuralValue = FlywheelUuids.UUID_FLYWHEEL_TX.toString(),
                                     weight = 40,
                                     collisionRisk = CollisionRisk.LOW,
                                     note = "Flywheel advertisement identity and exact RX/TX GATT surface confirmed",
@@ -455,7 +461,7 @@ class AdapterLivenessCoordinator(
                             listOf(
                                 MatchEvidenceFact(
                                     kind = MatchEvidenceKind.GATT_CHARACTERISTIC,
-                                    structuralValue = BluetoothIds.UUID_KAYAK_FIRST_IO.toString(),
+                                    structuralValue = KayakFirstUuids.UUID_KAYAK_FIRST_IO.toString(),
                                     weight = 40,
                                     collisionRisk = CollisionRisk.MEDIUM,
                                     note = "Kayak First candidate and exact FFE0/FFE1 surface confirmed",

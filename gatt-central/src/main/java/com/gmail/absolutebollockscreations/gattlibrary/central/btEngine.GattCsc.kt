@@ -8,6 +8,7 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDebug
 import java.util.UUID
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 internal enum class CscGattOperationKind { READ, ENABLE_NOTIFICATIONS }
 
@@ -23,18 +24,18 @@ internal data class CscDiscoveryPlan(
 
 /** Feature and Measurement are mandatory; Feature must reach the queue first. */
 internal fun planCscDiscovery(characteristicUuids: Set<UUID>): CscDiscoveryPlan {
-    if (BluetoothIds.UUID_CSC_MEASUREMENT !in characteristicUuids ||
-        BluetoothIds.UUID_CSC_FEATURE !in characteristicUuids
+    if (SigUuids.UUID_CSC_MEASUREMENT !in characteristicUuids ||
+        SigUuids.UUID_CSC_FEATURE !in characteristicUuids
     ) {
         return CscDiscoveryPlan(activate = false, operations = emptyList())
     }
     return CscDiscoveryPlan(
         activate = true,
         operations = listOf(
-            CscGattOperation(CscGattOperationKind.READ, BluetoothIds.UUID_CSC_FEATURE),
+            CscGattOperation(CscGattOperationKind.READ, SigUuids.UUID_CSC_FEATURE),
             CscGattOperation(
                 CscGattOperationKind.ENABLE_NOTIFICATIONS,
-                BluetoothIds.UUID_CSC_MEASUREMENT,
+                SigUuids.UUID_CSC_MEASUREMENT,
             ),
         ),
     )
@@ -55,7 +56,7 @@ internal fun decodeCscFeatureRead(
     value: ByteArray,
     success: Boolean,
 ): CscFeatureReadOutcome {
-    if (characteristicUuid != BluetoothIds.UUID_CSC_FEATURE) {
+    if (characteristicUuid != SigUuids.UUID_CSC_FEATURE) {
         return CscFeatureReadOutcome.Ignored
     }
     if (!success || value.size < 2) return CscFeatureReadOutcome.Unavailable
@@ -71,11 +72,11 @@ internal class CscProtocolHandler(
 
     private var sessionGeneration: Long? = null
 
-    override val primaryServices: Set<UUID> = setOf(BluetoothIds.UUID_CSC_SERVICE)
+    override val primaryServices: Set<UUID> = setOf(SigUuids.UUID_CSC_SERVICE)
 
     override val extraCharacteristics: Set<UUID> = setOf(
-        BluetoothIds.UUID_CSC_MEASUREMENT,
-        BluetoothIds.UUID_CSC_FEATURE,
+        SigUuids.UUID_CSC_MEASUREMENT,
+        SigUuids.UUID_CSC_FEATURE,
     )
 
     internal fun acceptMeasurement(value: ByteArray): CscMeasurementTracker.Update? =
@@ -101,7 +102,7 @@ internal class CscProtocolHandler(
         gatt: BluetoothGatt,
         services: List<BluetoothGattService>,
     ): Boolean {
-        val service = services.firstOrNull { it.uuid == BluetoothIds.UUID_CSC_SERVICE }
+        val service = services.firstOrNull { it.uuid == SigUuids.UUID_CSC_SERVICE }
             ?: return false
         val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: run {
             Timber.tag(BtEngineState.TAG).w("CSC discovery ignored for unregistered GATT")
@@ -136,7 +137,7 @@ internal class CscProtocolHandler(
         ch: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (ch.uuid != BluetoothIds.UUID_CSC_MEASUREMENT) return
+        if (ch.uuid != SigUuids.UUID_CSC_MEASUREMENT) return
         val context = engine.state.connectionRegistry.contextForGatt(gatt)
         if (context == null) {
             Timber.tag(BtEngineState.TAG).w("CSC measurement ignored for unregistered GATT")

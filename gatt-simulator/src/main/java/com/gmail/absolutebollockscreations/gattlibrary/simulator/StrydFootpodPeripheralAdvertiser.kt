@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Measurement-only Android GATT server for the Stryd footpod persona.
@@ -227,7 +228,7 @@ internal class StrydFootpodPeripheralAdvertiser(
             descriptor: BluetoothGattDescriptor,
         ) {
             val client = clients[device.address.lowercase()]
-            val whole = if (descriptor.uuid == BluetoothIds.UUID_CCCD && client != null) {
+            val whole = if (descriptor.uuid == SigUuids.UUID_CCCD && client != null) {
                 if (client.subscribedTo(descriptor.characteristic.uuid)) {
                     BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 } else {
@@ -253,7 +254,7 @@ internal class StrydFootpodPeripheralAdvertiser(
             val enable = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
             val notifiable = StrydFootpodGattProfile.notifyingCharacteristics.any { it.second == target }
-            val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
+            val valid = client != null && descriptor.uuid == SigUuids.UUID_CCCD &&
                 notifiable && !preparedWrite && offset == 0 && (enable || disable)
             if (valid) {
                 client.subscriptions[target] = enable
@@ -284,10 +285,10 @@ internal class StrydFootpodPeripheralAdvertiser(
 
     /** Read values this persona serves; anything else is refused rather than answered with zero. */
     private fun readValueFor(characteristic: UUID): ByteArray? = when (characteristic) {
-        BluetoothIds.UUID_RSC_FEATURE -> StrydFootpodEncoder.rscFeature()
-        BluetoothIds.UUID_CYCLING_POWER_FEATURE -> StrydFootpodEncoder.cyclingPowerFeature()
-        BluetoothIds.UUID_SENSOR_LOCATION -> StrydFootpodEncoder.sensorLocation()
-        BluetoothIds.UUID_BATTERY_LEVEL -> latest[BluetoothIds.UUID_BATTERY_LEVEL]
+        SigUuids.UUID_RSC_FEATURE -> StrydFootpodEncoder.rscFeature()
+        SigUuids.UUID_CYCLING_POWER_FEATURE -> StrydFootpodEncoder.cyclingPowerFeature()
+        SigUuids.UUID_SENSOR_LOCATION -> StrydFootpodEncoder.sensorLocation()
+        SigUuids.UUID_BATTERY_LEVEL -> latest[SigUuids.UUID_BATTERY_LEVEL]
         else -> staticReads[characteristic]
     }
 

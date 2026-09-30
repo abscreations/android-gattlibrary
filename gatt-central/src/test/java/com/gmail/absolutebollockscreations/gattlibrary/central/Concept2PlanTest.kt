@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * Concept2 subscription planning, fallback policy and persona selection — plan §5a, D41.
@@ -16,18 +17,18 @@ import java.util.UUID
  */
 class Concept2PlanTest {
 
-    private val multiplexed = BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION
-    private val general = BluetoothIds.UUID_C2_GENERAL_STATUS
-    private val status1 = BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1
-    private val status2 = BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2
-    private val stroke = BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA
+    private val multiplexed = Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION
+    private val general = Concept2Uuids.UUID_C2_GENERAL_STATUS
+    private val status1 = Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1
+    private val status2 = Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2
+    private val stroke = Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA
 
     private val allIndividual = setOf(general, status1, status2, stroke)
 
     @Test
     fun `the subscription plan issues notification enables and nothing else`() {
         // A planned write would be the first step of an unsupported Concept2 control path.
-        val everything = allIndividual + multiplexed + BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE
+        val everything = allIndividual + multiplexed + Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE
 
         for (available in listOf(everything, everything - multiplexed)) {
             val plan = planConcept2Discovery(available)
@@ -49,7 +50,7 @@ class Concept2PlanTest {
         // Plan §10 forbids the latter; §5a requires this to be done rather than assumed.
         assertEquals(
             UUID.fromString("ce060030-43e5-11e4-916c-0800200c9a66"),
-            BluetoothIds.UUID_C2_ERG_SERVICE,
+            Concept2Uuids.UUID_C2_ERG_SERVICE,
         )
         assertEquals(UUID.fromString("ce060031-43e5-11e4-916c-0800200c9a66"), general)
         assertEquals(UUID.fromString("ce060032-43e5-11e4-916c-0800200c9a66"), status1)
@@ -110,7 +111,7 @@ class Concept2PlanTest {
 
     @Test
     fun `a service with none of the consumed characteristics does not activate`() {
-        val plan = planConcept2Discovery(setOf(BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE))
+        val plan = planConcept2Discovery(setOf(Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE))
 
         assertFalse(plan.activate)
         assertNull(plan.path)
@@ -319,14 +320,14 @@ class Concept2PlanTest {
     fun `identification reads 0x0016 when the firmware exposes it`() {
         val plan = planConcept2Identification(
             setOf(
-                BluetoothIds.UUID_C2_MODEL_NUMBER,
-                BluetoothIds.UUID_C2_SERIAL_NUMBER,
-                BluetoothIds.UUID_C2_MACHINE_TYPE,
+                Concept2Uuids.UUID_C2_MODEL_NUMBER,
+                Concept2Uuids.UUID_C2_SERIAL_NUMBER,
+                Concept2Uuids.UUID_C2_MACHINE_TYPE,
             ),
         )
 
         assertEquals(1, plan.size)
-        assertEquals(BluetoothIds.UUID_C2_MACHINE_TYPE, plan.single().characteristicUuid)
+        assertEquals(Concept2Uuids.UUID_C2_MACHINE_TYPE, plan.single().characteristicUuid)
         assertEquals(Concept2GattOperationKind.READ, plan.single().kind)
     }
 
@@ -336,7 +337,7 @@ class Concept2PlanTest {
         // or newer unit may not expose it. Persona then falls back to the name, and failing
         // that to the user's choice.
         val plan = planConcept2Identification(
-            setOf(BluetoothIds.UUID_C2_MODEL_NUMBER, BluetoothIds.UUID_C2_SERIAL_NUMBER),
+            setOf(Concept2Uuids.UUID_C2_MODEL_NUMBER, Concept2Uuids.UUID_C2_SERIAL_NUMBER),
         )
 
         assertTrue(plan.isEmpty())

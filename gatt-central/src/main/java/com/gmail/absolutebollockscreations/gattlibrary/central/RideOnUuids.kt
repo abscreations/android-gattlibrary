@@ -1,15 +1,16 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 /** RideOn constants only. Merely referencing these values never activates the protocol. */
 @GattLibraryInternalApi
 object RideOnUuids {
-    val ORIGINAL_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_SERVICE
-    val CORE2_SERVICE = BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE
-    val ASYNC_TX = BluetoothIds.UUID_WAHOO_RIDEON_ASYNC_TX
-    val SYNC_RX = BluetoothIds.UUID_WAHOO_RIDEON_SYNC_RX
-    val SYNC_TX = BluetoothIds.UUID_WAHOO_RIDEON_SYNC_TX
+    val ORIGINAL_SERVICE = WahooUuids.UUID_WAHOO_RIDEON_SERVICE
+    val CORE2_SERVICE = WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE
+    val ASYNC_TX = WahooUuids.UUID_WAHOO_RIDEON_ASYNC_TX
+    val SYNC_RX = WahooUuids.UUID_WAHOO_RIDEON_SYNC_RX
+    val SYNC_TX = WahooUuids.UUID_WAHOO_RIDEON_SYNC_TX
 
     val HANDSHAKE_ORIGINAL = "RideOn".toByteArray(Charsets.US_ASCII) + byteArrayOf(0x02, 0x02)
     val HANDSHAKE_CORE2 = "RideOn".toByteArray(Charsets.US_ASCII) + byteArrayOf(0x02, 0x03)

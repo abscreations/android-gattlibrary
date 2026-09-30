@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * The one place Android GATT objects become a [LifeFitnessFingerprint.ServiceInventory].
@@ -38,6 +39,6 @@ private fun BluetoothGattCharacteristic.toInventory(): LifeFitnessFingerprint.Ch
                 BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0,
         // A notify characteristic with no CCCD cannot be subscribed, so the fingerprint treats
         // it as no status source at all rather than claiming one it cannot arm.
-        hasCccd = getDescriptor(BluetoothIds.UUID_CCCD) != null,
+        hasCccd = getDescriptor(SigUuids.UUID_CCCD) != null,
     )
 }

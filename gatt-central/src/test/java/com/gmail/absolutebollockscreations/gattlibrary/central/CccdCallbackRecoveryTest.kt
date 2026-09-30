@@ -7,12 +7,13 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Callback-to-queue and bounded-state coverage for asynchronous CCCD failure recovery. */
 class CccdCallbackRecoveryTest {
 
     private val characteristic = UUID.randomUUID()
-    private val cccd = BluetoothIds.UUID_CCCD
+    private val cccd = SigUuids.UUID_CCCD
 
     private fun failedQueue(
         descriptorIdentity: Any = Any(),

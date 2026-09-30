@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_HRM_SERVICE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_FEATURE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_MEASUREMENT
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_RSC_SERVICE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_HRM_SERVICE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_RSC_FEATURE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_RSC_MEASUREMENT
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_RSC_SERVICE
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

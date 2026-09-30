@@ -5,6 +5,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Pure, testable plan for the legacy advertising and scan-response sets.
@@ -154,8 +155,8 @@ data class FtmsAdvertisingPlan(
         ): List<UUID> = if (includeNativeBikingSensors && profile == FtmsMachineProfile.INDOOR_BIKE) {
             listOf(
                 FtmsUuids.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_CSC_SERVICE,
-                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                SigUuids.UUID_CSC_SERVICE,
+                SigUuids.UUID_CYCLING_POWER_SERVICE,
             )
         } else {
             listOf(FtmsUuids.UUID_FTMS_SERVICE)

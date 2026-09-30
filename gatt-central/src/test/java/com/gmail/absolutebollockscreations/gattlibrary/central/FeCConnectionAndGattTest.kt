@@ -9,27 +9,29 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Phase 9 §11.2, §11.4 and §11.5 evidence for the FE-C-specific GATT lifecycle. */
 class FeCConnectionAndGattTest {
 
     private val fecCccd = CccdTarget(
-        BluetoothIds.UUID_FEC_SERVICE,
-        BluetoothIds.UUID_FEC_MEASUREMENT,
+        FecBleUuids.UUID_FEC_SERVICE,
+        FecBleUuids.UUID_FEC_MEASUREMENT,
     )
 
     @Test
     fun `discovery requires FEC1 and FEC2 while FEC3 remains optional`() {
-        val both = setOf(BluetoothIds.UUID_FEC_MEASUREMENT, BluetoothIds.UUID_FEC_CONTROL)
+        val both = setOf(FecBleUuids.UUID_FEC_MEASUREMENT, FecBleUuids.UUID_FEC_CONTROL)
 
         assertFalse(planFeCDiscovery(false, both).activate)
-        assertFalse(planFeCDiscovery(true, setOf(BluetoothIds.UUID_FEC_CONTROL)).activate)
+        assertFalse(planFeCDiscovery(true, setOf(FecBleUuids.UUID_FEC_CONTROL)).activate)
 
-        val measurementOnly = planFeCDiscovery(true, setOf(BluetoothIds.UUID_FEC_MEASUREMENT))
+        val measurementOnly = planFeCDiscovery(true, setOf(FecBleUuids.UUID_FEC_MEASUREMENT))
         assertTrue(measurementOnly.activate)
         assertFalse(measurementOnly.controlAvailable)
         assertEquals(
-            listOf(FeCGattOperation(FeCGattOperationKind.ENABLE_NOTIFICATIONS, BluetoothIds.UUID_FEC_MEASUREMENT)),
+            listOf(FeCGattOperation(FeCGattOperationKind.ENABLE_NOTIFICATIONS, FecBleUuids.UUID_FEC_MEASUREMENT)),
             measurementOnly.operations,
         )
 
@@ -65,8 +67,8 @@ class FeCConnectionAndGattTest {
         val queue = GattQueue()
         val entry = StackEntry(
             op = StackEntry.Op.DESC_WRITE,
-            charUuid = BluetoothIds.UUID_FEC_MEASUREMENT,
-            descriptorUuid = BluetoothIds.UUID_CCCD,
+            charUuid = FecBleUuids.UUID_FEC_MEASUREMENT,
+            descriptorUuid = SigUuids.UUID_CCCD,
             descriptorIdentity = descriptor,
         )
         queue.enqueue(entry)
@@ -78,8 +80,8 @@ class FeCConnectionAndGattTest {
                 staleGatt,
                 head,
                 StackEntry.Op.DESC_WRITE,
-                BluetoothIds.UUID_FEC_MEASUREMENT,
-                BluetoothIds.UUID_CCCD,
+                FecBleUuids.UUID_FEC_MEASUREMENT,
+                SigUuids.UUID_CCCD,
                 descriptor,
             ),
         )
@@ -93,13 +95,13 @@ class FeCConnectionAndGattTest {
         val queue = GattQueue()
         val fecWrite = StackEntry(
             op = StackEntry.Op.WRITE,
-            charUuid = BluetoothIds.UUID_FEC_CONTROL,
+            charUuid = FecBleUuids.UUID_FEC_CONTROL,
             data = byteArrayOf(0x31),
             writeMode = StackEntry.WriteMode.WITHOUT_RESPONSE,
         )
         val followingRead = StackEntry(
             op = StackEntry.Op.READ,
-            charUuid = BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+            charUuid = SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
         )
         queue.enqueue(fecWrite)
         queue.enqueue(followingRead)
@@ -113,7 +115,7 @@ class FeCConnectionAndGattTest {
                 gatt,
                 queue.head(),
                 StackEntry.Op.WRITE,
-                BluetoothIds.UUID_FEC_CONTROL,
+                FecBleUuids.UUID_FEC_CONTROL,
             ),
         )
         assertSame(followingRead, queue.head())
@@ -130,7 +132,7 @@ class FeCConnectionAndGattTest {
         )
         val firstHandler = FeCOverBleProtocolHandler()
         first.handlers += firstHandler
-        first.queue.enqueue(StackEntry(StackEntry.Op.WRITE, charUuid = BluetoothIds.UUID_FEC_CONTROL))
+        first.queue.enqueue(StackEntry(StackEntry.Op.WRITE, charUuid = FecBleUuids.UUID_FEC_CONTROL))
         first.queue.beginDispatch()
         first.cccd.mergeEnablePlan(listOf(fecCccd))
         first.cccd.incrementPending()
@@ -166,10 +168,10 @@ class FeCConnectionAndGattTest {
         csc.handlers += CscProtocolHandler()
         cps.handlers += CpsProtocolHandler()
         val characteristics = listOf(
-            BluetoothIds.UUID_FEC_MEASUREMENT,
-            BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
-            BluetoothIds.UUID_CSC_MEASUREMENT,
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+            FecBleUuids.UUID_FEC_MEASUREMENT,
+            SigUuids.UUID_HEART_RATE_MEASUREMENT,
+            SigUuids.UUID_CSC_MEASUREMENT,
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
         )
 
         contexts.zip(characteristics).forEach { (context, characteristic) ->
@@ -194,10 +196,10 @@ class FeCConnectionAndGattTest {
             HrmProtocolHandler(),
         )
         val expectedOwners = mapOf(
-            BluetoothIds.UUID_FEC_MEASUREMENT to handlers[0],
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT to handlers[1],
-            BluetoothIds.UUID_CSC_MEASUREMENT to handlers[2],
-            BluetoothIds.UUID_HEART_RATE_MEASUREMENT to handlers[3],
+            FecBleUuids.UUID_FEC_MEASUREMENT to handlers[0],
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT to handlers[1],
+            SigUuids.UUID_CSC_MEASUREMENT to handlers[2],
+            SigUuids.UUID_HEART_RATE_MEASUREMENT to handlers[3],
         )
         expectedOwners.forEach { (characteristic, owner) ->
             assertEquals(

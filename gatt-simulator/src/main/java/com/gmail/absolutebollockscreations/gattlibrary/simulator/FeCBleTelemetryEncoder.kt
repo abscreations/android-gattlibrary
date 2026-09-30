@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.putU16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Pure page 16 / page 25 / page 81 + ANT envelope encoder (plan §7, §10).
@@ -19,13 +20,13 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.p
 internal object FeCBleTelemetryEncoder {
 
     /** ANT serial envelope around 8 page bytes: sync, length, msg-id, channel, page, XOR checksum. */
-    fun buildAntFrame(pageBytes: ByteArray, messageType: Int = BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA): ByteArray {
+    fun buildAntFrame(pageBytes: ByteArray, messageType: Int = FecBleUuids.FEC_ANT_MSG_BROADCAST_DATA): ByteArray {
         require(pageBytes.size == 8) { "an FE-C page is exactly eight bytes, got ${pageBytes.size}" }
         val frame = ByteArray(13)
-        frame[0] = BluetoothIds.FEC_ANT_SYNC.toByte()
+        frame[0] = FecBleUuids.FEC_ANT_SYNC.toByte()
         frame[1] = 0x09 // declared length: channel byte + 8 page bytes
         frame[2] = messageType.toByte()
-        frame[3] = BluetoothIds.FEC_DEFAULT_CHANNEL.toByte()
+        frame[3] = FecBleUuids.FEC_DEFAULT_CHANNEL.toByte()
         pageBytes.copyInto(frame, destinationOffset = 4)
         frame[12] = xorChecksum(frame, 0, 12).toByte()
         return frame
@@ -41,7 +42,7 @@ internal object FeCBleTelemetryEncoder {
     /** Page 16 — General FE Data (`0x10`). Plan §10.1. */
     fun encodePage16(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_GENERAL_FE_DATA.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_GENERAL_FE_DATA.toByte()
         page[1] = (state.equipmentType.wireValue and 0x1F).toByte()
         page[2] = (state.elapsedQuarterSeconds and 0xFF).toByte()
         page[3] = if (state.distanceCapable) {
@@ -66,7 +67,7 @@ internal object FeCBleTelemetryEncoder {
     /** Page 17 — General Settings (official FE profile Rev 5.0, Table 8-11). */
     fun encodePage17(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_GENERAL_SETTINGS.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_GENERAL_SETTINGS.toByte()
         page[1] = 0xFF.toByte()
         page[2] = 0xFF.toByte()
         page[3] = (state.cycleLengthMeters * 100.0).roundToInt().coerceIn(0, 0xFE).toByte()
@@ -81,7 +82,7 @@ internal object FeCBleTelemetryEncoder {
     /** Page 18 — General FE Metabolic Data (Table 8-13). */
     fun encodePage18(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_GENERAL_METABOLIC_DATA.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_GENERAL_METABOLIC_DATA.toByte()
         page[1] = 0xFF.toByte()
         val metsRaw = (state.metabolicEquivalent * 100.0).roundToInt().coerceIn(0, 10_000)
         page[2] = (metsRaw and 0xFF).toByte()
@@ -97,7 +98,7 @@ internal object FeCBleTelemetryEncoder {
     /** Page 25 — Specific Trainer Data (`0x19`). Plan §10.2. */
     fun encodePage25(state: FeCBleMachineState, powerAvailable: Boolean = true): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_DATA.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_DATA.toByte()
         page[1] = (state.eventCount and 0xFF).toByte()
         page[2] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
         val accPower = if (powerAvailable) state.accumulatedPower and 0xFFFF else 0L
@@ -125,7 +126,7 @@ internal object FeCBleTelemetryEncoder {
      */
     fun encodePage19(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_TREADMILL_DATA.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_SPECIFIC_TREADMILL_DATA.toByte()
         page[1] = 0xFF.toByte()
         page[2] = 0xFF.toByte()
         page[3] = 0xFF.toByte()
@@ -141,7 +142,7 @@ internal object FeCBleTelemetryEncoder {
     /** Page 20 — Specific Elliptical Data (Table 8-17). */
     fun encodePage20(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_SPECIFIC_ELLIPTICAL_DATA.toByte()
         page[1] = 0xFF.toByte()
         page[2] = (floor(state.positiveVerticalDistanceMeters * 10.0).toLong() and 0xFF).toByte()
         page[3] = (floor(state.movementCount).toLong() and 0xFF).toByte()
@@ -159,7 +160,7 @@ internal object FeCBleTelemetryEncoder {
      */
     fun encodePage22(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_ROWER_DATA.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_SPECIFIC_ROWER_DATA.toByte()
         page[1] = 0xFF.toByte()
         page[2] = 0xFF.toByte()
         page[3] = (floor(state.movementCount).toLong() and 0xFF).toByte()
@@ -177,19 +178,19 @@ internal object FeCBleTelemetryEncoder {
     /** Page 23 — Specific Climber Data (Table 8-21). */
     fun encodePage23(state: FeCBleMachineState): ByteArray = encodeStridePowerPage(
         state = state,
-        pageNumber = BluetoothIds.FEC_PAGE_SPECIFIC_CLIMBER_DATA,
+        pageNumber = FecBleUuids.FEC_PAGE_SPECIFIC_CLIMBER_DATA,
     )
 
     /** Page 24 — Specific Nordic Skier Data (Table 8-23). */
     fun encodePage24(state: FeCBleMachineState): ByteArray = encodeStridePowerPage(
         state = state,
-        pageNumber = BluetoothIds.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA,
+        pageNumber = FecBleUuids.FEC_PAGE_SPECIFIC_NORDIC_SKIER_DATA,
     )
 
     /** Page 26 — Specific Trainer Torque Data (Table 8-29). */
     fun encodePage26(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA.toByte()
         page[1] = (state.torqueEventCount and 0xFF).toByte()
         page[2] = (state.wheelTicks and 0xFF).toByte()
         putU16Wrapping(page, 3, (state.wheelPeriodTicks and 0xFFFF).toInt())
@@ -201,7 +202,7 @@ internal object FeCBleTelemetryEncoder {
     /** Page 54 — FE Capabilities (Tables 8-45/8-46). */
     fun encodePage54(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_FE_CAPABILITIES.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_FE_CAPABILITIES.toByte()
         for (offset in 1..4) page[offset] = 0xFF.toByte()
         putU16Wrapping(page, 5, state.equipmentType.maximumResistanceNewtons)
         page[7] = if (state.controlEnabled && state.equipmentType.supportsControl) 0x07 else 0x00
@@ -214,7 +215,7 @@ internal object FeCBleTelemetryEncoder {
         require(manufacturerId in 0..0xFFFF)
         require(modelNumber in 0..0xFFFF)
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION.toByte()
         page[1] = 0xFF.toByte()
         page[2] = 0xFF.toByte()
         page[3] = hardwareRevision.toByte()
@@ -226,7 +227,7 @@ internal object FeCBleTelemetryEncoder {
     /** Page 81 — Product Information (`0x51`). Plan §10.3. Synthetic serial only; never host identity. */
     fun encodePage81(state: FeCBleMachineState): ByteArray {
         val page = ByteArray(8)
-        page[0] = BluetoothIds.FEC_PAGE_PRODUCT_INFORMATION.toByte()
+        page[0] = FecBleUuids.FEC_PAGE_PRODUCT_INFORMATION.toByte()
         page[1] = 0xFF.toByte()
         page[2] = (state.softwareRevisionSupplemental and 0xFF).toByte()
         page[3] = (state.softwareRevisionMain and 0xFF).toByte()
@@ -253,13 +254,13 @@ internal object FeCBleTelemetryEncoder {
     fun encodePage26Frame(state: FeCBleMachineState): ByteArray = buildAntFrame(encodePage26(state))
     fun encodePage54Frame(
         state: FeCBleMachineState,
-        messageType: Int = BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA,
+        messageType: Int = FecBleUuids.FEC_ANT_MSG_BROADCAST_DATA,
     ): ByteArray = buildAntFrame(encodePage54(state), messageType)
     fun encodePage80Frame(
         hardwareRevision: Int,
         manufacturerId: Int,
         modelNumber: Int,
-        messageType: Int = BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA,
+        messageType: Int = FecBleUuids.FEC_ANT_MSG_BROADCAST_DATA,
     ): ByteArray = buildAntFrame(
         encodePage80(hardwareRevision, manufacturerId, modelNumber),
         messageType,

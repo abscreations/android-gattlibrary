@@ -8,6 +8,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class FeCBleTacxAdvertisingTest {
     private fun hex(frame: ByteArray): String = frame.joinToString(" ") { "%02X".format(it) }
@@ -15,27 +17,27 @@ class FeCBleTacxAdvertisingTest {
     @Test fun `Neo GATT manifest includes captured CSC vector and Device Information surface`() {
         val services = FeCBleGattProfile.capturedManifest(FeCBleSimulatorIdentity.TACX_NEO)
         assertEquals(
-            listOf(BluetoothIds.UUID_FEC_SERVICE, BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE, BluetoothIds.UUID_CSC_SERVICE, BluetoothIds.UUID_CYCLING_POWER_SERVICE, TacxGattIds.SERVICE_A501),
+            listOf(FecBleUuids.UUID_FEC_SERVICE, SigUuids.UUID_DEVICE_INFORMATION_SERVICE, SigUuids.UUID_CSC_SERVICE, SigUuids.UUID_CYCLING_POWER_SERVICE, TacxGattIds.SERVICE_A501),
             services.map { it.uuid },
         )
-        val cps = services.single { it.uuid == BluetoothIds.UUID_CYCLING_POWER_SERVICE }
+        val cps = services.single { it.uuid == SigUuids.UUID_CYCLING_POWER_SERVICE }
         assertTrue(cps.characteristics.any { it.uuid == TacxGattIds.CYCLING_POWER_VECTOR })
-        val dis = services.single { it.uuid == BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE }
+        val dis = services.single { it.uuid == SigUuids.UUID_DEVICE_INFORMATION_SERVICE }
         assertEquals(5, dis.characteristics.size)
     }
 
     @Test fun `captured Neo Device Information reads are reproduced`() {
         fun read(identity: FeCBleSimulatorIdentity, uuid: java.util.UUID) = tacxReadValue(identity, uuid, includeCps = true)
-        assertArrayEquals("Tacx".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, BluetoothIds.UUID_MANUFACTURER_NAME))
-        assertArrayEquals("Neo".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, BluetoothIds.UUID_MODEL_NUMBER))
-        assertArrayEquals("90002".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, BluetoothIds.UUID_SERIAL_NUMBER))
-        assertArrayEquals("0.7.4".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, BluetoothIds.UUID_FIRMWARE_REVISION))
+        assertArrayEquals("Tacx".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, SigUuids.UUID_MANUFACTURER_NAME))
+        assertArrayEquals("Neo".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, SigUuids.UUID_MODEL_NUMBER))
+        assertArrayEquals("90002".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, SigUuids.UUID_SERIAL_NUMBER))
+        assertArrayEquals("0.7.4".toByteArray(), read(FeCBleSimulatorIdentity.TACX_NEO, SigUuids.UUID_FIRMWARE_REVISION))
     }
 
     @Test fun `Neo advertising plan matches captured service list and records API appearance gap`() {
         val plan = tacxAdvertisingPlan(FeCBleSimulatorIdentity.TACX_NEO, includeCps = true)
         assertEquals(
-            listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_CSC_SERVICE, BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
+            listOf(SigUuids.UUID_CYCLING_POWER_SERVICE, SigUuids.UUID_CSC_SERVICE, SigUuids.UUID_DEVICE_INFORMATION_SERVICE, FecBleUuids.UUID_FEC_SERVICE),
             plan.scanResponseServices,
         )
         assertNull(plan.manufacturerId)
@@ -45,7 +47,7 @@ class FeCBleTacxAdvertisingTest {
 
     @Test fun `generic FE-C plan retains service-first discovery`() {
         val plan = tacxAdvertisingPlan(FeCBleSimulatorIdentity.GENERIC, includeCps = true)
-        assertEquals(listOf(BluetoothIds.UUID_FEC_SERVICE, BluetoothIds.UUID_CYCLING_POWER_SERVICE), plan.advertiseServices)
+        assertEquals(listOf(FecBleUuids.UUID_FEC_SERVICE, SigUuids.UUID_CYCLING_POWER_SERVICE), plan.advertiseServices)
         assertTrue(plan.scanResponseServices.isEmpty())
     }
 
@@ -53,7 +55,7 @@ class FeCBleTacxAdvertisingTest {
         val plan = tacxAdvertisingPlan(FeCBleSimulatorIdentity.TACX_FLUX_2, includeCps = true)
         assertTrue(plan.advertiseServices.isEmpty())
         assertEquals(
-            listOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
+            listOf(FtmsUuids.UUID_FTMS_SERVICE, SigUuids.UUID_CYCLING_POWER_SERVICE, FecBleUuids.UUID_FEC_SERVICE),
             plan.scanResponseServices,
         )
         assertEquals(0x0689, plan.manufacturerId)
@@ -69,12 +71,12 @@ class FeCBleTacxAdvertisingTest {
         val services = FeCBleGattProfile.capturedManifest(FeCBleSimulatorIdentity.TACX_FLUX_2)
         assertEquals(
             listOf(
-                BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
+                SigUuids.UUID_DEVICE_INFORMATION_SERVICE,
                 TacxGattIds.SERVICE_A605,
                 TacxGattIds.SERVICE_A501,
-                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                SigUuids.UUID_CYCLING_POWER_SERVICE,
                 FtmsUuids.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_FEC_SERVICE,
+                FecBleUuids.UUID_FEC_SERVICE,
             ),
             services.map { it.uuid },
         )
@@ -92,7 +94,7 @@ class FeCBleTacxAdvertisingTest {
             proprietary.characteristics.map { it.uuid to it.properties },
         )
         assertEquals(
-            setOf(TacxGattIds.USER_DESCRIPTION, BluetoothIds.UUID_CCCD),
+            setOf(TacxGattIds.USER_DESCRIPTION, SigUuids.UUID_CCCD),
             proprietary.characteristics.single { it.uuid == TacxGattIds.CHAR_AB02 }.descriptors,
         )
         val ftms = services.single { it.uuid == FtmsUuids.UUID_FTMS_SERVICE }
@@ -113,21 +115,21 @@ class FeCBleTacxAdvertisingTest {
             .characteristics.map { it.uuid to it.properties }
         assertEquals(
             listOf(
-                BluetoothIds.UUID_FIRMWARE_REVISION to read,
-                BluetoothIds.UUID_MANUFACTURER_NAME to read,
-                BluetoothIds.UUID_MODEL_NUMBER to read,
+                SigUuids.UUID_FIRMWARE_REVISION to read,
+                SigUuids.UUID_MANUFACTURER_NAME to read,
+                SigUuids.UUID_MODEL_NUMBER to read,
             ),
-            properties(BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE),
+            properties(SigUuids.UUID_DEVICE_INFORMATION_SERVICE),
         )
         assertEquals(listOf(TacxGattIds.CHAR_AC01 to (read or write)), properties(TacxGattIds.SERVICE_A501))
         assertEquals(
             listOf(
-                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT to notify,
-                BluetoothIds.UUID_CYCLING_POWER_FEATURE to read,
-                BluetoothIds.UUID_SENSOR_LOCATION to read,
-                BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT to (write or indicate),
+                SigUuids.UUID_CYCLING_POWER_MEASUREMENT to notify,
+                SigUuids.UUID_CYCLING_POWER_FEATURE to read,
+                SigUuids.UUID_SENSOR_LOCATION to read,
+                SigUuids.UUID_CYCLING_POWER_CONTROL_POINT to (write or indicate),
             ),
-            properties(BluetoothIds.UUID_CYCLING_POWER_SERVICE),
+            properties(SigUuids.UUID_CYCLING_POWER_SERVICE),
         )
         assertEquals(
             listOf(
@@ -142,24 +144,24 @@ class FeCBleTacxAdvertisingTest {
         )
         assertEquals(
             listOf(
-                BluetoothIds.UUID_FEC_MEASUREMENT to notify,
-                BluetoothIds.UUID_FEC_CONTROL to (write or writeNr),
+                FecBleUuids.UUID_FEC_MEASUREMENT to notify,
+                FecBleUuids.UUID_FEC_CONTROL to (write or writeNr),
             ),
-            properties(BluetoothIds.UUID_FEC_SERVICE),
+            properties(FecBleUuids.UUID_FEC_SERVICE),
         )
     }
 
     @Test fun `Flux 2 captured identity and FTMS feature reads are exact`() {
         fun read(uuid: java.util.UUID) = tacxReadValue(FeCBleSimulatorIdentity.TACX_FLUX_2, uuid, includeCps = true)
-        assertArrayEquals("Tacx".toByteArray(), read(BluetoothIds.UUID_MANUFACTURER_NAME))
-        assertArrayEquals("T2980".toByteArray(), read(BluetoothIds.UUID_MODEL_NUMBER))
-        assertArrayEquals("3.3.45".toByteArray(), read(BluetoothIds.UUID_FIRMWARE_REVISION))
-        assertNull(read(BluetoothIds.UUID_SERIAL_NUMBER))
+        assertArrayEquals("Tacx".toByteArray(), read(SigUuids.UUID_MANUFACTURER_NAME))
+        assertArrayEquals("T2980".toByteArray(), read(SigUuids.UUID_MODEL_NUMBER))
+        assertArrayEquals("3.3.45".toByteArray(), read(SigUuids.UUID_FIRMWARE_REVISION))
+        assertNull(read(SigUuids.UUID_SERIAL_NUMBER))
         assertArrayEquals(
             byteArrayOf(0x82.toByte(), 0x40, 0x00, 0x00, 0x0C, 0x20, 0x00, 0x00),
             read(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE),
         )
-        assertArrayEquals(byteArrayOf(0x0C, 0x00, 0x00, 0x00), read(BluetoothIds.UUID_CYCLING_POWER_FEATURE))
+        assertArrayEquals(byteArrayOf(0x0C, 0x00, 0x00, 0x00), read(SigUuids.UUID_CYCLING_POWER_FEATURE))
         assertArrayEquals(
             byteArrayOf(0x82.toByte(), 0x40, 0x00, 0x00, 0x0C, 0xA0.toByte(), 0x00, 0x00),
             TACX_FLUX_2_CAPTURED_FTMS_FEATURE,
@@ -170,27 +172,27 @@ class FeCBleTacxAdvertisingTest {
     @Test fun `Tacx identities answer requested page 80 with their capture-backed identity values`() {
         val state = FeCBleMachineState(FeCEquipmentType.TRAINER)
         val neoResponse = FeCBleRequestedPageEncoder.encode(
-            requestedPage = BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION,
-            messageType = BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
+            requestedPage = FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION,
+            messageType = FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
             identity = FeCBleSimulatorIdentity.TACX_NEO,
             state = state,
         )
         assertEquals("A4 09 4F 05 50 FF FF 01 59 00 F0 0A 15", hex(neoResponse!!))
         assertNull(
             FeCBleRequestedPageEncoder.encode(
-                requestedPage = BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION,
-                messageType = BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
+                requestedPage = FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION,
+                messageType = FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
                 identity = FeCBleSimulatorIdentity.GENERIC,
                 state = state,
             ),
         )
         val fluxResponse = FeCBleRequestedPageEncoder.encode(
-            requestedPage = BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION,
-            messageType = BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
+            requestedPage = FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION,
+            messageType = FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA,
             identity = FeCBleSimulatorIdentity.TACX_FLUX_2,
             state = state,
         )
-        assertEquals(BluetoothIds.FEC_PAGE_MANUFACTURER_INFORMATION, fluxResponse!![4].toInt() and 0xFF)
+        assertEquals(FecBleUuids.FEC_PAGE_MANUFACTURER_INFORMATION, fluxResponse!![4].toInt() and 0xFF)
         assertEquals("A4 09 4F 05 50 FF FF 01 59 00 A4 0B 40", hex(fluxResponse))
     }
 
@@ -198,12 +200,12 @@ class FeCBleTacxAdvertisingTest {
         val state = FeCBleMachineState(FeCEquipmentType.TRAINER)
         FeCBleSimulatorIdentity.entries.forEach { identity ->
             val response = FeCBleRequestedPageEncoder.encode(
-                requestedPage = BluetoothIds.FEC_PAGE_FE_CAPABILITIES,
-                messageType = BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA,
+                requestedPage = FecBleUuids.FEC_PAGE_FE_CAPABILITIES,
+                messageType = FecBleUuids.FEC_ANT_MSG_BROADCAST_DATA,
                 identity = identity,
                 state = state,
             )
-            assertEquals(BluetoothIds.FEC_PAGE_FE_CAPABILITIES, response!![4].toInt() and 0xFF)
+            assertEquals(FecBleUuids.FEC_PAGE_FE_CAPABILITIES, response!![4].toInt() and 0xFF)
         }
     }
 }

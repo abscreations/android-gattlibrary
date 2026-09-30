@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * Plan §11.7, §11.8 and amended D11 for the Concept2 PM.
@@ -26,9 +27,9 @@ class Concept2ControlHonestyTest {
     @Test
     fun `central Concept2 handler claims only startup endpoints not the control service as an activation key`() {
         val handler = Concept2ProtocolHandler()
-        assertFalse(BluetoothIds.UUID_C2_PM_CONTROL_SERVICE in handler.primaryServices)
-        assertTrue(BluetoothIds.UUID_C2_CSAFE_REQUEST in handler.extraCharacteristics)
-        assertTrue(BluetoothIds.UUID_C2_CSAFE_RESPONSE in handler.extraCharacteristics)
+        assertFalse(Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE in handler.primaryServices)
+        assertTrue(Concept2Uuids.UUID_C2_CSAFE_REQUEST in handler.extraCharacteristics)
+        assertTrue(Concept2Uuids.UUID_C2_CSAFE_RESPONSE in handler.extraCharacteristics)
     }
 
     @Test
@@ -39,19 +40,19 @@ class Concept2ControlHonestyTest {
 
         assertTrue(
             "the sample-rate characteristic is writable configuration and is not owned",
-            BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE !in handler.extraCharacteristics,
+            Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE !in handler.extraCharacteristics,
         )
         assertEquals(
             setOf(
-                BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
-                BluetoothIds.UUID_C2_GENERAL_STATUS,
-                BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
-                BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
-                BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+                Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
+                Concept2Uuids.UUID_C2_GENERAL_STATUS,
+                Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1,
+                Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2,
+                Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA,
                 // Read-only: the Erg Machine Type identification added for persona selection.
-                BluetoothIds.UUID_C2_MACHINE_TYPE,
-                BluetoothIds.UUID_C2_CSAFE_REQUEST,
-                BluetoothIds.UUID_C2_CSAFE_RESPONSE,
+                Concept2Uuids.UUID_C2_MACHINE_TYPE,
+                Concept2Uuids.UUID_C2_CSAFE_REQUEST,
+                Concept2Uuids.UUID_C2_CSAFE_RESPONSE,
             ),
             handler.extraCharacteristics,
         )

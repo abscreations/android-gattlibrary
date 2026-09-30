@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class CscDerivationTest {
 
@@ -188,7 +189,7 @@ class CscDerivationTest {
         val firstSource = MetricSourceId(
             ConnectionId("CSC", 1),
             MetricProtocol.CSC,
-            BluetoothIds.UUID_CSC_MEASUREMENT,
+            SigUuids.UUID_CSC_MEASUREMENT,
         )
         val secondSource = firstSource.copy(
             originId = MetricOriginId.Gatt(ConnectionId("CSC", 2)),

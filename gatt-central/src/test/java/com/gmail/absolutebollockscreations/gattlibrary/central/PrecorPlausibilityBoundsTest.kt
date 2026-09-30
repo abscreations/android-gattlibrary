@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 /** Phase 5b §11b: every bounded Chrono field crosses decode, emission and fusion. */
 class PrecorPlausibilityBoundsTest {
@@ -14,7 +15,7 @@ class PrecorPlausibilityBoundsTest {
     private val source = MetricSourceId(
         ConnectionId("C0:00:00:00:00:01", 1),
         MetricProtocol.VENDOR,
-        BluetoothIds.UUID_PRECOR_MEASUREMENT,
+        PrecorUuids.UUID_PRECOR_MEASUREMENT,
     )
 
     @Before

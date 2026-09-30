@@ -12,6 +12,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Unit 9.10: cross-checks the FE-C over BLE peripheral simulator (`bluetooth.simulator`) against
@@ -230,9 +231,9 @@ class FeCBleCentralInteropTest {
     @Test
     fun `central page-54 request decodes through the simulator control parser`() {
         val command = FeCBleControlDecoder.decode(
-            FeCControlEncoder.encodeRequestDataPage(BluetoothIds.FEC_PAGE_FE_CAPABILITIES),
+            FeCControlEncoder.encodeRequestDataPage(FecBleUuids.FEC_PAGE_FE_CAPABILITIES),
         ) as FeCBleControlCommand.RequestDataPage
-        assertEquals(BluetoothIds.FEC_PAGE_FE_CAPABILITIES, command.requestedPage)
+        assertEquals(FecBleUuids.FEC_PAGE_FE_CAPABILITIES, command.requestedPage)
         assertEquals(2, command.transmissionCount)
     }
 

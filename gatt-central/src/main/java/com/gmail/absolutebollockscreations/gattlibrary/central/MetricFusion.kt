@@ -7,6 +7,7 @@ import java.util.UUID
 import kotlin.math.roundToInt
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * How long a heart-rate reading stays authoritative after it arrives.
@@ -820,7 +821,7 @@ class MetricFusion(
         val native = if (metric == MetricKind.DISTANCE && sample.protocol == MetricProtocol.VENDOR &&
             sample.sourceClass == MetricSourceClass.VENDOR_NATIVE &&
             sample.sourceId.gattCharacteristicUuid in setOf(
-                BluetoothIds.UUID_C2_GENERAL_STATUS, BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
+                Concept2Uuids.UUID_C2_GENERAL_STATUS, Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
             )
         ) {
             concept2DistanceOrigins.getOrPut(sample.originId) { Concept2DistanceOrigin() }.align(rawNative)

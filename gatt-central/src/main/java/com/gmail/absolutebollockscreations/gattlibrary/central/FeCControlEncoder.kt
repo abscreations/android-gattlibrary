@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /**
  * Encodes FE-C over BLE control pages (48/49/50/51) for FEC3, per plan §2.5/§10/§16.6.
@@ -10,7 +11,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * and does not decide *when* to send anything. Dispatch is `FeCControlScheduler`'s job (§9.9);
  * this file's only obligation is that the bytes it produces are correct.
  *
- * Every control write uses [BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA] (`0x4F`), matching the
+ * Every control write uses [FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA] (`0x4F`), matching the
  * Tacx PDF's worked example and every FE-C control page this plan documents - broadcast data
  * (`0x4E`) is for the machine's outbound telemetry, not commands sent to it.
  *
@@ -25,7 +26,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 @GattLibraryInternalApi
 object FeCControlEncoder {
 
-    private const val CHANNEL = BluetoothIds.FEC_DEFAULT_CHANNEL
+    private const val CHANNEL = FecBleUuids.FEC_DEFAULT_CHANNEL
     private const val RESERVED: Byte = 0xFF.toByte()
     private const val FIELD_UNAVAILABLE = 0xFF
 
@@ -39,13 +40,13 @@ object FeCControlEncoder {
         require(transmissionCount in 1..0x7F) { "transmissionCount out of range: $transmissionCount" }
         val commandType = if (acknowledgedResponse) 0x81 else 0x01
         val payload = byteArrayOf(
-            BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE.toByte(),
+            FecBleUuids.FEC_PAGE_REQUEST_DATA_PAGE.toByte(),
             RESERVED, RESERVED, RESERVED, RESERVED,
             transmissionCount.toByte(),
             requestedPage.toByte(),
             commandType.toByte(),
         )
-        return FeCFrameCodec.encode(BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
+        return FeCFrameCodec.encode(FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
     }
 
     /**
@@ -59,11 +60,11 @@ object FeCControlEncoder {
         require(percent in 0.0..100.0) { "percent out of legal range 0.0..100.0: $percent" }
         val raw = Math.round(percent / 0.5).coerceIn(0L, 200L)
         val payload = byteArrayOf(
-            BluetoothIds.FEC_PAGE_BASIC_RESISTANCE.toByte(),
+            FecBleUuids.FEC_PAGE_BASIC_RESISTANCE.toByte(),
             RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
             raw.toByte(),
         )
-        return FeCFrameCodec.encode(BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
+        return FeCFrameCodec.encode(FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
     }
 
     /**
@@ -79,12 +80,12 @@ object FeCControlEncoder {
         val raw = Math.round(watts * 4.0)
         require(raw in 0..0xFFFE) { "target power out of encodable range: $watts W" }
         val payload = byteArrayOf(
-            BluetoothIds.FEC_PAGE_TARGET_POWER.toByte(),
+            FecBleUuids.FEC_PAGE_TARGET_POWER.toByte(),
             RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
             (raw and 0xFF).toByte(),
             ((raw shr 8) and 0xFF).toByte(),
         )
-        return FeCFrameCodec.encode(BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
+        return FeCFrameCodec.encode(FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
     }
 
     /**
@@ -120,13 +121,13 @@ object FeCControlEncoder {
         } ?: FIELD_UNAVAILABLE.toLong()
 
         val payload = byteArrayOf(
-            BluetoothIds.FEC_PAGE_WIND_RESISTANCE.toByte(),
+            FecBleUuids.FEC_PAGE_WIND_RESISTANCE.toByte(),
             RESERVED, RESERVED, RESERVED, RESERVED,
             coefficientByte.toByte(),
             windSpeedByte.toByte(),
             draftingByte.toByte(),
         )
-        return FeCFrameCodec.encode(BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
+        return FeCFrameCodec.encode(FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
     }
 
     /**
@@ -159,12 +160,12 @@ object FeCControlEncoder {
         } ?: FIELD_UNAVAILABLE.toLong()
         val gradeRaw = Math.round((gradePercent + 200.0) / 0.01).coerceIn(0L, 0xFFFEL)
         val payload = byteArrayOf(
-            BluetoothIds.FEC_PAGE_TRACK_RESISTANCE.toByte(),
+            FecBleUuids.FEC_PAGE_TRACK_RESISTANCE.toByte(),
             RESERVED, RESERVED, RESERVED, RESERVED,
             (gradeRaw and 0xFF).toByte(),
             ((gradeRaw shr 8) and 0xFF).toByte(),
             crrRaw.toByte(),
         )
-        return FeCFrameCodec.encode(BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
+        return FeCFrameCodec.encode(FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA, CHANNEL, payload)
     }
 }

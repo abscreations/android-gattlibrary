@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 /**
  * Phase 6 work unit 6.4 — the setup transcript and its advance rules (plan §6, D61).
@@ -16,9 +17,9 @@ import java.util.UUID
  */
 class LifeFitnessSetupTest {
 
-    private val control: UUID = BluetoothIds.UUID_LF_CONTROL_SERVICE
-    private val user: UUID = BluetoothIds.UUID_LF_USER_SERVICE
-    private val status: UUID = BluetoothIds.UUID_LF_STATUS
+    private val control: UUID = LifeFitnessUuids.UUID_LF_CONTROL_SERVICE
+    private val user: UUID = LifeFitnessUuids.UUID_LF_USER_SERVICE
+    private val status: UUID = LifeFitnessUuids.UUID_LF_STATUS
 
     private val profile = LifeFitnessProfile(
         firstName = "Given",

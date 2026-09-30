@@ -5,6 +5,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Plan §6/§16.8 matcher obligations for FE-C over BLE: positive, negative, no-name-needed, and
@@ -16,7 +18,7 @@ class FeCMatcherTest {
 
     private fun uuid(u: java.util.UUID) = CanonicalUuid.fromUuid(u)
 
-    private val fecService = uuid(BluetoothIds.UUID_FEC_SERVICE)
+    private val fecService = uuid(FecBleUuids.UUID_FEC_SERVICE)
     private val ftmsService = uuid(FtmsUuids.UUID_FTMS_SERVICE)
 
     private fun candidates(observation: MatchObservation) = registry.rankedCandidates(observation)
@@ -45,7 +47,7 @@ class FeCMatcherTest {
 
     @Test
     fun `either FEC2 or FEC3 alone is enough to fingerprint the family`() {
-        for (characteristic in listOf(BluetoothIds.UUID_FEC_MEASUREMENT, BluetoothIds.UUID_FEC_CONTROL)) {
+        for (characteristic in listOf(FecBleUuids.UUID_FEC_MEASUREMENT, FecBleUuids.UUID_FEC_CONTROL)) {
             val ids = idsOf(MatchObservation(discoveredCharacteristicUuids = setOf(uuid(characteristic))))
             assertEquals("$characteristic should identify an FE-C device", listOf("vendor.fec.ble"), ids)
         }
@@ -85,7 +87,7 @@ class FeCMatcherTest {
         // these two personas as sensors, not machines, and they never appeared in a
         // machine-only device list. Treadmill and Rower carry no CPS overlay and were
         // unaffected, which is exactly the split that was reported.
-        val cpsService = uuid(BluetoothIds.UUID_POWER_SERVICE)
+        val cpsService = uuid(SigUuids.UUID_POWER_SERVICE)
         val ranked = candidates(
             MatchObservation(advertisedServiceUuids = setOf(fecService, cpsService)),
         )

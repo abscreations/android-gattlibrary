@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 
 class FlywheelSportsGattProfileTest {
     @Test
@@ -13,7 +14,7 @@ class FlywheelSportsGattProfileTest {
         val plan = FlywheelSportsAdvertisingPlan.create()
 
         assertEquals("Flywheel 1", plan.localName)
-        assertEquals(BluetoothIds.UUID_FLYWHEEL_SERVICE, plan.serviceUuid)
+        assertEquals(FlywheelUuids.UUID_FLYWHEEL_SERVICE, plan.serviceUuid)
         assertEquals(15, plan.advertisingBytes)
         assertEquals(18, plan.scanResponseBytes)
         assertTrue(plan.advertisingBytes <= FlywheelSportsAdvertisingPlan.MAX_LEGACY_BYTES)
@@ -22,8 +23,8 @@ class FlywheelSportsGattProfileTest {
 
     @Test
     fun `Gatt manifest is writable RX and notify plus CCCD TX`() {
-        val rx = FlywheelSportsGattProfile.characteristics.single { it.uuid == BluetoothIds.UUID_FLYWHEEL_RX }
-        val tx = FlywheelSportsGattProfile.characteristics.single { it.uuid == BluetoothIds.UUID_FLYWHEEL_TX }
+        val rx = FlywheelSportsGattProfile.characteristics.single { it.uuid == FlywheelUuids.UUID_FLYWHEEL_RX }
+        val tx = FlywheelSportsGattProfile.characteristics.single { it.uuid == FlywheelUuids.UUID_FLYWHEEL_TX }
 
         assertTrue(rx.writable)
         assertTrue(rx.writeWithoutResponse)
@@ -36,10 +37,10 @@ class FlywheelSportsGattProfileTest {
 
     @Test
     fun `RX writes are accepted only on the exact surface and remain semantically inert`() {
-        assertTrue(FlywheelSportsGattProfile.acceptsInertRxWrite(BluetoothIds.UUID_FLYWHEEL_RX, false, 0))
-        assertFalse(FlywheelSportsGattProfile.acceptsInertRxWrite(BluetoothIds.UUID_FLYWHEEL_TX, false, 0))
+        assertTrue(FlywheelSportsGattProfile.acceptsInertRxWrite(FlywheelUuids.UUID_FLYWHEEL_RX, false, 0))
+        assertFalse(FlywheelSportsGattProfile.acceptsInertRxWrite(FlywheelUuids.UUID_FLYWHEEL_TX, false, 0))
         assertFalse(FlywheelSportsGattProfile.acceptsInertRxWrite(UUID.randomUUID(), false, 0))
-        assertFalse(FlywheelSportsGattProfile.acceptsInertRxWrite(BluetoothIds.UUID_FLYWHEEL_RX, true, 0))
-        assertFalse(FlywheelSportsGattProfile.acceptsInertRxWrite(BluetoothIds.UUID_FLYWHEEL_RX, false, 1))
+        assertFalse(FlywheelSportsGattProfile.acceptsInertRxWrite(FlywheelUuids.UUID_FLYWHEEL_RX, true, 0))
+        assertFalse(FlywheelSportsGattProfile.acceptsInertRxWrite(FlywheelUuids.UUID_FLYWHEEL_RX, false, 1))
     }
 }

@@ -13,6 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Phase 10.1 reachability, adversarial fingerprint, ranking, and reconnect obligations. */
 class WahooKickrProductionPlumbingTest {
@@ -338,7 +339,7 @@ class WahooKickrProductionPlumbingTest {
         assertFalse(
             handler.handleControlIndication(
                 ctx.connectionId,
-                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
                 byteArrayOf(1, 0x20, 1, 0),
             ),
         )
@@ -381,7 +382,7 @@ class WahooKickrProductionPlumbingTest {
                 sourceId = MetricSourceId(
                     kickr.connectionId,
                     MetricProtocol.CPS,
-                    BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                    SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
                 ),
                 protocol = MetricProtocol.CPS,
                 sourceClass = MetricSourceClass.CPS,

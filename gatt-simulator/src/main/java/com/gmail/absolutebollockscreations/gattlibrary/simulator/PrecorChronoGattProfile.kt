@@ -6,6 +6,8 @@ import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Immutable, measurement-only GATT and legacy-advertising plans for the Chrono fixture. */
 internal data class PrecorChronoAdvertisingPlan(
@@ -32,7 +34,7 @@ internal data class PrecorChronoAdvertisingPlan(
             return PrecorChronoAdvertisingPlan(
                 // QZ issue #261's physical Chrono capture places the name in ADV_IND and the
                 // served UUID, TX power, and this manufacturer block in SCAN_RSP.
-                serviceUuid = BluetoothIds.UUID_PRECOR_SERVICE,
+                serviceUuid = PrecorUuids.UUID_PRECOR_SERVICE,
                 localName = name,
                 includeNameInAdvertising = true,
                 includeTxPowerInScanResponse = true,
@@ -58,7 +60,7 @@ internal object PrecorChronoGattProfile {
 
     val characteristics = listOf(
         Characteristic(
-            uuid = BluetoothIds.UUID_PRECOR_MEASUREMENT,
+            uuid = PrecorUuids.UUID_PRECOR_MEASUREMENT,
             readable = false,
             writable = false,
             notifiable = true,
@@ -67,17 +69,17 @@ internal object PrecorChronoGattProfile {
 
     fun buildService(): BluetoothGattService =
         BluetoothGattService(
-            BluetoothIds.UUID_PRECOR_SERVICE,
+            PrecorUuids.UUID_PRECOR_SERVICE,
             BluetoothGattService.SERVICE_TYPE_PRIMARY,
         ).also { service ->
             val measurement = BluetoothGattCharacteristic(
-                BluetoothIds.UUID_PRECOR_MEASUREMENT,
+                PrecorUuids.UUID_PRECOR_MEASUREMENT,
                 BluetoothGattCharacteristic.PROPERTY_NOTIFY,
                 0,
             )
             measurement.addDescriptor(
                 BluetoothGattDescriptor(
-                    BluetoothIds.UUID_CCCD,
+                    SigUuids.UUID_CCCD,
                     BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
                 ),
             )

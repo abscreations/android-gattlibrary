@@ -9,13 +9,15 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Phase 5b §11.4/§11.5 link-lifecycle and concurrent-context obligations. */
 class PrecorConnectionTest {
 
     private val target = CccdTarget(
-        BluetoothIds.UUID_PRECOR_SERVICE,
-        BluetoothIds.UUID_PRECOR_MEASUREMENT,
+        PrecorUuids.UUID_PRECOR_SERVICE,
+        PrecorUuids.UUID_PRECOR_MEASUREMENT,
     )
 
     @Test
@@ -68,8 +70,8 @@ class PrecorConnectionTest {
         val queue = GattQueue()
         val entry = StackEntry(
             op = StackEntry.Op.DESC_WRITE,
-            charUuid = BluetoothIds.UUID_PRECOR_MEASUREMENT,
-            descriptorUuid = BluetoothIds.UUID_CCCD,
+            charUuid = PrecorUuids.UUID_PRECOR_MEASUREMENT,
+            descriptorUuid = SigUuids.UUID_CCCD,
             descriptorIdentity = descriptor,
         )
         queue.enqueue(entry)
@@ -81,8 +83,8 @@ class PrecorConnectionTest {
                 callbackGatt = staleGatt,
                 head = head,
                 callbackOp = StackEntry.Op.DESC_WRITE,
-                callbackCharUuid = BluetoothIds.UUID_PRECOR_MEASUREMENT,
-                callbackDescriptorUuid = BluetoothIds.UUID_CCCD,
+                callbackCharUuid = PrecorUuids.UUID_PRECOR_MEASUREMENT,
+                callbackDescriptorUuid = SigUuids.UUID_CCCD,
                 callbackDescriptorIdentity = descriptor,
             ),
         )
@@ -95,8 +97,8 @@ class PrecorConnectionTest {
                 callbackGatt = currentGatt,
                 head = head,
                 callbackOp = StackEntry.Op.DESC_WRITE,
-                callbackCharUuid = BluetoothIds.UUID_PRECOR_MEASUREMENT,
-                callbackDescriptorUuid = BluetoothIds.UUID_CCCD,
+                callbackCharUuid = PrecorUuids.UUID_PRECOR_MEASUREMENT,
+                callbackDescriptorUuid = SigUuids.UUID_CCCD,
                 callbackDescriptorIdentity = descriptor,
             ),
         )
@@ -151,10 +153,10 @@ class PrecorConnectionTest {
         csc.handlers += CscProtocolHandler()
         cps.handlers += CpsProtocolHandler()
         val characteristicUuids = listOf(
-            BluetoothIds.UUID_PRECOR_MEASUREMENT,
-            BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
-            BluetoothIds.UUID_CSC_MEASUREMENT,
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+            PrecorUuids.UUID_PRECOR_MEASUREMENT,
+            SigUuids.UUID_HEART_RATE_MEASUREMENT,
+            SigUuids.UUID_CSC_MEASUREMENT,
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
         )
 
         val descriptorIdentities = contexts.associateWith { Any() }
@@ -164,7 +166,7 @@ class PrecorConnectionTest {
                 StackEntry(
                     StackEntry.Op.DESC_WRITE,
                     charUuid = characteristicUuid,
-                    descriptorUuid = BluetoothIds.UUID_CCCD,
+                    descriptorUuid = SigUuids.UUID_CCCD,
                     descriptorIdentity = descriptorIdentities.getValue(context),
                 ),
             )
@@ -185,8 +187,8 @@ class PrecorConnectionTest {
                 callbackGatt = linkIdentities.getValue(chrono),
                 head = sensorHead,
                 callbackOp = StackEntry.Op.DESC_WRITE,
-                callbackCharUuid = BluetoothIds.UUID_PRECOR_MEASUREMENT,
-                callbackDescriptorUuid = BluetoothIds.UUID_CCCD,
+                callbackCharUuid = PrecorUuids.UUID_PRECOR_MEASUREMENT,
+                callbackDescriptorUuid = SigUuids.UUID_CCCD,
                 callbackDescriptorIdentity = descriptorIdentities.getValue(chrono),
             ),
         )

@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /**
  * Plan §11.4 and §11.5 for the Concept2 PM: multi-characteristic subscription through one
@@ -51,7 +52,7 @@ class Concept2ProductionPlumbingTest {
 
         val active = activateMatchingProtocolHandlers(
             listOf(ftms, concept2),
-            setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE, Concept2Uuids.UUID_C2_ERG_SERVICE),
             offer = { true },
         )
         assertEquals("PM5 uses native Concept2 even when FTMS is served", listOf(concept2), active)
@@ -59,16 +60,16 @@ class Concept2ProductionPlumbingTest {
         // Every Concept2 characteristic routes to the Concept2 handler and to nothing else,
         // including the multiplexed one, which carries other handlers' data on no other device.
         for (characteristic in listOf(
-            BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
-            BluetoothIds.UUID_C2_GENERAL_STATUS,
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
-            BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+            Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
+            Concept2Uuids.UUID_C2_GENERAL_STATUS,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA,
         )) {
             val route = resolveProtocolHandlerRoute(
                 active,
                 characteristic,
-                BluetoothIds.UUID_C2_ERG_SERVICE,
+                Concept2Uuids.UUID_C2_ERG_SERVICE,
             )
             assertEquals("$characteristic must route to Concept2 alone", listOf(concept2), route.owners)
             assertSame(concept2, route.owners.single())
@@ -93,12 +94,12 @@ class Concept2ProductionPlumbingTest {
     fun `the individual plan arms one CCCD per consumed characteristic and no more`() {
         val plan = planConcept2Discovery(
             setOf(
-                BluetoothIds.UUID_C2_GENERAL_STATUS,
-                BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1,
-                BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2,
-                BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+                Concept2Uuids.UUID_C2_GENERAL_STATUS,
+                Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1,
+                Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2,
+                Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA,
                 // Present but never subscribed: it is a read/write configuration value.
-                BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE,
+                Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE,
             ),
         )
 
@@ -107,7 +108,7 @@ class Concept2ProductionPlumbingTest {
         assertTrue(
             "the sample-rate characteristic is configuration, not a notification source",
             plan.operations.none {
-                it.characteristicUuid == BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE
+                it.characteristicUuid == Concept2Uuids.UUID_C2_STATUS_SAMPLE_RATE
             },
         )
         assertTrue(
@@ -120,7 +121,7 @@ class Concept2ProductionPlumbingTest {
         val cccd = CccdState()
         val planned = cccd.mergeEnablePlan(
             CONCEPT2_CONSUMED_CHARACTERISTICS.map {
-                CccdTarget(BluetoothIds.UUID_C2_ERG_SERVICE, it)
+                CccdTarget(Concept2Uuids.UUID_C2_ERG_SERVICE, it)
             },
         )
         assertEquals("four distinct targets, one per consumed characteristic", 4, planned.size)
@@ -146,8 +147,8 @@ class Concept2ProductionPlumbingTest {
         cccd.mergeEnablePlan(
             listOf(
                 CccdTarget(
-                    BluetoothIds.UUID_C2_ERG_SERVICE,
-                    BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
+                    Concept2Uuids.UUID_C2_ERG_SERVICE,
+                    Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
                 ),
             ),
         )
@@ -164,8 +165,8 @@ class Concept2ProductionPlumbingTest {
         cccd.mergeEnablePlan(
             listOf(
                 CccdTarget(
-                    BluetoothIds.UUID_C2_ERG_SERVICE,
-                    BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION,
+                    Concept2Uuids.UUID_C2_ERG_SERVICE,
+                    Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
                 ),
             ),
         )
@@ -193,7 +194,7 @@ class Concept2ProductionPlumbingTest {
                 sourceId = MetricSourceId(
                     connection,
                     MetricProtocol.VENDOR,
-                    BluetoothIds.UUID_C2_GENERAL_STATUS,
+                    Concept2Uuids.UUID_C2_GENERAL_STATUS,
                 ),
                 sourceClass = MetricSourceClass.VENDOR_NATIVE,
                 arrivalMs = arrivalMs,
@@ -238,7 +239,7 @@ class Concept2ProductionPlumbingTest {
             sourceId = MetricSourceId(
                 connection,
                 MetricProtocol.VENDOR,
-                BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA,
+                Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA,
             ),
             sourceClass = MetricSourceClass.VENDOR_NATIVE,
             arrivalMs = 90_000L,

@@ -32,6 +32,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPoi
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsProcedureSession
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /**
  * Android GATT server for the FE-C-over-BLE simulator personas (plan §14, §15).
@@ -140,7 +142,7 @@ internal class FeCBlePeripheralAdvertiser(
 
     fun publishCsc(frame: ByteArray) {
         if (identity != FeCBleSimulatorIdentity.TACX_NEO) return
-        clients.values.forEach { client -> if (client.cscSubscribed) enqueueAux(client, frame.copyOf(), BluetoothIds.UUID_CSC_MEASUREMENT) }
+        clients.values.forEach { client -> if (client.cscSubscribed) enqueueAux(client, frame.copyOf(), SigUuids.UUID_CSC_MEASUREMENT) }
     }
 
     fun publishFtms(frame: ByteArray) {
@@ -268,7 +270,7 @@ internal class FeCBlePeripheralAdvertiser(
             value: ByteArray,
         ) {
             val client = clients[device.address.lowercase()]
-            val isControl = characteristic.uuid == BluetoothIds.UUID_FEC_CONTROL
+            val isControl = characteristic.uuid == FecBleUuids.UUID_FEC_CONTROL
             val isFtmsControl = identity == FeCBleSimulatorIdentity.TACX_FLUX_2 &&
                 characteristic.uuid == FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT
             var accepted = false
@@ -285,9 +287,9 @@ internal class FeCBlePeripheralAdvertiser(
                     is FeCBleControlCommand.RequestDataPage -> {
                         if (client.subscribed) {
                             val messageType = if (command.acknowledgedResponse) {
-                                BluetoothIds.FEC_ANT_MSG_ACKNOWLEDGED_DATA
+                                FecBleUuids.FEC_ANT_MSG_ACKNOWLEDGED_DATA
                             } else {
-                                BluetoothIds.FEC_ANT_MSG_BROADCAST_DATA
+                                FecBleUuids.FEC_ANT_MSG_BROADCAST_DATA
                             }
                             val response = synchronized(state) {
                                 FeCBleRequestedPageEncoder.encode(
@@ -307,7 +309,7 @@ internal class FeCBlePeripheralAdvertiser(
                                 drain(client)
                                 accepted = true
                                 listener.onControlWriteAccepted(
-                                    BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE,
+                                    FecBleUuids.FEC_PAGE_REQUEST_DATA_PAGE,
                                     device.address,
                                 )
                             } else {
@@ -391,13 +393,13 @@ internal class FeCBlePeripheralAdvertiser(
             val enableIndication = value.contentEquals(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
             val characteristicUuid = descriptor.characteristic.uuid
-            val isFec2 = characteristicUuid == BluetoothIds.UUID_FEC_MEASUREMENT
-            val isCps = includeCps && characteristicUuid == BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT
-            val isCsc = identity == FeCBleSimulatorIdentity.TACX_NEO && characteristicUuid == BluetoothIds.UUID_CSC_MEASUREMENT
+            val isFec2 = characteristicUuid == FecBleUuids.UUID_FEC_MEASUREMENT
+            val isCps = includeCps && characteristicUuid == SigUuids.UUID_CYCLING_POWER_MEASUREMENT
+            val isCsc = identity == FeCBleSimulatorIdentity.TACX_NEO && characteristicUuid == SigUuids.UUID_CSC_MEASUREMENT
             val isFtms = identity == FeCBleSimulatorIdentity.TACX_FLUX_2 && characteristicUuid == FtmsUuids.UUID_BIKING_DATA
             val isFtmsStatus = identity == FeCBleSimulatorIdentity.TACX_FLUX_2 && characteristicUuid == FtmsUuids.UUID_FITNESS_MACHINE_STATUS
             val isFtmsControl = identity == FeCBleSimulatorIdentity.TACX_FLUX_2 && characteristicUuid == FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT
-            val valid = client != null && descriptor.uuid == BluetoothIds.UUID_CCCD &&
+            val valid = client != null && descriptor.uuid == SigUuids.UUID_CCCD &&
                 (isFec2 || isCps || isCsc || isFtms || isFtmsStatus || isFtmsControl) &&
                 !preparedWrite && offset == 0 &&
                 (disable || (enable && !isFtmsControl) || (enableIndication && isFtmsControl))
@@ -469,11 +471,11 @@ internal class FeCBlePeripheralAdvertiser(
 
     /** Null when the descriptor isn't a CCCD this server recognizes for the given client. */
     private fun subscriptionValueFor(client: Client?, descriptor: BluetoothGattDescriptor): ByteArray? {
-        if (client == null || descriptor.uuid != BluetoothIds.UUID_CCCD) return null
+        if (client == null || descriptor.uuid != SigUuids.UUID_CCCD) return null
         val enabled = when (descriptor.characteristic.uuid) {
-            BluetoothIds.UUID_FEC_MEASUREMENT -> client.subscribed to false
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT -> if (includeCps) client.cpsSubscribed to false else null
-            BluetoothIds.UUID_CSC_MEASUREMENT -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) client.cscSubscribed to false else null
+            FecBleUuids.UUID_FEC_MEASUREMENT -> client.subscribed to false
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT -> if (includeCps) client.cpsSubscribed to false else null
+            SigUuids.UUID_CSC_MEASUREMENT -> if (identity == FeCBleSimulatorIdentity.TACX_NEO) client.cscSubscribed to false else null
             FtmsUuids.UUID_BIKING_DATA -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) client.ftmsSubscribed to false else null
             FtmsUuids.UUID_FITNESS_MACHINE_STATUS -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) client.ftmsStatusSubscribed to false else null
             FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) client.ftmsControlIndications to true else null
@@ -584,10 +586,10 @@ internal class FeCBlePeripheralAdvertiser(
     }
 
     private fun enqueueAux(client: Client, frame: ByteArray, characteristicUuid: UUID) {
-        require(characteristicUuid == BluetoothIds.UUID_CSC_MEASUREMENT || characteristicUuid == FtmsUuids.UUID_BIKING_DATA)
+        require(characteristicUuid == SigUuids.UUID_CSC_MEASUREMENT || characteristicUuid == FtmsUuids.UUID_BIKING_DATA)
         val conflated = synchronized(client) {
-            val had = if (characteristicUuid == BluetoothIds.UUID_CSC_MEASUREMENT) client.pendingCsc != null else client.pendingFtms != null
-            if (characteristicUuid == BluetoothIds.UUID_CSC_MEASUREMENT) client.pendingCsc = frame else client.pendingFtms = frame
+            val had = if (characteristicUuid == SigUuids.UUID_CSC_MEASUREMENT) client.pendingCsc != null else client.pendingFtms != null
+            if (characteristicUuid == SigUuids.UUID_CSC_MEASUREMENT) client.pendingCsc = frame else client.pendingFtms = frame
             had
         }
         if (conflated) listener.onNotificationConflated()
@@ -611,18 +613,18 @@ internal class FeCBlePeripheralAdvertiser(
             val ftmsFrame = client.pendingFtms
             val next = when {
                 ftmsProcedureFrame != null -> ftmsProcedureFrame
-                requestedFrame != null -> BluetoothIds.UUID_FEC_MEASUREMENT to requestedFrame
+                requestedFrame != null -> FecBleUuids.UUID_FEC_MEASUREMENT to requestedFrame
                 fec2Frame != null -> {
                     client.pendingFec2 = null
-                    BluetoothIds.UUID_FEC_MEASUREMENT to fec2Frame
+                    FecBleUuids.UUID_FEC_MEASUREMENT to fec2Frame
                 }
                 cpsFrame != null -> {
                     client.pendingCps = null
-                    BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT to cpsFrame
+                    SigUuids.UUID_CYCLING_POWER_MEASUREMENT to cpsFrame
                 }
                 cscFrame != null -> {
                     client.pendingCsc = null
-                    BluetoothIds.UUID_CSC_MEASUREMENT to cscFrame
+                    SigUuids.UUID_CSC_MEASUREMENT to cscFrame
                 }
                 ftmsFrame != null -> {
                     client.pendingFtms = null
@@ -648,13 +650,13 @@ internal class FeCBlePeripheralAdvertiser(
 
     private fun gattCharacteristicFor(characteristicUuid: UUID): BluetoothGattCharacteristic? {
         val serviceUuid = when (characteristicUuid) {
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT -> BluetoothIds.UUID_CYCLING_POWER_SERVICE
-            BluetoothIds.UUID_CSC_MEASUREMENT -> BluetoothIds.UUID_CSC_SERVICE
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT -> SigUuids.UUID_CYCLING_POWER_SERVICE
+            SigUuids.UUID_CSC_MEASUREMENT -> SigUuids.UUID_CSC_SERVICE
             FtmsUuids.UUID_BIKING_DATA,
             FtmsUuids.UUID_FITNESS_MACHINE_STATUS,
             FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT,
             -> FtmsUuids.UUID_FTMS_SERVICE
-            else -> BluetoothIds.UUID_FEC_SERVICE
+            else -> FecBleUuids.UUID_FEC_SERVICE
         }
         return server?.getService(serviceUuid)?.getCharacteristic(characteristicUuid)
     }

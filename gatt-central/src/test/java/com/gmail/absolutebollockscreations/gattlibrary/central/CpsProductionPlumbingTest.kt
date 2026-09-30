@@ -9,25 +9,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class CpsProductionPlumbingTest {
     @Test
     fun `Measurement is mandatory and reads precede subscription`() {
         assertFalse(planCpsDiscovery(emptySet()).activate)
-        assertFalse(planCpsDiscovery(setOf(BluetoothIds.UUID_CYCLING_POWER_FEATURE)).activate)
+        assertFalse(planCpsDiscovery(setOf(SigUuids.UUID_CYCLING_POWER_FEATURE)).activate)
         val plan = planCpsDiscovery(
             setOf(
-                BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
-                BluetoothIds.UUID_CYCLING_POWER_FEATURE,
-                BluetoothIds.UUID_SENSOR_LOCATION,
+                SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
+                SigUuids.UUID_CYCLING_POWER_FEATURE,
+                SigUuids.UUID_SENSOR_LOCATION,
             ),
         )
         assertTrue(plan.activate)
         assertEquals(
             listOf(
-                CpsGattOperation(CpsGattOperationKind.READ, BluetoothIds.UUID_CYCLING_POWER_FEATURE),
-                CpsGattOperation(CpsGattOperationKind.READ, BluetoothIds.UUID_SENSOR_LOCATION),
-                CpsGattOperation(CpsGattOperationKind.ENABLE_NOTIFICATIONS, BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT),
+                CpsGattOperation(CpsGattOperationKind.READ, SigUuids.UUID_CYCLING_POWER_FEATURE),
+                CpsGattOperation(CpsGattOperationKind.READ, SigUuids.UUID_SENSOR_LOCATION),
+                CpsGattOperation(CpsGattOperationKind.ENABLE_NOTIFICATIONS, SigUuids.UUID_CYCLING_POWER_MEASUREMENT),
             ),
             plan.operations,
         )
@@ -36,18 +37,18 @@ class CpsProductionPlumbingTest {
     @Test
     fun `Feature and location reads decode with explicit unavailable outcomes`() {
         val feature = decodeCpsRead(
-            BluetoothIds.UUID_CYCLING_POWER_FEATURE,
+            SigUuids.UUID_CYCLING_POWER_FEATURE,
             byteArrayOf(0x04, 0x03, 0x02, 0x81.toByte()),
             success = true,
         ) as CpsReadOutcome.Features
         assertEquals(0x81020304L, feature.bits)
         assertEquals(
             CpsReadOutcome.SensorLocation(13),
-            decodeCpsRead(BluetoothIds.UUID_SENSOR_LOCATION, byteArrayOf(13), success = true),
+            decodeCpsRead(SigUuids.UUID_SENSOR_LOCATION, byteArrayOf(13), success = true),
         )
         assertEquals(
-            CpsReadOutcome.Unavailable(BluetoothIds.UUID_CYCLING_POWER_FEATURE),
-            decodeCpsRead(BluetoothIds.UUID_CYCLING_POWER_FEATURE, byteArrayOf(1, 2, 3), true),
+            CpsReadOutcome.Unavailable(SigUuids.UUID_CYCLING_POWER_FEATURE),
+            decodeCpsRead(SigUuids.UUID_CYCLING_POWER_FEATURE, byteArrayOf(1, 2, 3), true),
         )
         assertEquals(CpsReadOutcome.Ignored, decodeCpsRead(UUID.randomUUID(), byteArrayOf(), false))
     }
@@ -73,17 +74,17 @@ class CpsProductionPlumbingTest {
             listOf(ftms, csc, rsc, cps),
             setOf(
                 FtmsUuids.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_CSC_SERVICE,
-                BluetoothIds.UUID_RSC_SERVICE,
-                BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+                SigUuids.UUID_CSC_SERVICE,
+                SigUuids.UUID_RSC_SERVICE,
+                SigUuids.UUID_CYCLING_POWER_SERVICE,
             ),
             offer = { true },
         )
         assertEquals(4, active.size)
         val route = resolveProtocolHandlerRoute(
             active,
-            BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
-            BluetoothIds.UUID_CYCLING_POWER_SERVICE,
+            SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
+            SigUuids.UUID_CYCLING_POWER_SERVICE,
         )
         assertEquals(listOf(cps), route.owners)
         assertSame(cps, route.owners.single())
@@ -107,8 +108,8 @@ class CpsProductionPlumbingTest {
         cccd.mergeEnablePlan(
             listOf(
                 CccdTarget(
-                    BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                    BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
+                    SigUuids.UUID_CYCLING_POWER_SERVICE,
+                    SigUuids.UUID_CYCLING_POWER_MEASUREMENT,
                 ),
             ),
         )

@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 class Concept2Pm5EncoderTest {
     private val sample = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG).run {
@@ -45,8 +46,8 @@ class Concept2Pm5EncoderTest {
     @Test
     fun `FTMS rower pair stays coherent with Concept2 packets from one snapshot`() {
         val general = Concept2Pm5Encoder.generalStatus(sample)
-        val status1 = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1, sample)!!
-        val stroke = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA, sample)!!
+        val status1 = Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1, sample)!!
+        val stroke = Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA, sample)!!
         val (first, second) = Concept2Pm5Encoder.ftmsRower(sample)
 
         assertEquals(u24(general, 3) / 10, u24(first, 3))
@@ -117,10 +118,10 @@ class Concept2Pm5EncoderTest {
 
     @Test
     fun `core individual packets have exact baseline lengths and round trip`() {
-        val general = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_GENERAL_STATUS, sample)!!
-        val status1 = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1, sample)!!
-        val status2 = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_2, sample)!!
-        val stroke = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STROKE_DATA, sample)!!
+        val general = Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_GENERAL_STATUS, sample)!!
+        val status1 = Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1, sample)!!
+        val status2 = Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2, sample)!!
+        val stroke = Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA, sample)!!
         assertEquals(listOf(19, 17, 20, 15), listOf(general.size, status1.size, status2.size, stroke.size))
 
         assertEquals(sample.distanceDecimetres / 10.0, Concept2Measurement.generalStatus(general)!!.distanceMetres!!, 0.001)
@@ -143,13 +144,13 @@ class Concept2Pm5EncoderTest {
     @Test
     fun `complete baseline packets use documented individual and mux widths`() {
         val individualLengths = linkedMapOf(
-            BluetoothIds.UUID_C2_STROKE_DATA to 20,
-            BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA to 18,
-            BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL to 19,
-            BluetoothIds.UUID_C2_WORKOUT_SUMMARY to 20,
-            BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY to 19,
-            BluetoothIds.UUID_C2_HEART_RATE_BELT_INFO to 6,
-            BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2 to 10,
+            Concept2Uuids.UUID_C2_STROKE_DATA to 20,
+            Concept2Uuids.UUID_C2_SPLIT_INTERVAL_DATA to 18,
+            Concept2Uuids.UUID_C2_ADDITIONAL_SPLIT_INTERVAL to 19,
+            Concept2Uuids.UUID_C2_WORKOUT_SUMMARY to 20,
+            Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY to 19,
+            Concept2Uuids.UUID_C2_HEART_RATE_BELT_INFO to 6,
+            Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY_2 to 10,
         )
         individualLengths.forEach { (uuid, length) ->
             assertEquals(length, Concept2Pm5Encoder.individual(uuid, sample)!!.size)
@@ -179,7 +180,7 @@ class Concept2Pm5EncoderTest {
         )
 
         val individual = Concept2Pm5Encoder.individual(
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3,
             status,
         )!!
         assertTrue(expected.contentEquals(individual))
@@ -204,7 +205,7 @@ class Concept2Pm5EncoderTest {
             gameScore = -1,
         )
         val packet = Concept2Pm5Encoder.individual(
-            BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3,
+            Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3,
             status,
         )!!
 
@@ -221,9 +222,9 @@ class Concept2Pm5EncoderTest {
             val snapshot = Concept2Pm5MockEngine(machine).tick(1.0)
             val expected = machine.wireMachineType
             val packets = listOf(
-                Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1, snapshot)!!,
+                Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1, snapshot)!!,
                 Concept2Pm5Encoder.multiplexed(0x32, snapshot)!!,
-                Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL, snapshot)!!,
+                Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_SPLIT_INTERVAL, snapshot)!!,
                 Concept2Pm5Encoder.multiplexed(0x38, snapshot)!!,
             )
             packets.forEach { packet ->
@@ -265,7 +266,7 @@ class Concept2Pm5EncoderTest {
         val general = Concept2Pm5Encoder.generalStatus(extreme)
         assertEquals(0xFF, general[0].toInt() and 0xFF)
         assertEquals(0, general[3].toInt() and 0xFF)
-        val status = Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_1, extreme)!!
+        val status = Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1, extreme)!!
         assertEquals(0xFF, status[3].toInt() and 0xFF)
         assertEquals(0, status[6].toInt() and 0xFF)
     }
@@ -279,27 +280,27 @@ class Concept2Pm5EncoderTest {
         assertEquals(100L, first.periodMs)
         assertEquals(500L, second.periodMs)
 
-        first.setSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, true)
-        first.setSubscribed(BluetoothIds.UUID_C2_GENERAL_STATUS, true)
+        first.setSubscribed(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION, true)
+        first.setSubscribed(Concept2Uuids.UUID_C2_GENERAL_STATUS, true)
         assertEquals(0x32, first.nextMuxId(listOf(0x31, 0x32)))
-        assertFalse(second.isSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION))
+        assertFalse(second.isSubscribed(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION))
         first.reset()
         assertEquals(500L, first.periodMs)
-        assertFalse(first.isSubscribed(BluetoothIds.UUID_C2_GENERAL_STATUS))
+        assertFalse(first.isSubscribed(Concept2Uuids.UUID_C2_GENERAL_STATUS))
     }
 
     @Test
     fun `only workout data subscriptions request the first pull`() {
         val session = Concept2Pm5Session()
-        session.setSubscribed(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, true)
+        session.setSubscribed(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3, true)
         assertFalse(session.hasWorkoutMeasurementSubscription)
 
-        session.setSubscribed(BluetoothIds.UUID_C2_FORCE_CURVE_DATA, true)
+        session.setSubscribed(Concept2Uuids.UUID_C2_FORCE_CURVE_DATA, true)
         assertTrue(session.hasWorkoutMeasurementSubscription)
-        session.setSubscribed(BluetoothIds.UUID_C2_FORCE_CURVE_DATA, false)
+        session.setSubscribed(Concept2Uuids.UUID_C2_FORCE_CURVE_DATA, false)
         assertFalse(session.hasWorkoutMeasurementSubscription)
 
-        session.setSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, true)
+        session.setSubscribed(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION, true)
         assertTrue(session.hasWorkoutMeasurementSubscription)
         session.reset()
         assertFalse(session.hasWorkoutMeasurementSubscription)
@@ -320,13 +321,13 @@ class Concept2Pm5EncoderTest {
     fun `additional status 3 individual subscription suppresses its mux frame`() {
         val session = Concept2Pm5Session()
         val ids = listOf(0x3E, 0x31)
-        session.setSubscribed(BluetoothIds.UUID_C2_MULTIPLEXED_INFORMATION, true)
+        session.setSubscribed(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION, true)
         assertEquals(0x3E, session.nextMuxId(ids))
 
-        session.setSubscribed(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, true)
+        session.setSubscribed(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3, true)
         assertEquals(0x31, session.nextMuxId(ids))
 
-        session.setSubscribed(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, false)
+        session.setSubscribed(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3, false)
         assertEquals(0x3E, session.nextMuxId(ids))
     }
 
@@ -366,7 +367,7 @@ class Concept2Pm5EncoderTest {
         )
         assertEquals(
             listOf(10, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-            Concept2Pm5Encoder.individual(BluetoothIds.UUID_C2_ADDITIONAL_STATUS_3, initial)!!
+            Concept2Pm5Encoder.individual(Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_3, initial)!!
                 .map { it.toInt() and 0xFF },
         )
         assertEquals(
@@ -583,7 +584,7 @@ class Concept2Pm5EncoderTest {
         assertEquals(1, snapshot.splitSequence)
         assertTrue(snapshot.distanceDecimetres >= 100)
         val summary = Concept2Pm5Encoder.individual(
-            BluetoothIds.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY,
+            Concept2Uuids.UUID_C2_ADDITIONAL_WORKOUT_SUMMARY,
             snapshot,
         )!!
         assertEquals(10, u16le(summary, 5))

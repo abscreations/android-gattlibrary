@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 class StrydFootpodGattProfileTest {
 
@@ -13,7 +14,7 @@ class StrydFootpodGattProfileTest {
         assertArrayEquals(
             "Stryd".toByteArray(Charsets.UTF_8),
             requireNotNull(
-                StrydFootpodGattProfile.staticReadValues()[BluetoothIds.UUID_MANUFACTURER_NAME],
+                StrydFootpodGattProfile.staticReadValues()[SigUuids.UUID_MANUFACTURER_NAME],
             ),
         )
     }

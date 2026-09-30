@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /** Typed outcome of decoding one FEC3 write. Never throws; unknown/malformed input is a value. */
 internal sealed interface FeCBleControlCommand {
@@ -45,7 +46,7 @@ internal object FeCBleControlDecoder {
     /** Decode one raw FEC3 write. Malformed envelopes return [FeCBleControlCommand.Rejected]. */
     fun decode(raw: ByteArray): FeCBleControlCommand {
         if (raw.size < 5 || raw.size > 20) return FeCBleControlCommand.Rejected(RejectReason.BAD_LENGTH)
-        if ((raw[0].toInt() and 0xFF) != BluetoothIds.FEC_ANT_SYNC) {
+        if ((raw[0].toInt() and 0xFF) != FecBleUuids.FEC_ANT_SYNC) {
             return FeCBleControlCommand.Rejected(RejectReason.BAD_SYNC)
         }
         // ANT framing: sync + length + msg-id + [length bytes: channel + payload] + checksum, so
@@ -68,12 +69,12 @@ internal object FeCBleControlDecoder {
         }
 
         return when (page) {
-            BluetoothIds.FEC_PAGE_BASIC_RESISTANCE -> decodeBasicResistance(pageBytes)
-            BluetoothIds.FEC_PAGE_TARGET_POWER -> decodeTargetPower(pageBytes)
-            BluetoothIds.FEC_PAGE_WIND_RESISTANCE -> decodeWindResistance(pageBytes)
-            BluetoothIds.FEC_PAGE_TRACK_RESISTANCE -> decodeTrackResistance(pageBytes)
-            BluetoothIds.FEC_PAGE_USER_CONFIGURATION -> decodeUserConfiguration(pageBytes)
-            BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE -> decodeRequestDataPage(pageBytes)
+            FecBleUuids.FEC_PAGE_BASIC_RESISTANCE -> decodeBasicResistance(pageBytes)
+            FecBleUuids.FEC_PAGE_TARGET_POWER -> decodeTargetPower(pageBytes)
+            FecBleUuids.FEC_PAGE_WIND_RESISTANCE -> decodeWindResistance(pageBytes)
+            FecBleUuids.FEC_PAGE_TRACK_RESISTANCE -> decodeTrackResistance(pageBytes)
+            FecBleUuids.FEC_PAGE_USER_CONFIGURATION -> decodeUserConfiguration(pageBytes)
+            FecBleUuids.FEC_PAGE_REQUEST_DATA_PAGE -> decodeRequestDataPage(pageBytes)
             else -> FeCBleControlCommand.Unsupported(page)
         }
     }
@@ -126,7 +127,7 @@ internal object FeCBleControlDecoder {
         val count = if (untilAcknowledged) 1 else response and 0x7F
         val commandType = page[7].toInt() and 0xFF
         if (count == 0 || commandType != 0x01) {
-            return FeCBleControlCommand.Unsupported(BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE)
+            return FeCBleControlCommand.Unsupported(FecBleUuids.FEC_PAGE_REQUEST_DATA_PAGE)
         }
         return FeCBleControlCommand.RequestDataPage(
             requestedPage = page[6].toInt() and 0xFF,
@@ -136,11 +137,11 @@ internal object FeCBleControlDecoder {
         )
     }
     private val KNOWN_CONTROL_PAGES = setOf(
-        BluetoothIds.FEC_PAGE_BASIC_RESISTANCE,
-        BluetoothIds.FEC_PAGE_TARGET_POWER,
-        BluetoothIds.FEC_PAGE_WIND_RESISTANCE,
-        BluetoothIds.FEC_PAGE_TRACK_RESISTANCE,
-        BluetoothIds.FEC_PAGE_USER_CONFIGURATION,
-        BluetoothIds.FEC_PAGE_REQUEST_DATA_PAGE,
+        FecBleUuids.FEC_PAGE_BASIC_RESISTANCE,
+        FecBleUuids.FEC_PAGE_TARGET_POWER,
+        FecBleUuids.FEC_PAGE_WIND_RESISTANCE,
+        FecBleUuids.FEC_PAGE_TRACK_RESISTANCE,
+        FecBleUuids.FEC_PAGE_USER_CONFIGURATION,
+        FecBleUuids.FEC_PAGE_REQUEST_DATA_PAGE,
     )
 }

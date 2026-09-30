@@ -60,10 +60,10 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDebug
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_BODY_SENSOR_LOCATION
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_HEART_RATE_CONTROL_POINT
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_HEART_RATE_MEASUREMENT
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_HRM_SERVICE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_BODY_SENSOR_LOCATION
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_HEART_RATE_CONTROL_POINT
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_HEART_RATE_MEASUREMENT
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_HRM_SERVICE
 import timber.log.Timber
 import java.util.UUID
 import kotlin.math.roundToInt

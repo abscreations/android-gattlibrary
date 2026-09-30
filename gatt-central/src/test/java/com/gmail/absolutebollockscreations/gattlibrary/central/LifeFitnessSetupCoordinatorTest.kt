@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 /**
  * Phase 6 work unit 6.5a — the composition of fingerprint, gate and transcript.
@@ -27,25 +28,25 @@ class LifeFitnessSetupCoordinatorTest {
     ) = LifeFitnessFingerprint.CharacteristicInventory(uuid, writable, notify, cccd)
 
     private fun lifeFitnessInventory(
-        control: UUID = BluetoothIds.UUID_LF_CONTROL_SERVICE,
-        user: UUID = BluetoothIds.UUID_LF_USER_SERVICE,
+        control: UUID = LifeFitnessUuids.UUID_LF_CONTROL_SERVICE,
+        user: UUID = LifeFitnessUuids.UUID_LF_USER_SERVICE,
         withStatus: Boolean = true,
     ) = listOf(
         LifeFitnessFingerprint.ServiceInventory(
             control,
             buildList {
-                add(ch(BluetoothIds.UUID_LF_CONTROL_1))
-                add(ch(BluetoothIds.UUID_LF_CONTROL_2))
+                add(ch(LifeFitnessUuids.UUID_LF_CONTROL_1))
+                add(ch(LifeFitnessUuids.UUID_LF_CONTROL_2))
                 if (withStatus) {
-                    add(ch(BluetoothIds.UUID_LF_STATUS, writable = false, notify = true, cccd = true))
+                    add(ch(LifeFitnessUuids.UUID_LF_STATUS, writable = false, notify = true, cccd = true))
                 }
             },
         ),
         LifeFitnessFingerprint.ServiceInventory(
             user,
             listOf(
-                ch(BluetoothIds.UUID_LF_VENDOR_TOKEN_1),
-                ch(BluetoothIds.UUID_LF_VENDOR_TOKEN_2),
+                ch(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_1),
+                ch(LifeFitnessUuids.UUID_LF_VENDOR_TOKEN_2),
             ),
         ),
     )
@@ -113,7 +114,7 @@ class LifeFitnessSetupCoordinatorTest {
 
     @Test
     fun `the transcript targets the discovered parents, not the canonical constants`() {
-        // D52's whole purpose. Building against BluetoothIds.UUID_LF_CONTROL_SERVICE would look
+        // D52's whole purpose. Building against LifeFitnessUuids.UUID_LF_CONTROL_SERVICE would look
         // correct on every machine that matches the capture and silently fail on the variant the
         // runtime rule exists to support.
         val variantControl = UUID.fromString("11111111-2222-3333-4444-555555555555")

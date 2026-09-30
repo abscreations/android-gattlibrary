@@ -26,6 +26,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.EngineMetricPu
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsMetricStore
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.providerMeasurementCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 
 class KayakFirstDownstreamContractTest {
     @Test
@@ -37,7 +38,7 @@ class KayakFirstDownstreamContractTest {
             MetricSourceId(
                 ConnectionId("AA:BB:CC:DD:EE:FF", 8),
                 MetricProtocol.VENDOR,
-                BluetoothIds.UUID_KAYAK_FIRST_IO,
+                KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             ),
             MetricSourceClass.VENDOR_NATIVE,
             1_001,
@@ -66,7 +67,7 @@ class KayakFirstDownstreamContractTest {
                 MetricSourceId(
                     ConnectionId("AA:BB:CC:DD:EE:FF", 8),
                     MetricProtocol.VENDOR,
-                    BluetoothIds.UUID_KAYAK_FIRST_IO,
+                    KayakFirstUuids.UUID_KAYAK_FIRST_IO,
                 ),
                 sample.sourceClass,
                 1_001,
@@ -79,7 +80,7 @@ class KayakFirstDownstreamContractTest {
                 MetricSourceId(
                     ConnectionId("AA:BB:CC:DD:EE:FF", 8),
                     MetricProtocol.VENDOR,
-                    BluetoothIds.UUID_KAYAK_FIRST_IO,
+                    KayakFirstUuids.UUID_KAYAK_FIRST_IO,
                 ),
                 sample.sourceClass,
                 1_001,
@@ -151,7 +152,7 @@ class KayakFirstDownstreamContractTest {
     fun `Kayak First rower advertises only evidenced fresh measurements`() {
         val capabilities = providerMeasurementCapabilities(
             FtmsMachineProfile.INDOOR_ROWER,
-            setOf(BluetoothIds.UUID_KAYAK_FIRST_SERVICE),
+            setOf(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE),
         )
         assertTrue(capabilities.cadence)
         assertTrue(capabilities.totalDistance)
