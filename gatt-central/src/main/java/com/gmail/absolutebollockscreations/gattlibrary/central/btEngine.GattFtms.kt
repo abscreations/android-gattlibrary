@@ -100,6 +100,7 @@ import android.bluetooth.*
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsResistanceScale
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_BIKING_DATA
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids.UUID_CCCD
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_ELLIPTICAL_DATA

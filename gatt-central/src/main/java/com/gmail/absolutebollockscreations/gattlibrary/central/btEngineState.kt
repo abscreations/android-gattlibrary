@@ -408,7 +408,7 @@ class BtEngineState : HrmStateSink {
 
     /**
      * Latched once a machine's Cross Trainer resistance field has been shown to
-     * carry raw levels rather than the spec's tenths. See [FtmsResistanceScale].
+     * carry raw levels rather than the spec's tenths. See [com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsResistanceScale].
      *
      * Latched rather than re-decided per sample because the evidence is only
      * present while the machine is under load. At rest it reports 0, which is

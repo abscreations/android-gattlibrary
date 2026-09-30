@@ -1,6 +1,6 @@
-package com.gmail.absolutebollockscreations.gattlibrary.central
+package com.gmail.absolutebollockscreations.gattlibrary.core.ftms
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.FtmsResistanceScale.Encoding
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsResistanceScale.Encoding
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

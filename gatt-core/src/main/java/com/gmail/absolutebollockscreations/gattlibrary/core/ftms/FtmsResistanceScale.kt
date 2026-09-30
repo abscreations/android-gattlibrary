@@ -1,13 +1,10 @@
-package com.gmail.absolutebollockscreations.gattlibrary.peripheral
+package com.gmail.absolutebollockscreations.gattlibrary.core.ftms
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Server-side copy of central's `FtmsResistanceScale` (LIB-19f). The server layer cannot depend on central,
- * and per L23 behavior is not shared through core, so both sides keep the same rule; parity is pinned by a
- * copy of central's test (`FtmsResistanceScaleTest`) and belongs in `gatt-conformance` later.
- *
  * Decides whether a machine's Cross Trainer Resistance Level field is in the
  * spec's tenths or in raw whole levels, using the machine's own declared range.
  *
@@ -40,6 +37,12 @@ import kotlin.math.roundToInt
  * The default is deliberately the spec. A guess is only preferred over the
  * standard where the device has published evidence contradicting it.
  *
+ * ### Core placement (L23 note)
+ *
+ * Stateless, dependency-free interpretation rule that central (upstream reads) and the server
+ * (downstream control point) must apply identically. It lives here so there is a single copy; it
+ * is the first entry under the L23 "shared interpretation rules" amendment. No state, no I/O.
+ *
  * ### Stickiness
  *
  * [decide] is pure and per-sample; callers latch the first non-default answer
@@ -47,10 +50,11 @@ import kotlin.math.roundToInt
  * would produce a 10x step in the recorded activity, which is worse than being
  * consistently wrong.
  */
-internal object FtmsResistanceScale {
+@GattLibraryInternalApi
+public object FtmsResistanceScale {
 
     /** How a machine encodes Resistance Level on its data characteristic. */
-    enum class Encoding {
+    public enum class Encoding {
         /** Spec: `DecimalExponent -1`, so the wire value is levels x 10. */
         TENTHS,
 
@@ -59,7 +63,7 @@ internal object FtmsResistanceScale {
         ;
 
         /** Wire value -> public level. */
-        fun toLevel(raw: Int): Float = if (this == TENTHS) raw / 10f else raw.toFloat()
+        public fun toLevel(raw: Int): Float = if (this == TENTHS) raw / 10f else raw.toFloat()
     }
 
     /**
@@ -69,7 +73,7 @@ internal object FtmsResistanceScale {
      * @param incr  declared increment, in levels; <= 0 means unknown
      * @param known false when `0x2AD6` has not been read, which forces the spec
      */
-    fun decide(
+    public fun decide(
         raw: Int,
         min: Float,
         max: Float,

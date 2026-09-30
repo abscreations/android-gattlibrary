@@ -2285,20 +2285,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/FtmsQ
 	public final fun getCHARACTERISTICS_CONSULTING_REGISTRY ()Ljava/util/Set;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale;
-	public final fun decide (IFFFZ)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale$Encoding;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale$Encoding : java/lang/Enum {
-	public static final field RAW_LEVELS Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale$Encoding;
-	public static final field TENTHS Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale$Encoding;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun toLevel (I)F
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale$Encoding;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsResistanceScale$Encoding;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FusionPersona : java/lang/Enum {
 	public static final field RIDE Lcom/gmail/absolutebollockscreations/gattlibrary/central/FusionPersona;
 	public static final field ROW_PADDLE Lcom/gmail/absolutebollockscreations/gattlibrary/central/FusionPersona;

@@ -268,7 +268,7 @@ object BtEngineFtmsParsers {
      * @param resistanceToLevel wire value -> public level for `0x2ACE`.
      * Defaults to the spec's tenths. The caller overrides it when the machine's
      * Supported Resistance Level Range contradicts that reading - see
-     * [FtmsResistanceScale], and note that the elliptical captured on
+     * [com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsResistanceScale], and note that the elliptical captured on
      * 2026-08-06 is one such machine.
      */
     fun doElliptical(
