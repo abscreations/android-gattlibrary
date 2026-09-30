@@ -27,6 +27,14 @@ data class FtmsMeasurementCapabilities(
     val elapsedTime: Boolean = true,
     val power: Boolean = false,
     val forceOnBeltAndPowerOutput: Boolean = false,
+    /**
+     * Claims Feature bit 11. The encoders can send the field, but no profile default claims it: no
+     * source in the bridge supplies Metabolic Equivalent yet, and claiming a measurement that is
+     * never sent is the defect `measurementCapabilities` was written to remove.
+     */
+    val metabolicEquivalent: Boolean = false,
+    /** Claims Feature bit 13. Same reasoning as [metabolicEquivalent]. */
+    val remainingTime: Boolean = false,
 ) {
     fun toFeatureBits(): Int {
         val f = FtmsSpec.Feature
@@ -45,6 +53,8 @@ data class FtmsMeasurementCapabilities(
         if (elapsedTime) bits = bits or (1 shl f.ELAPSED_TIME)
         if (power) bits = bits or (1 shl f.POWER_MEASUREMENT)
         if (forceOnBeltAndPowerOutput) bits = bits or (1 shl f.FORCE_ON_BELT_AND_POWER)
+        if (metabolicEquivalent) bits = bits or (1 shl f.METABOLIC_EQUIVALENT)
+        if (remainingTime) bits = bits or (1 shl f.REMAINING_TIME)
         return bits
     }
 }

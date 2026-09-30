@@ -5,7 +5,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.server.BtServiceProfiles
 import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsDataEncoders
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMeasurementCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
 import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.server.TreadmillNativePaceInput
 import com.gmail.absolutebollockscreations.gattlibrary.server.buildFtmsFeaturePayload
@@ -83,7 +85,7 @@ class FtmsStructuralTest {
 
     // ── helpers ──
 
-    private fun fullSnapshot(nativePace: Boolean) = FtmsMetricSnapshot(
+    private fun fullSnapshot(nativePace: Boolean, extended: Boolean = false) = FtmsMetricSnapshot(
         speedKph = 20.0,
         averageSpeedKph = 19.0,
         paceSecondsPer500m = 120.0,
@@ -99,6 +101,8 @@ class FtmsStructuralTest {
         caloriesTotal = 50,
         caloriesPerHour = 400,
         caloriesPerMinute = 7,
+        metabolicEquivalent = if (extended) 8.5 else null,
+        remainingTimeSeconds = if (extended) 600 else null,
         resistance = 5f,
         inclinationPercent = 2.0,
         positiveElevationGainMeters = 10.0,
@@ -125,7 +129,7 @@ class FtmsStructuralTest {
 
     /** Flag bits (above bit 0) the encoder can emit for [profile]. */
     private fun emittable(profile: FtmsMachineProfile): Set<Int> =
-        bitsOf(flagsOf(profile, singlePacket(profile, fullSnapshot(nativePace = true))))
+        bitsOf(flagsOf(profile, singlePacket(profile, fullSnapshot(nativePace = true, extended = true))))
 
     // ── well-formedness ──
 
@@ -199,6 +203,66 @@ class FtmsStructuralTest {
         assertEquals("flags (2) + cadence (2) only", 4, packet.size)
     }
 
+    @Test
+    fun `Metabolic Equivalent and Remaining Time land in the right bits, octets and order for every profile`() {
+        // profile -> (MET flag bit, Remaining Time flag bit), from tables 4.5 to 4.10.
+        val bits = mapOf(
+            FtmsMachineProfile.INDOOR_BIKE to (10 to 12),
+            FtmsMachineProfile.TREADMILL to (9 to 11),
+            FtmsMachineProfile.ELLIPTICAL to (12 to 14),
+            FtmsMachineProfile.INDOOR_ROWER to (10 to 12),
+            FtmsMachineProfile.STAIR_STEPPER to (6 to 8),
+            FtmsMachineProfile.STAIR_CLIMBER to (7 to 9),
+        )
+        assertEquals(bits.keys, profiles.toSet())
+        for (profile in profiles) {
+            // Only the mandatory fields plus the two new ones, so they are the last three octets.
+            val snapshot = FtmsMetricSnapshot(
+                cadence = if (profile == FtmsMachineProfile.INDOOR_ROWER) 30.0 else null,
+                strokeCount = if (profile == FtmsMachineProfile.INDOOR_ROWER) 10 else null,
+                metabolicEquivalent = 8.5,
+                remainingTimeSeconds = 600,
+            )
+            val packet = singlePacket(profile, snapshot)
+            val (met, remaining) = bits.getValue(profile)
+            assertEquals("$profile flags", setOf(met, remaining), bitsOf(flagsOf(profile, packet)))
+            assertEquals("$profile MET octet (8.5 METs = 85)", 85, packet[packet.size - 3].toInt() and 0xFF)
+            assertEquals("$profile Remaining Time low octet (600 s)", 0x58, packet[packet.size - 2].toInt() and 0xFF)
+            assertEquals("$profile Remaining Time high octet", 0x02, packet[packet.size - 1].toInt() and 0xFF)
+        }
+    }
+
+    @Test
+    fun `Metabolic Equivalent and Remaining Time are absent unless supplied, and claimed only when opted in`() {
+        for (profile in profiles) {
+            val without = bitsOf(flagsOf(profile, singlePacket(profile, fullSnapshot(nativePace = false))))
+            val with = bitsOf(flagsOf(profile, singlePacket(profile, fullSnapshot(nativePace = false, extended = true))))
+            assertEquals("$profile adds exactly two flag bits", 2, (with - without).size)
+            assertEquals("$profile drops none", emptySet<Int>(), without - with)
+            // No default claims them: nothing in the bridge supplies either field yet.
+            val claimed = bitsOf(profile.featureBits, from = 0)
+            assertTrue("$profile default Feature bits claim neither", 11 !in claimed && 13 !in claimed)
+        }
+        val optedIn = FtmsMeasurementCapabilities(metabolicEquivalent = true, remainingTime = true).toFeatureBits()
+        assertEquals("opt-in sets Feature bits 11 and 13 only over the defaults",
+            FtmsMeasurementCapabilities().toFeatureBits() or (1 shl 11) or (1 shl 13), optedIn)
+    }
+
+    @Test
+    fun `a stale snapshot zeroes Metabolic Equivalent and holds Remaining Time`() {
+        val store = FtmsMetricStore()
+        store.update(fullSnapshot(nativePace = false, extended = true).copy(updatedAtMs = 1_000L))
+
+        val fresh = requireNotNull(store.snapshotForNotification(nowMs = 1_000L + 1))
+        assertEquals(8.5, fresh.metabolicEquivalent!!, 0.0)
+        assertEquals(600, fresh.remainingTimeSeconds)
+
+        val stale = requireNotNull(store.snapshotForNotification(nowMs = 1_000L + FtmsMetricSnapshot.METRIC_FRESHNESS_MS + 1))
+        assertEquals("instantaneous, zeroed", 0.0, stale.metabolicEquivalent!!, 0.0)
+        assertEquals("countdown, held", 600, stale.remainingTimeSeconds)
+        assertEquals("cumulative, held", 300, stale.elapsedSeconds)
+    }
+
     // ── representability ──
 
     private val tmiwMachines = listOf(
@@ -208,17 +272,12 @@ class FtmsStructuralTest {
         "stages_sb20", "step_climber", "technogym_skillrow", "true_treadmill", "yesoul_s3",
     )
 
-    /** Defined flag bits machines send that no persona encoder can emit (Metabolic Equivalent, Remaining Time, Movement Direction). */
-    private val declaredUnsupportedDefined = mapOf(
-        "concept2_old_ftms" to setOf(10, 12),
-        "life_fitness_cross_trainer" to setOf(14),
-        "life_fitness_indoor_bike" to setOf(12),
-        "life_fitness_treadmill" to setOf(11),
-        "matrix_bike" to setOf(10, 12),
-        "matrix_treadmill" to setOf(9, 11),
-        "technogym_skillrow" to setOf(10),
-        "true_treadmill" to setOf(9),
-    )
+    /**
+     * Defined flag bits machines send that no persona encoder can emit. Empty since LIB-24 added
+     * Metabolic Equivalent and Remaining Time, which were every gap LIB-23 found. Movement
+     * Direction (Cross Trainer bit 15) is defined, is not emitted, and no captured machine sends it.
+     */
+    private val declaredUnsupportedDefined = emptyMap<String, Set<Int>>()
 
     /** Reserved (undefined) flag bits some machines set anyway; no encoder should emit these. */
     private val declaredReservedSeen = mapOf(

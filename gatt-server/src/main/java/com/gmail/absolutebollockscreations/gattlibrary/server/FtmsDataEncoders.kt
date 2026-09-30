@@ -150,6 +150,13 @@ object FtmsDataEncoders {
 
     private fun elapsedField(sec: Int): ByteArray = u16Wrapping(sec.coerceIn(0, 0xFFFF))
 
+    /** Metabolic Equivalent: uint8, 0.1 MET resolution (FTMS Table 4.5 to 4.10, same field in all six). */
+    private fun metabolicEquivalentField(mets: Double): ByteArray =
+        u8Wrapping((mets * 10.0).roundToInt().coerceIn(0, 0xFF))
+
+    /** Remaining Time: uint16 whole seconds. */
+    private fun remainingTimeField(sec: Int): ByteArray = u16Wrapping(sec.coerceIn(0, 0xFFFF))
+
     /**
      * Cross Trainer Resistance Level, scaled by [CROSS_TRAINER_TENTHS_SCALE].
      *
@@ -217,8 +224,10 @@ object FtmsDataEncoders {
         s.averagePowerWatts?.let { optionals += FtmsField(7, s16Wrapping(it.coerceIn(-32768, 32767))) }
         if (s.caloriesTotal != null) optionals += FtmsField(8, energyField(s))
         s.heartRate?.let { optionals += FtmsField(9, hrField(it)) }
+        s.metabolicEquivalent?.let { optionals += FtmsField(10, metabolicEquivalentField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(11, elapsedField(it)) }
         elapsed?.let { optionals += it }
+        s.remainingTimeSeconds?.let { optionals += FtmsField(12, remainingTimeField(it)) }
 
         if (speedKph == null && optionals.isEmpty()) return emptyList()
 
@@ -276,8 +285,10 @@ object FtmsDataEncoders {
         }
         if (s.caloriesTotal != null) optionals += FtmsField(7, energyField(s))
         s.heartRate?.let { optionals += FtmsField(8, hrField(it)) }
+        s.metabolicEquivalent?.let { optionals += FtmsField(9, metabolicEquivalentField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(10, elapsedField(it)) }
         elapsed?.let { optionals += it }
+        s.remainingTimeSeconds?.let { optionals += FtmsField(11, remainingTimeField(it)) }
         if (s.forceOnBeltNewtons != null && s.powerWatts != null) {
             optionals += FtmsField(12, forceAndPowerField(s.forceOnBeltNewtons, s.powerWatts))
         }
@@ -335,8 +346,10 @@ object FtmsDataEncoders {
         s.averagePowerWatts?.let { optionals += FtmsField(9, s16Wrapping(it.coerceIn(-32768, 32767))) }
         if (s.caloriesTotal != null) optionals += FtmsField(10, energyField(s))
         s.heartRate?.let { optionals += FtmsField(11, hrField(it)) }
+        s.metabolicEquivalent?.let { optionals += FtmsField(12, metabolicEquivalentField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(13, elapsedField(it)) }
         elapsed?.let { optionals += it }
+        s.remainingTimeSeconds?.let { optionals += FtmsField(14, remainingTimeField(it)) }
 
         // Was `maxPayload == MAX_PAYLOAD`, which only ever fired at exactly 20
         // octets. Now that the caller enables this for any MTU below 30, a link
@@ -463,8 +476,10 @@ object FtmsDataEncoders {
         s.resistance?.let { optionals += FtmsField(7, unscaledResistanceField(it)) }
         if (s.caloriesTotal != null) optionals += FtmsField(8, energyField(s))
         s.heartRate?.let { optionals += FtmsField(9, hrField(it)) }
+        s.metabolicEquivalent?.let { optionals += FtmsField(10, metabolicEquivalentField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(11, elapsedField(it)) }
         elapsed?.let { optionals += it }
+        s.remainingTimeSeconds?.let { optionals += FtmsField(12, remainingTimeField(it)) }
 
         return FtmsPacker.pack(
             flagsWidth = 2,
@@ -505,8 +520,10 @@ object FtmsDataEncoders {
         }
         if (s.caloriesTotal != null) optionals += FtmsField(4, energyField(s))
         s.heartRate?.let { optionals += FtmsField(5, hrField(it)) }
+        s.metabolicEquivalent?.let { optionals += FtmsField(6, metabolicEquivalentField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(7, elapsedField(it)) }
         elapsed?.let { optionals += it }
+        s.remainingTimeSeconds?.let { optionals += FtmsField(8, remainingTimeField(it)) }
 
         return FtmsPacker.pack(
             flagsWidth = 2,
@@ -546,8 +563,10 @@ object FtmsDataEncoders {
         s.strokeCount?.let { optionals += FtmsField(4, u16Wrapping(it.coerceIn(0, 0xFFFF))) }
         if (s.caloriesTotal != null) optionals += FtmsField(5, energyField(s))
         s.heartRate?.let { optionals += FtmsField(6, hrField(it)) }
+        s.metabolicEquivalent?.let { optionals += FtmsField(7, metabolicEquivalentField(it)) }
         val elapsed = s.elapsedSeconds?.let { FtmsField(8, elapsedField(it)) }
         elapsed?.let { optionals += it }
+        s.remainingTimeSeconds?.let { optionals += FtmsField(9, remainingTimeField(it)) }
 
         return FtmsPacker.pack(
             flagsWidth = 2,

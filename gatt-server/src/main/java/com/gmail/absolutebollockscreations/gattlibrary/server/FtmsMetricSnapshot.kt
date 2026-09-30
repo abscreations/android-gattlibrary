@@ -47,6 +47,17 @@ data class FtmsMetricSnapshot(
     val caloriesPerHour: Int? = null,
     val caloriesPerMinute: Int? = null,
     /**
+     * Metabolic Equivalent in METs (FTMS uint8, 0.1 resolution). Instantaneous: zeroed when the
+     * source goes stale. Nothing in the bridge populates it yet; only a source that supplies it
+     * (and a capability that claims Feature bit 11) should set it.
+     */
+    val metabolicEquivalent: Double? = null,
+    /**
+     * Seconds remaining in a programmed workout (FTMS uint16). A countdown, so held rather than
+     * zeroed when stale. As with [metabolicEquivalent], nothing populates it yet.
+     */
+    val remainingTimeSeconds: Int? = null,
+    /**
      * Machine resistance level, in public units - the number a console would
      * show, not the wire encoding.
      *
@@ -266,8 +277,9 @@ class FtmsMetricStore {
             inclinationPercent = current.inclinationPercent?.let { 0.0 },
             caloriesPerHour = current.caloriesPerHour?.let { 0 },
             caloriesPerMinute = current.caloriesPerMinute?.let { 0 },
+            metabolicEquivalent = current.metabolicEquivalent?.let { 0.0 },
             // Held (cumulative / session-average): distanceMeters, elapsedSeconds,
-            // caloriesTotal, strokeCount, averageSpeedKph,
+            // caloriesTotal, remainingTimeSeconds, strokeCount, averageSpeedKph,
             // averagePaceSecondsPer500m, averageCadence, averagePowerWatts.
         )
     }

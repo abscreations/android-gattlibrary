@@ -67,6 +67,35 @@ class PrecorGoldenTest {
     }
 
     @Test
+    fun theTenTmiwCasesAreReproducedApartFromTheUnidentifiedField() {
+        // tmiw/precor_spinner_chrono.json is transcribed from TMIW's test, so its provenance is
+        // weaker than the physical capture; it adds machines the capture lacks (40 to 102 rpm,
+        // heart rate, a stopped frame). It does not decode octets 15-16 (the unidentified work
+        // field), so those two octets are excluded; everything else must match.
+        val cases = Fixtures.objects(Fixtures.json("tmiw/precor_spinner_chrono.json")["cases"])
+        assertEquals(10, cases.size)
+        cases.forEach { c ->
+            val e = FixtureJson.obj(c["expect"])
+            val golden = Fixtures.bytes(c["packet"])
+            val encoded = PrecorChronoEncoder.encode(
+                FtmsMockSample(
+                    elapsedSeconds = FixtureJson.int(e["elapsedSeconds"]),
+                    heartRate = FixtureJson.int(e["heartRateBpm"]),
+                    caloriesTotal = FixtureJson.int(e["calories"]),
+                    caloriesPerHour = 0,
+                    caloriesPerMinute = 0,
+                    speedKph = FixtureJson.double(e["speedKph"]),
+                    distanceMeters = FixtureJson.int(e["distanceMetres"]),
+                    cadence = FixtureJson.double(e["cadenceRpm"]),
+                    powerWatts = FixtureJson.int(e["powerWatts"]),
+                ),
+            )
+            listOf(15, 16).forEach { golden[it] = 0; encoded[it] = 0 }
+            assertArrayEquals("TMIW case ${c["name"]}", golden, encoded)
+        }
+    }
+
+    @Test
     fun theLiteralSampleInTheEncoderTestIsTheFirstCapturedMeasurement() {
         val first = FixtureJson.obj(measurements.first()["expect"])
         assertEquals(446, FixtureJson.int(first["elapsedSeconds"]))
