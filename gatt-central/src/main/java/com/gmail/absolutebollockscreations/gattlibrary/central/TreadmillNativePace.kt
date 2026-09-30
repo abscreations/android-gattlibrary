@@ -1,5 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
 /**
  * Raw FTMS Treadmill Data pace octets, preserved for lossless downstream re-emission.
  *
@@ -35,9 +38,14 @@ data class TreadmillNativePaceSnapshot(
 
 internal class TreadmillNativePaceStore {
     private val entries = linkedMapOf<ConnectionId, TreadmillNativePaceSnapshot>()
+    private val mutableRevision = MutableStateFlow(0L)
+
+    /** Bumped on every mutation so a consumer can tell when [snapshot] may have changed. */
+    val revision: StateFlow<Long> get() = mutableRevision
 
     @Synchronized
     fun publish(connectionId: ConnectionId, instantaneousRaw: Int?, averageRaw: Int?) {
+        mutableRevision.value += 1
         if (instantaneousRaw == null && averageRaw == null) return
         val previous = entries[connectionId]
         entries[connectionId] = TreadmillNativePaceSnapshot(
@@ -48,11 +56,13 @@ internal class TreadmillNativePaceStore {
 
     @Synchronized
     fun remove(connectionId: ConnectionId) {
+        mutableRevision.value += 1
         entries.remove(connectionId)
     }
 
     @Synchronized
     fun clear() {
+        mutableRevision.value += 1
         entries.clear()
     }
 

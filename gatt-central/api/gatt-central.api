@@ -1514,6 +1514,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/CscNa
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventStore {
 	public fun <init> ()V
 	public final fun clear ()V
+	public final fun getRevision ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun publish (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscMeasurement$Reading;Ljava/util/Set;)V
 	public final fun remove (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;)V
 	public final fun snapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;
@@ -1541,6 +1542,25 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/CscWo
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscWorkoutPersona;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscWorkoutPersona;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Long;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCumulativeCrankRevolutions ()Ljava/lang/Integer;
+	public final fun getCumulativeWheelRevolutions ()Ljava/lang/Long;
+	public final fun getLastCrankEventTimeTicks ()Ljava/lang/Integer;
+	public final fun getLastWheelEventTimeTicks ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle {
@@ -2049,6 +2069,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun disconnect (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun getConnections ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getDiscovery ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getMeasurements ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun startScan (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public static synthetic fun startScan$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
@@ -3609,6 +3630,76 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Match
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;)V
+	public synthetic fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Double;
+	public final fun component10 ()Ljava/lang/Integer;
+	public final fun component11 ()Ljava/lang/Integer;
+	public final fun component12 ()Ljava/lang/Integer;
+	public final fun component13 ()Ljava/lang/Integer;
+	public final fun component14 ()Ljava/lang/Integer;
+	public final fun component15 ()Ljava/lang/Integer;
+	public final fun component16 ()Ljava/lang/Integer;
+	public final fun component17 ()Ljava/lang/Double;
+	public final fun component18 ()Ljava/lang/Double;
+	public final fun component19 ()Ljava/lang/Double;
+	public final fun component2 ()Ljava/lang/Double;
+	public final fun component20 ()Ljava/lang/Double;
+	public final fun component21 ()Ljava/lang/Integer;
+	public final fun component22 ()Ljava/lang/Integer;
+	public final fun component23 ()Ljava/lang/Double;
+	public final fun component24 ()Ljava/lang/Integer;
+	public final fun component25 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;
+	public final fun component26 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;
+	public final fun component27 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;
+	public final fun component3 ()Ljava/lang/Double;
+	public final fun component4 ()Ljava/lang/Double;
+	public final fun component5 ()Ljava/lang/Double;
+	public final fun component6 ()Ljava/lang/Double;
+	public final fun component7 ()Ljava/lang/Double;
+	public final fun component8 ()Ljava/lang/Integer;
+	public final fun component9 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAscentMeters ()Ljava/lang/Double;
+	public final fun getAverageCadence ()Ljava/lang/Double;
+	public final fun getAveragePaceMinPerKm ()Ljava/lang/Double;
+	public final fun getAveragePowerWatts ()Ljava/lang/Integer;
+	public final fun getAverageSpeedKph ()Ljava/lang/Double;
+	public final fun getCadence ()Ljava/lang/Double;
+	public final fun getCpsEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;
+	public final fun getCscEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CycleSensorEvents;
+	public final fun getDescentMeters ()Ljava/lang/Double;
+	public final fun getDistanceMeters ()Ljava/lang/Integer;
+	public final fun getElapsedSeconds ()Ljava/lang/Integer;
+	public final fun getEnergyKcal ()Ljava/lang/Integer;
+	public final fun getEnergyRateKcalPerHour ()Ljava/lang/Integer;
+	public final fun getFloors ()Ljava/lang/Integer;
+	public final fun getForceOnBeltNewtons ()Ljava/lang/Integer;
+	public final fun getHeartRate ()Ljava/lang/Integer;
+	public final fun getHeartRateZone ()Ljava/lang/Integer;
+	public final fun getInclinationPercent ()Ljava/lang/Double;
+	public final fun getPaceMinPerKm ()Ljava/lang/Double;
+	public final fun getPowerWatts ()Ljava/lang/Integer;
+	public final fun getResistance ()Ljava/lang/Double;
+	public final fun getSpeedKph ()Ljava/lang/Double;
+	public final fun getStepCount ()Ljava/lang/Integer;
+	public final fun getStrideCount ()Ljava/lang/Double;
+	public final fun getStrokeCount ()Ljava/lang/Integer;
+	public final fun getStrokeRate ()Ljava/lang/Double;
+	public final fun getTreadmillRawPace ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot$Companion {
+	public final fun getEMPTY ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MetricEmitter {
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricFusion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceClass;JLjava/lang/Long;)V
 	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricFusion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceClass;JLjava/lang/Long;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -4611,6 +4702,21 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Tread
 	public final fun component2 ()Ljava/lang/Integer;
 	public final fun copy (Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;
 	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAverageRaw ()Ljava/lang/Integer;
+	public final fun getInstantaneousRaw ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillRawPace;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAverageRaw ()Ljava/lang/Integer;
 	public final fun getInstantaneousRaw ()Ljava/lang/Integer;

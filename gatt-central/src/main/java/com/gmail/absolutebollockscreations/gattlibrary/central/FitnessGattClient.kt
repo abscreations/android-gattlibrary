@@ -23,6 +23,10 @@ public class FitnessGattClient internal constructor(
     private val mutableConnections = MutableStateFlow(connectionSnapshot())
     public val discovery: StateFlow<DiscoverySnapshot> = mutableDiscovery.asStateFlow()
     public val connections: StateFlow<ConnectionSnapshot> = mutableConnections.asStateFlow()
+    private val mutableMeasurements = MutableStateFlow(backend.state.toMeasurementSnapshot())
+
+    /** Fused metrics of the connected machine in canonical units; fields are null while absent (unit 4a). */
+    public val measurements: StateFlow<MeasurementSnapshot> = mutableMeasurements.asStateFlow()
 
     init {
         scope.launch {
@@ -33,6 +37,12 @@ public class FitnessGattClient internal constructor(
                 backend.state.connectionState.map { Unit }, backend.state.machineProbe.map { Unit },
                 backend.state.cccdReady.map { Unit },
             ).collect { synchronized(lock) { if (!closed) refresh() } }
+        }
+        scope.launch {
+            // StateFlow drops equal snapshots, so redundant engine pings cost one projection, not a re-emission.
+            merge(*backend.state.measurementChanges().toTypedArray()).collect {
+                synchronized(lock) { if (!closed) mutableMeasurements.value = backend.state.toMeasurementSnapshot() }
+            }
         }
     }
 
@@ -109,6 +119,7 @@ public class FitnessGattClient internal constructor(
         try { backend.close() } finally {
             scope.cancel()
             mutableDiscovery.value = DiscoverySnapshot(false, false, emptyList(), null)
+            mutableMeasurements.value = MeasurementSnapshot.EMPTY
             mutableConnections.value = ConnectionSnapshot(emptyList(), null, ConnectionStatus.DISCONNECTED, MachineProbeState.IDLE, false)
         }
     }

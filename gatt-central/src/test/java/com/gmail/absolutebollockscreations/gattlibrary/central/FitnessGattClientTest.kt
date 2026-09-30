@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -255,6 +256,60 @@ class FitnessGattClientTest {
         runCurrent()
         assertEquals(2, client.connections.value.links.size)
         client.close()
+    }
+
+    @Test
+    fun `measurements follow engine state and equal re-writes do not re-emit`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        assertEquals(MeasurementSnapshot.EMPTY, client.measurements.value)
+
+        backend.state.setInstantPower(180)
+        backend.state.setHeartRate(140)
+        runCurrent()
+        assertEquals(180, client.measurements.value.powerWatts)
+        assertEquals(140, client.measurements.value.heartRate)
+
+        val emitted = mutableListOf<MeasurementSnapshot>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { client.measurements.collect { emitted += it } }
+        backend.state.setInstantPower(180) // equal write
+        runCurrent()
+        assertEquals(1, emitted.size)
+        backend.state.setInstantPower(null)
+        runCurrent()
+        assertEquals(2, emitted.size)
+        assertEquals(null, emitted.last().powerWatts)
+        job.cancel()
+        client.close()
+    }
+
+    @Test
+    fun `native event stores are not flows but still drive a new measurement snapshot`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        backend.state.treadmillNativePace.publish(ConnectionId("AA:01", 1L), 12, 10)
+        runCurrent()
+        assertEquals(TreadmillRawPace(12, 10), client.measurements.value.treadmillRawPace)
+        backend.state.treadmillNativePace.clear()
+        runCurrent()
+        assertEquals(null, client.measurements.value.treadmillRawPace)
+        client.close()
+    }
+
+    @Test
+    fun `closing the client empties its measurements and stops following the engine`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        backend.state.setInstantPower(150)
+        runCurrent()
+        assertEquals(150, client.measurements.value.powerWatts)
+        client.close()
+        assertEquals(MeasurementSnapshot.EMPTY, client.measurements.value)
+        backend.state.setInstantPower(160)
+        runCurrent()
+        assertEquals(MeasurementSnapshot.EMPTY, client.measurements.value)
     }
 
     private fun TestScope.client(backend: Backend) = FitnessGattClient(
