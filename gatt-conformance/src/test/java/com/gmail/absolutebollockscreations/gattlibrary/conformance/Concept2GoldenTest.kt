@@ -12,9 +12,15 @@ import java.util.UUID
 import kotlin.math.roundToLong
 
 /**
- * L25 golden check for the Concept2 PM5 encoder against `hardware/concept2_pm5_qz_debug.json`
- * (QZ application debug logs from two physical RowErgs and a BikeErg; application layer, not raw
- * HCI, so this is evidence of what the PM5 sent, not of the radio exchange).
+ * L25 golden check for the Concept2 PM5 encoder against two corpora with the same `vectors` schema:
+ *
+ * - `hardware/concept2_pm5_qz_debug.json`: QZ application debug logs from two physical RowErgs and
+ *   a BikeErg; application layer, not raw HCI, so this is evidence of what the PM5 sent, not of the
+ *   radio exchange.
+ * - `hardware/concept2_pm5_431225189_20260912_ergdata_workouts.json` (LIB-21): raw HCI from ErgData
+ *   to one PM5 RowErg. It has multiplexed records and the FTMS pair only; the individual
+ *   characteristics were not subscribed in that log, so those kinds are skipped for it (and the
+ *   kinds each corpus must hold are asserted, so a fixture losing a kind fails rather than skips).
  *
  * Two levels, because the fixture records different amounts per vector:
  *
@@ -32,9 +38,21 @@ import kotlin.math.roundToLong
  * fixture's `evidence_limit` says the CSAFE codec is not validated by it.
  */
 class Concept2GoldenTest {
-    private val vectors = FixtureJson.obj(Fixtures.json("hardware/concept2_pm5_qz_debug.json")["vectors"])
+    private class Corpus(val path: String, val ftmsFirsts: Int, val ftmsSeconds: Int, val kinds: Set<String>) {
+        val vectors = FixtureJson.obj(Fixtures.json(path)["vectors"])
+        val label: String get() = path.substringAfterLast('/')
+        fun entries(kind: String) = Fixtures.objects(vectors[kind])
+    }
 
-    private fun entries(kind: String) = Fixtures.objects(vectors[kind])
+    private val multiplexedKinds = setOf("multiplexed_0x31", "multiplexed_0x32", "multiplexed_0x33", "multiplexed_0x35", "multiplexed_0x36")
+
+    private val corpora = listOf(
+        Corpus(
+            "hardware/concept2_pm5_qz_debug.json", 26, 10,
+            multiplexedKinds + setOf("individual_0x31", "individual_0x32", "individual_0x33", "individual_0x35", "individual_0x36"),
+        ),
+        Corpus("hardware/concept2_pm5_431225189_20260912_ergdata_workouts.json", 12, 11, multiplexedKinds),
+    )
 
     private fun raw(expect: Map<String, Any?>, key: String, scale: Double = 1.0): Int =
         (FixtureJson.double(expect.getValue(key)) / scale).roundToLong().toInt()
@@ -54,9 +72,13 @@ class Concept2GoldenTest {
     )
 
     @Test
-    fun `every captured FTMS rower notification is reproduced octet for octet`() {
-        val frames = entries("ftms_rower_data_2ad1")
-        assertEquals(36, frames.size)
+    fun `every captured FTMS rower notification in both corpora is reproduced octet for octet`() {
+        for (corpus in corpora) ftmsCorpus(corpus)
+    }
+
+    private fun ftmsCorpus(corpus: Corpus) {
+        val frames = corpus.entries("ftms_rower_data_2ad1")
+        assertEquals("${corpus.label} FTMS count", corpus.ftmsFirsts + corpus.ftmsSeconds, frames.size)
         var firsts = 0
         var seconds = 0
         for (entry in frames) {
@@ -86,12 +108,12 @@ class Concept2GoldenTest {
                 )
             }
             assertArrayEquals(
-                "FTMS ${entry["hex"]}",
+                "${corpus.label} FTMS ${entry["hex"]}",
                 captured,
                 Concept2Pm5Encoder.ftmsRower(snapshot)[index],
             )
         }
-        assertEquals("26 first and 10 second notifications", 26 to 10, firsts to seconds)
+        assertEquals("${corpus.label} first and second notifications", corpus.ftmsFirsts to corpus.ftmsSeconds, firsts to seconds)
     }
 
     private class Field(val key: String, val offset: Int, val width: Int, val scale: Double = 1.0)
@@ -185,23 +207,36 @@ class Concept2GoldenTest {
     )
 
     @Test
+    fun `each corpus holds exactly the vector kinds this test expects`() {
+        // A kind dropped from a fixture must fail here, not be skipped silently below.
+        for (corpus in corpora) {
+            assertEquals(
+                "${corpus.label} vector kinds",
+                corpus.kinds + "ftms_rower_data_2ad1",
+                corpus.vectors.keys.toSet(),
+            )
+        }
+    }
+
+    @Test
     fun `the offset table reads the captured octets as the fixture decoded them`() {
         // Guards the table itself: a wrong offset here would make the encoder comparison below
         // meaningless, so it is checked against the capture before the encoder is involved.
-        for (record in records) {
-            val frames = entries(record.kind)
-            assertTrue("${record.kind} has vectors", frames.isNotEmpty())
+        for (corpus in corpora) for (record in records) {
+            if (record.kind !in corpus.kinds) continue
+            val frames = corpus.entries(record.kind)
+            assertTrue("${corpus.label} ${record.kind} has vectors", frames.isNotEmpty())
             for (entry in frames) {
                 val captured = Fixtures.hex(entry["hex"] as String)
                 val payload = if (record.multiplexed) {
-                    assertEquals("${record.kind} id octet", record.id, captured[0].toInt() and 0xFF)
+                    assertEquals("${corpus.label} ${record.kind} id octet", record.id, captured[0].toInt() and 0xFF)
                     captured.copyOfRange(1, captured.size)
                 } else captured
-                assertEquals("${record.kind} length", FixtureJson.int(entry["octets"]), payload.size)
+                assertEquals("${corpus.label} ${record.kind} length", FixtureJson.int(entry["octets"]), payload.size)
                 val expect = FixtureJson.obj(entry["expect"])
                 for (f in record.fields) {
                     assertEquals(
-                        "${record.kind} ${f.key} in ${entry["hex"]}",
+                        "${corpus.label} ${record.kind} ${f.key} in ${entry["hex"]}",
                         raw(expect, f.key, f.scale),
                         le(payload, f.offset, f.width),
                     )
@@ -212,21 +247,22 @@ class Concept2GoldenTest {
 
     @Test
     fun `the encoder puts the captured values at the captured offsets`() {
-        for (record in records) {
-            for (entry in entries(record.kind)) {
+        for (corpus in corpora) for (record in records) {
+            if (record.kind !in corpus.kinds) continue
+            for (entry in corpus.entries(record.kind)) {
                 val expect = FixtureJson.obj(entry["expect"])
                 val snapshot = record.build(expect) { key, scale -> raw(expect, key, scale) }
                 val encoded = if (record.multiplexed) {
                     val frame = requireNotNull(Concept2Pm5Encoder.multiplexed(record.id, snapshot))
-                    assertEquals("${record.kind} id octet", record.id, frame[0].toInt() and 0xFF)
+                    assertEquals("${corpus.label} ${record.kind} id octet", record.id, frame[0].toInt() and 0xFF)
                     frame.copyOfRange(1, frame.size)
                 } else {
                     requireNotNull(Concept2Pm5Encoder.individual(requireNotNull(record.uuid), snapshot))
                 }
-                assertEquals("${record.kind} length", FixtureJson.int(entry["octets"]), encoded.size)
+                assertEquals("${corpus.label} ${record.kind} length", FixtureJson.int(entry["octets"]), encoded.size)
                 for (f in record.fields) {
                     assertEquals(
-                        "${record.kind} ${f.key} from ${entry["hex"]}",
+                        "${corpus.label} ${record.kind} ${f.key} from ${entry["hex"]}",
                         raw(expect, f.key, f.scale),
                         le(encoded, f.offset, f.width),
                     )
