@@ -32,6 +32,18 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump$Companion {
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineSimulatedUpstreamHost : com/gmail/absolutebollockscreations/gattlibrary/server/SimulatedUpstreamHost {
+	public static final field MILES_TO_KM D
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;)V
+	public fun beginSession (Z)V
+	public fun endSession ()V
+	public fun getExternalHeartRate ()Lkotlinx/coroutines/flow/StateFlow;
+	public fun getLastExternalHeartRateAtMs ()J
+	public fun getMachineConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
+	public fun getMachineLinkAttached ()Z
+	public fun publish (Lcom/gmail/absolutebollockscreations/gattlibrary/server/SimulatedUpstreamSample;)V
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineTargetCapabilitiesKt {
 	public static final fun fromEngineCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;
 }

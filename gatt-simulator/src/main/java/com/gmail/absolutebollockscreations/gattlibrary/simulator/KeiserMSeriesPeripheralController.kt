@@ -15,7 +15,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
-import com.gmail.absolutebollockscreations.gattlibrary.central.KeiserMSeriesMeasurement
 import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.server.AdapterNameCoordinator

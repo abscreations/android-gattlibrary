@@ -3,7 +3,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrCodec
 import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrCommand
 import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrEncodeResult
-import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrUuids
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -31,7 +30,7 @@ class KickrLegacyControlServerTest {
         commands.forEach { command ->
             val result = KickrLegacyCommandDecoder.decode(bytes(command))
             assertTrue("$command decoded as $result", result is KickrLegacyDecodeResult.Decoded)
-            assertEquals(command::class, (result as KickrLegacyDecodeResult.Decoded).command::class)
+            assertEquals(command::class.simpleName, (result as KickrLegacyDecodeResult.Decoded).command::class.simpleName)
         }
     }
 
@@ -63,8 +62,8 @@ class KickrLegacyControlServerTest {
 
     @Test
     fun `unsigned offset grade and wind decode their high bits`() {
-        val grade = decoded(byteArrayOf(0x46, 0x3D, 0x8A.toByte())) as WahooKickrCommand.Grade
-        val wind = decoded(byteArrayOf(0x47, 0x16, 0x81.toByte())) as WahooKickrCommand.WindSpeed
+        val grade = decoded(byteArrayOf(0x46, 0x3D, 0x8A.toByte())) as KickrLegacyCommand.Grade
+        val wind = decoded(byteArrayOf(0x47, 0x16, 0x81.toByte())) as KickrLegacyCommand.WindSpeed
         assertEquals(8.0, grade.percent, 0.002)
         assertEquals(1.0 / 3.6, wind.metresPerSecond, 0.001)
     }
@@ -210,6 +209,6 @@ class KickrLegacyControlServerTest {
     private fun bytes(command: WahooKickrCommand): ByteArray =
         (WahooKickrCodec.encode(command) as WahooKickrEncodeResult.Encoded).bytes
 
-    private fun decoded(packet: ByteArray): WahooKickrCommand =
+    private fun decoded(packet: ByteArray): KickrLegacyCommand =
         (KickrLegacyCommandDecoder.decode(packet) as KickrLegacyDecodeResult.Decoded).command
 }

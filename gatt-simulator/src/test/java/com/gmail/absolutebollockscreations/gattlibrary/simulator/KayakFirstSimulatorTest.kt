@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstDisplayMetric
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDerivedMetrics
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
@@ -188,7 +187,7 @@ class KayakFirstSimulatorTest {
         val accepted = assembler.append(";5;11;15\r\n".toByteArray()).single()
         assertEquals(
             KayakFirstSimulatorInput.Command(
-                KayakFirstSimulatorCommand.Display(KayakFirstDisplayConfiguration.DEFAULT),
+                KayakFirstSimulatorCommand.Display(KayakFirstPanelConfiguration.DEFAULT),
             ),
             accepted,
         )
@@ -355,7 +354,7 @@ class KayakFirstSimulatorTest {
 
     @Test
     fun panel_has_five_rows_defaults_duplicates_and_safe_missing_values() {
-        val rows = KayakFirstPanelPresenter.rows(KayakFirstDisplayConfiguration.DEFAULT, sample())
+        val rows = KayakFirstPanelPresenter.rows(KayakFirstPanelConfiguration.DEFAULT, sample())
         assertEquals(5, rows.size)
         assertEquals("1:02:05", rows[0].value)
         assertEquals("321 m", rows[1].value)
@@ -363,7 +362,7 @@ class KayakFirstSimulatorTest {
         assertEquals("333 sec", rows[3].value)
         assertEquals("42 kcal", rows[4].value)
 
-        val duplicate = KayakFirstDisplayConfiguration.fromWireCodes(listOf(13, 13, 4, 17, 18))!!
+        val duplicate = KayakFirstPanelConfiguration.fromWireCodes(listOf(13, 13, 4, 17, 18))!!
         val duplicateRows = KayakFirstPanelPresenter.rows(duplicate, sample())
         assertEquals("—", duplicateRows[0].value)
         assertEquals("—", duplicateRows[1].value)
@@ -375,7 +374,7 @@ class KayakFirstSimulatorTest {
     @Test
     fun all_seventeen_panel_metrics_render_without_nonfinite_values() {
         KayakFirstDisplayMetric.entries.forEach { metric ->
-            val config = KayakFirstDisplayConfiguration(metric, metric, metric, metric, metric)
+            val config = KayakFirstPanelConfiguration(metric, metric, metric, metric, metric)
             val rows = KayakFirstPanelPresenter.rows(config, sample())
             assertEquals(5, rows.size)
             assertTrue(rows.none { it.value.contains("NaN") || it.value.contains("Infinity") })

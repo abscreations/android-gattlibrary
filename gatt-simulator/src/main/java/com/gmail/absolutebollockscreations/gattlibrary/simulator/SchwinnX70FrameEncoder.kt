@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 
@@ -102,7 +101,7 @@ internal class SchwinnX70FrameEncoder {
     }
 
     private fun scaled(value: Double): Int =
-        (value.coerceAtLeast(0.0) * SchwinnX70Measurement.SIBLING_SPEED_DIVISOR)
+        (value.coerceAtLeast(0.0) * SIBLING_SPEED_DIVISOR)
             .roundToInt().coerceIn(0, 0xFFFF)
 
     /** Saturating (LIB-18b W2). */
@@ -117,9 +116,10 @@ internal class SchwinnX70FrameEncoder {
     }
 
     companion object {
-        // Offsets restated from SchwinnX70Measurement, which keeps them private. A mismatch is
-        // caught immediately: every generated frame is required to round-trip through that decoder.
+        // Offsets restated from central's SchwinnX70Measurement, which keeps them private. A mismatch is
+        // caught by the simulator tests, which round-trip every generated frame through that decoder.
         private const val SIBLING_SPEED = 3
+        private const val SIBLING_SPEED_DIVISOR = 100.0
         private const val SIBLING_POWER = 6
         private const val SIBLING_ACCUMULATOR_A = 9
         private const val SIBLING_ACCUMULATOR_B = 12

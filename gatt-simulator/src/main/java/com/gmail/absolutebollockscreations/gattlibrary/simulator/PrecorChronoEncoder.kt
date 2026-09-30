@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.PrecorMeasurement
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec

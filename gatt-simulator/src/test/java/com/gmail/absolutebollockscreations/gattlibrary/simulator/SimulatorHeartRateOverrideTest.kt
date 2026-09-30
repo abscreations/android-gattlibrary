@@ -105,18 +105,18 @@ class SimulatorHeartRateOverrideTest {
         val keiser = text.indexOf("peripheral.publishKeiser(output.manufacturerPayload)")
         val precor = text.indexOf("peripheral.publishPrecor(sample)")
         val lifeFitness = text.indexOf("peripheral.publishLifeFitness(sample)")
-        val engineWrite = text.indexOf("engineState.setHeartRate(sample.heartRate)")
+        val engineWrite = text.indexOf("upstream.publish(")
 
         assertTrue("the substitution must exist", substitution > 0)
         assertTrue("it must precede the Keiser encoder", substitution < keiser)
         assertTrue("it must precede the Precor encoder", substitution < precor)
         assertTrue("it must precede the Life Fitness encoder", substitution < lifeFitness)
-        assertTrue("it must precede the engine-state write", substitution < engineWrite)
+        assertTrue("it must precede the host publish", substitution < engineWrite)
 
         // And it must read the strap's own field, not the fused one the simulator itself writes.
         assertTrue(
             "the override must read externalHeartRate, never the fused heartRate",
-            text.contains("engineState.externalHeartRate.value"),
+            text.contains("upstream.externalHeartRate.value"),
         )
     }
 }

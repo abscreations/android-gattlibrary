@@ -1,9 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangePhysics
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangePhysicsResult
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeTimingTuple
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.pow

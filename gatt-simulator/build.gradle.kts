@@ -43,11 +43,14 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
 }
 
 dependencies {
-    api(project(":gatt-peripheral"))
     api(project(":gatt-server"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.timber)
     testImplementation(project(":gatt-fixtures"))
+    // Test-only edges (L22: test modules may depend on anything). Simulator tests that decode with
+    // central or drive the bridge stay here until they move to gatt-conformance.
+    testImplementation(project(":gatt-central"))
+    testImplementation(project(":gatt-peripheral"))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

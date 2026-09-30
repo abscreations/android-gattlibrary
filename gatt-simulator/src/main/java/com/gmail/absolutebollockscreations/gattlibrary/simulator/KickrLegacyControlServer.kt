@@ -1,7 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrCommand
-import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.WahooKickrSpec
 
@@ -27,7 +25,7 @@ internal enum class KickrLegacyAckMode(val evidence: KickrEvidenceLabel) {
 }
 
 internal sealed interface KickrLegacyDecodeResult {
-    data class Decoded(val command: WahooKickrCommand) : KickrLegacyDecodeResult
+    data class Decoded(val command: KickrLegacyCommand) : KickrLegacyDecodeResult
     data class Invalid(val reason: String) : KickrLegacyDecodeResult
     data class Unsupported(val opcode: Int) : KickrLegacyDecodeResult
 }
@@ -43,24 +41,24 @@ internal object KickrLegacyCommandDecoder {
                 !exact(3) -> invalidLength(opcode, 3, value.size)
                 value[1].toInt() and 0xFF != 0xEE || value[2].toInt() and 0xFF != 0xFC ->
                     KickrLegacyDecodeResult.Invalid("invalid unlock marker")
-                else -> decoded(WahooKickrCommand.Unlock)
+                else -> decoded(KickrLegacyCommand.Unlock)
             }
             WahooKickrSpec.OPCODE_RESISTANCE -> ifExact(value, 3, opcode) {
                 val raw = u16(value, 1)
                 if (raw > 0x3FFF) KickrLegacyDecodeResult.Invalid("resistance exceeds 14 bits")
-                else decoded(WahooKickrCommand.Resistance(1.0 - raw / 16_383.0))
+                else decoded(KickrLegacyCommand.Resistance(1.0 - raw / 16_383.0))
             }
             WahooKickrSpec.OPCODE_STANDARD_LEVEL -> ifExact(value, 2, opcode) {
                 val level = value[1].toInt() and 0xFF
                 if (level !in WahooKickrSpec.MIN_STANDARD_LEVEL..WahooKickrSpec.MAX_STANDARD_LEVEL) {
                     KickrLegacyDecodeResult.Invalid("standard level out of range")
-                } else decoded(WahooKickrCommand.StandardLevel(level))
+                } else decoded(KickrLegacyCommand.StandardLevel(level))
             }
             WahooKickrSpec.OPCODE_ERG -> ifExact(value, 3, opcode) {
                 val watts = u16(value, 1)
                 if (watts !in WahooKickrSpec.MIN_ERG_WATTS..WahooKickrSpec.MAX_ERG_WATTS) {
                     KickrLegacyDecodeResult.Invalid("ERG watts out of range")
-                } else decoded(WahooKickrCommand.Erg(watts))
+                } else decoded(KickrLegacyCommand.Erg(watts))
             }
             WahooKickrSpec.OPCODE_SIMULATION -> ifExact(value, 7, opcode) {
                 val mass = u16(value, 1) / 100.0
@@ -71,30 +69,30 @@ internal object KickrLegacyCommandDecoder {
                         KickrLegacyDecodeResult.Invalid("simulation mass out of range")
                     crr > WahooKickrSpec.MAX_CRR -> KickrLegacyDecodeResult.Invalid("CRR out of range")
                     cw > WahooKickrSpec.MAX_CW -> KickrLegacyDecodeResult.Invalid("CW out of range")
-                    else -> decoded(WahooKickrCommand.Simulation(mass, crr, cw))
+                    else -> decoded(KickrLegacyCommand.Simulation(mass, crr, cw))
                 }
             }
             WahooKickrSpec.OPCODE_ROLLING_RESISTANCE -> ifExact(value, 3, opcode) {
                 val crr = u16(value, 1) / 10_000.0
                 if (crr > WahooKickrSpec.MAX_CRR) KickrLegacyDecodeResult.Invalid("CRR out of range")
-                else decoded(WahooKickrCommand.RollingResistance(crr))
+                else decoded(KickrLegacyCommand.RollingResistance(crr))
             }
             WahooKickrSpec.OPCODE_WIND_RESISTANCE -> ifExact(value, 3, opcode) {
                 val cw = u16(value, 1) / 1_000.0
                 if (cw > WahooKickrSpec.MAX_CW) KickrLegacyDecodeResult.Invalid("CW out of range")
-                else decoded(WahooKickrCommand.WindResistance(cw))
+                else decoded(KickrLegacyCommand.WindResistance(cw))
             }
             WahooKickrSpec.OPCODE_GRADE -> ifExact(value, 3, opcode) {
-                decoded(WahooKickrCommand.Grade(u16(value, 1) * 200.0 / 65_535.0 - 100.0))
+                decoded(KickrLegacyCommand.Grade(u16(value, 1) * 200.0 / 65_535.0 - 100.0))
             }
             WahooKickrSpec.OPCODE_WIND_SPEED -> ifExact(value, 3, opcode) {
-                decoded(WahooKickrCommand.WindSpeed(u16(value, 1) / 1_000.0 - 32.768))
+                decoded(KickrLegacyCommand.WindSpeed(u16(value, 1) / 1_000.0 - 32.768))
             }
             WahooKickrSpec.OPCODE_WHEEL_CIRCUMFERENCE -> ifExact(value, 3, opcode) {
                 val circumference = u16(value, 1) / 10.0
                 if (circumference < KickrSyntheticModel.MIN_WHEEL_CIRCUMFERENCE_MM) {
                     KickrLegacyDecodeResult.Invalid("wheel circumference out of range")
-                } else decoded(WahooKickrCommand.WheelCircumference(circumference))
+                } else decoded(KickrLegacyCommand.WheelCircumference(circumference))
             }
             else -> KickrLegacyDecodeResult.Unsupported(opcode)
         }
@@ -110,7 +108,7 @@ internal object KickrLegacyCommandDecoder {
     private fun invalidLength(opcode: Int, expected: Int, actual: Int) =
         KickrLegacyDecodeResult.Invalid("opcode 0x${opcode.toString(16)} requires $expected bytes, got $actual")
 
-    private fun decoded(command: WahooKickrCommand) = KickrLegacyDecodeResult.Decoded(command)
+    private fun decoded(command: KickrLegacyCommand) = KickrLegacyDecodeResult.Decoded(command)
 }
 
 internal data class KickrLegacyControlOutcome(
@@ -139,7 +137,7 @@ internal class KickrLegacyControlServer(
         val decoded = KickrLegacyCommandDecoder.decode(value)
         if (decoded !is KickrLegacyDecodeResult.Decoded) return KickrLegacyControlOutcome(false, decoded = decoded)
         val command = decoded.command
-        if (command == WahooKickrCommand.Unlock) {
+        if (command == KickrLegacyCommand.Unlock) {
             unlocked = true
             return KickrLegacyControlOutcome(true, success(WahooKickrSpec.OPCODE_UNLOCK), decoded)
         }
@@ -160,18 +158,18 @@ internal class KickrLegacyControlServer(
         simulation = KickrSimulationTarget()
     }
 
-    private fun apply(command: WahooKickrCommand): Boolean = when (command) {
-        WahooKickrCommand.Unlock -> true
-        is WahooKickrCommand.Erg -> model.setTargetPower(command.watts, KickrControlSource.LEGACY_KICKR)
-        is WahooKickrCommand.Resistance ->
+    private fun apply(command: KickrLegacyCommand): Boolean = when (command) {
+        KickrLegacyCommand.Unlock -> true
+        is KickrLegacyCommand.Erg -> model.setTargetPower(command.watts, KickrControlSource.LEGACY_KICKR)
+        is KickrLegacyCommand.Resistance ->
             model.setResistance(
                 KickrSyntheticModel.MIN_RESISTANCE + command.fraction *
                     (KickrSyntheticModel.MAX_RESISTANCE - KickrSyntheticModel.MIN_RESISTANCE),
                 KickrControlSource.LEGACY_KICKR,
             )
-        is WahooKickrCommand.StandardLevel ->
+        is KickrLegacyCommand.StandardLevel ->
             model.setResistance(command.level.toDouble(), KickrControlSource.LEGACY_KICKR)
-        is WahooKickrCommand.Simulation -> {
+        is KickrLegacyCommand.Simulation -> {
             simulation = simulation.copy(
                 crr = command.crr,
                 cw = command.cw,
@@ -179,23 +177,23 @@ internal class KickrLegacyControlServer(
             )
             model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
-        is WahooKickrCommand.RollingResistance -> {
+        is KickrLegacyCommand.RollingResistance -> {
             simulation = simulation.copy(crr = command.crr)
             model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
-        is WahooKickrCommand.WindResistance -> {
+        is KickrLegacyCommand.WindResistance -> {
             simulation = simulation.copy(cw = command.cw)
             model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
-        is WahooKickrCommand.Grade -> {
+        is KickrLegacyCommand.Grade -> {
             simulation = simulation.copy(gradePercent = command.percent)
             model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
-        is WahooKickrCommand.WindSpeed -> {
+        is KickrLegacyCommand.WindSpeed -> {
             simulation = simulation.copy(windMps = command.metresPerSecond)
             model.setSimulation(simulation, KickrControlSource.LEGACY_KICKR)
         }
-        is WahooKickrCommand.WheelCircumference -> model.setWheelCircumference(command.millimetres)
+        is KickrLegacyCommand.WheelCircumference -> model.setWheelCircumference(command.millimetres)
     }
 
     private fun success(opcode: Int): ByteArray = byteArrayOf(0x01, opcode.toByte(), 0x01, 0x00)

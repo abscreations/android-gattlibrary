@@ -4,7 +4,6 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
-import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
@@ -312,7 +311,7 @@ internal object SchwinnX70GattProfile {
  * the structural family here makes the simulator usable by TMIW and QZ without pretending FitBridge
  * knows which literal is canonical.
  *
- * **It validates and never generates.** [SchwinnX70Measurement.isWellFormedCommand] already exists
+ * **It validates and never generates.** `SchwinnX70Measurement.isWellFormedCommand` (central) already exists
  * and is already tested; synthesising a command would be a third value for a field where two
  * already disagree and nothing can choose between them.
  */
@@ -336,5 +335,12 @@ internal object SchwinnX70SetupGate {
      */
     fun accepts(command: ByteArray): Boolean =
         KNOWN_COMMANDS.any { it.contentEquals(command) } ||
-            SchwinnX70Measurement.isWellFormedCommand(command)
+            isWellFormedCommand(command)
+
+    /** Length prefix equals the size and the octets sum to zero mod 256 (V17 framing; restated: L22). */
+    private fun isWellFormedCommand(command: ByteArray): Boolean {
+        if (command.isEmpty()) return false
+        if ((command[0].toInt() and 0xFF) != command.size) return false
+        return command.sumOf { it.toInt() and 0xFF } % 256 == 0
+    }
 }

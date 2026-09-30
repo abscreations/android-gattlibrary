@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
+import com.gmail.absolutebollockscreations.gattlibrary.server.MovementCountKind
+import com.gmail.absolutebollockscreations.gattlibrary.server.SimulatedUpstreamHost
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlSink
 import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
@@ -25,7 +26,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
  * Ported from TrackMyIndoorWorkout's `mock_data_source.dart`, with one
  * deliberate difference: TMIW pushes samples straight into the peripheral's
  * metric store, because its own UI is fed from Dart. FitBridge is a bridge, so
- * the simulator instead writes into [BtEngineState] - the same normalised model a
+ * the simulator instead writes into the host engine state ([SimulatedUpstreamHost]) - the same normalised model a
  * real machine populates. Everything downstream then works unchanged: the app's
  * Biking/Rowing/Treadmill screens light up, HR zones and charts populate, and
  * `EngineMetricPump` carries the same numbers out over FTMS. One injection point
@@ -38,7 +39,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
  * stops completely, and it does not restart when the bridge ends.
  */
 class FtmsSimulator(
-    private val engineState: BtEngineState,
+    private val upstream: SimulatedUpstreamHost,
     private val peripheral: SimulatorPeripheralHost,
     /** CPU keep-awake owned by the host app (LIB-7/S7); shares its registry with RunMode. */
     private val keepAwake: KeepAwake,
@@ -175,7 +176,6 @@ class FtmsSimulator(
     val state: StateFlow<State> = _state
 
     private var job: Job? = null
-    private val sessionProjection = SimulatorSessionProjection(engineState)
 
     @Volatile
     private var engine: FtmsMockEngine? = null
@@ -280,12 +280,12 @@ class FtmsSimulator(
     private val controlSink = SimulatorControlSink()
 
     /** True when a real machine is attached; the simulator must not fight it. */
-    private fun realMachineAttached(): Boolean = engineState.gatt != null
+    private fun realMachineAttached(): Boolean = upstream.machineLinkAttached
 
     /** A machine link is attached, connecting or connected: bridge mode owns the engine (L17). */
     private fun bridgeLinkActive(): Boolean =
         realMachineAttached() ||
-            SimulatorBridgeGuard.upstreamLinkActive(engineState.connectionState.value)
+            SimulatorBridgeGuard.upstreamLinkActive(upstream.machineConnectionState.value)
 
     /** Full stop because a bridge is starting; the reason stays on screen (LIB-9c). */
     private fun stopForBridge() {
@@ -463,7 +463,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = effectiveControls)
+        upstream.beginSession(haveControl = effectiveControls)
 
         // Keep the CPU up for as long as we are generating, so bridging survives
         // the screen going off. Paired with the release in stop().
@@ -505,7 +505,7 @@ class FtmsSimulator(
         runCatching { peripheral.stopAdvertising() }
             .onFailure { Timber.tag(TAG).w(it, "stopping simulator advertising threw") }
 
-        sessionProjection.end()
+        upstream.endSession()
 
         // Link-scoped, like every other per-run field here: a new run must log its own first
         // strap-takeover rather than inheriting the last run's outcome and staying silent.
@@ -532,7 +532,7 @@ class FtmsSimulator(
             _state.value = State(persona = persona, lastError = "Could not start advertising as ${persona.advertisedName}")
             return
         }
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -600,7 +600,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -648,7 +648,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -688,7 +688,7 @@ class FtmsSimulator(
             _state.value = State(persona = persona, lastError = "Could not start advertising as ${persona.advertisedName}")
             return
         }
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -749,7 +749,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -799,7 +799,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -852,7 +852,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = persona.controlEnabled)
+        upstream.beginSession(haveControl = persona.controlEnabled)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -896,7 +896,7 @@ class FtmsSimulator(
 
         // Control is negotiated independently on each downstream route; starting the simulator
         // itself does not mean a client owns any of those routes yet.
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -943,7 +943,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -991,7 +991,7 @@ class FtmsSimulator(
             return
         }
 
-        sessionProjection.begin(haveControl = false)
+        upstream.beginSession(haveControl = false)
         keepAwake.acquireCpu(wakeLockOwner)
         _state.value = State(
             running = true,
@@ -1093,8 +1093,8 @@ class FtmsSimulator(
     private fun withLiveHeartRate(sample: FtmsMockSample): FtmsMockSample {
         val result = SimulatorHeartRateOverride.resolve(
             generatedBpm = sample.heartRate,
-            externalBpm = engineState.externalHeartRate.value,
-            lastExternalAtMs = engineState.lastExternalAt,
+            externalBpm = upstream.externalHeartRate.value,
+            lastExternalAtMs = upstream.lastExternalHeartRateAtMs,
             nowMs = System.currentTimeMillis(),
         )
 
@@ -1150,7 +1150,7 @@ class FtmsSimulator(
     }
 
     /**
-     * Write one sample into [BtEngineState].
+     * Write one sample into the host engine state through [SimulatedUpstreamHost].
      *
      * Deliberately mirrors what the FTMS parsers do for a real machine, including
      * leaving a metric untouched when this persona does not produce it - a
@@ -1160,7 +1160,7 @@ class FtmsSimulator(
     private fun publish(generated: FtmsMockSample) {
         // A live strap attached to the central overrides the generated heart rate, applied here
         // rather than in each encoder because this is the last point before the standard-FTMS path
-        // (engineState -> EngineMetricPump) and the proprietary path (straight to the encoders)
+        // (host engine state -> EngineMetricPump) and the proprietary path (straight to the encoders)
         // diverge. One substitution covers every persona, including ones not written yet.
         var sample = withLiveHeartRate(generated)
 
@@ -1200,44 +1200,17 @@ class FtmsSimulator(
             peripheral.publishLifeFitness(sample)
         }
         schwinnX70?.let { session -> publishSchwinnX70Frames(session, sample) }
-        engineState.setElapsedSeconds(sample.elapsedSeconds)
-        engineState.setHeartRate(sample.heartRate)
-        engineState.setExpEnergyTotal(sample.caloriesTotal)
-        engineState.setExpEnergyRateKcalPerHour(sample.caloriesPerHour)
-
-        sample.speedKph?.let {
-            engineState.setSpeedKph(it)
-            engineState.setSpeedMph(it / MILES_TO_KM)
-        }
-        sample.averageSpeedKph?.let { engineState.setAvgSpeedKph(it) }
-        sample.distanceMeters?.let { engineState.setTotalDistanceMeters(it) }
-        sample.cadence?.let { engineState.setInstantCadence(it) }
-        engineState.setAverageCadence(sample.averageCadence)
-        sample.resistance?.let { engineState.setResistance(it.toDouble()) }
-        sample.inclinationPercent?.let { engineState.setInclination(it) }
-        sample.powerWatts?.let { engineState.setInstantPower(it) }
-        engineState.setAveragePower(sample.averagePowerWatts)
-        sample.forceOnBeltNewtons?.let { engineState.appendForceOnBeltSample(it) }
-        sample.instantPaceMinPerKm?.let { engineState.setInstantPace(it) }
-        sample.averagePaceMinPerKm?.let { engineState.setAvgPace(it) }
-        sample.positiveElevationMeters?.let { engineState.setElevationGains(it, null) }
-        sample.floors?.let { engineState.setTotalFloors(it) }
-
-        // The count field means a different thing per persona, so it is routed
-        // rather than written to all three.
-        sample.movementCount?.let { count ->
-            val e = engine
-            when {
-                e == null -> Unit
-                e.profile.isRower -> {
-                    engineState.setStrokeCount(count)
-                    sample.cadence?.let { engineState.setStrokeRate(it) }
-                }
-
-                e.profile.isClimber -> engineState.setTotalSteps(count)
-                else -> engineState.setTotalStrides(count.toDouble())
-            }
-        }
+        upstream.publish(
+            sample.toUpstreamSample(
+                engine?.profile?.let { profile ->
+                    when {
+                        profile.isRower -> MovementCountKind.STROKES
+                        profile.isClimber -> MovementCountKind.STEPS
+                        else -> MovementCountKind.STRIDES
+                    }
+                },
+            ),
+        )
 
         val s = _state.value
         _state.value = s.copy(
@@ -1257,9 +1230,9 @@ class FtmsSimulator(
     init {
         // L17 (LIB-9c): an upstream machine link starting means a bridge is starting. Watch the
         // link rather than provider advertising, because the link comes first: the simulator
-        // must stop writing into BtEngineState before the real machine starts writing there.
+        // must stop writing into the host engine state before the real machine starts writing there.
         scope.launch {
-            engineState.connectionState.collect { linkState ->
+            upstream.machineConnectionState.collect { linkState ->
                 if (SimulatorBridgeGuard.upstreamLinkActive(linkState)) stopForBridge()
             }
         }
@@ -1291,6 +1264,5 @@ class FtmsSimulator(
          * every 270 session into a constant.
          */
 
-        private const val MILES_TO_KM = 1.609344
     }
 }

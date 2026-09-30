@@ -1,12 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnDecodeResult
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnDecodedPacket
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoCodec
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoField
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import kotlin.math.roundToLong
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 
@@ -74,14 +69,14 @@ internal class ZwiftTrainerPeripheralServer(
             // sends two OPCODE_STATUS_MESSAGE (0x2A) diagnostic frames over notify immediately
             // after accepting the handshake, in addition to its own handshake acknowledgement
             // over indicate. FitBridge previously sent only the acknowledgement. See
-            // RideOnProtoCodec.statusMessage()'s KDoc for the bytes these were verified against.
+            // RideOnWire.statusMessage()'s KDoc for the bytes these were verified against.
             return ZwiftTrainerServerOutcome(
                 accepted = true,
                 negotiated = true,
                 frames = listOf(
                     ZwiftTrainerServerFrame(async = false, value.copyOf()),
-                    ZwiftTrainerServerFrame(async = true, RideOnProtoCodec.statusMessage(3, "ATX 04, STX 04")),
-                    ZwiftTrainerServerFrame(async = true, RideOnProtoCodec.statusMessage(3, "RIDE_ON(2)")),
+                    ZwiftTrainerServerFrame(async = true, RideOnWire.statusMessage(3, "ATX 04, STX 04")),
+                    ZwiftTrainerServerFrame(async = true, RideOnWire.statusMessage(3, "RIDE_ON(2)")),
                 ),
             )
         }
@@ -104,7 +99,7 @@ internal class ZwiftTrainerPeripheralServer(
         // (0x41) asking for dataId 5 - previously treated as an opaque "INITIALIZATION" literal
         // that only advanced the state machine with no reply at all. qdomyos-zwift (QZ) replies
         // to this same request with a proper OPCODE_HUB_REQUEST_RESPONSE (0x3C) device-info
-        // frame over indicate; see RideOnProtoCodec.hubDeviceInfoReply()'s KDoc for the bytes
+        // frame over indicate; see RideOnWire.hubDeviceInfoReply()'s KDoc for the bytes
         // this was verified against. Matched on the opcode byte alone (not the literal 3-byte
         // sequence) so any dataId is accepted, and - mirroring the dataId-0 general-information
         // fast path above - only enforced as "out of order" before READY, since real Zwift may
@@ -117,14 +112,14 @@ internal class ZwiftTrainerPeripheralServer(
             ) {
                 return rejected("device-info request out of order")
             }
-            val packet = (RideOnProtoCodec.decode(value) as? RideOnDecodeResult.Decoded)?.packet
+            val packet = (RideOnWire.decode(value) as? RideOnWireDecodeResult.Decoded)?.packet
                 ?: return rejected("malformed protobuf packet")
             if (stage == ZwiftTrainerStage.NEGOTIATED) stage = ZwiftTrainerStage.INITIALIZED
             return ZwiftTrainerServerOutcome(true, frames = listOf(deviceInfoFrame(packet)))
         }
         // Only treat this as the negotiation fast path while it can still advance the state
         // machine. Once already READY, the encoding of a dataId-0 HubRequest (see hubRequest()
-        // in RideOnProtoCodec) happens to collide byte-for-byte with this literal, and real
+        // in RideOnWire) happens to collide byte-for-byte with this literal, and real
         // Zwift does keep re-sending it after negotiation completes (see handleHubRequest's
         // KDoc). Matching it here unconditionally meant that legitimate repeat fell into "out of
         // order" and was rejected instead of reaching the opcode dispatch below, which already
@@ -137,7 +132,7 @@ internal class ZwiftTrainerPeripheralServer(
             return ZwiftTrainerServerOutcome(true, frames = listOf(generalInfoFrame()))
         }
         if (!controlReady) return rejected("initialization incomplete")
-        val packet = (RideOnProtoCodec.decode(value) as? RideOnDecodeResult.Decoded)?.packet
+        val packet = (RideOnWire.decode(value) as? RideOnWireDecodeResult.Decoded)?.packet
             ?: return rejected("malformed protobuf packet")
         return when (packet.opcode) {
             RideOnSpec.OPCODE_HUB_REQUEST -> handleHubRequest(packet)
@@ -151,7 +146,7 @@ internal class ZwiftTrainerPeripheralServer(
         val snapshot = model.snapshot()
         return ZwiftTrainerServerFrame(
             async = true,
-            value = RideOnProtoCodec.ridingData(
+            value = RideOnWire.ridingData(
                 snapshot.powerWatts.coerceIn(0, 3_000).toLong(),
                 snapshot.cadenceRpm.roundToLong().coerceIn(0, 300),
                 (snapshot.speedKph * 100.0).roundToLong().coerceIn(0, 20_000),
@@ -161,7 +156,7 @@ internal class ZwiftTrainerPeripheralServer(
     }
 
     /**
-     * A Zwift Click button-state notification - see RideOnProtoCodec.clickKeyPadStatus()'s KDoc.
+     * A Zwift Click button-state notification - see RideOnWire.clickKeyPadStatus()'s KDoc.
      * Unlike every other frame this server builds, it is not a reply to any inbound write: a
      * real Click is spontaneous, peripheral-initiated on a physical button press, so here it is
      * triggered by a tap in the simulator's own UI. It is still gated on [controlReady] by the
@@ -172,26 +167,26 @@ internal class ZwiftTrainerPeripheralServer(
     fun clickButtonFrame(upPressed: Boolean, downPressed: Boolean): ZwiftTrainerServerFrame =
         ZwiftTrainerServerFrame(
             async = true,
-            value = RideOnProtoCodec.clickKeyPadStatus(upPressed, downPressed),
+            value = RideOnWire.clickKeyPadStatus(upPressed, downPressed),
         )
 
-    // Reply to the dataId=0 "general information" HubRequest - see RideOnProtoCodec.
+    // Reply to the dataId=0 "general information" HubRequest - see RideOnWire.
     // hubGeneralInfoReply()'s KDoc for the QZ reference bytes this was verified against. Sent
     // over indicate (async = false), matching QZ's notifier0004 for this same reply.
     private fun generalInfoFrame(): ZwiftTrainerServerFrame = ZwiftTrainerServerFrame(
         async = false,
-        value = RideOnProtoCodec.hubGeneralInfoReply(serial = DEVICE_SERIAL),
+        value = RideOnWire.hubGeneralInfoReply(serial = DEVICE_SERIAL),
     )
 
-    // Reply to an opcode 0x41 device-info request - see RideOnProtoCodec.hubDeviceInfoReply()'s
+    // Reply to an opcode 0x41 device-info request - see RideOnWire.hubDeviceInfoReply()'s
     // KDoc for the QZ reference bytes this was verified against. Sent over indicate
     // (async = false), matching QZ's notifier0004 for this same reply. The requested dataId
     // (packet field 1) is decoded but not otherwise used: QZ's own reply does not vary its
     // content by the requested dataId beyond the opaque field-2 bytes reproduced here.
-    private fun deviceInfoFrame(@Suppress("UNUSED_PARAMETER") packet: RideOnDecodedPacket): ZwiftTrainerServerFrame =
+    private fun deviceInfoFrame(@Suppress("UNUSED_PARAMETER") packet: RideOnWirePacket): ZwiftTrainerServerFrame =
         ZwiftTrainerServerFrame(
             async = false,
-            value = RideOnProtoCodec.hubDeviceInfoReply(
+            value = RideOnWire.hubDeviceInfoReply(
                 deviceName = DEVICE_NAME,
                 serial = DEVICE_SERIAL,
                 shortField = "1",
@@ -209,13 +204,13 @@ internal class ZwiftTrainerPeripheralServer(
     // READY; rejecting those repeats as "out of order" left Zwift's own negotiation waiting on a
     // reply that would never come. This handles any HubRequest that arrives once control is
     // already granted.
-    private fun handleHubRequest(packet: RideOnDecodedPacket): ZwiftTrainerServerOutcome {
-        val dataId = (packet.fields.singleOrNull { it.number == 1 } as? RideOnProtoField.Varint)?.value
+    private fun handleHubRequest(packet: RideOnWirePacket): ZwiftTrainerServerOutcome {
+        val dataId = (packet.fields.singleOrNull { it.number == 1 } as? RideOnWireField.Varint)?.value
             ?: RideOnSpec.HUB_REQUEST_DATA_ID_GENERAL_INFO
         val frame = when (dataId) {
             RideOnSpec.HUB_REQUEST_DATA_ID_GEAR_RATIO -> ZwiftTrainerServerFrame(
                 async = true,
-                value = RideOnProtoCodec.hubRequestGearRatio(
+                value = RideOnWire.hubRequestGearRatio(
                     (model.snapshot().gearRatio * 10_000.0).roundToLong(),
                 ),
             )
@@ -236,27 +231,27 @@ internal class ZwiftTrainerPeripheralServer(
             // even though the reply's content is only confirmed correct for dataId 0.
             else -> ZwiftTrainerServerFrame(
                 async = false,
-                value = RideOnProtoCodec.hubGeneralInfoReply(serial = DEVICE_SERIAL, dataId = dataId),
+                value = RideOnWire.hubGeneralInfoReply(serial = DEVICE_SERIAL, dataId = dataId),
             )
         }
         return ZwiftTrainerServerOutcome(true, frames = listOf(frame))
     }
 
-    private fun handleHubCommand(packet: RideOnDecodedPacket): ZwiftTrainerServerOutcome {
+    private fun handleHubCommand(packet: RideOnWirePacket): ZwiftTrainerServerOutcome {
         val known = packet.fields.filter { it.number in 1..5 }
         if (known.groupBy { it.number }.any { it.value.size > 1 }) return rejected("duplicate HubCommand field")
         if (known.any { field ->
                 when (field.number) {
-                    3 -> field !is RideOnProtoField.Varint
-                    4, 5 -> field !is RideOnProtoField.Bytes
+                    3 -> field !is RideOnWireField.Varint
+                    4, 5 -> field !is RideOnWireField.Bytes
                     else -> false
                 }
             }
         ) return rejected("wrong HubCommand wire type")
         if (known.any { it.number == 1 }) return rejected("direct resistance is unsupported")
-        val power = known.singleOrNull { it.number == 3 } as? RideOnProtoField.Varint
-        val simulation = known.singleOrNull { it.number == 4 } as? RideOnProtoField.Bytes
-        val physical = known.singleOrNull { it.number == 5 } as? RideOnProtoField.Bytes
+        val power = known.singleOrNull { it.number == 3 } as? RideOnWireField.Varint
+        val simulation = known.singleOrNull { it.number == 4 } as? RideOnWireField.Bytes
+        val physical = known.singleOrNull { it.number == 5 } as? RideOnWireField.Bytes
         if (power != null && simulation != null) return rejected("mixed ERG and simulation command")
         if (power != null) {
             if (power.value !in 0L..2_000L ||
@@ -356,11 +351,11 @@ internal class ZwiftTrainerPeripheralServer(
      * and only applies the "shift gear" side effect when the payload actually decodes to a known
      * gear ratio, instead of rejecting the whole command when it doesn't.
      */
-    private fun handleVirtualShift(packet: RideOnDecodedPacket): ZwiftTrainerServerOutcome {
+    private fun handleVirtualShift(packet: RideOnWirePacket): ZwiftTrainerServerOutcome {
         val values = optionalVarints(packet, required = setOf(1, 2), optional = emptySet(), bytes = setOf(4))
             ?: return rejected("invalid VirtualShiftCommand fields")
         if (values.getValue(1) != 1L) return rejected("unsupported virtual-shift command type")
-        val payload = packet.fields.singleOrNull { it.number == 4 } as? RideOnProtoField.Bytes
+        val payload = packet.fields.singleOrNull { it.number == 4 } as? RideOnWireField.Bytes
         val simFields = payload?.let { nested(it.value) }
         val rawRatio = simFields?.let { exactVarints(it, setOf(7))?.get(7) }
         val gearApplied = rawRatio?.let { ratio ->
@@ -395,20 +390,20 @@ internal class ZwiftTrainerPeripheralServer(
             frames = listOf(
                 ZwiftTrainerServerFrame(
                     async = false,
-                    value = RideOnProtoCodec.virtualShiftResponse(values.getValue(2)),
+                    value = RideOnWire.virtualShiftResponse(values.getValue(2)),
                 ),
             ),
         )
     }
 
-    private fun nested(bytes: ByteArray): RideOnDecodedPacket? =
-        ((RideOnProtoCodec.decode(byteArrayOf(0x00) + bytes) as? RideOnDecodeResult.Decoded)?.packet)
+    private fun nested(bytes: ByteArray): RideOnWirePacket? =
+        ((RideOnWire.decode(byteArrayOf(0x00) + bytes) as? RideOnWireDecodeResult.Decoded)?.packet)
 
-    private fun exactVarints(packet: RideOnDecodedPacket, fields: Set<Int>): Map<Int, Long>? =
+    private fun exactVarints(packet: RideOnWirePacket, fields: Set<Int>): Map<Int, Long>? =
         optionalVarints(packet, required = fields, optional = emptySet())
 
     private fun optionalVarints(
-        packet: RideOnDecodedPacket,
+        packet: RideOnWirePacket,
         required: Set<Int>,
         optional: Set<Int>,
         bytes: Set<Int> = emptySet(),
@@ -416,9 +411,9 @@ internal class ZwiftTrainerPeripheralServer(
         val known = packet.fields.filter { it.number in required || it.number in optional || it.number in bytes }
         if (known.groupBy { it.number }.any { it.value.size != 1 }) return null
         if (!required.all { number -> known.any { it.number == number } }) return null
-        if (!bytes.all { number -> known.singleOrNull { it.number == number } is RideOnProtoField.Bytes }) return null
-        if (known.any { it.number !in bytes && it !is RideOnProtoField.Varint }) return null
-        return known.filterIsInstance<RideOnProtoField.Varint>().associate { it.number to it.value }
+        if (!bytes.all { number -> known.singleOrNull { it.number == number } is RideOnWireField.Bytes }) return null
+        if (known.any { it.number !in bytes && it !is RideOnWireField.Varint }) return null
+        return known.filterIsInstance<RideOnWireField.Varint>().associate { it.number to it.value }
     }
 
     private fun rejected(reason: String) = ZwiftTrainerServerOutcome(false, reason = reason)

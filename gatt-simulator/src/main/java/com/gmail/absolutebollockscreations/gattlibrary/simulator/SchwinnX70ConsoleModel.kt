@@ -1,7 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
-import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70PowerModel
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -19,7 +17,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spe
  * @param sequence the counter both paired frames carry, wrapping at 256. Shared, not two counters
  * that happen to match — that was verified on 4,409 captured frames of a second console.
  * @param speedMph the sibling frame's speed field, in miles per hour. See
- * [SchwinnX70Measurement.KM_PER_MILE] for the evidence and for what would falsify it.
+ * `SchwinnX70Measurement.KM_PER_MILE` (central) for the evidence and for what would falsify it.
  * @param crankCounter revolutions, `uint16`, wrapping. **Not a rate.** The main frame carries this
  * and FitBridge differentiates it between changes, so it must advance at the real pedalling rate or
  * the central computes a cadence the ride never had.
@@ -67,7 +65,7 @@ internal data class SchwinnX70ConsoleState(
  *
  * Explore the World reads this field and prints it unconverted as mph, whatever the phone's locale
  * or unit settings say. The simulator converts before encoding and
- * [SchwinnX70Measurement.parseSibling] converts back on the way in, so FitBridge, TMIW and ETW all
+ * `SchwinnX70Measurement.parseSibling` (central) converts back on the way in, so FitBridge, TMIW and ETW all
  * describe the same ride — and the same conversion applies to a physical bike, which is the point.
  * That constant carries the evidence and the open question; this class just applies it.
  */
@@ -119,7 +117,7 @@ internal class SchwinnX70ConsoleModel {
 
         val state = SchwinnX70ConsoleState(
             sequence = sequence,
-            speedMph = speed / SchwinnX70Measurement.KM_PER_MILE,
+            speedMph = speed / KM_PER_MILE,
             powerWatts = power,
             cadenceRpm = cadence,
             crankCounter = crankRevolutions.toInt() and 0xFFFF,
@@ -171,7 +169,7 @@ internal class SchwinnX70ConsoleModel {
 
         val rpm = cadenceRpm.roundToInt()
         val target = (SchwinnX70Ride.RESISTANCE_FLOOR..SchwinnX70Ride.RESISTANCE_CEILING)
-            .minBy { level -> abs(SchwinnX70PowerModel.powerWatts(rpm, level) - powerWatts) }
+            .minBy { level -> abs(powerWattsFor(rpm, level) - powerWatts) }
 
         if (!resistanceSeeded) {
             resistanceLevel = target
@@ -191,8 +189,23 @@ internal class SchwinnX70ConsoleModel {
         /** How often the simulated rider is willing to move the knob. */
         const val RESISTANCE_STEP_SECONDS = 1.0
 
-        /** `SchwinnX70Measurement.TMIW_CALORIE_DIVISOR`, restated so the encoder needs no decoder. */
+        /** `SchwinnX70Measurement.TMIW_CALORIE_DIVISOR` (central), restated so the encoder needs no decoder. */
         const val ENERGY_DIVISOR = 2_097_152.0
+
+        /** Kilometres per statute mile; the sibling frame carries mph (restated, not imported: L22). */
+        const val KM_PER_MILE = 1.609344
+
+        /**
+         * Resistance level and cadence to watts, from the console's published quadratic table
+         * (`core.vendor.SchwinnX70Spec.RESISTANCE_POWER_COEFFICIENTS`). An independent restatement of
+         * central's model so the simulator needs no decoder-side type; floored at zero and wrapping
+         * the level like the original.
+         */
+        private fun powerWattsFor(cadenceRpm: Int, resistance: Int): Double {
+            val table = SchwinnX70Spec.RESISTANCE_POWER_COEFFICIENTS
+            val (a, b, c) = table[(maxOf(resistance, 1) - 1) % table.size]
+            return maxOf(a * cadenceRpm * cadenceRpm + b * cadenceRpm + c, 0.0)
+        }
 
         /** The console's clock rate, 1/1024 s. */
         const val TICKS_PER_SECOND = 1024.0

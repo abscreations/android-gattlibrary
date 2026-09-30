@@ -24,8 +24,6 @@ import android.os.SystemClock
 import android.os.Looper
 import android.os.ParcelUuid
 import androidx.core.content.ContextCompat
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstCommandCodec
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -52,7 +50,7 @@ internal class KayakFirstPeripheralController(
         val advertisedName: String? = null,
         val setupStage: String = "waiting",
         val lastCommand: String? = null,
-        val displayConfiguration: KayakFirstDisplayConfiguration = KayakFirstDisplayConfiguration.DEFAULT,
+        val displayConfiguration: KayakFirstPanelConfiguration = KayakFirstPanelConfiguration.DEFAULT,
         val pollRequests: Long = 0,
         val completeRecords: Long = 0,
         val malformedCommands: Long = 0,
@@ -70,7 +68,7 @@ internal class KayakFirstPeripheralController(
         var setupStage = "connected"
         var sport = 1
         var boatWeightKg = KayakFirstSpec.DEFAULT_BOAT_WEIGHT_KG.toDouble()
-        var display = KayakFirstDisplayConfiguration.DEFAULT
+        var display = KayakFirstPanelConfiguration.DEFAULT
         var running = false
         var lastGeneratedEventKey: Long? = null
         /** Session elapsed of the last datapoint actually put on the wire, for field 23. */
@@ -518,7 +516,7 @@ internal class KayakFirstPeripheralController(
                 }
             },
             setupStage = active?.setupStage ?: "waiting",
-            displayConfiguration = active?.display ?: KayakFirstDisplayConfiguration.DEFAULT,
+            displayConfiguration = active?.display ?: KayakFirstPanelConfiguration.DEFAULT,
             queuedFragments = clients.values.sumOf { synchronized(it) { it.queue.size } },
         )
         onStatus(status)

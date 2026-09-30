@@ -2,8 +2,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDerivedMetrics
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstDisplayMetric
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import java.nio.ByteBuffer
@@ -45,7 +43,7 @@ internal sealed interface KayakFirstSimulatorCommand {
         val boatWeightKg: Double? = null,
         val variant: KayakFirstHandshakeVariant = KayakFirstHandshakeVariant.LEGACY,
     ) : KayakFirstSimulatorCommand
-    data class Display(val configuration: KayakFirstDisplayConfiguration) : KayakFirstSimulatorCommand
+    data class Display(val configuration: KayakFirstPanelConfiguration) : KayakFirstSimulatorCommand
     data object Poll : KayakFirstSimulatorCommand
     data object Start : KayakFirstSimulatorCommand
     data object Stop : KayakFirstSimulatorCommand
@@ -117,7 +115,7 @@ internal class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int
                 boatWeightKg = parts[4].toDouble(),
                 variant = KayakFirstHandshakeVariant.BULL,
             ) else null
-            "5" -> KayakFirstDisplayConfiguration.fromWireCodes(parts.drop(1).mapNotNull(String::toIntOrNull))
+            "5" -> KayakFirstPanelConfiguration.fromWireCodes(parts.drop(1).mapNotNull(String::toIntOrNull))
                 ?.takeIf { parts.size == 6 }?.let(KayakFirstSimulatorCommand::Display)
             "6" -> if (parts.size == 1) KayakFirstSimulatorCommand.Poll else null
             "9" -> when (parts.drop(1)) {
@@ -214,7 +212,7 @@ data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric
 @GattLibraryInternalApi
 object KayakFirstPanelPresenter {
     fun rows(
-        configuration: KayakFirstDisplayConfiguration,
+        configuration: KayakFirstPanelConfiguration,
         sample: FtmsMockSample?,
         imperial: Boolean = false,
     ): List<KayakFirstPanelRow> = configuration.slots.mapIndexed { index, metric ->

@@ -446,7 +446,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$Companion;
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/core/KeepAwake;)V
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/server/SimulatedUpstreamHost;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/core/KeepAwake;)V
 	public final fun controlsAvailableFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Z
 	public final fun dispose ()V
 	public final fun endConcept2Workout ()Z
@@ -547,10 +547,38 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration$Companion;
+	public static final field SLOT_COUNT I
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component5 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSlot1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot5 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlots ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+	public final fun withSlot (ILcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration$Companion {
+	public final fun fromWireCodes (Ljava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;
+	public final fun getDEFAULT ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelPresenter {
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelPresenter;
-	public final fun rows (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;Z)Ljava/util/List;
-	public static synthetic fun rows$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelPresenter;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;ZILjava/lang/Object;)Ljava/util/List;
+	public final fun rows (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;Z)Ljava/util/List;
+	public static synthetic fun rows$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelPresenter;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;ZILjava/lang/Object;)Ljava/util/List;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow {

@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.HEART_RATE_FRESHNESS_MS
 
 /**
  * Substitute a live heart-rate strap's reading for the simulator's generated one.
@@ -46,7 +45,10 @@ internal object SimulatorHeartRateOverride {
      * short enough that a strap taken off does not keep a stale number alive through a whole
      * validation session.
      */
-    const val FRESHNESS_MS = HEART_RATE_FRESHNESS_MS
+    // Mirrors central's fusion freshness window (MetricFusion.HEART_RATE_FRESHNESS_MS = 4 s). Restated
+    // rather than imported so the simulator does not depend on central (L22, LIB-19j); a simulator
+    // test compares the two values.
+    const val FRESHNESS_MS = 4_000L
 
     /** What the override did, so a validation capture can say which frames carried a real strap. */
     enum class Outcome {

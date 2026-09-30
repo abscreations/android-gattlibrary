@@ -28,7 +28,7 @@ class SimulatorBridgeGuardTest {
             File("gatt-simulator/src/main/java/com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator.kt"),
             File("src/main/java/com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator.kt"),
         ).first(File::isFile).readText().replace("\r\n", "\n")
-        assertTrue(source.contains("engineState.connectionState.collect"))
+        assertTrue(source.contains("upstream.machineConnectionState.collect"))
         assertTrue(source.contains("SimulatorBridgeGuard.upstreamLinkActive(linkState)) stopForBridge()"))
         // The refusal is the first thing start(persona, ...) does, before any persona branch.
         val startBody = source.substringAfter("concept2Scenario: Concept2Scenario = Concept2Scenario.STEADY,\n    ) {")
