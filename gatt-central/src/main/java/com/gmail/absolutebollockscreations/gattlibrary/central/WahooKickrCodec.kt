@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 
 @GattLibraryInternalApi
 sealed interface WahooKickrCommand {
@@ -45,7 +46,7 @@ object WahooKickrCodec {
         )
         is WahooKickrCommand.Resistance -> finite(command.fraction, "resistance") {
             val raw = ((1.0 - command.fraction.coerceIn(0.0, 1.0)) * 16_383.0).roundToInt()
-            encoded(WahooKickrUuids.OPCODE_RESISTANCE, u16(raw))
+            encoded(WahooKickrUuids.OPCODE_RESISTANCE, u16Wrapping(raw))
         }
         is WahooKickrCommand.StandardLevel -> range(
             command.level,
@@ -71,12 +72,12 @@ object WahooKickrCodec {
         is WahooKickrCommand.Grade -> finite(command.percent, "grade") {
             val clamped = command.percent.coerceIn(-100.0, 100.0)
             val raw = ((clamped + 100.0) * 65_535.0 / 200.0).roundToInt()
-            encoded(WahooKickrUuids.OPCODE_GRADE, u16(raw))
+            encoded(WahooKickrUuids.OPCODE_GRADE, u16Wrapping(raw))
         }
         is WahooKickrCommand.WindSpeed -> finite(command.metresPerSecond, "windSpeed") {
             val clamped = command.metresPerSecond.coerceIn(-32.768, 32.767)
             val raw = ((clamped + 32.768) * 1_000.0).roundToInt()
-            encoded(WahooKickrUuids.OPCODE_WIND_SPEED, u16(raw))
+            encoded(WahooKickrUuids.OPCODE_WIND_SPEED, u16Wrapping(raw))
         }
         is WahooKickrCommand.WheelCircumference -> {
             val value = command.millimetres
@@ -87,7 +88,7 @@ object WahooKickrCodec {
             } else {
                 encoded(
                     WahooKickrUuids.OPCODE_WHEEL_CIRCUMFERENCE,
-                    u16((value * 10.0).roundToInt()),
+                    u16Wrapping((value * 10.0).roundToInt()),
                 )
             }
         }
@@ -150,12 +151,7 @@ object WahooKickrCodec {
         return WahooKickrEncodeResult.Encoded(bytes.toByteArray())
     }
 
-    private fun u16(value: Int): ByteArray = byteArrayOf(
-        (value and 0xFF).toByte(),
-        ((value ushr 8) and 0xFF).toByte(),
-    )
-
-    private fun i16(value: Int): ByteArray = u16(value and 0xFFFF)
+    private fun i16(value: Int): ByteArray = u16Wrapping(value and 0xFFFF)
 
     private fun invalid(field: String, reason: String) = WahooKickrEncodeResult.Invalid(
         WahooKickrValidationError(field, reason),

@@ -144,6 +144,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STAT
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_USER_STOPPED_OR_PAUSED
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 
 @GattLibraryInternalApi
 class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
@@ -767,23 +768,14 @@ fun applyFitnessMachineStatus(
     val status = value[0]
     state.setLastFtmsStatusCode(status)
 
-    fun u16LE(offset: Int): Int {
-        if (value.size < offset + 2) return 0
-        val b0 = value[offset].toInt() and 0xFF
-        val b1 = value[offset + 1].toInt() and 0xFF
-        return b0 or (b1 shl 8)
-    }
+    // Deliberately zero when short (LIB-18b R3); unlike s16LE below. Changing it is its own unit.
+    fun u16LE(offset: Int): Int = LittleEndian.u16OrNull(value, offset) ?: 0
 
     /**
      * Signed little-endian 16-bit, or null when the payload cannot contain it. Signed FTMS
      * targets must not silently fall back to zero: zero is itself a valid movement target.
      */
-    fun s16LE(offset: Int): Int? {
-        if (value.size < offset + 2) return null
-        val b0 = value[offset].toInt() and 0xFF
-        val b1 = value[offset + 1].toInt() and 0xFF
-        return (b0 or (b1 shl 8)).toShort().toInt()
-    }
+    fun s16LE(offset: Int): Int? = LittleEndian.s16OrNull(value, offset)
 
     Timber.tag(BtEngineState.TAG).d(
         "FTMS Status opcode=0x%02X payload=%s",

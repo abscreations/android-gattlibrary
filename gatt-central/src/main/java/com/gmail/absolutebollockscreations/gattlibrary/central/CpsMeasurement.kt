@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursor
 
 /** Bounds-checked decoder for Cycling Power Measurement, `0x2A63`. */
 @GattLibraryInternalApi
@@ -30,7 +31,7 @@ object CpsMeasurement {
     )
 
     fun parse(data: ByteArray): Reading? {
-        val cursor = Cursor(data)
+        val cursor = ByteCursor(data)
         val flags = cursor.u16() ?: return null
         val power = cursor.s16() ?: return null
         val pedalBalance = if (flags.has(BIT_PEDAL_POWER_BALANCE)) {
@@ -80,25 +81,6 @@ object CpsMeasurement {
     }
 
     private fun Int.has(bit: Int): Boolean = this and (1 shl bit) != 0
-
-    private class Cursor(private val data: ByteArray) {
-        private var offset = 0
-        fun u8(): Int? = if (offset < data.size) data[offset++].toInt() and 0xFF else null
-        fun u16(): Int? {
-            if (data.size - offset < 2) return null
-            return u8()!! or (u8()!! shl 8)
-        }
-        fun s16(): Int? = u16()?.let { if (it and 0x8000 != 0) it - 0x1_0000 else it }
-        fun u24(): Int? {
-            if (data.size - offset < 3) return null
-            return u8()!! or (u8()!! shl 8) or (u8()!! shl 16)
-        }
-        fun u32(): Long? {
-            if (data.size - offset < 4) return null
-            return u8()!!.toLong() or (u8()!!.toLong() shl 8) or
-                (u8()!!.toLong() shl 16) or (u8()!!.toLong() shl 24)
-        }
-    }
 
     private const val BIT_PEDAL_POWER_BALANCE = 0
     private const val BIT_PEDAL_POWER_BALANCE_REFERENCE = 1

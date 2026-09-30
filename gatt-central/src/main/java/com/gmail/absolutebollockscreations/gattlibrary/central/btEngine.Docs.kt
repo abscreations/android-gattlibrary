@@ -378,7 +378,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *      • FTMS unit scales (speed, incline, resistance, power).
  *      • CSC / CPS / RSC / HRM / Glucose services and key characteristics.
  *      • Shared service-side profiles and advertised device names.
- *      • Simple little-endian byte helpers (u16le/s16le/u24le/byteOf).
+ *      • (Byte helpers moved to gatt-core `core.bytes` in LIB-18f.)
  *
  *  - This file is **shared** by:
  *      • BtEngine (client/consumer of FTMS/HRM/CSC/CPS).
@@ -430,7 +430,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *          dataUuidForActivity(ActivityType): UUID?
  *
  *  - Byte helpers:
- *      • u16le(v: Int), s16le(v: Int), u24le(v: Int), byteOf(v: Int)
+ *      • Byte helpers: see gatt-core `core.bytes` (LittleEndian, BigEndian, ByteCursor).
  *        used by both engine and btService for payload framing.
  *
  * NOTES

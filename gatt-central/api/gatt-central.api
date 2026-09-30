@@ -354,12 +354,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public final fun getX70_OBSERVED_CHARACTERISTICS ()Ljava/util/List;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BluetoothIdsKt {
-	public static final fun s16le (I)[B
-	public static final fun u16le (I)[B
-	public static final fun u24le (I)[B
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine : com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine$Companion;
 	public final fun activateServiceOn (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/util/Set;)Z

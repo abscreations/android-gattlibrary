@@ -103,6 +103,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID
 import timber.log.Timber
 import kotlin.math.round
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 
 internal object BtEngineControlPoint {
 
@@ -179,7 +181,7 @@ internal object BtEngineControlPoint {
         else kph
 
         val scaled = (value * FTMS_SPEED_SCALE).toInt().coerceIn(0, 0xFFFF)
-        val payload = byteArrayOf(OPCODE_SET_TARGET_SPEED) + u16le(scaled)
+        val payload = byteArrayOf(OPCODE_SET_TARGET_SPEED) + u16Wrapping(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set speed → %.2f km/h (scaled=%d)", value, scaled)
         return enqueueControlPointWrite(engine, payload)
@@ -237,7 +239,7 @@ internal object BtEngineControlPoint {
         val cw = (windResistanceCoefficient * 100f).roundToInt().coerceIn(0, 0xFF)
 
         val payload = byteArrayOf(OPCODE_SET_INDOOR_BIKE_SIMULATION) +
-            s16le(wind) + s16le(grade) + byteArrayOf(crr.toByte(), cw.toByte())
+            s16Wrapping(wind) + s16Wrapping(grade) + byteArrayOf(crr.toByte(), cw.toByte())
 
         Timber.tag(BtEngineState.TAG).i(
             "CP: set simulation → wind %.3f m/s, grade %.2f %%, crr %.4f, cw %.2f",
@@ -258,7 +260,7 @@ internal object BtEngineControlPoint {
 
         val scaled = (value * FTMS_INCLINE_SCALE).toInt()
             .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-        val payload = byteArrayOf(OPCODE_SET_TARGET_INCLINATION) + s16le(scaled)
+        val payload = byteArrayOf(OPCODE_SET_TARGET_INCLINATION) + s16Wrapping(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set incline → %.1f %% (scaled=%d)", value, scaled)
         return enqueueControlPointWrite(engine, payload)
@@ -295,7 +297,7 @@ internal object BtEngineControlPoint {
         else watts
 
         val scaled = (snapped * FTMS_POWER_SCALE).toInt().coerceIn(0, 0xFFFF)
-        val payload = byteArrayOf(OPCODE_SET_TARGET_POWER) + u16le(scaled)
+        val payload = byteArrayOf(OPCODE_SET_TARGET_POWER) + u16Wrapping(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set power → %d W (scaled=%d)", snapped, scaled)
         return enqueueControlPointWrite(engine, payload)
@@ -381,11 +383,6 @@ internal object BtEngineControlPoint {
         val steps = round((value - min) / step)
         return (min + steps * step).coerceIn(min, max)
     }
-
-    private fun u16le(v: Int): ByteArray =
-        byteArrayOf((v and 0xFF).toByte(), ((v ushr 8) and 0xFF).toByte())
-
-    private fun s16le(v: Int): ByteArray = u16le(v and 0xFFFF)
 }
 
 internal fun canRequestFtmsControl(

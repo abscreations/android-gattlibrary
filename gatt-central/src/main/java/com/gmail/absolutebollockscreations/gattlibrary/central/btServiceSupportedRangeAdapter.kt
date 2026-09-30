@@ -36,6 +36,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Saturating
 
 internal object BtServiceSupportedRangesAdapter {
 
@@ -123,27 +125,9 @@ internal object BtServiceSupportedRangesAdapter {
     private fun clampU8(v: Int): Int = v.coerceIn(0, 0xFF)
     private fun clampS16(v: Int): Int = v.coerceIn(-0x8000, 0x7FFF)
 
-    private fun u16x3(a: Int, b: Int, c: Int): ByteArray {
-        val out = ByteArray(6)
-        out[0] = (a and 0xFF).toByte()
-        out[1] = ((a ushr 8) and 0xFF).toByte()
-        out[2] = (b and 0xFF).toByte()
-        out[3] = ((b ushr 8) and 0xFF).toByte()
-        out[4] = (c and 0xFF).toByte()
-        out[5] = ((c ushr 8) and 0xFF).toByte()
-        return out
-    }
+    private fun u16x3(a: Int, b: Int, c: Int): ByteArray =
+        u16Wrapping(a) + u16Wrapping(b) + u16Wrapping(c)
 
-    private fun s16x3(a: Int, b: Int, c: Int): ByteArray {
-        fun toLeBytes(s: Int): Pair<Byte, Byte> {
-            val v = clampS16(s)
-            return ((v and 0xFF).toByte()) to (((v ushr 8) and 0xFF).toByte())
-        }
-
-        val (a0, a1) = toLeBytes(a)
-        val (b0, b1) = toLeBytes(b)
-        val (c0, c1) = toLeBytes(c)
-
-        return byteArrayOf(a0, a1, b0, b1, c0, c1)
-    }
+    private fun s16x3(a: Int, b: Int, c: Int): ByteArray =
+        s16Saturating(a.toLong()) + s16Saturating(b.toLong()) + s16Saturating(c.toLong())
 }

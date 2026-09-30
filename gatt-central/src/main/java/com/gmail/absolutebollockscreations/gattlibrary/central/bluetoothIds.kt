@@ -1243,26 +1243,3 @@ object BtServiceProfiles {
     fun dataUuidForActivity(type: ActivityType): UUID? =
         ftmsProfileForActivity(type)?.let { dataUuidForProfile(it) }
 }
-
-// ============================================================================
-// 4) Byte helpers (little-endian encoders)
-// ============================================================================
-fun u16le(v: Int): ByteArray =
-    byteArrayOf((v and 0xFF).toByte(), ((v ushr 8) and 0xFF).toByte())
-
-fun s16le(v: Int): ByteArray {
-    val sv = v.toShort()
-    return byteArrayOf(
-        (sv.toInt() and 0xFF).toByte(),
-        ((sv.toInt() ushr 8) and 0xFF).toByte(),
-    )
-}
-
-fun u24le(v: Int): ByteArray =
-    byteArrayOf(
-        (v and 0xFF).toByte(),
-        ((v ushr 8) and 0xFF).toByte(),
-        ((v ushr 16) and 0xFF).toByte(),
-    )
-
-internal fun byteOf(v: Int): ByteArray = byteArrayOf((v and 0xFF).toByte())

@@ -1,6 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 
 /**
  * Bounds-checked decoder for the Keiser M-series advertisement payload (plan §11, phase 11.3).
@@ -349,11 +351,6 @@ object KeiserMSeriesMeasurement {
 
     private fun expectedLength(firmwareMinor: Int): Int =
         if (carriesResistance(firmwareMinor)) CURRENT_FIELD_LENGTH else LEGACY_FIELD_LENGTH
-
-    private fun u8(data: ByteArray, offset: Int): Int = data[offset].toInt() and 0xFF
-
-    private fun u16(data: ByteArray, offset: Int): Int =
-        u8(data, offset) or (u8(data, offset + 1) shl 8)
 }
 
 /**

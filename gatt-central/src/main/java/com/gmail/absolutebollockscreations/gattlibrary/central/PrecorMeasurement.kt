@@ -1,6 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u24
 
 /**
  * Bounds-checked decoder for the Precor Spinner Chrono Power measurement frame (plan §5b).
@@ -162,14 +165,6 @@ object PrecorMeasurement {
             unidentified15to16 = u16(data, OFFSET_UNIDENTIFIED),
         )
     }
-
-    private fun u8(data: ByteArray, offset: Int): Int = data[offset].toInt() and 0xFF
-
-    private fun u16(data: ByteArray, offset: Int): Int =
-        u8(data, offset) or (u8(data, offset + 1) shl 8)
-
-    private fun u24(data: ByteArray, offset: Int): Int =
-        u8(data, offset) or (u8(data, offset + 1) shl 8) or (u8(data, offset + 2) shl 16)
 }
 
 /**

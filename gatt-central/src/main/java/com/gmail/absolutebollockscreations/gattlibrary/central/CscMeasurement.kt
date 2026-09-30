@@ -1,6 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32
 
 /** Pure decoder for Cycling Speed and Cadence Measurement, `0x2A5B`. */
 @GattLibraryInternalApi
@@ -60,17 +63,6 @@ object CscMeasurement {
         }
         return Reading(wheel = wheel, crank = crank)
     }
-
-    private fun u8(data: ByteArray, offset: Int): Int = data[offset].toInt() and 0xFF
-
-    private fun u16(data: ByteArray, offset: Int): Int =
-        u8(data, offset) or (u8(data, offset + 1) shl 8)
-
-    private fun u32(data: ByteArray, offset: Int): Long =
-        u8(data, offset).toLong() or
-            (u8(data, offset + 1).toLong() shl 8) or
-            (u8(data, offset + 2).toLong() shl 16) or
-            (u8(data, offset + 3).toLong() shl 24)
 
     private const val WHEEL_FIELD_LENGTH = 6
     private const val CRANK_FIELD_LENGTH = 4

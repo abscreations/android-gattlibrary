@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursor
 
 /**
  * Bounds-checked decoders for the Concept2 PM Bluetooth Smart rowing characteristics.
@@ -156,7 +157,7 @@ object Concept2Measurement {
      * how this defect started.
      */
     fun multiplexedAdditionalStatus2(data: ByteArray): Reading? {
-        val cursor = Cursor(data)
+        val cursor = ByteCursor(data)
         val elapsed = cursor.u24() ?: return null
         cursor.u8() ?: return Reading(Id.ADDITIONAL_STATUS_2, elapsed)
         val calories = cursor.u16()
@@ -184,7 +185,7 @@ object Concept2Measurement {
      * ```
      */
     fun generalStatus(data: ByteArray): Reading? {
-        val cursor = Cursor(data)
+        val cursor = ByteCursor(data)
         val elapsed = cursor.u24() ?: return null
         val distance = cursor.u24()?.let { it / 10.0 }
         return Reading(
@@ -207,7 +208,7 @@ object Concept2Measurement {
      * ```
      */
     fun additionalStatus1(data: ByteArray): Reading? {
-        val cursor = Cursor(data)
+        val cursor = ByteCursor(data)
         val elapsed = cursor.u24() ?: return null
         val speed = cursor.u16()?.let { it / 1000.0 }
         val strokeRate = cursor.u8()
@@ -241,7 +242,7 @@ object Concept2Measurement {
      * and is decoded here because it costs nothing and the frame must be walked past it anyway.
      */
     fun additionalStatus2(data: ByteArray): Reading? {
-        val cursor = Cursor(data)
+        val cursor = ByteCursor(data)
         val elapsed = cursor.u24() ?: return null
         cursor.u8() ?: return Reading(Id.ADDITIONAL_STATUS_2, elapsed)
         val averagePower = cursor.u16()
@@ -266,7 +267,7 @@ object Concept2Measurement {
      * ```
      */
     fun additionalStrokeData(data: ByteArray): Reading? {
-        val cursor = Cursor(data)
+        val cursor = ByteCursor(data)
         val elapsed = cursor.u24() ?: return null
         val power = cursor.u16()
         return Reading(
@@ -278,17 +279,4 @@ object Concept2Measurement {
 
     /** Documented invalid marker for the heart-rate octet. */
     const val HEART_RATE_INVALID = 255
-
-    private class Cursor(private val data: ByteArray) {
-        private var offset = 0
-        fun u8(): Int? = if (offset < data.size) data[offset++].toInt() and 0xFF else null
-        fun u16(): Int? {
-            if (data.size - offset < 2) return null
-            return u8()!! or (u8()!! shl 8)
-        }
-        fun u24(): Int? {
-            if (data.size - offset < 3) return null
-            return u8()!! or (u8()!! shl 8) or (u8()!! shl 16)
-        }
-    }
 }

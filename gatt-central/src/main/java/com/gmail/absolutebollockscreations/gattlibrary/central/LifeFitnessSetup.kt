@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 
 /**
  * The Life Fitness setup transcript: an ordered list of GATT operations and the rules for
@@ -185,13 +186,13 @@ object LifeFitnessSetup {
         add(profileOp(user, BluetoothIds.UUID_USER_FIRST_NAME, utf8(profile.firstName), "first name"))
         add(profileOp(user, BluetoothIds.UUID_USER_LAST_NAME, utf8(profile.lastName), "last name"))
         add(profileOp(user, BluetoothIds.UUID_USER_EMAIL, utf8(profile.email), "email"))
-        add(profileOp(user, BluetoothIds.UUID_USER_AGE, uint16Le(ageWireUnits(ageYears)), "age"))
+        add(profileOp(user, BluetoothIds.UUID_USER_AGE, u16Wrapping(ageWireUnits(ageYears)), "age"))
         add(profileOp(user, BluetoothIds.UUID_USER_GENDER, byteArrayOf(profile.gender.toByte()), "gender"))
         add(profileOp(user, BluetoothIds.UUID_USER_LANGUAGE, LANGUAGE, "language"))
         add(profileOp(user, BluetoothIds.UUID_LF_VENDOR_TOKEN_1, VENDOR_TOKEN, "vendor token 1"))
         add(profileOp(user, BluetoothIds.UUID_LF_VENDOR_TOKEN_2, VENDOR_TOKEN_2, "vendor token 2"))
-        add(profileOp(user, BluetoothIds.UUID_USER_WEIGHT, uint16Le(profile.weightWireUnits), "weight"))
-        add(profileOp(user, BluetoothIds.UUID_USER_HEIGHT, uint16Le(profile.heightWireUnits), "height"))
+        add(profileOp(user, BluetoothIds.UUID_USER_WEIGHT, u16Wrapping(profile.weightWireUnits), "weight"))
+        add(profileOp(user, BluetoothIds.UUID_USER_HEIGHT, u16Wrapping(profile.heightWireUnits), "height"))
 
         add(
             Op(
@@ -244,9 +245,6 @@ object LifeFitnessSetup {
      * saturates at 255 exactly as it did before; the second octet is always zero.
      */
     private fun ageWireUnits(ageYears: Int): Int = ageYears.coerceIn(0, 255)
-
-    private fun uint16Le(value: Int): ByteArray =
-        byteArrayOf((value and 0xFF).toByte(), ((value shr 8) and 0xFF).toByte())
 }
 
 /**

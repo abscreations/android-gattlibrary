@@ -1,6 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32
 
 /**
  * Decoder for RSC Measurement, `0x2A53`.
@@ -180,13 +182,4 @@ object RscMeasurement {
         3, 14 -> false
         else -> null
     }
-
-    private fun u16(b: ByteArray, at: Int): Int =
-        (b[at].toInt() and 0xFF) or ((b[at + 1].toInt() and 0xFF) shl 8)
-
-    private fun u32(b: ByteArray, at: Int): Long =
-        (b[at].toLong() and 0xFF) or
-            ((b[at + 1].toLong() and 0xFF) shl 8) or
-            ((b[at + 2].toLong() and 0xFF) shl 16) or
-            ((b[at + 3].toLong() and 0xFF) shl 24)
 }

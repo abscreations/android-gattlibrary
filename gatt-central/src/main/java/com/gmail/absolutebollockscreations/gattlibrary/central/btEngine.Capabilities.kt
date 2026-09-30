@@ -58,6 +58,8 @@ import androidx.core.content.ContextCompat
 import timber.log.Timber
 import kotlin.math.max
 import kotlin.math.min
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16
 
 internal object BtEngineCapabilities {
 
@@ -390,15 +392,6 @@ internal object BtEngineCapabilities {
     // ─────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────
-
-    private fun u16(b: ByteArray, off: Int): Int =
-        (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
-
-    private fun s16(b: ByteArray, off: Int): Int {
-        val u = (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
-        return (u shl 16) shr 16
-    }
-
     /** Clamp and sanitize step increments. */
     private fun normalizeStep(step: Float): Float {
         if (step.isNaN() || step.isInfinite()) return 0f

@@ -1,6 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u48
 
 /**
  * Bounds-checked decoders for the Schwinn x70 family — 170, 270 and 570 (plan §7).
@@ -460,18 +463,5 @@ object SchwinnX70Measurement {
         if (command.isEmpty()) return false
         if (u8(command, 0) != command.size) return false
         return command.sumOf { it.toInt() and 0xFF } % 256 == 0
-    }
-
-    private fun u8(data: ByteArray, offset: Int): Int = data[offset].toInt() and 0xFF
-
-    private fun u16(data: ByteArray, offset: Int): Int =
-        u8(data, offset) or (u8(data, offset + 1) shl 8)
-
-    private fun u48(data: ByteArray, offset: Int): Long {
-        var value = 0L
-        for (index in 0 until 6) {
-            value = value or (u8(data, offset + index).toLong() shl (8 * index))
-        }
-        return value
     }
 }

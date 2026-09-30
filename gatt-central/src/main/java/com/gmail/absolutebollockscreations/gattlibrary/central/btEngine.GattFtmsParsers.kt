@@ -85,6 +85,9 @@ import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDebug
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16
 
 @GattLibraryInternalApi
 object BtEngineFtmsParsers {
@@ -1063,11 +1066,6 @@ object BtEngineFtmsParsers {
 
     /** True when [need] bytes are readable at [off] and the walk has not already aborted. */
     private fun has(b: ByteArray, off: Int, need: Int) = off >= 0 && b.size >= off + need
-    private fun u8(b: ByteArray, off: Int): Int = b[off].toInt() and 0xFF
-    private fun u16(b: ByteArray, off: Int): Int =
-        (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
-    private fun s16(b: ByteArray, off: Int): Int =
-        (b[off].toInt() and 0xFF) or (b[off + 1].toInt() shl 8)
 
     /**
      * Step over a present-but-unused field. Bounds-checked like any read: bytes that are not

@@ -2,6 +2,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import kotlin.math.roundToLong
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursor
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursorFailure
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 
 @GattLibraryInternalApi
 sealed interface RideOnProtoField {
@@ -289,13 +292,9 @@ object RideOnProtoCodec {
             uint32Field(6, deviceParameter),
     )
 
-    fun zigZagEncode32(value: Int): Long =
-        ((value.toLong() shl 1) xor (value.toLong() shr 31)) and UINT32_MAX
+    fun zigZagEncode32(value: Int): Long = ProtobufVarint.zigZagEncode32(value)
 
-    fun zigZagDecode32(value: Long): Int {
-        requireUint32(value)
-        return ((value ushr 1) xor -(value and 1L)).toInt()
-    }
+    fun zigZagDecode32(value: Long): Int = ProtobufVarint.zigZagDecode32(value)
 
     private fun sint32Field(number: Int, value: Int): ByteArray =
         key(number, 0) + varint(zigZagEncode32(value))
@@ -319,58 +318,30 @@ object RideOnProtoCodec {
         return byteArrayOf(opcode.toByte()) + body
     }
 
-    private fun varint(value: Long): ByteArray {
-        require(value >= 0)
-        var remaining = value
-        val out = mutableListOf<Byte>()
-        do {
-            var next = (remaining and 0x7F).toInt()
-            remaining = remaining ushr 7
-            if (remaining != 0L) next = next or 0x80
-            out += next.toByte()
-        } while (remaining != 0L)
-        return out.toByteArray()
-    }
+    private fun varint(value: Long): ByteArray = ProtobufVarint.encode(value)
 
     private fun requireUint32(value: Long) = require(value in 0..UINT32_MAX)
 
-    private class Reader(private val data: ByteArray, start: Int) {
-        private var offset = start
+    /** RideOn's decode-error vocabulary over the shared [ByteCursor] (LIB-18f). */
+    private class Reader(data: ByteArray, start: Int) {
+        private val cursor = ByteCursor(data, start)
         var error: String = "truncated field"
             private set
-        val remaining get() = data.size - offset
+        val remaining get() = cursor.remaining
 
-        fun varint(): Long? {
-            var value = 0L
-            for (index in 0 until MAX_VARINT_BYTES) {
-                if (offset >= data.size) {
-                    error = "truncated varint"
-                    return null
-                }
-                val next = data[offset++].toInt() and 0xFF
-                if (index == MAX_VARINT_BYTES - 1 && next > 1) {
-                    error = "overlong varint"
-                    return null
-                }
-                value = value or ((next and 0x7F).toLong() shl (index * 7))
-                if (next and 0x80 == 0) return value
+        fun varint(): Long? = cursor.varint() ?: null.also {
+            error = if (cursor.lastFailure == ByteCursorFailure.OVERLONG_VARINT) {
+                "overlong varint"
+            } else {
+                "truncated varint"
             }
-            error = "overlong varint"
-            return null
         }
 
-        fun bytes(length: Int): ByteArray? {
-            if (length < 0 || length > remaining) {
-                error = "truncated fixed or byte field"
-                return null
-            }
-            val result = data.copyOfRange(offset, offset + length)
-            offset += length
-            return result
+        fun bytes(length: Int): ByteArray? = cursor.bytes(length) ?: null.also {
+            error = "truncated fixed or byte field"
         }
     }
 
-    private const val MAX_VARINT_BYTES = 10
     private const val UINT32_MAX = 0xFFFF_FFFFL
 
     // Leaf field number for a gear-ratio HubRequest reply - see hubRequestResponse()'s KDoc.
