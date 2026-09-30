@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-import com.gmail.absolutebollockscreations.gattlibrary.central.FtmsResistanceScale
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping

@@ -2,7 +2,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSnapshot
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -47,7 +46,7 @@ class CscControlPointTest {
         assertTrue(FtmsMetricSnapshot().allowsCscCumulativeWheelReset())
         assertTrue(
             FtmsMetricSnapshot(
-                cscNativeEvents = CscNativeEventSnapshot(
+                cscNativeEvents = CscNativeEventInput(
                     cumulativeCrankRevolutions = 2,
                     lastCrankEventTimeTicks = 3,
                 ),
@@ -55,7 +54,7 @@ class CscControlPointTest {
         )
         assertFalse(
             FtmsMetricSnapshot(
-                cscNativeEvents = CscNativeEventSnapshot(
+                cscNativeEvents = CscNativeEventInput(
                     cumulativeWheelRevolutions = 4,
                     lastWheelEventTimeTicks = 5,
                 ),

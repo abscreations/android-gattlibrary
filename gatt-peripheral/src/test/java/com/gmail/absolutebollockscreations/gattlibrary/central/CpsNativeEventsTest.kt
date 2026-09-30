@@ -4,6 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingRevolut
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
 import org.junit.Assert.assertArrayEquals
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CpsNativeEventInput
 
 class CpsNativeEventsTest {
     @Test
@@ -11,7 +12,7 @@ class CpsNativeEventsTest {
         val payload = CyclingSensorEncoders.cyclingPowerMeasurement(
             -3,
             CyclingRevolutionSnapshot(cumulativeCrankRevolutions = 99, lastCrankEventTime = 100),
-            CpsNativeEventSnapshot(0x01020304, 0x0506, 0x0708, 0x090A),
+            CpsNativeEventInput(0x01020304, 0x0506, 0x0708, 0x090A),
         )
         assertArrayEquals(
             hex("30 00 FD FF 04 03 02 01 06 05 08 07 0A 09"),

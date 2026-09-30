@@ -1,9 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillNativePaceSnapshot
 import kotlin.math.atan
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -70,15 +67,15 @@ data class FtmsMetricSnapshot(
     /** Strokes, strides or steps depending on persona. */
     val strokeCount: Int? = null,
     /** Exact selected upstream CSC counters/event times, if this is a CSC bike session. */
-    val cscNativeEvents: CscNativeEventSnapshot? = null,
+    val cscNativeEvents: CscNativeEventInput? = null,
     /** Exact upstream CPS wheel/crank event fields for native CPS forwarding. */
-    val cpsNativeEvents: CpsNativeEventSnapshot? = null,
+    val cpsNativeEvents: CpsNativeEventInput? = null,
     /**
      * Raw treadmill pace octets from the upstream machine, re-emitted verbatim. Never
      * synthesised: the wire field resolves to 6 km/h per step, so a value derived from fused
      * speed would contradict the Instantaneous Speed field in the same packet.
      */
-    val treadmillNativePace: TreadmillNativePaceSnapshot? = null,
+    val treadmillNativePace: TreadmillNativePaceInput? = null,
     /**
      * `SystemClock.elapsedRealtime()` when [EngineMetricPump] **sampled** this
      * snapshot — not when the upstream machine sent the data.

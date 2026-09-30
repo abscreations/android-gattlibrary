@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
 
 /**
  * Plan §11.7, §11.8 and amended D11 for the Concept2 PM.

@@ -14,8 +14,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
@@ -96,8 +94,8 @@ internal class FtmsPeripheralStatusRelay(
  */
 class FtmsPeripheralController(
     private val context: Context,
-    private val engineState: BtEngineState,
-    private val engineProvider: () -> BtServiceEngineFacade? = { null },
+    /** Everything the controller needs from the upstream machine; the bridge supplies [EngineUpstreamPort]. */
+    private val upstream: FtmsUpstreamPort,
     private val onStatus: (PeripheralStatus) -> Unit = {},
     /** Host-app settings (LIB-6/S6). The default keeps treadmill speed control off (D26). */
     private val config: PeripheralConfig = PeripheralConfig(),
@@ -237,7 +235,7 @@ class FtmsPeripheralController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val main = Handler(Looper.getMainLooper())
 
-    private val engineControlSink = EngineFtmsControlSink(engineProvider)
+    private val engineControlSink: UpstreamControlSink = upstream.controlSink
 
     /**
      * Control Point target. Normally the real machine; the data simulator swaps
@@ -256,21 +254,19 @@ class FtmsPeripheralController(
         // GATT server is already open, and one of those reconnecting used to be
         // admitted as a downstream client. The registry lists a device from the
         // moment its context opens, which precedes any server callback for it.
-        centralRoleAddresses = {
-            engineState.connectedDevices.value.mapTo(mutableSetOf()) { it.address.lowercase() }
-        },
+        centralRoleAddresses = { upstream.connectedCentralAddresses() },
     ).apply {
         // Mirror the bridged machine's Pace Supported bit. Read live for the same reason as
         // the address set above: the upstream 0x2ACC read completes during machine setup and
         // may land after the server is already open.
-        upstreamPaceSupported = { engineState.supportsPaceMeasurement }
+        upstreamPaceSupported = { upstream.supportsPaceMeasurement() }
     }
     private val notifier = FtmsPeripheralNotifier(
         advertiser,
         store,
         onCountersChanged = ::refreshPublishedDiagnostics,
     )
-    private val pump = EngineMetricPump(engineState, store) { profile }
+    private val pump: MetricSampler = upstream.createMetricSampler(store) { profile }
     private val statusRelay = FtmsPeripheralStatusRelay(
         initial = PeripheralStatus(),
         enrich = ::withDiagnostics,

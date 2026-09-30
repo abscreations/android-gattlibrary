@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingRevolutionSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
@@ -9,6 +8,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsTargetRang
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CpsNativeEventInput
 
 /** Standard packet behavior directly exercised by Zwift in the physical Flux-2 capture. */
 internal object TacxFlux2StandardEncoders {
@@ -27,7 +27,7 @@ internal object TacxFlux2StandardEncoders {
     ): ByteArray = CyclingSensorEncoders.cyclingPowerMeasurement(
         instantaneousPowerWatts = state.instantaneousPowerWatts ?: 0,
         revolutions = revolutions,
-        native = CpsNativeEventSnapshot(
+        native = CpsNativeEventInput(
             cumulativeWheelRevolutions = revolutions.cumulativeWheelRevolutions,
             lastWheelEventTimeTicks = revolutions.lastWheelEventTime,
             cumulativeCrankRevolutions = revolutions.cumulativeCrankRevolutions,

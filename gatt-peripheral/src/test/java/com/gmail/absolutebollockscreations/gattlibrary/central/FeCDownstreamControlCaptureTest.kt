@@ -16,6 +16,7 @@ import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
 
 /** Phase 9 §11.7, §11.8 and capture evidence at the production policy seams. */
 class FeCDownstreamControlCaptureTest {

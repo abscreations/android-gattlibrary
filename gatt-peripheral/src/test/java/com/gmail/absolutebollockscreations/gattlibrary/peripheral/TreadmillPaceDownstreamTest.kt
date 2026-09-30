@@ -2,7 +2,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillNativePaceSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -112,7 +111,7 @@ class TreadmillPaceDownstreamTest {
         assertFalse(flagsWithout and (1 shl 6) != 0)
 
         val withPace = base.copy(
-            treadmillNativePace = TreadmillNativePaceSnapshot(instantaneousRaw = 2, averageRaw = 3),
+            treadmillNativePace = TreadmillNativePaceInput(instantaneousRaw = 2, averageRaw = 3),
         )
         val encoded = FtmsDataEncoders.encode(
             FtmsMachineProfile.TREADMILL,

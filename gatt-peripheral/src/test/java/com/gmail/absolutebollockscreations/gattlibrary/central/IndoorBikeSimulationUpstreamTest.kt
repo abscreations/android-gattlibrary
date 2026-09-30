@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
 
 /**
  * Plan §9.5.6 — upstream Indoor Bike Simulation (`0x11`).

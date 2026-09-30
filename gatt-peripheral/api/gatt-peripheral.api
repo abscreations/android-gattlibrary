@@ -51,6 +51,44 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Co
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/ConnectableAdvertisingGate$Action;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Long;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCumulativeCrankRevolutions ()Ljava/lang/Integer;
+	public final fun getCumulativeWheelRevolutions ()Ljava/lang/Long;
+	public final fun getLastCrankEventTimeTicks ()Ljava/lang/Integer;
+	public final fun getLastWheelEventTimeTicks ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Long;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;Ljava/lang/Long;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCumulativeCrankRevolutions ()Ljava/lang/Integer;
+	public final fun getCumulativeWheelRevolutions ()Ljava/lang/Long;
+	public final fun getLastCrankEventTimeTicks ()Ljava/lang/Integer;
+	public final fun getLastWheelEventTimeTicks ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingEventAccumulator {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingEventAccumulator$Companion;
 	public static final field MAX_INTEGRATION_GAP_MS J
@@ -118,8 +156,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Cy
 	public final fun cscFeature ()[B
 	public final fun cscMeasurement (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingRevolutionSnapshot;)[B
 	public final fun cyclingPowerFeature ()[B
-	public final fun cyclingPowerMeasurement (ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingRevolutionSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;)[B
-	public static synthetic fun cyclingPowerMeasurement$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorEncoders;ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingRevolutionSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;ILjava/lang/Object;)[B
+	public final fun cyclingPowerMeasurement (ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingRevolutionSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;)[B
+	public static synthetic fun cyclingPowerMeasurement$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorEncoders;ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingRevolutionSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;ILjava/lang/Object;)[B
 	public final fun sensorLocation ()[B
 }
 
@@ -129,10 +167,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Cy
 	public final fun buildCyclingPowerService ()Landroid/bluetooth/BluetoothGattService;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineFtmsControlSink : com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsControlSink {
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineFtmsControlSink : com/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink {
 	public fun <init> (Lkotlin/jvm/functions/Function0;)V
-	public final fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;)V
-	public final fun endSession ()V
+	public fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;)V
+	public fun endSession ()V
 	public fun getCanControl ()Z
 	public fun getClampsTargetsToAdvertisedRange ()Z
 	public fun getReportsTargetChangesAsynchronously ()Z
@@ -150,17 +188,30 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 	public fun stopOrPause (Z)Z
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump {
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump : com/gmail/absolutebollockscreations/gattlibrary/peripheral/MetricSampler {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump$Companion;
 	public static final field DEFAULT_SAMPLE_PERIOD_MS J
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)V
-	public final fun sampleOnce ()V
+	public fun sampleOnce ()V
+	public fun start (Lkotlinx/coroutines/CoroutineScope;)V
 	public final fun start (Lkotlinx/coroutines/CoroutineScope;J)V
-	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump;Lkotlinx/coroutines/CoroutineScope;JILjava/lang/Object;)V
-	public final fun stop ()V
+	public fun stop ()V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump$Companion {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineTargetCapabilitiesKt {
+	public static final fun fromEngineCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineUpstreamPort : com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsUpstreamPort {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;)V
+	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun connectedCentralAddresses ()Ljava/util/Set;
+	public fun createMetricSampler (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/MetricSampler;
+	public fun getControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink;
+	public fun supportsPaceMeasurement ()Z
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan {
@@ -329,8 +380,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public static final field METRIC_FRESHNESS_MS J
 	public static final field SPEED_HOLD_MS J
 	public fun <init> ()V
-	public fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;J)V
-	public synthetic fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;J)V
+	public synthetic fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/Double;
 	public final fun component10 ()Ljava/lang/Integer;
 	public final fun component11 ()Ljava/lang/Integer;
@@ -345,9 +396,9 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public final fun component2 ()Ljava/lang/Double;
 	public final fun component20 ()Ljava/lang/Integer;
 	public final fun component21 ()Ljava/lang/Integer;
-	public final fun component22 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;
-	public final fun component23 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;
-	public final fun component24 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;
+	public final fun component22 ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;
+	public final fun component23 ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;
+	public final fun component24 ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;
 	public final fun component25 ()J
 	public final fun component3 ()Ljava/lang/Double;
 	public final fun component4 ()Ljava/lang/Double;
@@ -356,8 +407,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public final fun component7 ()Ljava/lang/Integer;
 	public final fun component8 ()Ljava/lang/Integer;
 	public final fun component9 ()Ljava/lang/Integer;
-	public final fun copy (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;J)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;JILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;
+	public final fun copy (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;J)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Float;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;JILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAverageCadence ()Ljava/lang/Double;
 	public final fun getAveragePaceSecondsPer500m ()Ljava/lang/Double;
@@ -367,8 +418,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public final fun getCaloriesPerHour ()Ljava/lang/Integer;
 	public final fun getCaloriesPerMinute ()Ljava/lang/Integer;
 	public final fun getCaloriesTotal ()Ljava/lang/Integer;
-	public final fun getCpsNativeEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;
-	public final fun getCscNativeEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;
+	public final fun getCpsNativeEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CpsNativeEventInput;
+	public final fun getCscNativeEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CscNativeEventInput;
 	public final fun getDistanceMeters ()Ljava/lang/Integer;
 	public final fun getElapsedSeconds ()Ljava/lang/Integer;
 	public final fun getFloors ()Ljava/lang/Integer;
@@ -382,7 +433,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public final fun getResistance ()Ljava/lang/Float;
 	public final fun getSpeedKph ()Ljava/lang/Double;
 	public final fun getStrokeCount ()Ljava/lang/Integer;
-	public final fun getTreadmillNativePace ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;
+	public final fun getTreadmillNativePace ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;
 	public final fun getUpdatedAtMs ()J
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -432,8 +483,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController : com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralAdvertiser$Listener {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController$Companion;
-	public fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/PeripheralConfig;)V
-	public synthetic fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/PeripheralConfig;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsUpstreamPort;Lkotlin/jvm/functions/Function1;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/PeripheralConfig;)V
+	public synthetic fun <init> (Landroid/content/Context;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsUpstreamPort;Lkotlin/jvm/functions/Function1;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/PeripheralConfig;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun currentStatus ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController$PeripheralStatus;
 	public final fun dispose ()V
 	public final fun emitStatusControlPermissionLost ()V
@@ -783,6 +834,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public fun toString ()Ljava/lang/String;
 }
 
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsUpstreamPort {
+	public abstract fun connectedCentralAddresses ()Ljava/util/Set;
+	public abstract fun createMetricSampler (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/MetricSampler;
+	public abstract fun getControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink;
+	public abstract fun supportsPaceMeasurement ()Z
+}
+
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/GattServerOps {
 	public abstract fun addService (Ljava/lang/Object;)Z
 	public abstract fun clearServices ()V
@@ -842,6 +900,12 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/ManagedPeripheralGroup$Companion {
 	public final fun getNONE ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/ManagedPeripheralGroup;
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/MetricSampler {
+	public abstract fun sampleOnce ()V
+	public abstract fun start (Lkotlinx/coroutines/CoroutineScope;)V
+	public abstract fun stop ()V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/PeripheralCaptureHooks {
@@ -926,6 +990,61 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Pe
 	public final fun retainOnce (Ljava/lang/String;Lkotlin/jvm/functions/Function0;)Z
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/ReportedTargetRanges {
+	public fun <init> ()V
+	public fun <init> (ZZZZZZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Z)V
+	public synthetic fun <init> (ZZZZZZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component10 ()Z
+	public final fun component11 ()Ljava/lang/Float;
+	public final fun component12 ()Ljava/lang/Float;
+	public final fun component13 ()Ljava/lang/Float;
+	public final fun component14 ()Z
+	public final fun component15 ()Ljava/lang/Float;
+	public final fun component16 ()Ljava/lang/Float;
+	public final fun component17 ()Ljava/lang/Float;
+	public final fun component18 ()Z
+	public final fun component19 ()Ljava/lang/Float;
+	public final fun component2 ()Z
+	public final fun component20 ()Ljava/lang/Float;
+	public final fun component21 ()Ljava/lang/Float;
+	public final fun component22 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Z
+	public final fun component6 ()Z
+	public final fun component7 ()Ljava/lang/Float;
+	public final fun component8 ()Ljava/lang/Float;
+	public final fun component9 ()Ljava/lang/Float;
+	public final fun copy (ZZZZZZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Z)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/ReportedTargetRanges;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/ReportedTargetRanges;ZZZZZZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;ZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/ReportedTargetRanges;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getInclineIncr ()Ljava/lang/Float;
+	public final fun getInclineMax ()Ljava/lang/Float;
+	public final fun getInclineMin ()Ljava/lang/Float;
+	public final fun getInclineRangeKnown ()Z
+	public final fun getPowerIncr ()Ljava/lang/Float;
+	public final fun getPowerMax ()Ljava/lang/Float;
+	public final fun getPowerMin ()Ljava/lang/Float;
+	public final fun getPowerRangeKnown ()Z
+	public final fun getResistanceIncr ()Ljava/lang/Float;
+	public final fun getResistanceMax ()Ljava/lang/Float;
+	public final fun getResistanceMin ()Ljava/lang/Float;
+	public final fun getResistanceRangeKnown ()Z
+	public final fun getSpeedIncr ()Ljava/lang/Float;
+	public final fun getSpeedMax ()Ljava/lang/Float;
+	public final fun getSpeedMin ()Ljava/lang/Float;
+	public final fun getSpeedRangeKnown ()Z
+	public final fun getSupportsInclination ()Z
+	public final fun getSupportsIndoorBikeSimulation ()Z
+	public final fun getSupportsPower ()Z
+	public final fun getSupportsResistance ()Z
+	public final fun getSupportsSpeed ()Z
+	public final fun getSupportsWheelCircumference ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/SimulatorHostEnvironment {
 	public abstract fun canAdvertise ()Z
 	public abstract fun getFtmsController ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController;
@@ -1000,7 +1119,33 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ta
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities$Companion {
-	public final fun fromEngineCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;
+	public final fun fromReportedRanges (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/ReportedTargetRanges;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;
 	public final fun getNONE ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TreadmillNativePaceInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAverageRaw ()Ljava/lang/Integer;
+	public final fun getInstantaneousRaw ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink : com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsControlSink {
+	public abstract fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;)V
+	public abstract fun endSession ()V
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink$DefaultImpls {
+	public static fun getClampsTargetsToAdvertisedRange (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink;)Z
+	public static fun getReportsTargetChangesAsynchronously (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink;)Z
+	public static fun setWheelCircumferenceMm (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamControlSink;D)Z
 }
 

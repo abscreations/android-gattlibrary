@@ -6,8 +6,6 @@ import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDefaults
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
 import java.util.UUID
 import kotlin.math.floor
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
@@ -62,7 +60,7 @@ data class CyclingRevolutionSnapshot(
 
 /** Prefer each exact upstream CSC field pair independently; synthesize only its missing peer. */
 internal fun CyclingRevolutionSnapshot.withNativeEvents(
-    native: CscNativeEventSnapshot?,
+    native: CscNativeEventInput?,
 ): CyclingRevolutionSnapshot {
     val nativeWheel = native?.cumulativeWheelRevolutions?.let { revolutions ->
         native.lastWheelEventTimeTicks?.let { eventTime -> revolutions to eventTime }
@@ -204,7 +202,7 @@ object CyclingSensorEncoders {
     fun cyclingPowerMeasurement(
         instantaneousPowerWatts: Int,
         revolutions: CyclingRevolutionSnapshot,
-        native: CpsNativeEventSnapshot? = null,
+        native: CpsNativeEventInput? = null,
     ): ByteArray {
         val nativeWheel = native?.cumulativeWheelRevolutions?.let { count ->
             native.lastWheelEventTimeTicks?.let { time -> count to time }

@@ -9,6 +9,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillNativePaceSnapshot
 
 /**
  * Samples [BtEngineState] into [FtmsMetricStore].
@@ -31,11 +34,13 @@ class EngineMetricPump(
     private val engineState: BtEngineState,
     private val store: FtmsMetricStore,
     private val profileProvider: () -> FtmsMachineProfile?,
-) {
+) : MetricSampler {
 
     private var job: Job? = null
 
-    fun start(scope: CoroutineScope, periodMs: Long = DEFAULT_SAMPLE_PERIOD_MS) {
+    override fun start(scope: CoroutineScope): Unit = start(scope, DEFAULT_SAMPLE_PERIOD_MS)
+
+    fun start(scope: CoroutineScope, periodMs: Long) {
         if (job != null) return
         job = scope.launch {
             while (isActive) {
@@ -45,13 +50,13 @@ class EngineMetricPump(
         }
     }
 
-    fun stop() {
+    override fun stop() {
         job?.cancel()
         job = null
     }
 
     /** Visible for the controller so a status read can force a fresh sample. */
-    fun sampleOnce() {
+    override fun sampleOnce() {
         store.update(snapshot(), profileProvider())
     }
 
@@ -135,11 +140,11 @@ class EngineMetricPump(
             negativeElevationGainMeters = engineState.elevationGainNeg.value,
             floors = engineState.totalFloors.value,
             strokeCount = strokeCount,
-            cscNativeEvents = engineState.cscNativeEventSnapshot(),
-            cpsNativeEvents = engineState.cpsNativeEventSnapshot(),
+            cscNativeEvents = engineState.cscNativeEventSnapshot()?.toInput(),
+            cpsNativeEvents = engineState.cpsNativeEventSnapshot()?.toInput(),
             // Treadmill only: no other persona has the field, and it is never synthesised.
             treadmillNativePace = if (profile == FtmsMachineProfile.TREADMILL) {
-                engineState.treadmillNativePaceSnapshot()
+                engineState.treadmillNativePaceSnapshot()?.toInput()
             } else {
                 null
             },
@@ -183,3 +188,22 @@ class EngineMetricPump(
         private const val MILES_TO_KM = 1.609344
     }
 }
+
+private fun CscNativeEventSnapshot.toInput(): CscNativeEventInput = CscNativeEventInput(
+    cumulativeWheelRevolutions = cumulativeWheelRevolutions,
+    lastWheelEventTimeTicks = lastWheelEventTimeTicks,
+    cumulativeCrankRevolutions = cumulativeCrankRevolutions,
+    lastCrankEventTimeTicks = lastCrankEventTimeTicks,
+)
+
+private fun CpsNativeEventSnapshot.toInput(): CpsNativeEventInput = CpsNativeEventInput(
+    cumulativeWheelRevolutions = cumulativeWheelRevolutions,
+    lastWheelEventTimeTicks = lastWheelEventTimeTicks,
+    cumulativeCrankRevolutions = cumulativeCrankRevolutions,
+    lastCrankEventTimeTicks = lastCrankEventTimeTicks,
+)
+
+private fun TreadmillNativePaceSnapshot.toInput(): TreadmillNativePaceInput = TreadmillNativePaceInput(
+    instantaneousRaw = instantaneousRaw,
+    averageRaw = averageRaw,
+)

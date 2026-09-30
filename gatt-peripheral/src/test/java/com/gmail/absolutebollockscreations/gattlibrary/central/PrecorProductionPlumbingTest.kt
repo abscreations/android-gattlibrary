@@ -13,6 +13,7 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
 
 /**
  * Precor Chrono registration, matching, ownership and control honesty — plan §5b, §11.1,

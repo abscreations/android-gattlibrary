@@ -2,7 +2,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSnapshot
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -45,7 +44,7 @@ class CyclingSensorEncodersTest {
     @Test
     fun `native wheel and synthetic crank fields merge independently and encode byte exact`() {
         val merged = revolutions.withNativeEvents(
-            CscNativeEventSnapshot(
+            CscNativeEventInput(
                 cumulativeWheelRevolutions = 0xFEDC_BA98L,
                 lastWheelEventTimeTicks = 0xFFFF,
             ),
@@ -73,7 +72,7 @@ class CyclingSensorEncodersTest {
                 lastCrankEventTime = 0xFFFF,
             ),
             revolutions.withNativeEvents(
-                CscNativeEventSnapshot(
+                CscNativeEventInput(
                     cumulativeCrankRevolutions = 0xFFFE,
                     lastCrankEventTimeTicks = 0xFFFF,
                 ),
@@ -86,7 +85,7 @@ class CyclingSensorEncodersTest {
         assertEquals(
             revolutions,
             revolutions.withNativeEvents(
-                CscNativeEventSnapshot(cumulativeWheelRevolutions = 99),
+                CscNativeEventInput(cumulativeWheelRevolutions = 99),
             ),
         )
     }

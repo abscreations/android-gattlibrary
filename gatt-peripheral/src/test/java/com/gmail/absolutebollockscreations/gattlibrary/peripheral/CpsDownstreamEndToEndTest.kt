@@ -7,7 +7,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.ConnectionId
 import com.gmail.absolutebollockscreations.gattlibrary.central.CpsDerivationState
 import com.gmail.absolutebollockscreations.gattlibrary.central.CpsMeasurement
 import com.gmail.absolutebollockscreations.gattlibrary.central.CpsMeasurementTracker
-import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.FusionPersona
 import com.gmail.absolutebollockscreations.gattlibrary.central.MetricEmitter
 import com.gmail.absolutebollockscreations.gattlibrary.central.MetricFusion
@@ -87,7 +86,7 @@ class CpsDownstreamEndToEndTest {
         val payload = CyclingSensorEncoders.cyclingPowerMeasurement(
             200,
             CyclingRevolutionSnapshot(),
-            CpsNativeEventSnapshot(cumulativeCrankRevolutions = 9, lastCrankEventTimeTicks = 10),
+            CpsNativeEventInput(cumulativeCrankRevolutions = 9, lastCrankEventTimeTicks = 10),
         )
         assertEquals(CyclingSensorEncoders.CPS_FLAG_CRANK_REVOLUTION_DATA_PRESENT, u16(payload, 0))
     }

@@ -10,6 +10,7 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
 
 /**
  * x70 production plumbing — plan §7, §11 obligation 0.

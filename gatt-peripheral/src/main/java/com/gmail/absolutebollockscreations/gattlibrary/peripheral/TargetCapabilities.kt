@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
@@ -69,7 +68,7 @@ data class FtmsTargetRange(
  * capability was unknown, which advertises a control surface that does not
  * exist.
  *
- * [fromEngineCapabilities] preserves FitBridge's genuine advantage over the
+ * [fromReportedRanges] preserves FitBridge's genuine advantage over the
  * TrackMyIndoorWorkout original: these ranges are read from the *real* upstream
  * machine rather than hardcoded.
  */
@@ -132,8 +131,8 @@ data class TargetCapabilities(
          * `min=0 max=0 step=0.1`, which is what the old
          * `BtServiceSupportedRangesAdapter` fallbacks produced.
          */
-        fun fromEngineCapabilities(caps: BtEngineState.FtmsCapabilities): TargetCapabilities {
-            // [BtEngineState.FtmsCapabilities] holds every range in RAW SPEC
+        fun fromReportedRanges(caps: ReportedTargetRanges): TargetCapabilities {
+            // [ReportedTargetRanges] holds every range in RAW SPEC
             // UNITS, exactly as read off the upstream machine - 0.01 km/h,
             // 0.1 %, 0.1 level, whole watts. The Supported-* Range
             // characteristics use those same units, so this is a pass-through
@@ -214,3 +213,32 @@ data class TargetCapabilities(
         }
     }
 }
+
+/**
+ * What an upstream machine reported about its target support, in raw spec units (0.01 km/h, 0.1 %, 0.1 level,
+ * whole watts). Server-owned so the server layer has no central dependency; the bridge fills it from the engine.
+ */
+data class ReportedTargetRanges(
+    val supportsSpeed: Boolean = false,
+    val supportsInclination: Boolean = false,
+    val supportsResistance: Boolean = false,
+    val supportsPower: Boolean = false,
+    val supportsIndoorBikeSimulation: Boolean = false,
+    val supportsWheelCircumference: Boolean = false,
+    val speedMin: Float? = null,
+    val speedMax: Float? = null,
+    val speedIncr: Float? = null,
+    val speedRangeKnown: Boolean = false,
+    val inclineMin: Float? = null,
+    val inclineMax: Float? = null,
+    val inclineIncr: Float? = null,
+    val inclineRangeKnown: Boolean = false,
+    val resistanceMin: Float? = null,
+    val resistanceMax: Float? = null,
+    val resistanceIncr: Float? = null,
+    val resistanceRangeKnown: Boolean = false,
+    val powerMin: Float? = null,
+    val powerMax: Float? = null,
+    val powerIncr: Float? = null,
+    val powerRangeKnown: Boolean = false,
+)
