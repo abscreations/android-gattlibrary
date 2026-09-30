@@ -1180,6 +1180,61 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan$Companion;
+	public fun <init> (Ljava/lang/String;I[BII[B[B)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()I
+	public final fun component3 ()[B
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()[B
+	public final fun component7 ()[B
+	public final fun copy (Ljava/lang/String;I[BII[B[B)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan;Ljava/lang/String;I[BII[B[BILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAdvertisingBytes ()I
+	public final fun getLocalName ()Ljava/lang/String;
+	public final fun getManufacturerId ()I
+	public final fun getManufacturerPayload ()[B
+	public final fun getPrimaryPayload ()[B
+	public final fun getScanResponseBytes ()I
+	public final fun getScanResponsePayload ()[B
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan$Companion {
+	public final fun create (Ljava/lang/String;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan;
+	public static synthetic fun create$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan$Companion;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstAdvertisingPlan;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstGattProfile {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstGattProfile;
+	public final fun acceptsWrite (Landroid/bluetooth/BluetoothGattCharacteristic;ZI)Z
+	public final fun buildService ()Landroid/bluetooth/BluetoothGattService;
+	public final fun getCharacteristics ()Ljava/util/List;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstGattProfile$Characteristic {
+	public fun <init> (Ljava/util/UUID;ZZZZ)V
+	public final fun component1 ()Ljava/util/UUID;
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Z
+	public final fun copy (Ljava/util/UUID;ZZZZ)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstGattProfile$Characteristic;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstGattProfile$Characteristic;Ljava/util/UUID;ZZZZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstGattProfile$Characteristic;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHasCccd ()Z
+	public final fun getNotifiable ()Z
+	public final fun getUuid ()Ljava/util/UUID;
+	public final fun getWriteWithResponse ()Z
+	public final fun getWriteWithoutResponse ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysics {
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysics;
 	public final fun calculate (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;Ljava/lang/Double;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult;
@@ -1202,6 +1257,26 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Kay
 	public final fun getStrokeRateSpm ()D
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeSimulatorProtocol {
+	public static final field ADVERTISED_NAME Ljava/lang/String;
+	public static final field CAPTURED_T_H_US J
+	public static final field CAPTURED_T_MAX_US J
+	public static final field CAPTURED_T_MIN_US J
+	public static final field CAPTURED_T_V_US J
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeSimulatorProtocol;
+	public static final field SEQUENCE_DIGITS I
+	public static final field TIMING_DIGITS I
+	public final fun capturedTuple ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;
+	public final fun decodeCommand ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public final fun dynamicTuple (DD)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;
+	public final fun oracle (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;D)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult;
+	public static synthetic fun oracle$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeSimulatorProtocol;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;DILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult;
+	public final fun resetResponse ()[B
+	public final fun response (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;JJ)[B
+	public final fun sequenceFor (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;J)J
+	public final fun timingMicroseconds (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;D)Ljava/lang/Long;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple {
@@ -1268,6 +1343,114 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Kay
 	public final fun getValue ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Display : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Display;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Display;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Display;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConfiguration ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Handshake : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand {
+	public fun <init> (JIDLjava/lang/Integer;Ljava/lang/Double;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;)V
+	public synthetic fun <init> (JIDLjava/lang/Integer;Ljava/lang/Double;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()J
+	public final fun component2 ()I
+	public final fun component3 ()D
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun component5 ()Ljava/lang/Double;
+	public final fun component6 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
+	public final fun copy (JIDLjava/lang/Integer;Ljava/lang/Double;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Handshake;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Handshake;JIDLjava/lang/Integer;Ljava/lang/Double;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Handshake;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBoatWeightKg ()Ljava/lang/Double;
+	public final fun getBodyWeightKg ()D
+	public final fun getEpochSeconds ()J
+	public final fun getSport ()Ljava/lang/Integer;
+	public final fun getTimezoneMinutes ()I
+	public final fun getVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Poll : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Poll;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Reset : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Reset;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Start : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Start;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Stop : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand$Stop;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommandAssembler {
+	public fun <init> ()V
+	public fun <init> (I)V
+	public synthetic fun <init> (IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun append ([B)Ljava/util/List;
+	public final fun reset ()V
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Command : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Command;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Command;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Command;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValue ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorCommand;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Rejected : com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Rejected;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Rejected;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorInput$Rejected;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReason ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorProtocolKt {
+	public static final fun kayakFirstIdleSample ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorTelemetryEncoder {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorTelemetryEncoder;
+	public static final field PERIOD_MS J
+	public final fun generated (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;ZZI)[B
+	public static synthetic fun generated$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstSimulatorTelemetryEncoder;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;ZZIILjava/lang/Object;)[B
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan {

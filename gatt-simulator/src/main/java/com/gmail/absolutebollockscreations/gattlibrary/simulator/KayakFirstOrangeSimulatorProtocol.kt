@@ -7,7 +7,8 @@ import kotlin.math.pow
 import kotlin.math.roundToLong
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
-internal object KayakFirstOrangeSimulatorProtocol {
+@SimulatorProbeApi
+object KayakFirstOrangeSimulatorProtocol {
     const val ADVERTISED_NAME = "17100001"
 
     /**

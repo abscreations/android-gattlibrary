@@ -7,7 +7,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
-internal data class KayakFirstAdvertisingPlan(
+@SimulatorProbeApi
+data class KayakFirstAdvertisingPlan(
     val localName: String,
     val manufacturerId: Int,
     val manufacturerPayload: ByteArray,
@@ -56,7 +57,8 @@ internal data class KayakFirstAdvertisingPlan(
     }
 }
 
-internal object KayakFirstGattProfile {
+@SimulatorProbeApi
+object KayakFirstGattProfile {
     data class Characteristic(
         val uuid: java.util.UUID,
         val writeWithResponse: Boolean,

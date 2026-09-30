@@ -10,7 +10,8 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
-internal fun kayakFirstIdleSample() = FtmsMockSample(
+@SimulatorProbeApi
+fun kayakFirstIdleSample() = FtmsMockSample(
     elapsedSeconds = 0,
     heartRate = 0,
     caloriesTotal = 0,
@@ -26,7 +27,8 @@ internal fun kayakFirstIdleSample() = FtmsMockSample(
     movementCount = 0,
 )
 
-internal sealed interface KayakFirstSimulatorCommand {
+@SimulatorProbeApi
+sealed interface KayakFirstSimulatorCommand {
     data object Reset : KayakFirstSimulatorCommand
     /**
      * Either handshake dialect.
@@ -49,13 +51,15 @@ internal sealed interface KayakFirstSimulatorCommand {
     data object Stop : KayakFirstSimulatorCommand
 }
 
-internal sealed interface KayakFirstSimulatorInput {
+@SimulatorProbeApi
+sealed interface KayakFirstSimulatorInput {
     data class Command(val value: KayakFirstSimulatorCommand) : KayakFirstSimulatorInput
     data class Rejected(val reason: String) : KayakFirstSimulatorInput
 }
 
 /** Independent peripheral-side command parser. Central codecs are intentionally not reused. */
-internal class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int = 256) {
+@SimulatorProbeApi
+class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int = 256) {
     private val pending = ArrayList<Byte>()
 
     fun append(bytes: ByteArray): List<KayakFirstSimulatorInput> {
@@ -131,7 +135,8 @@ internal class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int
 }
 
 /** Peripheral serializer kept independent from KayakFirstMeasurement's central decoder. */
-internal object KayakFirstSimulatorTelemetryEncoder {
+@SimulatorProbeApi
+object KayakFirstSimulatorTelemetryEncoder {
     const val PERIOD_MS = 1_000L
 
     /**
