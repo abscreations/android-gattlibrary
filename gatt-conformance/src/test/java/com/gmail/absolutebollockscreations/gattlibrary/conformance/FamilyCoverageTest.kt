@@ -1,6 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.conformance
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
+import com.gmail.absolutebollockscreations.gattlibrary.simulator.KickrPersonaManifest
 import com.gmail.absolutebollockscreations.gattlibrary.simulator.SimulatorPersona
 import com.gmail.absolutebollockscreations.gattlibrary.simulator.simulatorPersonaOptions
 import org.junit.Assert.assertEquals
@@ -28,7 +30,22 @@ class FamilyCoverageTest {
         is SimulatorPersona.LifeFitness -> setOf(MachineFamilyIds.LIFE_FITNESS)
         SimulatorPersona.SchwinnX70 -> setOf(MachineFamilyIds.SCHWINN_X70)
         is SimulatorPersona.FeCBle -> setOf(MachineFamilyIds.FEC_BLE)
-        is SimulatorPersona.Kickr -> setOf(MachineFamilyIds.WAHOO_KICKR_LEGACY)
+        is SimulatorPersona.Kickr -> kickrFamilies(p)
+    }
+
+    /**
+     * Derived from what the persona actually exposes, not from its name: the original RideOn service
+     * puts a persona in the original family, FC82 in the Core 2 family, and the Wahoo control
+     * characteristic in the legacy KICKR family. (Central's matcher also wants the RideOn
+     * characteristics; service presence is the coarser check this test can make without central.)
+     */
+    private fun kickrFamilies(p: SimulatorPersona.Kickr): Set<String> {
+        val services = KickrPersonaManifest.forPersona(p.device).services
+        val families = mutableSetOf<String>()
+        if (services.any { it.uuid == WahooUuids.UUID_WAHOO_RIDEON_SERVICE }) families += MachineFamilyIds.WAHOO_RIDEON_ORIGINAL
+        if (services.any { it.uuid == WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE }) families += MachineFamilyIds.WAHOO_RIDEON_CORE2
+        if (services.any { s -> s.characteristics.any { it.uuid == WahooUuids.UUID_WAHOO_KICKR_CONTROL } }) families += MachineFamilyIds.WAHOO_KICKR_LEGACY
+        return families
     }
 
     private val allFamilies: Set<String> =
@@ -61,8 +78,6 @@ class FamilyCoverageTest {
         val KNOWN_GAPS: Map<String, String> = mapOf(
             MachineFamilyIds.SIG_HRM to "no standalone HRM persona; heart rate is published by machine personas",
             MachineFamilyIds.SIG_GLUCOSE to "no glucose persona; out of scope for the simulator",
-            MachineFamilyIds.WAHOO_RIDEON_ORIGINAL to "RideOn wire builders exist in the simulator but no selectable persona",
-            MachineFamilyIds.WAHOO_RIDEON_CORE2 to "RideOn wire builders exist in the simulator but no selectable persona",
         )
     }
 }
