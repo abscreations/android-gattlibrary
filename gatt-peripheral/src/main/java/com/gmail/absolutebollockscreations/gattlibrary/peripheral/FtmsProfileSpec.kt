@@ -2,9 +2,12 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.KEISER_M_SERIES_CANDIDATE_ID
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Stable measurement capabilities for one GATT database lifetime. */
 data class FtmsMeasurementCapabilities(
@@ -64,11 +67,11 @@ data class FtmsMeasurementCapabilities(
 
 /** The one machine data characteristic this persona exposes. */
 val FtmsMachineProfile.dataCharacteristic: UUID
-    get() = BtServiceProfiles.dataUuidForProfile(this)
+    get() = FtmsUuids.dataUuidForProfile(this)
 
 /** Fitness Machine Type bit for the advertising Service Data structure. */
 internal val FtmsMachineProfile.machineTypeBit: Int
-    get() = BtServiceProfiles.fitnessMachineTypeFor(this)
+    get() = FtmsMachineType.fitnessMachineTypeFor(this)
 
 /**
  * Advertised local name.
@@ -225,22 +228,22 @@ fun providerMeasurementCapabilities(
 
     profile == FtmsMachineProfile.INDOOR_BIKE &&
         BluetoothIds.UUID_FLYWHEEL_SERVICE in upstreamServiceUuids &&
-        BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
+        FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         flywheelMeasurementCapabilities
 
     profile == FtmsMachineProfile.INDOOR_ROWER &&
         BluetoothIds.UUID_KAYAK_FIRST_SERVICE in upstreamServiceUuids &&
-        BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
+        FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         kayakFirstMeasurementCapabilities
 
     profile == FtmsMachineProfile.TREADMILL &&
         BluetoothIds.UUID_FEC_SERVICE in upstreamServiceUuids &&
-        BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
+        FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         feCTreadmillMeasurementCapabilities
 
     profile == FtmsMachineProfile.INDOOR_BIKE &&
         BluetoothIds.UUID_PRECOR_SERVICE in upstreamServiceUuids &&
-        BluetoothIds.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
+        FtmsUuids.UUID_FTMS_SERVICE !in upstreamServiceUuids ->
         precorChronoMeasurementCapabilities
 
     else -> profile.measurementCapabilities
@@ -269,4 +272,4 @@ internal fun requiresSpeed(profile: FtmsMachineProfile): Boolean = when (profile
 
 /** Unused import guard: keeps [BluetoothIds] referenced for readers of this file. */
 @Suppress("unused")
-private val ftmsServiceUuid: UUID = BluetoothIds.UUID_FTMS_SERVICE
+private val ftmsServiceUuid: UUID = FtmsUuids.UUID_FTMS_SERVICE

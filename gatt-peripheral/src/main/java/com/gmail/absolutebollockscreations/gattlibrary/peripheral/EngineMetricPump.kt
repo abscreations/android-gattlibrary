@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import android.os.SystemClock
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

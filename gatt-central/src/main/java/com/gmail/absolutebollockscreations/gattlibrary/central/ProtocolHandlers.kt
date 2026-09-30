@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothGatt
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Bind one received packet to its exact physical-link generation; never infer a fallback link. */
 internal fun BtEngine.metricEmitterFor(
@@ -234,7 +235,7 @@ class HandlerFactory(
 /** Concept2's native Erg service excludes FTMS on this link, without mutating its inventory. */
 internal fun centralProtocolServiceUuids(discoveredServiceUuids: Set<UUID>): Set<UUID> =
     if (BluetoothIds.UUID_C2_ERG_SERVICE in discoveredServiceUuids) {
-        discoveredServiceUuids - BluetoothIds.UUID_FTMS_SERVICE
+        discoveredServiceUuids - FtmsUuids.UUID_FTMS_SERVICE
     } else {
         discoveredServiceUuids
     }

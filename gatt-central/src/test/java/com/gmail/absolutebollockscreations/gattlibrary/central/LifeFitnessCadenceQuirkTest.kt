@@ -6,6 +6,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsDataFlags
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * The Life Fitness indoor-bike cadence quirk — plan §4c, Q28, and §11.3.
@@ -34,7 +36,7 @@ import java.util.UUID
  */
 class LifeFitnessCadenceQuirkTest {
 
-    private val bikeUuid: UUID = BluetoothIds.UUID_BIKING_DATA
+    private val bikeUuid: UUID = FtmsUuids.UUID_BIKING_DATA
 
     /** FTMS Indoor Bike Data field widths, by flag bit. Bit 0 is inverted: clear means present. */
     private val fieldWidths = mapOf(
@@ -215,7 +217,7 @@ class LifeFitnessCadenceQuirkTest {
     fun `a conforming machine that sets the bit is untouched by the quirk`() {
         // The over-broad-quirk failure mode. A bike that correctly declares cadence has a flag
         // word the fingerprint does not name, so nothing is corrected and nothing is re-read.
-        val conforming = 0x09FA or Flags.BIKE_CADENCE
+        val conforming = 0x09FA or FtmsDataFlags.BIKE_CADENCE
 
         assertNull(FtmsQuirkRegistry.find("lf bike", bikeUuid, conforming, 26))
     }

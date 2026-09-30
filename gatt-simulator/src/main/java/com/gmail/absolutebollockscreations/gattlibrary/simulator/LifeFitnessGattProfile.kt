@@ -7,6 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsMeasurementCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Capture-derived legacy advertising identity for one Life Fitness console persona. */
 internal data class LifeFitnessAdvertisingPlan(
@@ -31,8 +32,8 @@ internal data class LifeFitnessAdvertisingPlan(
                 localName = name,
                 // Physical captures advertise only the SIG FTMS UUID. B90/B91 are
                 // discovered after connection and must not leak into advertising.
-                advertisedServices = listOf(BluetoothIds.UUID_FTMS_SERVICE),
-                serviceDataService = BluetoothIds.UUID_FTMS_SERVICE,
+                advertisedServices = listOf(FtmsUuids.UUID_FTMS_SERVICE),
+                serviceDataService = FtmsUuids.UUID_FTMS_SERVICE,
                 serviceData = machine.equipmentServiceData.copyOf(),
                 // Flags + TX power + complete 16-bit service list + FTMS service data.
                 advertisingBytes = 3 + 3 + 4 + 7,
@@ -69,11 +70,11 @@ internal object LifeFitnessGattProfile {
             characteristic(BluetoothIds.UUID_BOND_MANAGEMENT_CONTROL_POINT, WRITE or WRITE_NO_RESPONSE),
         ),
         service(
-            BluetoothIds.UUID_FTMS_SERVICE,
-            characteristic(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE, READ),
+            FtmsUuids.UUID_FTMS_SERVICE,
+            characteristic(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE, READ),
             characteristic(machine.measurementUuid, NOTIFY),
-            characteristic(BluetoothIds.UUID_TRAINING_STATUS, READ or NOTIFY),
-            characteristic(BluetoothIds.UUID_FITNESS_MACHINE_STATUS, NOTIFY),
+            characteristic(FtmsUuids.UUID_TRAINING_STATUS, READ or NOTIFY),
+            characteristic(FtmsUuids.UUID_FITNESS_MACHINE_STATUS, NOTIFY),
         ),
         service(BluetoothIds.UUID_LF_SECONDARY_SERVICE),
         service(

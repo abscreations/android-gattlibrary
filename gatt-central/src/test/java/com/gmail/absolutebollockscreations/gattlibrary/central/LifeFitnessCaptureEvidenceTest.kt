@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Consumers for the four capture-derived Life Fitness fixtures extracted on 2026-08-25.
@@ -251,7 +252,7 @@ class LifeFitnessCaptureEvidenceTest {
         // Plan section 6c.0 keeps the Life Fitness control path unreachable on the
         // untestable-family rule. This is the first direct observation that there is nothing to
         // reach: the machine's 0x1826 is a read-only telemetry surface.
-        val ftms = characteristicUuids(BluetoothIds.UUID_FTMS_SERVICE)
+        val ftms = characteristicUuids(FtmsUuids.UUID_FTMS_SERVICE)
 
         assertFalse("0x2AD9 control point must be absent", ftms.contains(sig(0x2AD9)))
         for (range in 0x2AD4..0x2AD8) {

@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Scan admission for the first advertisement-only family (plan §6.4, phase 11.4).
@@ -194,7 +195,7 @@ class KeiserScanAdmissionTest {
         val ftms = MatchObservation(
             localName = "Some Trainer",
             advertisedServiceUuids = setOf(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
             ),
         )
 
@@ -211,7 +212,7 @@ class KeiserScanAdmissionTest {
         val specs = hardwareScanFilterSpecs()
         assertTrue(
             HardwareScanFilterSpec.ServiceUuid(
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
             ) in specs,
         )
         assertTrue(
@@ -222,7 +223,7 @@ class KeiserScanAdmissionTest {
     @Test
     fun `registering an advertisement-only family leaves every other ranking where it was`() {
         val cases = mapOf(
-            "sig.ftms" to BluetoothIds.UUID_FTMS_SERVICE,
+            "sig.ftms" to FtmsUuids.UUID_FTMS_SERVICE,
             "sig.cps" to BluetoothIds.UUID_CYCLING_POWER_SERVICE,
             "sig.hrm" to BluetoothIds.UUID_HRM_SERVICE,
             "sig.csc" to BluetoothIds.UUID_CSC_SERVICE,
@@ -249,7 +250,7 @@ class KeiserScanAdmissionTest {
         assertEquals(MatchTransport.GATT, registry.rankedCandidates(
             MatchObservation(
                 advertisedServiceUuids = setOf(
-                    CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
                 ),
             ),
         ).first().transport)
@@ -279,7 +280,7 @@ class KeiserScanAdmissionTest {
                 transport = MatchTransport.ADVERTISEMENT_ONLY,
                 manufacturerPayloadRule = { _, _ -> true },
                 advertisedServiceUuids = setOf(
-                    CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
                 ),
             )
         }

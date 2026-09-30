@@ -25,6 +25,7 @@ import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.EngineMetricPump
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsMetricStore
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.providerMeasurementCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 
 class KayakFirstDownstreamContractTest {
     @Test
@@ -91,7 +92,7 @@ class KayakFirstDownstreamContractTest {
         }
 
         val store = FtmsMetricStore()
-        EngineMetricPump(state, store) { BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER }
+        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_ROWER }
             .sampleOnce()
         assertEquals(9.9, store.snapshot.speedKph!!, 1e-9)
         assertEquals(76.0, store.snapshot.cadence!!, 1e-9)
@@ -112,7 +113,7 @@ class KayakFirstDownstreamContractTest {
         }
         val store = FtmsMetricStore()
 
-        EngineMetricPump(state, store) { BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER }
+        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_ROWER }
             .sampleOnce()
 
         assertEquals(1_800.0 / 12.875, store.snapshot.paceSecondsPer500m!!, 1e-9)
@@ -127,7 +128,7 @@ class KayakFirstDownstreamContractTest {
         }
         val fallbackStore = FtmsMetricStore()
         EngineMetricPump(fallbackState, fallbackStore) {
-            BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER
+            FtmsMachineProfile.INDOOR_ROWER
         }.sampleOnce()
         assertEquals(180.0, fallbackStore.snapshot.paceSecondsPer500m!!, 1e-9)
         assertEquals(210.0, fallbackStore.snapshot.averagePaceSecondsPer500m!!, 1e-9)
@@ -140,7 +141,7 @@ class KayakFirstDownstreamContractTest {
         }
         val stationaryStore = FtmsMetricStore()
         EngineMetricPump(stationaryState, stationaryStore) {
-            BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER
+            FtmsMachineProfile.INDOOR_ROWER
         }.sampleOnce()
         assertEquals(null, stationaryStore.snapshot.paceSecondsPer500m)
         assertEquals(null, stationaryStore.snapshot.averagePaceSecondsPer500m)
@@ -149,7 +150,7 @@ class KayakFirstDownstreamContractTest {
     @Test
     fun `Kayak First rower advertises only evidenced fresh measurements`() {
         val capabilities = providerMeasurementCapabilities(
-            BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER,
+            FtmsMachineProfile.INDOOR_ROWER,
             setOf(BluetoothIds.UUID_KAYAK_FIRST_SERVICE),
         )
         assertTrue(capabilities.cadence)

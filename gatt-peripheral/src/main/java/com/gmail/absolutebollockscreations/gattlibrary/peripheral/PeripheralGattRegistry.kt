@@ -4,8 +4,9 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Builds the FTMS GATT schema.
@@ -34,15 +35,15 @@ internal object PeripheralGattRegistry {
         includeTrainingStatus: Boolean,
     ): BluetoothGattService {
         val svc = BluetoothGattService(
-            BluetoothIds.UUID_FTMS_SERVICE,
+            FtmsUuids.UUID_FTMS_SERVICE,
             BluetoothGattService.SERVICE_TYPE_PRIMARY,
         )
 
         // 0x2ACC Fitness Machine Feature - Read, mandatory (FTMS section 4).
-        svc.addCharacteristic(readOnly(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE))
+        svc.addCharacteristic(readOnly(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE))
 
         // 0x2ADA Fitness Machine Status - Notify.
-        svc.addCharacteristic(notify(BluetoothIds.UUID_FITNESS_MACHINE_STATUS))
+        svc.addCharacteristic(notify(FtmsUuids.UUID_FITNESS_MACHINE_STATUS))
 
         // 0x2AD9 Control Point - Write / Write Without Response + Indicate.
         //
@@ -53,7 +54,7 @@ internal object PeripheralGattRegistry {
         // missing property is the most likely reason a Connect IQ datafield could
         // never take control of the previous build.
         val cp = BluetoothGattCharacteristic(
-            BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
+            FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT,
             BluetoothGattCharacteristic.PROPERTY_WRITE or
                 BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
                 BluetoothGattCharacteristic.PROPERTY_INDICATE,
@@ -68,7 +69,7 @@ internal object PeripheralGattRegistry {
         if (includeTrainingStatus) {
             // 0x2AD3 - Read + Notify.
             val ts = BluetoothGattCharacteristic(
-                BluetoothIds.UUID_TRAINING_STATUS,
+                FtmsUuids.UUID_TRAINING_STATUS,
                 BluetoothGattCharacteristic.PROPERTY_READ or
                     BluetoothGattCharacteristic.PROPERTY_NOTIFY,
                 BluetoothGattCharacteristic.PERMISSION_READ,
@@ -79,19 +80,19 @@ internal object PeripheralGattRegistry {
 
         // Supported-* ranges, conditional on target capabilities.
         if (targets.supportsSpeed) {
-            svc.addCharacteristic(readOnly(BluetoothIds.UUID_SUPPORTED_SPEED_RANGE))
+            svc.addCharacteristic(readOnly(FtmsUuids.UUID_SUPPORTED_SPEED_RANGE))
         }
         if (targets.supportsInclination) {
-            svc.addCharacteristic(readOnly(BluetoothIds.UUID_SUPPORTED_INCLINATION_RANGE))
+            svc.addCharacteristic(readOnly(FtmsUuids.UUID_SUPPORTED_INCLINATION_RANGE))
         }
         if (targets.supportsResistance) {
-            svc.addCharacteristic(readOnly(BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE))
+            svc.addCharacteristic(readOnly(FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE))
         }
         if (targets.supportsHeartRate) {
-            svc.addCharacteristic(readOnly(BluetoothIds.UUID_SUPPORTED_HEART_RATE_RANGE))
+            svc.addCharacteristic(readOnly(FtmsUuids.UUID_SUPPORTED_HEART_RATE_RANGE))
         }
         if (targets.supportsPower) {
-            svc.addCharacteristic(readOnly(BluetoothIds.UUID_SUPPORTED_POWER_RANGE))
+            svc.addCharacteristic(readOnly(FtmsUuids.UUID_SUPPORTED_POWER_RANGE))
         }
 
         return svc

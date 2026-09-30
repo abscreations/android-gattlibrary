@@ -11,7 +11,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.MetricKind
 import com.gmail.absolutebollockscreations.gattlibrary.central.MetricProtocol
 import com.gmail.absolutebollockscreations.gattlibrary.central.MetricSourceClass
 import com.gmail.absolutebollockscreations.gattlibrary.central.MetricSourceId
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class KickrSyntheticModelTest {
     @Test
@@ -97,7 +98,7 @@ class KickrSyntheticModelTest {
         val value = requireNotNull(
             KickrStandardEncoders.readValue(
                 KickrSimulatorPersona.CORE2_FC82_PROVISIONAL,
-                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE,
+                FtmsUuids.UUID_FITNESS_MACHINE_FEATURE,
             ),
         )
         assertArrayEquals(KickrStandardEncoders.CORE_FTMS_FEATURE, value.bytes)
@@ -294,7 +295,7 @@ class KickrSyntheticModelTest {
                 sourceId = MetricSourceId(
                     ConnectionId("00:00:00:00:00:01", 1L),
                     MetricProtocol.FTMS,
-                    BluetoothIds.UUID_BIKING_DATA,
+                    FtmsUuids.UUID_BIKING_DATA,
                 ),
                 sourceClass = MetricSourceClass.FTMS,
                 arrivalMs = 1L,

@@ -1,10 +1,11 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
 
 class FtmsServiceDataParserTest {
 
@@ -57,12 +58,12 @@ class FtmsServiceDataParserTest {
     @Test
     fun `multiple advertised types follow full connected discovery priority`() {
         val priority = listOf(
-            BtServiceProfiles.FM_TYPE_TREADMILL to ActivityType.TREADMILL,
-            BtServiceProfiles.FM_TYPE_ROWER to ActivityType.ROWING,
-            BtServiceProfiles.FM_TYPE_INDOOR_BIKE to ActivityType.BIKING,
-            BtServiceProfiles.FM_TYPE_CROSS_TRAINER to ActivityType.ELLIPTICAL,
-            BtServiceProfiles.FM_TYPE_STEP_CLIMBER to ActivityType.STAIRSTEPPER,
-            BtServiceProfiles.FM_TYPE_STAIR_CLIMBER to ActivityType.STAIRCLIMBER,
+            FtmsMachineType.FM_TYPE_TREADMILL to ActivityType.TREADMILL,
+            FtmsMachineType.FM_TYPE_ROWER to ActivityType.ROWING,
+            FtmsMachineType.FM_TYPE_INDOOR_BIKE to ActivityType.BIKING,
+            FtmsMachineType.FM_TYPE_CROSS_TRAINER to ActivityType.ELLIPTICAL,
+            FtmsMachineType.FM_TYPE_STEP_CLIMBER to ActivityType.STAIRSTEPPER,
+            FtmsMachineType.FM_TYPE_STAIR_CLIMBER to ActivityType.STAIRCLIMBER,
         )
 
         priority.indices.forEach { expectedIndex ->
@@ -70,7 +71,7 @@ class FtmsServiceDataParserTest {
                 .drop(expectedIndex)
                 .fold(0) { bits, (typeBit, _) -> bits or typeBit }
             val payload = byteArrayOf(
-                BtServiceProfiles.FM_FLAG_MACHINE_AVAILABLE.toByte(),
+                FtmsMachineType.FM_FLAG_MACHINE_AVAILABLE.toByte(),
                 advertisedTypes.toByte(),
                 (advertisedTypes ushr 8).toByte(),
             )

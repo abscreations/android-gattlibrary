@@ -2,6 +2,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsDataFlags
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Cross Trainer Data (`0x2ACE`) field order, from a physical machine.
@@ -10,8 +12,8 @@ import org.junit.Test
  *
  * [BtEngineFtmsParsers.doElliptical] read Resistance Level (bit 7) *before*
  * Inclination and Ramp Angle (bit 6). FTMS Table 4.6 puts inclination first, and
- * so do FitBridge's own flag constants - [Flags.ELL_INCLINATION] is `0x40` and
- * [Flags.ELL_RESISTANCE] is `0x80`. Only the parser disagreed.
+ * so do FitBridge's own flag constants - [FtmsDataFlags.ELL_INCLINATION] is `0x40` and
+ * [FtmsDataFlags.ELL_RESISTANCE] is `0x80`. Only the parser disagreed.
  *
  * Whenever a machine set both bits, the two fields were swapped:
  *
@@ -91,7 +93,7 @@ class CrossTrainerFieldOrderTest {
                 sourceId = MetricSourceId(
                     ConnectionId("AA:BB:CC:DD:EE:10", 10L),
                     MetricProtocol.FTMS,
-                    BluetoothIds.UUID_ELLIPTICAL_DATA,
+                    FtmsUuids.UUID_ELLIPTICAL_DATA,
                 ),
                 sourceClass = MetricSourceClass.FTMS,
                 arrivalMs = 12_345L,

@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.FusionPersona
 import com.gmail.absolutebollockscreations.gattlibrary.central.KEISER_M_SERIES_CANDIDATE_ID
 import com.gmail.absolutebollockscreations.gattlibrary.central.KeiserMSeriesMeasurement
@@ -20,6 +20,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 class KeiserDownstreamIntegrationTest {
 

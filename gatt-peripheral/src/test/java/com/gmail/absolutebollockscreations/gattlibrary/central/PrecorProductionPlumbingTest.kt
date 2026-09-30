@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Precor Chrono registration, matching, ownership and control honesty — plan §5b, §11.1,
@@ -111,15 +112,15 @@ class PrecorProductionPlumbingTest {
         val matches = registry.rankedCandidates(
             MatchObservation(
                 advertisedServiceUuids = setOf(
-                    uuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    uuid(FtmsUuids.UUID_FTMS_SERVICE),
                     uuid(BluetoothIds.UUID_PRECOR_SERVICE),
                 ),
                 discoveredServiceUuids = setOf(
-                    uuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    uuid(FtmsUuids.UUID_FTMS_SERVICE),
                     uuid(BluetoothIds.UUID_PRECOR_SERVICE),
                 ),
                 discoveredCharacteristicUuids = setOf(
-                    uuid(BluetoothIds.UUID_BIKING_DATA),
+                    uuid(FtmsUuids.UUID_BIKING_DATA),
                     uuid(BluetoothIds.UUID_PRECOR_MEASUREMENT),
                 ),
             ),
@@ -208,7 +209,7 @@ class PrecorProductionPlumbingTest {
         // And the converse: offering Precor on every machine link must not disturb FTMS.
         val onTreadmill = activateMatchingProtocolHandlers(
             candidates,
-            setOf(BluetoothIds.UUID_FTMS_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE),
             offer = { true },
         )
         assertEquals(1, onTreadmill.size)
@@ -222,7 +223,7 @@ class PrecorProductionPlumbingTest {
 
         val active = activateMatchingProtocolHandlers(
             listOf(ftms, precor),
-            setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
             offer = { true },
         )
 
@@ -239,8 +240,8 @@ class PrecorProductionPlumbingTest {
             listOf(ftms),
             resolveProtocolHandlerRoute(
                 active,
-                BluetoothIds.UUID_BIKING_DATA,
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_BIKING_DATA,
+                FtmsUuids.UUID_FTMS_SERVICE,
             ).owners,
         )
     }
@@ -271,7 +272,7 @@ class PrecorProductionPlumbingTest {
         assertEquals(setOf(BluetoothIds.UUID_PRECOR_MEASUREMENT), precor.extraCharacteristics)
         assertFalse(
             "no FTMS control point may be reachable through a proprietary measurement handler",
-            BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT in precor.extraCharacteristics,
+            FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT in precor.extraCharacteristics,
         )
     }
 

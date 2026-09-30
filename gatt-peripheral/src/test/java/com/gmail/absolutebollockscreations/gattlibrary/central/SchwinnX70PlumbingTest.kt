@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * x70 production plumbing — plan §7, §11 obligation 0.
@@ -122,10 +123,10 @@ class SchwinnX70PlumbingTest {
         // honour it and no capture showing what would happen if it tried.
         val handler = factory.create(ProtocolKey.SCHWINN_X70)
         assertFalse(
-            BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT in handler.extraCharacteristics,
+            FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT in handler.extraCharacteristics,
         )
         assertFalse(
-            BluetoothIds.UUID_FTMS_SERVICE in handler.primaryServices,
+            FtmsUuids.UUID_FTMS_SERVICE in handler.primaryServices,
         )
     }
 
@@ -250,7 +251,7 @@ class SchwinnX70PlumbingTest {
 
         val active = activateMatchingProtocolHandlers(
             listOf(ftms, x70),
-            setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_X70_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_X70_SERVICE),
             offer = { true },
         )
         assertEquals(listOf(ftms, x70), active)
@@ -269,8 +270,8 @@ class SchwinnX70PlumbingTest {
             listOf(ftms),
             resolveProtocolHandlerRoute(
                 active,
-                BluetoothIds.UUID_BIKING_DATA,
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_BIKING_DATA,
+                FtmsUuids.UUID_FTMS_SERVICE,
             ).owners,
         )
     }

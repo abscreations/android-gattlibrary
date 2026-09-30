@@ -9,6 +9,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorE
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingServiceRegistry
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Full UUIDs observed in the Neo GATT discovery; none are alias-derived. */
 internal object TacxGattIds {
@@ -57,14 +58,14 @@ internal fun tacxAdvertisingPlan(identity: FeCBleSimulatorIdentity, includeCps: 
         FeCBleSimulatorIdentity.TACX_FLUX_2 -> TacxAdvertisingPlan(
             advertiseServices = emptyList(),
             scanResponseServices = listOf(
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_CYCLING_POWER_SERVICE,
                 BluetoothIds.UUID_FEC_SERVICE,
             ),
             manufacturerId = 0x0689,
             manufacturerData = byteArrayOf(0x29, 0x80.toByte()),
             serviceData = mapOf(
-                BluetoothIds.UUID_FTMS_SERVICE to byteArrayOf(0x01, 0x00, 0x20),
+                FtmsUuids.UUID_FTMS_SERVICE to byteArrayOf(0x01, 0x00, 0x20),
             ),
             includeNameInAdvertisement = true,
         )
@@ -93,13 +94,13 @@ internal fun tacxReadValue(identity: FeCBleSimulatorIdentity, uuid: UUID, includ
         FeCBleSimulatorIdentity.TACX_FLUX_2 -> "3.3.45".toByteArray()
         FeCBleSimulatorIdentity.GENERIC -> null
     }
-    BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
+    FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
         TACX_FLUX_2_SIMULATOR_FTMS_FEATURE.copyOf()
     } else null
-    BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
+    FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
         TACX_FLUX_2_SYNTHETIC_RESISTANCE_RANGE.copyOf()
     } else null
-    BluetoothIds.UUID_SUPPORTED_POWER_RANGE -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
+    FtmsUuids.UUID_SUPPORTED_POWER_RANGE -> if (identity == FeCBleSimulatorIdentity.TACX_FLUX_2) {
         TACX_FLUX_2_SYNTHETIC_POWER_RANGE.copyOf()
     } else null
     BluetoothIds.UUID_CYCLING_POWER_FEATURE -> if (includeCps) {
@@ -158,13 +159,13 @@ internal object FeCBleGattProfile {
                 dChar(BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT, WRITE or INDICATE, BluetoothIds.UUID_CCCD),
             ),
             dService(
-                BluetoothIds.UUID_FTMS_SERVICE,
-                dChar(BluetoothIds.UUID_BIKING_DATA, NOTIFY, BluetoothIds.UUID_CCCD),
-                dChar(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE, READ),
-                dChar(BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE, READ),
-                dChar(BluetoothIds.UUID_SUPPORTED_POWER_RANGE, READ),
-                dChar(BluetoothIds.UUID_FITNESS_MACHINE_STATUS, NOTIFY, BluetoothIds.UUID_CCCD),
-                dChar(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE or INDICATE, BluetoothIds.UUID_CCCD),
+                FtmsUuids.UUID_FTMS_SERVICE,
+                dChar(FtmsUuids.UUID_BIKING_DATA, NOTIFY, BluetoothIds.UUID_CCCD),
+                dChar(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE, READ),
+                dChar(FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE, READ),
+                dChar(FtmsUuids.UUID_SUPPORTED_POWER_RANGE, READ),
+                dChar(FtmsUuids.UUID_FITNESS_MACHINE_STATUS, NOTIFY, BluetoothIds.UUID_CCCD),
+                dChar(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE or INDICATE, BluetoothIds.UUID_CCCD),
             ),
             fecDefinition(includeControl),
         )

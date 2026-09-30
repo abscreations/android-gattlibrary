@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Plan §6/§16.8 matcher obligations for FE-C over BLE: positive, negative, no-name-needed, and
@@ -16,7 +17,7 @@ class FeCMatcherTest {
     private fun uuid(u: java.util.UUID) = CanonicalUuid.fromUuid(u)
 
     private val fecService = uuid(BluetoothIds.UUID_FEC_SERVICE)
-    private val ftmsService = uuid(BluetoothIds.UUID_FTMS_SERVICE)
+    private val ftmsService = uuid(FtmsUuids.UUID_FTMS_SERVICE)
 
     private fun candidates(observation: MatchObservation) = registry.rankedCandidates(observation)
     private fun idsOf(observation: MatchObservation) = candidates(observation).map { it.candidateId }

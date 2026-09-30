@@ -7,6 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 /**
  * Pure FTMS Control Point decoder and per-connection procedure state machine.

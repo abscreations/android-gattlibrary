@@ -6,6 +6,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class DeviceMatchingTest {
     @Test
@@ -56,7 +57,7 @@ class DeviceMatchingTest {
         val observation = MatchObservation(
             advertisedServiceUuids = setOf(
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_HRM_SERVICE),
-                CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
                 CanonicalUuid.fromUuid(BluetoothIds.UUID_RSC_SERVICE),
             ),
         )
@@ -75,7 +76,7 @@ class DeviceMatchingTest {
             MatchObservation(
                 localName = "Garmin HRM-Pro",
                 advertisedServiceUuids = setOf(
-                    CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
                     CanonicalUuid.fromUuid(BluetoothIds.UUID_HRM_SERVICE),
                 ),
             ),
@@ -107,7 +108,7 @@ class DeviceMatchingTest {
             listOf(
                 MatchDefinition(
                     candidateId = "generic.ftms",
-                    serviceUuid = CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    serviceUuid = CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
                     knownService = KnownBleService.FTMS,
                     preference = 600,
                 ),
@@ -127,7 +128,7 @@ class DeviceMatchingTest {
                 localName = "Vendor Runner",
                 manufacturerCompanyIds = setOf(321),
                 advertisedServiceUuids = setOf(
-                    CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE),
+                    CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE),
                     vendorService,
                 ),
                 discoveredServiceUuids = setOf(vendorService),
@@ -164,7 +165,7 @@ class DeviceMatchingTest {
         val filter = hardwareScanServiceUuids().toSet()
 
         for (sig in listOf(
-            BluetoothIds.UUID_FTMS_SERVICE,
+            FtmsUuids.UUID_FTMS_SERVICE,
             BluetoothIds.UUID_HRM_SERVICE,
             BluetoothIds.UUID_CSC_SERVICE,
             BluetoothIds.UUID_RSC_SERVICE,

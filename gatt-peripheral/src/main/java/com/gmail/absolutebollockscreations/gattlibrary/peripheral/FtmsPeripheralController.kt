@@ -16,7 +16,7 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.roundToInt
@@ -29,6 +29,7 @@ import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 /** Serializes lifecycle state and live diagnostic refreshes onto one status stream. */
 internal class FtmsPeripheralStatusRelay(

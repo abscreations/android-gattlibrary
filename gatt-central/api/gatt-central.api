@@ -140,41 +140,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public static final field FEC_PAGE_TRACK_RESISTANCE I
 	public static final field FEC_PAGE_USER_CONFIGURATION I
 	public static final field FEC_PAGE_WIND_RESISTANCE I
-	public static final field FTMS_INCLINE_SCALE F
-	public static final field FTMS_POWER_SCALE F
-	public static final field FTMS_RESISTANCE_SCALE F
-	public static final field FTMS_SPEED_SCALE F
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/BluetoothIds;
-	public static final field OPCODE_REQUEST_CONTROL B
-	public static final field OPCODE_RESET B
-	public static final field OPCODE_RESPONSE_CODE B
-	public static final field OPCODE_SET_INDOOR_BIKE_SIMULATION B
-	public static final field OPCODE_SET_TARGETED_CADENCE B
-	public static final field OPCODE_SET_TARGET_HEART_RATE B
-	public static final field OPCODE_SET_TARGET_INCLINATION B
-	public static final field OPCODE_SET_TARGET_POWER B
-	public static final field OPCODE_SET_TARGET_RESISTANCE B
-	public static final field OPCODE_SET_TARGET_SPEED B
-	public static final field OPCODE_SET_WHEEL_CIRCUMFERENCE B
-	public static final field OPCODE_SPIN_DOWN_CONTROL B
-	public static final field OPCODE_START_RESUME B
-	public static final field OPCODE_STOP_PAUSE B
-	public static final field RESULT_CONTROL_NOT_PERMITTED B
-	public static final field RESULT_INVALID_PARAMETER B
-	public static final field RESULT_OPCODE_NOT_SUPPORTED B
-	public static final field RESULT_OPERATION_FAILED B
-	public static final field RESULT_SUCCESS B
-	public static final field STATUS_CONTROL_PERMISSION_LOST B
-	public static final field STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY B
-	public static final field STATUS_MACHINE_RESET B
-	public static final field STATUS_NO_STATUS B
-	public static final field STATUS_TARGET_HEART_RATE_CHANGED B
-	public static final field STATUS_TARGET_INCLINE_CHANGED B
-	public static final field STATUS_TARGET_POWER_CHANGED B
-	public static final field STATUS_TARGET_RESISTANCE_LEVEL_CHANGED B
-	public static final field STATUS_TARGET_SPEED_CHANGED B
-	public static final field STATUS_USER_STARTED_OR_RESUMED B
-	public static final field STATUS_USER_STOPPED_OR_PAUSED B
 	public final fun getC2_DISCOVERY_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
 	public final fun getC2_ERG_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
 	public final fun getCSC_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
@@ -189,7 +155,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public final fun getUSER_PROFILE_CHARACTERISTICS ()Ljava/util/List;
 	public final fun getUUID_BATTERY_LEVEL ()Ljava/util/UUID;
 	public final fun getUUID_BATTERY_SERVICE ()Ljava/util/UUID;
-	public final fun getUUID_BIKING_DATA ()Ljava/util/UUID;
 	public final fun getUUID_BODY_SENSOR_LOCATION ()Ljava/util/UUID;
 	public final fun getUUID_BOND_MANAGEMENT_CONTROL_POINT ()Ljava/util/UUID;
 	public final fun getUUID_BOND_MANAGEMENT_FEATURE ()Ljava/util/UUID;
@@ -235,18 +200,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public final fun getUUID_CYCLING_POWER_MEASUREMENT ()Ljava/util/UUID;
 	public final fun getUUID_CYCLING_POWER_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_DEVICE_INFORMATION_SERVICE ()Ljava/util/UUID;
-	public final fun getUUID_ELLIPTICAL_DATA ()Ljava/util/UUID;
 	public final fun getUUID_FEC_CONTROL ()Ljava/util/UUID;
 	public final fun getUUID_FEC_MEASUREMENT ()Ljava/util/UUID;
 	public final fun getUUID_FEC_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_FIRMWARE_REVISION ()Ljava/util/UUID;
-	public final fun getUUID_FITNESS_MACHINE_CONTROL_POINT ()Ljava/util/UUID;
-	public final fun getUUID_FITNESS_MACHINE_FEATURE ()Ljava/util/UUID;
-	public final fun getUUID_FITNESS_MACHINE_STATUS ()Ljava/util/UUID;
 	public final fun getUUID_FLYWHEEL_RX ()Ljava/util/UUID;
 	public final fun getUUID_FLYWHEEL_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_FLYWHEEL_TX ()Ljava/util/UUID;
-	public final fun getUUID_FTMS_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_GLUCOSE_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_HARDWARE_REVISION ()Ljava/util/UUID;
 	public final fun getUUID_HEART_RATE_CONTROL_POINT ()Ljava/util/UUID;
@@ -286,7 +246,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public final fun getUUID_POWER_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_PRECOR_MEASUREMENT ()Ljava/util/UUID;
 	public final fun getUUID_PRECOR_SERVICE ()Ljava/util/UUID;
-	public final fun getUUID_ROWING_MACHINE_DATA ()Ljava/util/UUID;
 	public final fun getUUID_RSC_FEATURE ()Ljava/util/UUID;
 	public final fun getUUID_RSC_MEASUREMENT ()Ljava/util/UUID;
 	public final fun getUUID_RSC_SERVICE ()Ljava/util/UUID;
@@ -296,15 +255,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public final fun getUUID_SENSOR_LOCATION ()Ljava/util/UUID;
 	public final fun getUUID_SERIAL_NUMBER ()Ljava/util/UUID;
 	public final fun getUUID_SOFTWARE_REVISION ()Ljava/util/UUID;
-	public final fun getUUID_STAIR_CLIMBER_DATA ()Ljava/util/UUID;
-	public final fun getUUID_STAIR_STEPPER_DATA ()Ljava/util/UUID;
-	public final fun getUUID_SUPPORTED_HEART_RATE_RANGE ()Ljava/util/UUID;
-	public final fun getUUID_SUPPORTED_INCLINATION_RANGE ()Ljava/util/UUID;
-	public final fun getUUID_SUPPORTED_POWER_RANGE ()Ljava/util/UUID;
-	public final fun getUUID_SUPPORTED_RESISTANCE_RANGE ()Ljava/util/UUID;
-	public final fun getUUID_SUPPORTED_SPEED_RANGE ()Ljava/util/UUID;
-	public final fun getUUID_TRAINING_STATUS ()Ljava/util/UUID;
-	public final fun getUUID_TREADMILL_DATA ()Ljava/util/UUID;
 	public final fun getUUID_USER_AGE ()Ljava/util/UUID;
 	public final fun getUUID_USER_DATA_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_USER_DATE_OF_BIRTH ()Ljava/util/UUID;
@@ -408,8 +358,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun isScanning ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun markSessionStarted (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Ljava/lang/String;)V
 	public final fun markSessionStopped ()V
-	public final fun maybeStartProviderAdvertisingAfterFeatures (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)V
 	public final fun maybeStartProviderAdvertisingAfterFeatures (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
+	public final fun maybeStartProviderAdvertisingAfterFeatures (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)V
 	public final fun overrideProviderActivityForSession (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
 	public final fun promptPairing (Ljava/lang/String;)V
 	public final fun readSupportedInclinationRange ()V
@@ -1113,7 +1063,7 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 	public fun onWheelCircumferenceChangedMm (D)V
 	public abstract fun setNotifyIntervalMs (J)V
 	public abstract fun startAdvertisingCscCps ()V
-	public abstract fun startAdvertisingFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Z
+	public abstract fun startAdvertisingFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Z
 	public abstract fun stopAdvertising ()V
 }
 
@@ -1155,26 +1105,17 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtSer
 	public static final field DEVICE_NAME_FTMS_STEPPER Ljava/lang/String;
 	public static final field DEVICE_NAME_FTMS_TREAD Ljava/lang/String;
 	public static final field DEVICE_NAME_PREFIX Ljava/lang/String;
-	public static final field FM_FLAG_MACHINE_AVAILABLE I
-	public static final field FM_TYPE_CROSS_TRAINER I
-	public static final field FM_TYPE_INDOOR_BIKE I
-	public static final field FM_TYPE_ROWER I
-	public static final field FM_TYPE_STAIR_CLIMBER I
-	public static final field FM_TYPE_STEP_CLIMBER I
-	public static final field FM_TYPE_TREADMILL I
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles;
 	public static final field LEGACY_DEVICE_NAME_PREFIX Ljava/lang/String;
 	public static final field MAX_CLIENTS I
 	public static final field TSF_NONE I
 	public final fun activityTypeFromFtmsServiceData ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
 	public final fun dataUuidForActivity (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)Ljava/util/UUID;
-	public final fun dataUuidForProfile (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Ljava/util/UUID;
-	public final fun deviceNameFor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Ljava/lang/String;
-	public final fun fitnessMachineTypeFor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)I
-	public final fun fmfFor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)I
-	public final fun ftmsProfileForActivity (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public final fun ftmsServiceDataFor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Z)[B
-	public static synthetic fun ftmsServiceDataFor$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ZILjava/lang/Object;)[B
+	public final fun deviceNameFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/lang/String;
+	public final fun fmfFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)I
+	public final fun ftmsProfileForActivity (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public final fun ftmsServiceDataFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Z)[B
+	public static synthetic fun ftmsServiceDataFor$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZILjava/lang/Object;)[B
 	public final fun getFMF_ELLIPTICAL ()I
 	public final fun getFMF_INDOOR_BIKE ()I
 	public final fun getFMF_ROWER ()I
@@ -1188,18 +1129,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtSer
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$CscCpsProfile;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$CscCpsProfile;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile : java/lang/Enum {
-	public static final field ELLIPTICAL Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public static final field INDOOR_BIKE Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public static final field INDOOR_ROWER Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public static final field STAIR_CLIMBER Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public static final field STAIR_STEPPER Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public static final field TREADMILL Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode : java/lang/Enum {

@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 import android.bluetooth.BluetoothDevice
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Per-connection state for one downstream client.
@@ -263,11 +264,11 @@ class PeripheralConnection(
     private fun recompute(dataUuid: UUID) {
         dataSubscribed = subscriptions.mode(dataUuid) == CccdMode.NOTIFY
         statusSubscribed =
-            subscriptions.mode(BluetoothIds.UUID_FITNESS_MACHINE_STATUS) == CccdMode.NOTIFY
+            subscriptions.mode(FtmsUuids.UUID_FITNESS_MACHINE_STATUS) == CccdMode.NOTIFY
         controlPointSubscribed =
-            subscriptions.mode(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT) == CccdMode.INDICATE
+            subscriptions.mode(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT) == CccdMode.INDICATE
         trainingStatusSubscribed =
-            subscriptions.mode(BluetoothIds.UUID_TRAINING_STATUS) == CccdMode.NOTIFY
+            subscriptions.mode(FtmsUuids.UUID_TRAINING_STATUS) == CccdMode.NOTIFY
         cscMeasurementSubscribed =
             subscriptions.mode(BluetoothIds.UUID_CSC_MEASUREMENT) == CccdMode.NOTIFY
         cyclingPowerMeasurementSubscribed =

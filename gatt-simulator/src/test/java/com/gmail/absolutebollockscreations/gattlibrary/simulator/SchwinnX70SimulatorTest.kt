@@ -12,6 +12,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Schwinn x70 simulator — work units X70-S1 (persona, advertising, GATT, gate) and X70-S3
@@ -160,7 +161,7 @@ class SchwinnX70SimulatorTest {
         // a proprietary frame, not on 0x180D.
         run {
             val served = SchwinnX70GattProfile.manifest().map { it.uuid }.toSet()
-            assertFalse(served.contains(BluetoothIds.UUID_FTMS_SERVICE))
+            assertFalse(served.contains(FtmsUuids.UUID_FTMS_SERVICE))
             assertEquals(
                 "only the family service and Device Information",
                 setOf(BluetoothIds.UUID_X70_SERVICE, BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE),

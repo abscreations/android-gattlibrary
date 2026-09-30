@@ -1,10 +1,10 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsProcedureSession
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

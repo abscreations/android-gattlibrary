@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class SchwinnX70DiscoveryPlanTest {
     private fun inventory(vararg characteristics: UUID): Map<UUID, Set<UUID>> =
@@ -55,7 +56,7 @@ class SchwinnX70DiscoveryPlanTest {
         assertTrue(planSchwinnX70Discovery(emptyMap()).isEmpty())
         assertTrue(
             "a foreign service must not activate this handler",
-            planSchwinnX70Discovery(mapOf(BluetoothIds.UUID_FTMS_SERVICE to setOf(BluetoothIds.UUID_X70_MEASUREMENT)))
+            planSchwinnX70Discovery(mapOf(FtmsUuids.UUID_FTMS_SERVICE to setOf(BluetoothIds.UUID_X70_MEASUREMENT)))
                 .isEmpty(),
         )
     }

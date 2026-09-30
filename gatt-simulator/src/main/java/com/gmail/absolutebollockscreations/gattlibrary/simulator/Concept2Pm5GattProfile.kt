@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Pure PM5 GATT description and offset-aware Device Information values.
@@ -31,7 +32,7 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
             put(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE, heartRateReceiveManifest)
         }
         if (persona.compatibility.exposesFtms) {
-            put(BluetoothIds.UUID_FTMS_SERVICE, ftmsManifest(persona.machine))
+            put(FtmsUuids.UUID_FTMS_SERVICE, ftmsManifest(persona.machine))
         }
     }
 
@@ -64,7 +65,7 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
 
     /** Read-only standard values captured from the modern RowErg's minimal FTMS service. */
     fun readFtms(uuid: UUID): ByteArray? = when (uuid) {
-        BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> MODERN_ROW_FTMS_FEATURE.copyOf()
+        FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> MODERN_ROW_FTMS_FEATURE.copyOf()
         else -> null
     }
 
@@ -96,10 +97,10 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
         )
 
         fun ftmsManifest(machine: Concept2Machine): List<Concept2CharacteristicManifest> = listOf(
-            Concept2CharacteristicManifest(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE, readable = true),
+            Concept2CharacteristicManifest(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE, readable = true),
             Concept2CharacteristicManifest(
-                if (machine == Concept2Machine.BIKE_ERG) BluetoothIds.UUID_BIKING_DATA
-                else BluetoothIds.UUID_ROWING_MACHINE_DATA,
+                if (machine == Concept2Machine.BIKE_ERG) FtmsUuids.UUID_BIKING_DATA
+                else FtmsUuids.UUID_ROWING_MACHINE_DATA,
                 notifiable = true,
             ),
         )

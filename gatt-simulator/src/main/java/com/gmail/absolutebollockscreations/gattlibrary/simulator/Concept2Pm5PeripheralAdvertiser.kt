@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** PM5-only Android GATT server with capture-bounded C2a short-frame CSAFE transport. */
 internal class Concept2Pm5PeripheralAdvertiser(
@@ -244,7 +245,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
             .also { builder ->
                 plan.scanResponseServiceUuids.forEach { builder.addServiceUuid(ParcelUuid(it)) }
                 plan.scanResponseFtmsServiceData?.let {
-                    builder.addServiceData(ParcelUuid(BluetoothIds.UUID_FTMS_SERVICE), it)
+                    builder.addServiceData(ParcelUuid(FtmsUuids.UUID_FTMS_SERVICE), it)
                 }
             }
             .build()
@@ -381,7 +382,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
             val value = when (characteristic.uuid) {
                 BluetoothIds.UUID_C2_STATUS_SAMPLE_RATE -> byteArrayOf(client.session.sampleRate.toByte())
                 BluetoothIds.UUID_C2_CSAFE_RESPONSE -> client.session.csafeResponse
-                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> profile?.readFtms(characteristic.uuid)
+                FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> profile?.readFtms(characteristic.uuid)
                 else -> profile?.readDeviceInformation(characteristic.uuid, 0, client.mtu)
             }
             respondRead(device, requestId, offset, value)
@@ -482,10 +483,10 @@ internal class Concept2Pm5PeripheralAdvertiser(
             val disable = value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
             val ok = descriptor.uuid == BluetoothIds.UUID_CCCD && !preparedWrite && offset == 0 && (enable || disable)
             if (ok) client.session.setSubscribed(descriptor.characteristic.uuid, enable)
-            if (ok && descriptor.characteristic.uuid == BluetoothIds.UUID_ROWING_MACHINE_DATA) {
+            if (ok && descriptor.characteristic.uuid == FtmsUuids.UUID_ROWING_MACHINE_DATA) {
                 client.nextFtmsDueMs = 0L
                 if (disable) synchronized(client) {
-                    client.pending.removeIf { it.uuid == BluetoothIds.UUID_ROWING_MACHINE_DATA }
+                    client.pending.removeIf { it.uuid == FtmsUuids.UUID_ROWING_MACHINE_DATA }
                 }
             }
             if (responseNeeded) server?.sendResponse(device, requestId, if (ok) BluetoothGatt.GATT_SUCCESS else BluetoothGatt.GATT_FAILURE, 0, null)
@@ -541,7 +542,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
                 val snapshot = latest
                 if (snapshot != null) clients.values.forEach { client ->
                     if (now >= client.nextFtmsDueMs &&
-                        client.session.isSubscribed(BluetoothIds.UUID_ROWING_MACHINE_DATA)
+                        client.session.isSubscribed(FtmsUuids.UUID_ROWING_MACHINE_DATA)
                     ) {
                         client.nextFtmsDueMs = now + FTMS_ROWER_PERIOD_MS
                         enqueueFtmsRower(client, snapshot)
@@ -610,7 +611,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
         enqueueSequence(
             client,
             Concept2Pm5Encoder.ftmsRower(snapshot).map {
-                Frame(BluetoothIds.UUID_ROWING_MACHINE_DATA, it, conflatable = false)
+                Frame(FtmsUuids.UUID_ROWING_MACHINE_DATA, it, conflatable = false)
             },
         )
     }
@@ -697,8 +698,8 @@ internal class Concept2Pm5PeripheralAdvertiser(
         } ?: return
         val serviceUuid = when (frame.uuid) {
             BluetoothIds.UUID_C2_CSAFE_RESPONSE -> BluetoothIds.UUID_C2_PM_CONTROL_SERVICE
-            BluetoothIds.UUID_ROWING_MACHINE_DATA,
-            BluetoothIds.UUID_BIKING_DATA -> BluetoothIds.UUID_FTMS_SERVICE
+            FtmsUuids.UUID_ROWING_MACHINE_DATA,
+            FtmsUuids.UUID_BIKING_DATA -> FtmsUuids.UUID_FTMS_SERVICE
             else -> BluetoothIds.UUID_C2_ERG_SERVICE
         }
         val characteristic = server?.getService(serviceUuid)?.getCharacteristic(frame.uuid)

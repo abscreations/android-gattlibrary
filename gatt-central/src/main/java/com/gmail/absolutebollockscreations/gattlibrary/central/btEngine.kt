@@ -107,15 +107,15 @@ import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_FEATURE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FTMS_SERVICE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_INCLINATION_RANGE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_POWER_RANGE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_SPEED_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_FEATURE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FTMS_SERVICE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_INCLINATION_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_POWER_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_SPEED_RANGE
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState.FtmsCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -131,6 +131,7 @@ import timber.log.Timber
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleConfig
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDefaults
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 internal const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
 internal const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
@@ -2347,7 +2348,7 @@ class BtEngine internal constructor(
                 runCatching { it.discoveredServices.toList() }.getOrDefault(emptyList())
             }.orEmpty()
             val hasFtmsFeature = services
-                .firstOrNull { it.uuid == BluetoothIds.UUID_FTMS_SERVICE }
+                .firstOrNull { it.uuid == FtmsUuids.UUID_FTMS_SERVICE }
                 ?.getCharacteristic(UUID_FITNESS_MACHINE_FEATURE) != null
             val rangeWaitMs = rangeWaitStartedAtMs?.let { nowMs - it } ?: 0L
             val readiness = ProviderAdvertisingReadiness.decide(

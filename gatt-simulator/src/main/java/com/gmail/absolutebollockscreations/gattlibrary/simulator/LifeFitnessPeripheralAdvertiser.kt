@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdvertisingGate
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Setup-gated multi-service GATT server reconstructed from the Phase 6 capture set. */
 internal class LifeFitnessPeripheralAdvertiser(
@@ -109,8 +110,8 @@ internal class LifeFitnessPeripheralAdvertiser(
         clients.values.filter { it.setup.stage == LifeFitnessSetupServer.Stage.UNLOCKED }.forEach { client ->
             if (active && !client.trainingStatus.contentEquals(TRAINING_ACTIVE)) {
                 client.trainingStatus = TRAINING_ACTIVE.copyOf()
-                if (BluetoothIds.UUID_TRAINING_STATUS in client.subscriptions) {
-                    enqueue(client, BluetoothIds.UUID_TRAINING_STATUS, client.trainingStatus)
+                if (FtmsUuids.UUID_TRAINING_STATUS in client.subscriptions) {
+                    enqueue(client, FtmsUuids.UUID_TRAINING_STATUS, client.trainingStatus)
                 }
             }
             if (
@@ -404,7 +405,7 @@ internal class LifeFitnessPeripheralAdvertiser(
             .build()
         val data = AdvertiseData.Builder()
             .setIncludeTxPowerLevel(true)
-            .addServiceUuid(ParcelUuid(BluetoothIds.UUID_FTMS_SERVICE))
+            .addServiceUuid(ParcelUuid(FtmsUuids.UUID_FTMS_SERVICE))
             .addServiceData(ParcelUuid(plan.serviceDataService), plan.serviceData)
             .build()
         val scanResponse = AdvertiseData.Builder().setIncludeDeviceName(true).build()
@@ -437,8 +438,8 @@ internal class LifeFitnessPeripheralAdvertiser(
     private fun readValue(client: Client?, uuid: UUID): ByteArray? {
         val activeMachine = machine ?: return null
         return when (uuid) {
-            BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> lifeFitnessFeatureValue(activeMachine)
-            BluetoothIds.UUID_TRAINING_STATUS -> client?.trainingStatus ?: TRAINING_PRE_WORKOUT
+            FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> lifeFitnessFeatureValue(activeMachine)
+            FtmsUuids.UUID_TRAINING_STATUS -> client?.trainingStatus ?: TRAINING_PRE_WORKOUT
             BluetoothIds.UUID_MANUFACTURER_NAME -> "Life Fitness".toByteArray()
             BluetoothIds.UUID_MODEL_NUMBER -> activeMachine.displayName.toByteArray()
             BluetoothIds.UUID_SERIAL_NUMBER -> activeMachine.syntheticName.toByteArray()
@@ -453,7 +454,7 @@ internal class LifeFitnessPeripheralAdvertiser(
 
     private fun sendInitialValue(client: Client, uuid: UUID) {
         when (uuid) {
-            BluetoothIds.UUID_TRAINING_STATUS -> enqueue(client, uuid, client.trainingStatus)
+            FtmsUuids.UUID_TRAINING_STATUS -> enqueue(client, uuid, client.trainingStatus)
             machine?.measurementUuid -> if (
                 LifeFitnessNotificationPolicy.mayStreamMeasurement(
                     client.setup.stage,

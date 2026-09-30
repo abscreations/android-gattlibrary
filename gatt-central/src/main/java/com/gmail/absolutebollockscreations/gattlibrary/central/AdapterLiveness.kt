@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Drives [MachineAdapterPolicy] for live connections (plan §0.7a).
@@ -289,7 +290,7 @@ class AdapterLivenessCoordinator(
             .filterIsInstance<KayakFirstProtocolHandler>()
             .any { it.hasStructuralMatch() }
         return buildList {
-            if (BluetoothIds.UUID_FTMS_SERVICE in services) {
+            if (FtmsUuids.UUID_FTMS_SERVICE in services) {
                 add(
                     MachineAdapterCandidate(
                         adapterId = FTMS_ADAPTER_ID,
@@ -297,7 +298,7 @@ class AdapterLivenessCoordinator(
                             listOf(
                                 MatchEvidenceFact(
                                     kind = MatchEvidenceKind.GATT_SERVICE,
-                                    structuralValue = BluetoothIds.UUID_FTMS_SERVICE.toString(),
+                                    structuralValue = FtmsUuids.UUID_FTMS_SERVICE.toString(),
                                     weight = 40,
                                     collisionRisk = CollisionRisk.LOW,
                                     note = "FTMS service present in the discovered GATT database",

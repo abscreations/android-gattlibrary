@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTrigger
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.buildFtmsFeaturePayload
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.providerMeasurementCapabilities
@@ -13,6 +13,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Phase 9 §11.7, §11.8 and capture evidence at the production policy seams. */
 class FeCDownstreamControlCaptureTest {
@@ -81,7 +83,7 @@ class FeCDownstreamControlCaptureTest {
 
     @Test
     fun `FE-C treadmill downstream Feature word does not claim force-on-belt power`() {
-        val profile = BtServiceProfiles.FtmsMachineProfile.TREADMILL
+        val profile = FtmsMachineProfile.TREADMILL
         val capabilities = providerMeasurementCapabilities(profile, setOf(BluetoothIds.UUID_FEC_SERVICE))
         val payload = buildFtmsFeaturePayload(profile, TargetCapabilities.NONE, measurementCapabilities = capabilities)
         val measurementBits = u32(payload, 0)
@@ -102,11 +104,11 @@ class FeCDownstreamControlCaptureTest {
 
     @Test
     fun `an FTMS plus FE-C treadmill keeps the standard FTMS measurement contract`() {
-        val profile = BtServiceProfiles.FtmsMachineProfile.TREADMILL
+        val profile = FtmsMachineProfile.TREADMILL
         assertTrue(
             providerMeasurementCapabilities(
                 profile,
-                setOf(BluetoothIds.UUID_FEC_SERVICE, BluetoothIds.UUID_FTMS_SERVICE),
+                setOf(BluetoothIds.UUID_FEC_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
             ).forceOnBeltAndPowerOutput,
         )
     }

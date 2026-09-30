@@ -8,6 +8,7 @@ import androidx.annotation.RequiresPermission
 import timber.log.Timber
 import java.util.TimeZone
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 
 internal data class KayakFirstCharacteristicInventory(
     val properties: Int,
@@ -532,7 +533,7 @@ internal class KayakFirstProtocolHandler(
             context.address,
             com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING.ordinal,
         )
-        engine.maybeStartProviderAdvertisingAfterFeatures(BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER)
+        engine.maybeStartProviderAdvertisingAfterFeatures(FtmsMachineProfile.INDOOR_ROWER)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -643,7 +644,7 @@ internal class KayakFirstProtocolHandler(
                         com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING.ordinal,
                     )
                     engine.maybeStartProviderAdvertisingAfterFeatures(
-                        BtServiceProfiles.FtmsMachineProfile.INDOOR_ROWER,
+                        FtmsMachineProfile.INDOOR_ROWER,
                     )
                     val nowMs = MonotonicMetricClock.SYSTEM.nowMs()
                     runtime = KayakFirstRuntimeCoordinator(context.connectionId)

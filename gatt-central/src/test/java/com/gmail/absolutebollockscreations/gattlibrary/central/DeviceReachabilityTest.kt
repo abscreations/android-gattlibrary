@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Every registered family must be reachable end to end. Plan §11, new obligation.
@@ -65,7 +66,7 @@ class DeviceReachabilityTest {
     fun `the scan filter covers proprietary families, not only SIG profiles`() {
         val filter = hardwareScanServiceUuids().toSet()
 
-        assertTrue("FTMS", BluetoothIds.UUID_FTMS_SERVICE in filter)
+        assertTrue("FTMS", FtmsUuids.UUID_FTMS_SERVICE in filter)
         assertTrue("Concept2 must be scannable", BluetoothIds.UUID_C2_DISCOVERY_SERVICE in filter)
         assertTrue("Precor must be scannable", BluetoothIds.UUID_PRECOR_SERVICE in filter)
         assertTrue("Schwinn x70 must be scannable", BluetoothIds.UUID_X70_SERVICE in filter)
@@ -253,7 +254,7 @@ class DeviceReachabilityTest {
         val candidates = registry.rankedCandidates(
             MatchObservation(
                 localName = "LF Cross Trainer",
-                advertisedServiceUuids = setOf(uuid(BluetoothIds.UUID_FTMS_SERVICE)),
+                advertisedServiceUuids = setOf(uuid(FtmsUuids.UUID_FTMS_SERVICE)),
             ),
         )
 
@@ -261,7 +262,7 @@ class DeviceReachabilityTest {
         assertTrue("a Life Fitness machine is a machine", candidates.single().machineRole)
         assertTrue(
             "FTMS must be scannable for this family to be found at all",
-            BluetoothIds.UUID_FTMS_SERVICE in hardwareScanServiceUuids(),
+            FtmsUuids.UUID_FTMS_SERVICE in hardwareScanServiceUuids(),
         )
     }
 
@@ -349,7 +350,7 @@ class DeviceReachabilityTest {
     @Test
     fun `machine role is declared, not inferred from a SIG enum`() {
         val expected = mapOf(
-            BluetoothIds.UUID_FTMS_SERVICE to true,
+            FtmsUuids.UUID_FTMS_SERVICE to true,
             BluetoothIds.UUID_C2_DISCOVERY_SERVICE to true,
             BluetoothIds.UUID_PRECOR_SERVICE to true,
             BluetoothIds.UUID_HRM_SERVICE to false,
@@ -389,7 +390,7 @@ class DeviceReachabilityTest {
         val handlers = MACHINE_PROTOCOLS.map(factory::create)
 
         val machineServices = listOf(
-            BluetoothIds.UUID_FTMS_SERVICE,
+            FtmsUuids.UUID_FTMS_SERVICE,
             BluetoothIds.UUID_C2_ERG_SERVICE,
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,
@@ -424,7 +425,7 @@ class DeviceReachabilityTest {
         // which services identify a machine. A service known to two of the three is the shape
         // every defect above took.
         val adapterServices = setOf(
-            BluetoothIds.UUID_FTMS_SERVICE,
+            FtmsUuids.UUID_FTMS_SERVICE,
             BluetoothIds.UUID_C2_ERG_SERVICE,
             BluetoothIds.UUID_PRECOR_SERVICE,
             BluetoothIds.UUID_X70_SERVICE,

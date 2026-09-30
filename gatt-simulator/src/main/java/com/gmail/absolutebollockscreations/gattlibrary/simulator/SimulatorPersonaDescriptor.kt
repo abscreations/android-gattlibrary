@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.dataCharacteristic
 import java.util.Locale

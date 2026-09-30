@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class MetricParserEmissionTest {
     private val connection = ConnectionId("AA:BB:CC:DD:EE:10", 10L)
@@ -38,13 +39,13 @@ class MetricParserEmissionTest {
 
     @Test
     fun `bike vector emits source tagged speed`() {
-        val harness = harness(BluetoothIds.UUID_BIKING_DATA)
+        val harness = harness(FtmsUuids.UUID_BIKING_DATA)
 
         BtEngineFtmsParsers.doBike(harness.emitter, byteArrayOf(0, 0, 0xD2.toByte(), 0x04))
 
         val sample = harness.fusion.latestSample(MetricKind.SPEED)!!
         assertEquals(12.34, sample.value, 0.0)
-        assertEquals(BluetoothIds.UUID_BIKING_DATA, sample.sourceId.characteristicUuid)
+        assertEquals(FtmsUuids.UUID_BIKING_DATA, sample.sourceId.characteristicUuid)
         assertEquals(connection, sample.connectionId)
         assertEquals(12_345L, sample.arrivalMs)
         assertEquals(12.34, harness.state.speedKph.value!!, 0.0)
@@ -52,7 +53,7 @@ class MetricParserEmissionTest {
 
     @Test
     fun `rower vector emits stroke rate and count`() {
-        val harness = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA)
+        val harness = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA)
 
         BtEngineFtmsParsers.doRower(
             harness.emitter,
@@ -67,7 +68,7 @@ class MetricParserEmissionTest {
 
     @Test
     fun `treadmill vector emits speed`() {
-        val harness = harness(BluetoothIds.UUID_TREADMILL_DATA)
+        val harness = harness(FtmsUuids.UUID_TREADMILL_DATA)
 
         BtEngineFtmsParsers.doTreadmill(harness.emitter, byteArrayOf(0, 0, 0x20, 0x03))
 
@@ -77,7 +78,7 @@ class MetricParserEmissionTest {
 
     @Test
     fun `treadmill inclination is percent in tenths and ramp angle is degrees in tenths`() {
-        val harness = harness(BluetoothIds.UUID_TREADMILL_DATA)
+        val harness = harness(FtmsUuids.UUID_TREADMILL_DATA)
 
         // Flags 0x0008 = inclination + ramp angle only, no speed (bit 0 clear means speed present,
         // so bit 0 is set here to omit it). Inclination -5.0 % = -50, ramp 2.5 deg = 25.
@@ -93,7 +94,7 @@ class MetricParserEmissionTest {
 
     @Test
     fun `treadmill inclination keeps its sign and full positive scale`() {
-        val harness = harness(BluetoothIds.UUID_TREADMILL_DATA)
+        val harness = harness(FtmsUuids.UUID_TREADMILL_DATA)
 
         // Inclination +10.0 % = 100, ramp angle 0.
         BtEngineFtmsParsers.doTreadmill(
@@ -106,7 +107,7 @@ class MetricParserEmissionTest {
 
     @Test
     fun `elliptical vector emits speed after three byte flags`() {
-        val harness = harness(BluetoothIds.UUID_ELLIPTICAL_DATA)
+        val harness = harness(FtmsUuids.UUID_ELLIPTICAL_DATA)
 
         BtEngineFtmsParsers.doElliptical(harness.emitter, byteArrayOf(0, 0, 0, 0x58, 0x02))
 
@@ -116,7 +117,7 @@ class MetricParserEmissionTest {
 
     @Test
     fun `stepper vector emits floors and steps`() {
-        val harness = harness(BluetoothIds.UUID_STAIR_STEPPER_DATA)
+        val harness = harness(FtmsUuids.UUID_STAIR_STEPPER_DATA)
 
         BtEngineFtmsParsers.doStepper(harness.emitter, byteArrayOf(0, 0, 5, 0, 120, 0))
 
@@ -128,7 +129,7 @@ class MetricParserEmissionTest {
 
     @Test
     fun `climber vector emits floors`() {
-        val harness = harness(BluetoothIds.UUID_STAIR_CLIMBER_DATA)
+        val harness = harness(FtmsUuids.UUID_STAIR_CLIMBER_DATA)
 
         BtEngineFtmsParsers.doClimber(harness.emitter, byteArrayOf(0, 0, 14, 0))
 
@@ -138,12 +139,12 @@ class MetricParserEmissionTest {
 
     @Test
     fun `truncated persona vectors are bounds checked`() {
-        val bike = harness(BluetoothIds.UUID_BIKING_DATA)
-        val rower = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA)
-        val treadmill = harness(BluetoothIds.UUID_TREADMILL_DATA)
-        val elliptical = harness(BluetoothIds.UUID_ELLIPTICAL_DATA)
-        val stepper = harness(BluetoothIds.UUID_STAIR_STEPPER_DATA)
-        val climber = harness(BluetoothIds.UUID_STAIR_CLIMBER_DATA)
+        val bike = harness(FtmsUuids.UUID_BIKING_DATA)
+        val rower = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA)
+        val treadmill = harness(FtmsUuids.UUID_TREADMILL_DATA)
+        val elliptical = harness(FtmsUuids.UUID_ELLIPTICAL_DATA)
+        val stepper = harness(FtmsUuids.UUID_STAIR_STEPPER_DATA)
+        val climber = harness(FtmsUuids.UUID_STAIR_CLIMBER_DATA)
 
         BtEngineFtmsParsers.doBike(bike.emitter, byteArrayOf(0))
         BtEngineFtmsParsers.doRower(rower.emitter, byteArrayOf(0, 0, 48, 0x41))

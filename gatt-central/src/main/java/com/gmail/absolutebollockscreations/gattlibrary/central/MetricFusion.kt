@@ -6,6 +6,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import java.util.UUID
 import kotlin.math.roundToInt
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * How long a heart-rate reading stays authoritative after it arrives.
@@ -1129,7 +1130,7 @@ class MetricFusion(
                 )
                 state.appendDistanceMetersSample(meters, seriesAt)
                 updateLapDistance(meters)
-                if (sample.sourceId.gattCharacteristicUuid == BluetoothIds.UUID_ROWING_MACHINE_DATA) {
+                if (sample.sourceId.gattCharacteristicUuid == FtmsUuids.UUID_ROWING_MACHINE_DATA) {
                     state.updateLapRowingSpeed(seriesAt)
                     state.updateRowingSpeed(seriesAt)
                 }

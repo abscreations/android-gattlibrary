@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class FeCBleTacxAdvertisingTest {
     private fun hex(frame: ByteArray): String = frame.joinToString(" ") { "%02X".format(it) }
@@ -52,14 +53,14 @@ class FeCBleTacxAdvertisingTest {
         val plan = tacxAdvertisingPlan(FeCBleSimulatorIdentity.TACX_FLUX_2, includeCps = true)
         assertTrue(plan.advertiseServices.isEmpty())
         assertEquals(
-            listOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
+            listOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_FEC_SERVICE),
             plan.scanResponseServices,
         )
         assertEquals(0x0689, plan.manufacturerId)
         assertArrayEquals(byteArrayOf(0x29, 0x80.toByte()), plan.manufacturerData)
         assertArrayEquals(
             byteArrayOf(0x01, 0x00, 0x20),
-            plan.serviceData[BluetoothIds.UUID_FTMS_SERVICE],
+            plan.serviceData[FtmsUuids.UUID_FTMS_SERVICE],
         )
         assertTrue(plan.includeNameInAdvertisement)
     }
@@ -72,7 +73,7 @@ class FeCBleTacxAdvertisingTest {
                 TacxGattIds.SERVICE_A605,
                 TacxGattIds.SERVICE_A501,
                 BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_FEC_SERVICE,
             ),
             services.map { it.uuid },
@@ -94,15 +95,15 @@ class FeCBleTacxAdvertisingTest {
             setOf(TacxGattIds.USER_DESCRIPTION, BluetoothIds.UUID_CCCD),
             proprietary.characteristics.single { it.uuid == TacxGattIds.CHAR_AB02 }.descriptors,
         )
-        val ftms = services.single { it.uuid == BluetoothIds.UUID_FTMS_SERVICE }
+        val ftms = services.single { it.uuid == FtmsUuids.UUID_FTMS_SERVICE }
         assertEquals(
             listOf(
-                BluetoothIds.UUID_BIKING_DATA,
-                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE,
-                BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE,
-                BluetoothIds.UUID_SUPPORTED_POWER_RANGE,
-                BluetoothIds.UUID_FITNESS_MACHINE_STATUS,
-                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
+                FtmsUuids.UUID_BIKING_DATA,
+                FtmsUuids.UUID_FITNESS_MACHINE_FEATURE,
+                FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE,
+                FtmsUuids.UUID_SUPPORTED_POWER_RANGE,
+                FtmsUuids.UUID_FITNESS_MACHINE_STATUS,
+                FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT,
             ),
             ftms.characteristics.map { it.uuid },
         )
@@ -130,14 +131,14 @@ class FeCBleTacxAdvertisingTest {
         )
         assertEquals(
             listOf(
-                BluetoothIds.UUID_BIKING_DATA to notify,
-                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE to read,
-                BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE to read,
-                BluetoothIds.UUID_SUPPORTED_POWER_RANGE to read,
-                BluetoothIds.UUID_FITNESS_MACHINE_STATUS to notify,
-                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT to (write or indicate),
+                FtmsUuids.UUID_BIKING_DATA to notify,
+                FtmsUuids.UUID_FITNESS_MACHINE_FEATURE to read,
+                FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE to read,
+                FtmsUuids.UUID_SUPPORTED_POWER_RANGE to read,
+                FtmsUuids.UUID_FITNESS_MACHINE_STATUS to notify,
+                FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT to (write or indicate),
             ),
-            properties(BluetoothIds.UUID_FTMS_SERVICE),
+            properties(FtmsUuids.UUID_FTMS_SERVICE),
         )
         assertEquals(
             listOf(
@@ -156,7 +157,7 @@ class FeCBleTacxAdvertisingTest {
         assertNull(read(BluetoothIds.UUID_SERIAL_NUMBER))
         assertArrayEquals(
             byteArrayOf(0x82.toByte(), 0x40, 0x00, 0x00, 0x0C, 0x20, 0x00, 0x00),
-            read(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE),
+            read(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE),
         )
         assertArrayEquals(byteArrayOf(0x0C, 0x00, 0x00, 0x00), read(BluetoothIds.UUID_CYCLING_POWER_FEATURE))
         assertArrayEquals(

@@ -11,15 +11,16 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class LegacyGattCharacterizationTest {
 
     @Test
     fun `Concept2 discovery excludes FTMS activation but preserves native and sensor handlers`() {
-        val ftms = RecordingHandler(setOf(BluetoothIds.UUID_FTMS_SERVICE))
+        val ftms = RecordingHandler(setOf(FtmsUuids.UUID_FTMS_SERVICE))
         val concept2 = RecordingHandler(setOf(BluetoothIds.UUID_C2_ERG_SERVICE))
         val hrm = RecordingHandler(setOf(BluetoothIds.UUID_HRM_SERVICE))
-        val services = setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE,
+        val services = setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE,
             BluetoothIds.UUID_HRM_SERVICE)
         val offered = mutableListOf<BtEngineGattCore.ProtocolHandler>()
 
@@ -28,7 +29,7 @@ class LegacyGattCharacterizationTest {
             listOf(ftms, concept2, hrm), services,
         ) { offered += it; true })
         assertEquals(listOf(concept2, hrm), offered)
-        assertTrue("diagnostic inventory must retain FTMS", BluetoothIds.UUID_FTMS_SERVICE in services)
+        assertTrue("diagnostic inventory must retain FTMS", FtmsUuids.UUID_FTMS_SERVICE in services)
     }
 
     private class RecordingHandler(
@@ -50,13 +51,13 @@ class LegacyGattCharacterizationTest {
         assertSame(ftmsGatt, connected.current(LegacyConnectionRole.FTMS))
         assertSame(hrmGatt, connected.current(LegacyConnectionRole.HRM))
 
-        val ftmsHandler = RecordingHandler(setOf(BluetoothIds.UUID_FTMS_SERVICE))
+        val ftmsHandler = RecordingHandler(setOf(FtmsUuids.UUID_FTMS_SERVICE))
         val hrmHandler = RecordingHandler(setOf(BluetoothIds.UUID_HRM_SERVICE))
         val handlers = listOf(ftmsHandler, hrmHandler)
 
         assertEquals(
             listOf(ftmsHandler),
-            matchingProtocolHandlers(handlers, setOf(BluetoothIds.UUID_FTMS_SERVICE)),
+            matchingProtocolHandlers(handlers, setOf(FtmsUuids.UUID_FTMS_SERVICE)),
         )
         assertEquals(
             listOf(hrmHandler),

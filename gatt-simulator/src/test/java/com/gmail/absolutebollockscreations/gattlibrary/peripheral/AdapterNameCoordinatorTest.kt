@@ -375,8 +375,7 @@ class AdapterNameCoordinatorTest {
     fun `every advertised name is recognised as one of ours`() {
         // The coordinator must never mistake a persona name for the user's own,
         // or a crash mid-session would strand their phone under it permanently.
-        val names = com.gmail.absolutebollockscreations.gattlibrary.central
-            .BtServiceProfiles.FtmsMachineProfile.entries.map { it.advertisedName }
+        val names = com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile.entries.map { it.advertisedName }
         assertTrue(
             names.all { it.startsWith(AdapterNameCoordinator.SESSION_NAME_PREFIX) },
         )

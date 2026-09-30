@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Legacy-PDU advertisement layout for a PM5 persona, kept separate from FTMS budgeting. */
 internal data class Concept2Pm5AdvertisingPlan(
@@ -43,7 +44,7 @@ internal data class Concept2Pm5AdvertisingPlan(
                     includeTxPowerInAdvertisement = true,
                     advertisingServiceUuids = emptyList(),
                     scanResponseServiceUuids = listOf(
-                        BluetoothIds.UUID_FTMS_SERVICE,
+                        FtmsUuids.UUID_FTMS_SERVICE,
                         BluetoothIds.UUID_C2_DISCOVERY_SERVICE,
                     ),
                     scanResponseFtmsServiceData = ftmsData,

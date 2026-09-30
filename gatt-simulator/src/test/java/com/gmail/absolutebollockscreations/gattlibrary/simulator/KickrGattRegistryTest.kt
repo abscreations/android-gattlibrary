@@ -9,8 +9,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class KickrGattRegistryTest {
     @Test
@@ -25,7 +26,7 @@ class KickrGattRegistryTest {
         assertEquals(
             setOf(
                 BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT,
-                BluetoothIds.UUID_BIKING_DATA,
+                FtmsUuids.UUID_BIKING_DATA,
                 BluetoothIds.UUID_HEART_RATE_MEASUREMENT,
             ),
             frames.mapTo(linkedSetOf()) { it.characteristicUuid },
@@ -34,7 +35,7 @@ class KickrGattRegistryTest {
             it.characteristicUuid == BluetoothIds.UUID_CYCLING_POWER_MEASUREMENT
         }.value.let { (it[2].toInt() and 0xFF) or (it[3].toInt() shl 8) })
         assertEquals(snapshot.powerWatts, frames.single {
-            it.characteristicUuid == BluetoothIds.UUID_BIKING_DATA
+            it.characteristicUuid == FtmsUuids.UUID_BIKING_DATA
         }.value.let { (it[6].toInt() and 0xFF) or (it[7].toInt() shl 8) })
         assertEquals(
             snapshot.heartRateBpm,
@@ -75,13 +76,13 @@ class KickrGattRegistryTest {
             KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
             queueCapacity = 2,
         )
-        session.subscribe(BluetoothIds.UUID_BIKING_DATA, PeripheralConnection.CccdMode.NOTIFY)
-        assertEquals(PeripheralConnection.CccdMode.NOTIFY, session.subscription(BluetoothIds.UUID_BIKING_DATA))
+        session.subscribe(FtmsUuids.UUID_BIKING_DATA, PeripheralConnection.CccdMode.NOTIFY)
+        assertEquals(PeripheralConnection.CccdMode.NOTIFY, session.subscription(FtmsUuids.UUID_BIKING_DATA))
         assertTrue(session.acquire(KickrControlRoute.FTMS))
         assertFalse(session.acquire(KickrControlRoute.LEGACY_WAHOO))
 
         repeat(3) { index ->
-            session.enqueue(KickrTxFrame(BluetoothIds.UUID_BIKING_DATA, byteArrayOf(index.toByte()), false))
+            session.enqueue(KickrTxFrame(FtmsUuids.UUID_BIKING_DATA, byteArrayOf(index.toByte()), false))
         }
         assertEquals(1L, session.droppedFrames)
         assertEquals(2, session.pendingCount)
@@ -91,7 +92,7 @@ class KickrGattRegistryTest {
         assertEquals(2, session.beginNext()!!.value[0].toInt())
 
         session.clear()
-        assertEquals(PeripheralConnection.CccdMode.DISABLED, session.subscription(BluetoothIds.UUID_BIKING_DATA))
+        assertEquals(PeripheralConnection.CccdMode.DISABLED, session.subscription(FtmsUuids.UUID_BIKING_DATA))
         assertNull(session.route)
         assertNull(session.inFlight)
         assertEquals(0, session.pendingCount)
@@ -114,7 +115,7 @@ class KickrGattRegistryTest {
             KickrSyntheticModel(),
             KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC,
         )
-        ftmsFirst.subscribe(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
+        ftmsFirst.subscribe(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
         ftmsFirst.subscribe(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
 
         val deniedTarget = ftmsFirst.handleFtmsControl(byteArrayOf(0x05, 0xFA.toByte(), 0x00))
@@ -130,7 +131,7 @@ class KickrGattRegistryTest {
             KickrSyntheticModel(),
             KickrLegacyAckMode.SILENT_CORROBORATED,
         )
-        legacyFirst.subscribe(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
+        legacyFirst.subscribe(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
         legacyFirst.subscribe(BluetoothIds.UUID_WAHOO_KICKR_CONTROL, PeripheralConnection.CccdMode.INDICATE)
         assertTrue(legacyFirst.handleLegacyControl(byteArrayOf(0x20, 0xEE.toByte(), 0xFC.toByte()))!!.accepted)
         assertEquals(KickrControlRoute.LEGACY_WAHOO, legacyFirst.route)
@@ -143,7 +144,7 @@ class KickrGattRegistryTest {
         val model = KickrSyntheticModel()
         val session = KickrPeripheralSession(13L, model)
         session.subscribe(
-            BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
+            FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT,
             PeripheralConnection.CccdMode.INDICATE,
         )
 
@@ -178,7 +179,7 @@ class KickrGattRegistryTest {
         assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
         assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
         assertEquals(RideOnUuids.SYNC_TX, session.beginNext()!!.characteristicUuid)
-        session.subscribe(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
+        session.subscribe(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
         assertNull(session.handleFtmsControl(byteArrayOf(0x00)))
         session.clear()
         assertFalse(session.zwift!!.controlReady)

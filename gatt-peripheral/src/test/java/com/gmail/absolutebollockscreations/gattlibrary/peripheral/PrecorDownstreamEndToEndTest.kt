@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.ConnectionId
 import com.gmail.absolutebollockscreations.gattlibrary.central.FusionPersona
 import com.gmail.absolutebollockscreations.gattlibrary.central.MetricEmitter
@@ -16,6 +16,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Phase 5b §11.8: proprietary notification through fusion into FTMS Indoor Bike bytes. */
 class PrecorDownstreamEndToEndTest {
@@ -143,7 +145,7 @@ class PrecorDownstreamEndToEndTest {
         assertTrue(
             providerMeasurementCapabilities(
                 profile,
-                setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
+                setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_PRECOR_SERVICE),
             ).resistance,
         )
     }

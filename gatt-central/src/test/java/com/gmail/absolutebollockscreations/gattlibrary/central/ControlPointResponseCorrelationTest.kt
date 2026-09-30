@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 /**
  * Plan §11.7 — Control Point request/response correlation, upstream.
@@ -25,17 +26,17 @@ import org.junit.Test
 class ControlPointResponseCorrelationTest {
 
     private fun response(requestOpcode: Byte, result: Byte): ByteArray =
-        byteArrayOf(BluetoothIds.OPCODE_RESPONSE_CODE, requestOpcode, result)
+        byteArrayOf(FtmsSpec.Opcode.RESPONSE_CODE, requestOpcode, result)
 
     // ── The gap that let 0x11 ship unhandled ─────────────────────────────────────
 
     @Test
     fun `a simulation response is correlated rather than ignored`() {
         val accepted = correlateControlPointResponse(
-            response(BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION, BluetoothIds.RESULT_SUCCESS),
+            response(FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION, FtmsSpec.Result.SUCCESS),
         )
         assertEquals(
-            CpResponseOutcome.Accepted(BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION),
+            CpResponseOutcome.Accepted(FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION),
             accepted,
         )
     }
@@ -44,14 +45,14 @@ class ControlPointResponseCorrelationTest {
     fun `a rejected simulation write surfaces an error and keeps control`() {
         val outcome = correlateControlPointResponse(
             response(
-                BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION,
-                BluetoothIds.RESULT_INVALID_PARAMETER,
+                FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION,
+                FtmsSpec.Result.INVALID_PARAMETER,
             ),
         )
 
         assertTrue("a rejected gradient must not be reported as accepted", outcome is CpResponseOutcome.Rejected)
         outcome as CpResponseOutcome.Rejected
-        assertEquals(BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION, outcome.requestOpcode)
+        assertEquals(FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION, outcome.requestOpcode)
         assertTrue(outcome.detail.contains("INVALID_PARAMETER"))
     }
 
@@ -61,8 +62,8 @@ class ControlPointResponseCorrelationTest {
         // revoking control during a ride left FitBridge believing it still held it.
         val outcome = correlateControlPointResponse(
             response(
-                BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION,
-                BluetoothIds.RESULT_CONTROL_NOT_PERMITTED,
+                FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION,
+                FtmsSpec.Result.CONTROL_NOT_PERMITTED,
             ),
         )
 
@@ -77,20 +78,20 @@ class ControlPointResponseCorrelationTest {
         // correlation branch reproduces exactly the 0x11 defect, so the list is asserted
         // rather than assumed.
         val written = listOf(
-            BluetoothIds.OPCODE_REQUEST_CONTROL,
-            BluetoothIds.OPCODE_RESET,
-            BluetoothIds.OPCODE_START_RESUME,
-            BluetoothIds.OPCODE_STOP_PAUSE,
-            BluetoothIds.OPCODE_SET_TARGET_SPEED,
-            BluetoothIds.OPCODE_SET_TARGET_INCLINATION,
-            BluetoothIds.OPCODE_SET_TARGET_RESISTANCE,
-            BluetoothIds.OPCODE_SET_TARGET_POWER,
-            BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION,
+            FtmsSpec.Opcode.REQUEST_CONTROL,
+            FtmsSpec.Opcode.RESET,
+            FtmsSpec.Opcode.START_RESUME,
+            FtmsSpec.Opcode.STOP_PAUSE,
+            FtmsSpec.Opcode.SET_TARGET_SPEED,
+            FtmsSpec.Opcode.SET_TARGET_INCLINATION,
+            FtmsSpec.Opcode.SET_TARGET_RESISTANCE,
+            FtmsSpec.Opcode.SET_TARGET_POWER,
+            FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION,
         )
 
         for (opcode in written) {
             val outcome = correlateControlPointResponse(
-                response(opcode, BluetoothIds.RESULT_SUCCESS),
+                response(opcode, FtmsSpec.Result.SUCCESS),
             )
             assertTrue(
                 "0x%02X has no response branch - a write without one fails silently"
@@ -105,7 +106,7 @@ class ControlPointResponseCorrelationTest {
         // Spin-down is defined and deliberately not implemented. If a machine answers one, the
         // right behaviour is a loud "unhandled", not silent success.
         val outcome = correlateControlPointResponse(
-            response(BluetoothIds.OPCODE_SPIN_DOWN_CONTROL, BluetoothIds.RESULT_SUCCESS),
+            response(FtmsSpec.Opcode.SPIN_DOWN_CONTROL, FtmsSpec.Result.SUCCESS),
         )
 
         assertTrue(outcome is CpResponseOutcome.Unhandled)
@@ -116,10 +117,10 @@ class ControlPointResponseCorrelationTest {
         // Out-of-order delivery: the frame names 0x05, so it is a power response regardless of
         // what was written most recently.
         val outcome = correlateControlPointResponse(
-            response(BluetoothIds.OPCODE_SET_TARGET_POWER, BluetoothIds.RESULT_SUCCESS),
+            response(FtmsSpec.Opcode.SET_TARGET_POWER, FtmsSpec.Result.SUCCESS),
         )
 
-        assertEquals(CpResponseOutcome.Accepted(BluetoothIds.OPCODE_SET_TARGET_POWER), outcome)
+        assertEquals(CpResponseOutcome.Accepted(FtmsSpec.Opcode.SET_TARGET_POWER), outcome)
     }
 
     // ── Request Control is special ───────────────────────────────────────────────
@@ -127,13 +128,13 @@ class ControlPointResponseCorrelationTest {
     @Test
     fun `any failure to request control is a loss of control, not a rejection`() {
         for (result in listOf(
-            BluetoothIds.RESULT_CONTROL_NOT_PERMITTED,
-            BluetoothIds.RESULT_OPCODE_NOT_SUPPORTED,
-            BluetoothIds.RESULT_OPERATION_FAILED,
-            BluetoothIds.RESULT_INVALID_PARAMETER,
+            FtmsSpec.Result.CONTROL_NOT_PERMITTED,
+            FtmsSpec.Result.OPCODE_NOT_SUPPORTED,
+            FtmsSpec.Result.OPERATION_FAILED,
+            FtmsSpec.Result.INVALID_PARAMETER,
         )) {
             val outcome = correlateControlPointResponse(
-                response(BluetoothIds.OPCODE_REQUEST_CONTROL, result),
+                response(FtmsSpec.Opcode.REQUEST_CONTROL, result),
             )
             assertTrue(
                 "treating a failed control request as a mere rejection would leave the " +
@@ -146,9 +147,9 @@ class ControlPointResponseCorrelationTest {
     @Test
     fun `granted control is accepted`() {
         assertEquals(
-            CpResponseOutcome.Accepted(BluetoothIds.OPCODE_REQUEST_CONTROL),
+            CpResponseOutcome.Accepted(FtmsSpec.Opcode.REQUEST_CONTROL),
             correlateControlPointResponse(
-                response(BluetoothIds.OPCODE_REQUEST_CONTROL, BluetoothIds.RESULT_SUCCESS),
+                response(FtmsSpec.Opcode.REQUEST_CONTROL, FtmsSpec.Result.SUCCESS),
             ),
         )
     }
@@ -159,8 +160,8 @@ class ControlPointResponseCorrelationTest {
     fun `short and mis-headed frames are rejected as malformed`() {
         for (frame in listOf(
             byteArrayOf(),
-            byteArrayOf(BluetoothIds.OPCODE_RESPONSE_CODE),
-            byteArrayOf(BluetoothIds.OPCODE_RESPONSE_CODE, BluetoothIds.OPCODE_SET_TARGET_POWER),
+            byteArrayOf(FtmsSpec.Opcode.RESPONSE_CODE),
+            byteArrayOf(FtmsSpec.Opcode.RESPONSE_CODE, FtmsSpec.Opcode.SET_TARGET_POWER),
         )) {
             assertTrue(
                 "a frame too short to name an opcode cannot be correlated",
@@ -178,7 +179,7 @@ class ControlPointResponseCorrelationTest {
     @Test
     fun `an unknown result code is a rejection rather than an acceptance`() {
         val outcome = correlateControlPointResponse(
-            response(BluetoothIds.OPCODE_SET_TARGET_POWER, 0x7F),
+            response(FtmsSpec.Opcode.SET_TARGET_POWER, 0x7F),
         )
 
         assertTrue(

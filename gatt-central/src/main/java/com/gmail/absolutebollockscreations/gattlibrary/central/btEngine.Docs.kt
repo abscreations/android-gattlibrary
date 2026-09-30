@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
+
 /**
  * ───────────────────────────────────────────────────────────────────────────────
  * FITBRIDGE BLUETOOTH ENGINE – ARCHITECTURE NOTES (btEngine.Docs.kt)
@@ -367,15 +369,12 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *
  *
  * ───────────────────────────────────────────────────────────────────────────────
- * MODULE: BluetoothIds / Flags / BtServiceProfiles / byte helpers (bluetoothIds.kt)
+ * MODULE: BluetoothIds / BtServiceProfiles (bluetoothIds.kt); FTMS vocabulary lives in gatt-core core.ftms
  * ───────────────────────────────────────────────────────────────────────────────
  *
  * PURPOSE
  *  - Single source of truth for:
  *      • All Bluetooth SIG Assigned Number UUIDs used by FitBridge.
- *      • FTMS Control Point opcodes and result codes.
- *      • FTMS Fitness Machine Status codes.
- *      • FTMS unit scales (speed, incline, resistance, power).
  *      • CSC / CPS / RSC / HRM / Glucose services and key characteristics.
  *      • Shared service-side profiles and advertised device names.
  *      • (Byte helpers moved to gatt-core `core.bytes` in LIB-18f.)
@@ -386,47 +385,28 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *
  * CONTENTS
  *  - object BluetoothIds
- *      • FTMS service/characteristics:
- *          UUID_FTMS_SERVICE, FTMS_SERVICE_PARCEL
- *          UUID_FITNESS_MACHINE_FEATURE
- *          UUID_FITNESS_MACHINE_CONTROL_POINT
- *          UUID_FITNESS_MACHINE_STATUS
- *          UUID_SUPPORTED_*_RANGE (speed, incline, resistance, heart-rate, power)
- *
- *      • FTMS Fitness Machine Status opcodes (STATUS_*):
- *          0x00..0x09 plus a sentinel STATUS_CONTROL_PERMISSION_LOST (0xFF).
+ *      • FTMS identifiers and vocabulary are NOT here any more (LIB-19a): see gatt-core
+ *        `core.ftms` (FtmsUuids, FtmsSpec, FtmsDataFlags, FtmsMachineProfile, FtmsMachineType).
+ *        FTMS_SERVICE_PARCEL (Android ParcelUuid for scan filters) stays here.
  *
  *      • HRM (0x180D), CSC (0x1816), RSC (0x1814), CPS (0x1818), Glucose (0x1808)
  *        service UUIDs and core characteristics (measurement, feature, control point).
  *
  *      • UUID_CCCD (0x2902) – Client Characteristic Configuration Descriptor.
  *
- *      • FTMS Control Point opcodes:
- *          OPCODE_REQUEST_CONTROL, OPCODE_RESET,
- *          OPCODE_SET_TARGET_SPEED / INCLINATION / RESISTANCE / POWER,
- *          OPCODE_START_RESUME, OPCODE_STOP_PAUSE,
- *          OPCODE_RESPONSE_CODE + RESULT_* codes.
- *
- *      • FTMS unit scales used by CP encoders:
- *          FTMS_SPEED_SCALE      (km/h × 100 → UInt16)
- *          FTMS_INCLINE_SCALE    (percent × 10 → SInt16)
- *          FTMS_RESISTANCE_SCALE (level × 10 → UInt16)
- *          FTMS_POWER_SCALE      (watts × 1 → UInt16)
- *
- *  - object Flags
+ *  - core.ftms.FtmsDataFlags (was `Flags`)
  *      • Flag bitmasks for FTMS data characteristics:
  *          TREAD_* (Treadmill), ELL_* (Elliptical), ROW_* (Rower),
  *          BIKE_* (Indoor Bike), STEP_* (Stepper), CLIMB_* (Climber).
  *
  *  - object BtServiceProfiles
  *      • ServiceMode (FTMS vs CSC_CPS).
- *      • FtmsMachineProfile (TREADMILL, INDOOR_BIKE, ELLIPTICAL, etc.).
  *      • CscCpsProfile (BIKE).
  *      • Advertised device names for each persona.
  *      • FTMS Feature presets (FMF_*) and TSF_NONE.
  *      • Helpers:
  *          ftmsProfileForActivity(ActivityType): FtmsMachineProfile?
- *          dataUuidForProfile(FtmsMachineProfile): UUID
+ *          (FtmsUuids.dataUuidForProfile in core.ftms)
  *          dataUuidForActivity(ActivityType): UUID?
  *
  *  - Byte helpers:

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Replays FTMS, CSC, and CPS frames observed together on simulated link 8f8c-c6. */
 class MultiServiceSimulatedEvidenceTest {
@@ -29,7 +30,7 @@ class MultiServiceSimulatedEvidenceTest {
                 sourceId = MetricSourceId(
                     ConnectionId("capture-c6", 5L),
                     MetricProtocol.FTMS,
-                    BluetoothIds.UUID_BIKING_DATA,
+                    FtmsUuids.UUID_BIKING_DATA,
                 ),
                 sourceClass = MetricSourceClass.FTMS,
                 arrivalMs = 1L,

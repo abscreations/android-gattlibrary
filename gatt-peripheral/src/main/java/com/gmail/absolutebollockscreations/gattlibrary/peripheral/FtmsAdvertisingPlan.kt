@@ -2,8 +2,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Pure, testable plan for the legacy advertising and scan-response sets.
@@ -23,7 +24,7 @@ data class FtmsAdvertisingPlan(
     val serviceData: ByteArray,
     val advertisingBytes: Int,
     val scanResponseBytes: Int,
-    val serviceUuids: List<UUID> = listOf(BluetoothIds.UUID_FTMS_SERVICE),
+    val serviceUuids: List<UUID> = listOf(FtmsUuids.UUID_FTMS_SERVICE),
 ) {
     val appearanceSupported: Boolean = false
 
@@ -152,12 +153,12 @@ data class FtmsAdvertisingPlan(
             includeNativeBikingSensors: Boolean,
         ): List<UUID> = if (includeNativeBikingSensors && profile == FtmsMachineProfile.INDOOR_BIKE) {
             listOf(
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_CSC_SERVICE,
                 BluetoothIds.UUID_CYCLING_POWER_SERVICE,
             )
         } else {
-            listOf(BluetoothIds.UUID_FTMS_SERVICE)
+            listOf(FtmsUuids.UUID_FTMS_SERVICE)
         }
 
         // Android/controller contributes the Flags structure. Every other

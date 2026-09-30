@@ -10,6 +10,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class KayakFirstConnectionAndSetupTest {
     private val notify = BluetoothGattCharacteristic.PROPERTY_NOTIFY
@@ -419,7 +420,7 @@ class KayakFirstConnectionAndSetupTest {
             gatt = null,
             connectionState = MutableStateFlow(LinkState.CONNECTED),
             discoveredServiceUuids = linkedSetOf(
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_KAYAK_FIRST_SERVICE,
             ),
             handlers = mutableListOf(handler),

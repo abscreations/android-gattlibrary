@@ -11,6 +11,7 @@ import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class LifeFitnessSetupServerTest {
     @Test
@@ -204,7 +205,7 @@ class LifeFitnessSetupServerTest {
     fun `accepted setup replies bypass status CCCD exactly once while measurements remain gated`() {
         val server = LifeFitnessSetupServer()
         val subscriptions = mutableSetOf<java.util.UUID>()
-        val measurementUuid = BluetoothIds.UUID_TREADMILL_DATA
+        val measurementUuid = FtmsUuids.UUID_TREADMILL_DATA
 
         val opened = server.write(BluetoothIds.UUID_LF_CONTROL_1, byteArrayOf(0x01))
         assertArrayEquals(byteArrayOf(0x07), LifeFitnessNotificationPolicy.setupStatusReply(opened))

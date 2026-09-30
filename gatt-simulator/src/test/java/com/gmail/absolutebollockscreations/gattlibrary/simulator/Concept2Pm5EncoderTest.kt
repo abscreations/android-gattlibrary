@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class Concept2Pm5EncoderTest {
     private val sample = Concept2Pm5MockEngine(Concept2Machine.ROW_ERG).run {
@@ -303,7 +304,7 @@ class Concept2Pm5EncoderTest {
         session.reset()
         assertFalse(session.hasWorkoutMeasurementSubscription)
 
-        session.setSubscribed(BluetoothIds.UUID_ROWING_MACHINE_DATA, true)
+        session.setSubscribed(FtmsUuids.UUID_ROWING_MACHINE_DATA, true)
         assertTrue(session.hasWorkoutMeasurementSubscription)
     }
 

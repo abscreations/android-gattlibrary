@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Pure per-link PM5 state: subscriptions, rate and deterministic mux position. */
 internal class Concept2Pm5Session {
@@ -108,7 +109,7 @@ internal class Concept2Pm5Session {
             BluetoothIds.UUID_C2_SPLIT_INTERVAL_DATA,
             BluetoothIds.UUID_C2_ADDITIONAL_SPLIT_INTERVAL,
             BluetoothIds.UUID_C2_FORCE_CURVE_DATA,
-            BluetoothIds.UUID_ROWING_MACHINE_DATA,
+            FtmsUuids.UUID_ROWING_MACHINE_DATA,
         )
 
         fun uuidForId(id: Int): UUID? = when (id) {

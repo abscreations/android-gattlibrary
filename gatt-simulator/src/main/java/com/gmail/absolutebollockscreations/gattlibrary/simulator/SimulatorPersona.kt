@@ -2,9 +2,10 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Protocol-level identity selected by the debug peripheral simulator. */
 sealed interface SimulatorPersona {
@@ -340,28 +341,28 @@ enum class LifeFitnessMachine(
     TREADMILL(
         "Treadmill",
         FtmsMachineProfile.TREADMILL,
-        BluetoothIds.UUID_TREADMILL_DATA,
+        FtmsUuids.UUID_TREADMILL_DATA,
         byteArrayOf(0x01, 0x01, 0x00),
         "LF1F17B1D000001094",
     ),
     CROSS_TRAINER(
         "Cross trainer",
         FtmsMachineProfile.ELLIPTICAL,
-        BluetoothIds.UUID_ELLIPTICAL_DATA,
+        FtmsUuids.UUID_ELLIPTICAL_DATA,
         byteArrayOf(0x01, 0x02, 0x00),
         "LF1F17B1D000002089",
     ),
     STAIR_CLIMBER(
         "Stair climber",
         FtmsMachineProfile.STAIR_CLIMBER,
-        BluetoothIds.UUID_STAIR_CLIMBER_DATA,
+        FtmsUuids.UUID_STAIR_CLIMBER_DATA,
         byteArrayOf(0x01, 0x08, 0x00),
         "LF0F17B1D000003095",
     ),
     INDOOR_BIKE(
         "Indoor bike",
         FtmsMachineProfile.INDOOR_BIKE,
-        BluetoothIds.UUID_BIKING_DATA,
+        FtmsUuids.UUID_BIKING_DATA,
         byteArrayOf(0x01, 0x20, 0x00),
         "LF0F17B1D000004090",
     ),

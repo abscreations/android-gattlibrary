@@ -1,13 +1,14 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
-
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Byte-level tests for the FTMS encoders.
@@ -648,9 +649,9 @@ class FtmsEncoderTest {
         // The spec's "Step Climber" is characteristic 0x2ACF and type bit 2;
         // "Stair Climber" is 0x2AD0 and bit 3. Easy to swap, hard to notice.
         assertEquals(1 shl 2, FtmsMachineProfile.STAIR_STEPPER.machineTypeBit)
-        assertEquals(BluetoothIds.UUID_STAIR_STEPPER_DATA, FtmsMachineProfile.STAIR_STEPPER.dataCharacteristic)
+        assertEquals(FtmsUuids.UUID_STAIR_STEPPER_DATA, FtmsMachineProfile.STAIR_STEPPER.dataCharacteristic)
         assertEquals(1 shl 3, FtmsMachineProfile.STAIR_CLIMBER.machineTypeBit)
-        assertEquals(BluetoothIds.UUID_STAIR_CLIMBER_DATA, FtmsMachineProfile.STAIR_CLIMBER.dataCharacteristic)
+        assertEquals(FtmsUuids.UUID_STAIR_CLIMBER_DATA, FtmsMachineProfile.STAIR_CLIMBER.dataCharacteristic)
         assertNotEquals(
             FtmsMachineProfile.STAIR_STEPPER.dataCharacteristic,
             FtmsMachineProfile.STAIR_CLIMBER.dataCharacteristic,

@@ -31,6 +31,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ConnectableAdv
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralCaptureHooks
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnectionRetentionGuard
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Build only measurement frames that the selected persona actually exposes as notifiable. */
 internal fun kickrStandardMeasurementFrames(
@@ -51,10 +52,10 @@ internal fun kickrStandardMeasurementFrames(
                 ),
             )
         }
-        if (BluetoothIds.UUID_BIKING_DATA in notifiable) {
+        if (FtmsUuids.UUID_BIKING_DATA in notifiable) {
             add(
                 KickrTxFrame(
-                    BluetoothIds.UUID_BIKING_DATA,
+                    FtmsUuids.UUID_BIKING_DATA,
                     KickrStandardEncoders.indoorBikeData(snapshot),
                     false,
                 ),
@@ -329,7 +330,7 @@ internal class KickrPeripheralAdvertiser(
             )
             val structurallyValid = client != null && !preparedWrite && offset == 0
             val status = when (characteristic.uuid) {
-                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT ->
+                FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT ->
                     if (structurallyValid) handleFtms(client, value) else BluetoothGatt.GATT_FAILURE
                 BluetoothIds.UUID_WAHOO_KICKR_CONTROL ->
                     if (structurallyValid) handleLegacy(client, value) else BluetoothGatt.GATT_FAILURE
@@ -414,7 +415,7 @@ internal class KickrPeripheralAdvertiser(
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
             val client = clients[device.address.lowercase()] ?: return
             val completed = synchronized(client.session) { client.session.completeInFlight() }
-            if (completed?.characteristicUuid == BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT) {
+            if (completed?.characteristicUuid == FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT) {
                 client.session.ftms.session.finishProcedure()
             }
             if (status == BluetoothGatt.GATT_SUCCESS) listener.onPacketSent()
@@ -543,7 +544,7 @@ internal class KickrPeripheralAdvertiser(
         val characteristic = serviceUuid?.let { server?.getService(it)?.getCharacteristic(frame.characteristicUuid) }
         if (characteristic == null || !notify(client.device, characteristic, frame)) {
             synchronized(client.session) { client.session.completeInFlight() }
-            if (frame.characteristicUuid == BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT) {
+            if (frame.characteristicUuid == FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT) {
                 client.session.ftms.session.finishProcedure()
             }
         }

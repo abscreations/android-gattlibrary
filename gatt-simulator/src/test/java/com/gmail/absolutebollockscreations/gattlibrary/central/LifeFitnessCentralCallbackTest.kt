@@ -8,6 +8,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Capture-order regression for the complete Phase 6 central callback boundary. */
 class LifeFitnessCentralCallbackTest {
@@ -74,7 +75,7 @@ class LifeFitnessCentralCallbackTest {
                 resolveProtocolHandlerRoute(
                     listOf(handler),
                     characteristicUuid = machine.measurementUuid,
-                    serviceUuid = BluetoothIds.UUID_FTMS_SERVICE,
+                    serviceUuid = FtmsUuids.UUID_FTMS_SERVICE,
                 ).owners,
             )
             val fusion = replayNotification(machine)

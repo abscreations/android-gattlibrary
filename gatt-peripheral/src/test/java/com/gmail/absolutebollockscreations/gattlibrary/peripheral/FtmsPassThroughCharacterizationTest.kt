@@ -4,13 +4,14 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceControlSink
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.applyFitnessMachineStatus
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 class FtmsPassThroughCharacterizationTest {
 
@@ -154,7 +155,7 @@ class FtmsPassThroughCharacterizationTest {
         applyFitnessMachineStatus(
             upstream.engineState,
             downstreamStatus,
-            byteArrayOf(BluetoothIds.STATUS_TARGET_SPEED_CHANGED, 0xD2.toByte(), 0x04),
+            byteArrayOf(FtmsSpec.Status.TARGET_SPEED_CHANGED, 0xD2.toByte(), 0x04),
         )
 
         assertEquals(12.34f, upstream.engineState.targetSpeedKmh.value!!, 0.001f)
@@ -170,7 +171,7 @@ class FtmsPassThroughCharacterizationTest {
         applyFitnessMachineStatus(
             state,
             sink,
-            byteArrayOf(BluetoothIds.STATUS_TARGET_INCLINE_CHANGED, 0xCE.toByte(), 0xFF.toByte()),
+            byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0xCE.toByte(), 0xFF.toByte()),
         )
 
         assertEquals(-5.0f, state.targetInclinePercent.value!!, 0.001f)
@@ -180,7 +181,7 @@ class FtmsPassThroughCharacterizationTest {
         applyFitnessMachineStatus(
             state,
             sink,
-            byteArrayOf(BluetoothIds.STATUS_TARGET_INCLINE_CHANGED, 0x64, 0x00),
+            byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0x64, 0x00),
         )
 
         assertEquals(10.0f, state.targetInclinePercent.value!!, 0.001f)
@@ -195,7 +196,7 @@ class FtmsPassThroughCharacterizationTest {
         applyFitnessMachineStatus(
             state,
             sink,
-            byteArrayOf(BluetoothIds.STATUS_TARGET_INCLINE_CHANGED, 0xCE.toByte()),
+            byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0xCE.toByte()),
         )
 
         // Zero is a valid movement target, so a short payload must not synthesise one.

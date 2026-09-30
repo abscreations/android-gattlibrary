@@ -2,8 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
-
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 // Persona catalogue and name line, moved from the app's ComposableSimulator.kt (LIB-9b). They are
 // pure persona logic, used by the simulator UI and by the persona, snapshot and adapter-name tests.
 

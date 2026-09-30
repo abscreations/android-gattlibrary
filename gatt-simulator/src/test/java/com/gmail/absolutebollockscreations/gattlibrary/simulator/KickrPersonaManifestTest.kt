@@ -8,6 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class KickrPersonaManifestTest {
     @Test
@@ -16,7 +17,7 @@ class KickrPersonaManifestTest {
 
         assertEquals("KICKR CORE C3FB", plan.localName)
         assertEquals(
-            listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_FTMS_SERVICE),
+            listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
             plan.advertisedServices,
         )
         assertArrayEquals(KickrPersonaManifest.ORIGINAL_CORE_ADVERTISING, plan.exactLegacyPayload)
@@ -31,7 +32,7 @@ class KickrPersonaManifestTest {
         assertEquals("Wahoo KICKR AEE4", plan.localName)
         assertNull(plan.exactLegacyPayload)
         assertEquals(
-            listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_FTMS_SERVICE),
+            listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
             plan.advertisedServices,
         )
         assertFalse(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE in plan.advertisedServices)
@@ -63,8 +64,8 @@ class KickrPersonaManifestTest {
             )
             assertCharacteristic(
                 manifest,
-                BluetoothIds.UUID_FTMS_SERVICE,
-                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
+                FtmsUuids.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT,
                 setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
                 cccd = true,
             )
@@ -124,7 +125,7 @@ class KickrPersonaManifestTest {
         assertTrue(core2.persona.provisional)
         assertEquals("KICKR CORE 2 1A2B", core2.advertising.localName)
         assertEquals(
-            listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, BluetoothIds.UUID_FTMS_SERVICE),
+            listOf(BluetoothIds.UUID_CYCLING_POWER_SERVICE, FtmsUuids.UUID_FTMS_SERVICE),
             core2.advertising.advertisedServices,
         )
         assertArrayEquals(KickrPersonaManifest.CORE2_SIM_ADVERTISING, core2.advertising.exactLegacyPayload)
@@ -133,7 +134,7 @@ class KickrPersonaManifestTest {
         assertTrue(KickrEvidenceLabel.SYN in core2.advertising.evidence)
         assertTrue(core2.service(BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE) != null)
         assertTrue(core2.service(BluetoothIds.UUID_CYCLING_POWER_SERVICE) != null)
-        assertTrue(core2.service(BluetoothIds.UUID_FTMS_SERVICE) != null)
+        assertTrue(core2.service(FtmsUuids.UUID_FTMS_SERVICE) != null)
         assertTrue(core2.service(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE) != null)
         assertNull(core2.service(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE))
         assertEquals(RideOnServiceForm.CORE2, core2.zwiftServiceForm)
@@ -177,14 +178,14 @@ class KickrPersonaManifestTest {
                 BluetoothIds.UUID_WAHOO_KICKR_E023,
                 BluetoothIds.UUID_WAHOO_KICKR_E018,
             ),
-            BluetoothIds.UUID_FTMS_SERVICE to setOf(
-                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE,
-                BluetoothIds.UUID_TRAINING_STATUS,
-                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT,
-                BluetoothIds.UUID_FITNESS_MACHINE_STATUS,
-                BluetoothIds.UUID_BIKING_DATA,
-                BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE,
-                BluetoothIds.UUID_SUPPORTED_POWER_RANGE,
+            FtmsUuids.UUID_FTMS_SERVICE to setOf(
+                FtmsUuids.UUID_FITNESS_MACHINE_FEATURE,
+                FtmsUuids.UUID_TRAINING_STATUS,
+                FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT,
+                FtmsUuids.UUID_FITNESS_MACHINE_STATUS,
+                FtmsUuids.UUID_BIKING_DATA,
+                FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE,
+                FtmsUuids.UUID_SUPPORTED_POWER_RANGE,
             ),
             BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE0B to setOf(BluetoothIds.UUID_WAHOO_KICKR_E037),
         )
@@ -234,7 +235,7 @@ class KickrPersonaManifestTest {
         assertEquals(
             listOf(
                 BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
             ),
             hub.advertising.advertisedServices,
@@ -249,7 +250,7 @@ class KickrPersonaManifestTest {
         assertEquals(
             listOf(
                 BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_SERVICE,
                 BluetoothIds.UUID_HRM_SERVICE,
                 BluetoothIds.UUID_NORDIC_UART_SERVICE,
@@ -268,12 +269,12 @@ class KickrPersonaManifestTest {
                 BluetoothIds.UUID_CYCLING_POWER_FEATURE to setOf(KickrGattProperty.READ),
                 BluetoothIds.UUID_SENSOR_LOCATION to setOf(KickrGattProperty.READ),
                 BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
-                BluetoothIds.UUID_BIKING_DATA to setOf(KickrGattProperty.NOTIFY),
-                BluetoothIds.UUID_FITNESS_MACHINE_FEATURE to setOf(KickrGattProperty.READ),
-                BluetoothIds.UUID_FITNESS_MACHINE_STATUS to setOf(KickrGattProperty.NOTIFY),
-                BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE to setOf(KickrGattProperty.READ),
-                BluetoothIds.UUID_SUPPORTED_POWER_RANGE to setOf(KickrGattProperty.READ),
-                BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
+                FtmsUuids.UUID_BIKING_DATA to setOf(KickrGattProperty.NOTIFY),
+                FtmsUuids.UUID_FITNESS_MACHINE_FEATURE to setOf(KickrGattProperty.READ),
+                FtmsUuids.UUID_FITNESS_MACHINE_STATUS to setOf(KickrGattProperty.NOTIFY),
+                FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE to setOf(KickrGattProperty.READ),
+                FtmsUuids.UUID_SUPPORTED_POWER_RANGE to setOf(KickrGattProperty.READ),
+                FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),
                 BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_READ to setOf(KickrGattProperty.READ),
                 BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_NOTIFY to setOf(KickrGattProperty.READ, KickrGattProperty.NOTIFY),
                 BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_CONTROL to setOf(KickrGattProperty.WRITE, KickrGattProperty.INDICATE),

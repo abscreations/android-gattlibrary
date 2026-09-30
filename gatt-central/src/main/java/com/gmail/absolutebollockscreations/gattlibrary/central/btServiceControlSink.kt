@@ -15,7 +15,7 @@
  * 1) Advertising control (engine → service)
  *    - `startAdvertisingFtms(ftmsType, capabilities)`:
  *        Begin advertising a local FTMS (0x1826) server that emulates the given
- *        [BtServiceProfiles.FtmsMachineProfile] (treadmill, bike, rower, etc.),
+ *        [FtmsMachineProfile] (treadmill, bike, rower, etc.),
  *        using the provided [BtEngineState.FtmsCapabilities] snapshot to build
  *        Fitness Machine Feature (0x2ACC) and Supported-* Range characteristics.
  *        Returns `true` when advertising is active (or already active) and
@@ -85,8 +85,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState.FtmsCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 /**
  * Thin control surface that BtEngine can use to drive the local provider-side
@@ -146,7 +147,7 @@ interface BtServiceControlSink {
      *
      * Typical implementation on the service side:
      *  • Emit an FTMS Fitness Machine Status notification with
-     *    [BluetoothIds.STATUS_CONTROL_PERMISSION_LOST] to all connected clients.
+     *    [FtmsSpec.Status.CONTROL_PERMISSION_LOST] to all connected clients.
      *  • Optionally clear any local notion of “have control”.
      */
     fun onControlPermissionLost()
@@ -157,7 +158,7 @@ interface BtServiceControlSink {
      *
      * Typical implementation on the service side:
      *  • Emit an FTMS Fitness Machine Status notification with
-     *    [BluetoothIds.STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY].*
+     *    [FtmsSpec.Status.STOPPED_BY_SAFETY_KEY].*
      *  • Optionally stop any simulated motion / timers.
      */
     fun onSafetyKeyPulled()

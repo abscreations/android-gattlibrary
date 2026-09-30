@@ -5,6 +5,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Plan §11.1 matcher obligations for the Concept2 PM — positive, negative, ambiguous, and
@@ -22,7 +23,7 @@ class Concept2MatcherTest {
     private fun uuid(u: java.util.UUID) = CanonicalUuid.fromUuid(u)
 
     private val ergService = uuid(BluetoothIds.UUID_C2_ERG_SERVICE)
-    private val ftmsService = uuid(BluetoothIds.UUID_FTMS_SERVICE)
+    private val ftmsService = uuid(FtmsUuids.UUID_FTMS_SERVICE)
 
     private fun candidates(observation: MatchObservation) =
         registry.rankedCandidates(observation)

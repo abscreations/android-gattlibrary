@@ -7,8 +7,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class LifeFitnessPeripheralModelTest {
     @Test
@@ -25,10 +26,10 @@ class LifeFitnessPeripheralModelTest {
             assertEquals(identity.name, SimulatorPersona.LifeFitness(identity.machine).advertisedName)
             assertEquals(identity.name, plan.localName)
             assertEquals(
-                listOf(BluetoothIds.UUID_FTMS_SERVICE),
+                listOf(FtmsUuids.UUID_FTMS_SERVICE),
                 plan.advertisedServices,
             )
-            assertEquals(BluetoothIds.UUID_FTMS_SERVICE, plan.serviceDataService)
+            assertEquals(FtmsUuids.UUID_FTMS_SERVICE, plan.serviceDataService)
             assertArrayEquals(identity.serviceData, plan.serviceData)
             assertTrue(plan.advertisingBytes <= LifeFitnessAdvertisingPlan.MAX_LEGACY_BYTES)
             assertTrue(plan.scanResponseBytes <= LifeFitnessAdvertisingPlan.MAX_LEGACY_BYTES)
@@ -39,9 +40,9 @@ class LifeFitnessPeripheralModelTest {
     fun `Gatt inventory selects only the active measurement and exposes no FTMS control point`() {
         LifeFitnessMachine.entries.forEach { machine ->
             val services = LifeFitnessGattProfile.manifest(machine)
-            val ftms = services.single { it.uuid == BluetoothIds.UUID_FTMS_SERVICE }
+            val ftms = services.single { it.uuid == FtmsUuids.UUID_FTMS_SERVICE }
             assertTrue(ftms.characteristics.any { it.uuid == machine.measurementUuid })
-            assertFalse(ftms.characteristics.any { it.uuid == BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT })
+            assertFalse(ftms.characteristics.any { it.uuid == FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT })
             assertEquals(
                 1,
                 ftms.characteristics.count {
@@ -66,7 +67,7 @@ class LifeFitnessPeripheralModelTest {
         assertEquals(
             listOf(
                 BluetoothIds.UUID_BOND_MANAGEMENT_SERVICE,
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_LF_SECONDARY_SERVICE,
                 BluetoothIds.UUID_LF_FD00_SERVICE,
                 BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,

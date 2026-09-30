@@ -56,14 +56,14 @@
 // FITNESS MACHINE STATUS (0x2ADA)
 //   handleFitnessMachineStatus(...):
 //     • Reads the status opcode (first byte) and updates BtEngineState:
-//         - STATUS_MACHINE_RESET:
+//         - FtmsSpec.Status.RESET:
 //               → clear safety key, clear control.
-//         - STATUS_USER_STARTED_OR_RESUMED / STATUS_USER_STOPPED_OR_PAUSED:
+//         - FtmsSpec.Status.STARTED_OR_RESUMED_BY_USER / FtmsSpec.Status.STOPPED_OR_PAUSED_BY_USER:
 //               → update isRunning flag.
-//         - STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY:
+//         - FtmsSpec.Status.STOPPED_BY_SAFETY_KEY:
 //               → set safetyKeyEngaged=true, isRunning=false, and call
 //                 serviceControlSink?.onSafetyKeyPulled().
-//         - STATUS_CONTROL_PERMISSION_LOST:
+//         - FtmsSpec.Status.CONTROL_PERMISSION_LOST:
 //               → clear control and call serviceControlSink?.onControlPermissionLost().
 //         - STATUS_TARGET_*_CHANGED (speed, incline, resistance, power, heart rate):
 //               → decode raw fields using FTMS_*_SCALE constants,
@@ -100,51 +100,25 @@ import android.bluetooth.*
 import androidx.annotation.RequiresPermission
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_BIKING_DATA
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_BIKING_DATA
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_CCCD
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_ELLIPTICAL_DATA
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_FEATURE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_STATUS
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FTMS_SERVICE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_ROWING_MACHINE_DATA
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_STAIR_CLIMBER_DATA
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_STAIR_STEPPER_DATA
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_INCLINATION_RANGE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_POWER_RANGE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_SUPPORTED_SPEED_RANGE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_TREADMILL_DATA
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_INCLINE_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_POWER_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_RESISTANCE_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_SPEED_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_RESPONSE_CODE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_RESET
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_INCLINATION
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_POWER
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_RESISTANCE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_SPEED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_START_RESUME
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_STOP_PAUSE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.RESULT_CONTROL_NOT_PERMITTED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.RESULT_INVALID_PARAMETER
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.RESULT_OPCODE_NOT_SUPPORTED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.RESULT_OPERATION_FAILED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.RESULT_SUCCESS
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_CONTROL_PERMISSION_LOST
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_MACHINE_RESET
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_TARGET_HEART_RATE_CHANGED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_TARGET_INCLINE_CHANGED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_TARGET_POWER_CHANGED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_TARGET_RESISTANCE_LEVEL_CHANGED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_TARGET_SPEED_CHANGED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_USER_STARTED_OR_RESUMED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.STATUS_USER_STOPPED_OR_PAUSED
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_ELLIPTICAL_DATA
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_FEATURE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_STATUS
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FTMS_SERVICE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_ROWING_MACHINE_DATA
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_STAIR_CLIMBER_DATA
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_STAIR_STEPPER_DATA
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_INCLINATION_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_POWER_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_SUPPORTED_SPEED_RANGE
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_TREADMILL_DATA
 import timber.log.Timber
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 @GattLibraryInternalApi
 class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
@@ -547,12 +521,12 @@ class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // FitBridge holds control of the machine at all.
         if (outcome is CpResponseOutcome.Accepted) {
             when (outcome.requestOpcode) {
-                BluetoothIds.OPCODE_REQUEST_CONTROL -> {
+                FtmsSpec.Opcode.REQUEST_CONTROL -> {
                     engine.state.setHaveControl(true)
                     Timber.tag(BtEngineState.TAG).i("Control granted")
                 }
 
-                OPCODE_RESET -> {
+                FtmsSpec.Opcode.RESET -> {
                     engine.state.setHaveControl(false)
                     Timber.tag(BtEngineState.TAG).i("FTMS CP: RESET success; control cleared")
                 }
@@ -704,36 +678,36 @@ internal fun correlateControlPointResponse(value: ByteArray): CpResponseOutcome 
     val header = value[0]
     val requestOpcode = value[1]
     val resultCode = value[2]
-    if (header != OPCODE_RESPONSE_CODE) {
+    if (header != FtmsSpec.Opcode.RESPONSE_CODE) {
         return CpResponseOutcome.Malformed("unexpected header 0x%02X".format(header))
     }
 
     fun label(code: Byte) = when (code) {
-        RESULT_SUCCESS               -> "SUCCESS"
-        RESULT_OPCODE_NOT_SUPPORTED  -> "OPCODE_NOT_SUPPORTED"
-        RESULT_INVALID_PARAMETER     -> "INVALID_PARAMETER"
-        RESULT_OPERATION_FAILED      -> "OPERATION_FAILED"
-        RESULT_CONTROL_NOT_PERMITTED -> "CONTROL_NOT_PERMITTED"
+        FtmsSpec.Result.SUCCESS               -> "SUCCESS"
+        FtmsSpec.Result.OPCODE_NOT_SUPPORTED  -> "OPCODE_NOT_SUPPORTED"
+        FtmsSpec.Result.INVALID_PARAMETER     -> "INVALID_PARAMETER"
+        FtmsSpec.Result.OPERATION_FAILED      -> "OPERATION_FAILED"
+        FtmsSpec.Result.CONTROL_NOT_PERMITTED -> "CONTROL_NOT_PERMITTED"
         else                         -> "UNKNOWN(0x%02X)".format(code)
     }
 
     val known = requestOpcode in setOf(
-        BluetoothIds.OPCODE_REQUEST_CONTROL,
-        OPCODE_RESET,
-        OPCODE_START_RESUME,
-        OPCODE_STOP_PAUSE,
-        OPCODE_SET_TARGET_SPEED,
-        OPCODE_SET_TARGET_INCLINATION,
-        OPCODE_SET_TARGET_RESISTANCE,
-        OPCODE_SET_TARGET_POWER,
-        BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION,
+        FtmsSpec.Opcode.REQUEST_CONTROL,
+        FtmsSpec.Opcode.RESET,
+        FtmsSpec.Opcode.START_RESUME,
+        FtmsSpec.Opcode.STOP_PAUSE,
+        FtmsSpec.Opcode.SET_TARGET_SPEED,
+        FtmsSpec.Opcode.SET_TARGET_INCLINATION,
+        FtmsSpec.Opcode.SET_TARGET_RESISTANCE,
+        FtmsSpec.Opcode.SET_TARGET_POWER,
+        FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION,
     )
     if (!known) return CpResponseOutcome.Unhandled(requestOpcode, resultCode)
 
     return when {
-        resultCode == RESULT_SUCCESS -> CpResponseOutcome.Accepted(requestOpcode)
+        resultCode == FtmsSpec.Result.SUCCESS -> CpResponseOutcome.Accepted(requestOpcode)
 
-        resultCode == RESULT_CONTROL_NOT_PERMITTED -> CpResponseOutcome.ControlLost(
+        resultCode == FtmsSpec.Result.CONTROL_NOT_PERMITTED -> CpResponseOutcome.ControlLost(
             requestOpcode,
             "0x%02X: control not permitted".format(requestOpcode),
         )
@@ -741,7 +715,7 @@ internal fun correlateControlPointResponse(value: ByteArray): CpResponseOutcome 
         // Request Control is the one opcode where *any* failure means control was never
         // established. Treating "not supported" as a mere rejection would leave the session
         // believing it holds control of a machine that has never granted it.
-        requestOpcode == BluetoothIds.OPCODE_REQUEST_CONTROL -> CpResponseOutcome.ControlLost(
+        requestOpcode == FtmsSpec.Opcode.REQUEST_CONTROL -> CpResponseOutcome.ControlLost(
             requestOpcode,
             "request control: ${label(resultCode)}",
         )
@@ -784,44 +758,44 @@ fun applyFitnessMachineStatus(
     )
 
     when (status) {
-        STATUS_MACHINE_RESET -> {
+        FtmsSpec.Status.RESET -> {
             Timber.tag(BtEngineState.TAG).i("FTMS Status: MACHINE_RESET")
             state.setSafetyKeyEngaged(false)
             state.setHaveControl(false)
         }
 
-        STATUS_USER_STARTED_OR_RESUMED -> {
+        FtmsSpec.Status.STARTED_OR_RESUMED_BY_USER -> {
             Timber.tag(BtEngineState.TAG).i("FTMS Status: USER_STARTED_OR_RESUMED")
             state.setIsRunning(true)
         }
 
-        STATUS_USER_STOPPED_OR_PAUSED -> {
+        FtmsSpec.Status.STOPPED_OR_PAUSED_BY_USER -> {
             Timber.tag(BtEngineState.TAG).i("FTMS Status: USER_STOPPED_OR_PAUSED")
             state.setIsRunning(false)
         }
 
-        STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY -> {
+        FtmsSpec.Status.STOPPED_BY_SAFETY_KEY -> {
             Timber.tag(BtEngineState.TAG).w("FTMS Status: STOPPED_BY_SAFETY_KEY")
             state.setSafetyKeyEngaged(true)
             state.setIsRunning(false)
             serviceControlSink?.onSafetyKeyPulled()
         }
 
-        STATUS_CONTROL_PERMISSION_LOST -> {
+        FtmsSpec.Status.CONTROL_PERMISSION_LOST -> {
             Timber.tag(BtEngineState.TAG).w("FTMS Status: CONTROL_PERMISSION_LOST")
             state.setHaveControl(false)
             serviceControlSink?.onControlPermissionLost()
         }
 
-        STATUS_TARGET_SPEED_CHANGED -> {
-            val kmh = u16LE(1) / FTMS_SPEED_SCALE
+        FtmsSpec.Status.TARGET_SPEED_CHANGED -> {
+            val kmh = u16LE(1) / FtmsSpec.SPEED_SCALE
             state.setTargetSpeedKmh(kmh)
             serviceControlSink?.onTargetSpeedChangedKmh(kmh)
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_SPEED_CHANGED → %.2f km/h", kmh)
         }
 
-        STATUS_TARGET_INCLINE_CHANGED -> {
+        FtmsSpec.Status.TARGET_INCLINE_CHANGED -> {
             // Inclination is sint16 in 0.1 percent grade. Read unsigned, a decline target of
             // -5.0 % decoded as 6553.5 % instead of a negative grade.
             val raw = s16LE(1)
@@ -832,14 +806,14 @@ fun applyFitnessMachineStatus(
                 )
                 return
             }
-            val percent = raw / FTMS_INCLINE_SCALE
+            val percent = raw / FtmsSpec.INCLINE_SCALE
             state.setTargetInclinePercent(percent)
             serviceControlSink?.onTargetInclineChangedPercent(percent)
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_INCLINE_CHANGED → %.1f %%", percent)
         }
 
-        STATUS_TARGET_RESISTANCE_LEVEL_CHANGED -> {
+        FtmsSpec.Status.TARGET_RESISTANCE_CHANGED -> {
             val level = decodeTargetResistanceStatus(value)
             if (level == null) {
                 Timber.tag(BtEngineState.TAG).w(
@@ -854,15 +828,15 @@ fun applyFitnessMachineStatus(
                 .i("FTMS Status: TARGET_RESISTANCE_CHANGED → %.1f", level)
         }
 
-        STATUS_TARGET_POWER_CHANGED -> {
-            val watts = (u16LE(1) / FTMS_POWER_SCALE).toInt()
+        FtmsSpec.Status.TARGET_POWER_CHANGED -> {
+            val watts = (u16LE(1) / FtmsSpec.POWER_SCALE).toInt()
             state.setTargetPowerWatts(watts)
             serviceControlSink?.onTargetPowerChangedWatts(watts)
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_POWER_CHANGED → %d W", watts)
         }
 
-        STATUS_TARGET_HEART_RATE_CHANGED -> {
+        FtmsSpec.Status.TARGET_HEART_RATE_CHANGED -> {
             val bpm = if (value.size > 1) value[1].toInt() and 0xFF else 0
             state.setTargetHeartRateBpm(if (bpm == 0) null else bpm)
             serviceControlSink?.onTargetHeartRateChangedBpm(bpm)
@@ -887,7 +861,7 @@ fun applyFitnessMachineStatus(
  * zero, which would be mirrored back to a connected peripheral client.
  */
 internal fun decodeTargetResistanceStatus(value: ByteArray): Float? {
-    if (value.firstOrNull() != STATUS_TARGET_RESISTANCE_LEVEL_CHANGED) return null
+    if (value.firstOrNull() != FtmsSpec.Status.TARGET_RESISTANCE_CHANGED) return null
     val raw = when (value.size) {
         2 -> value[1].toInt() and 0xFF
         3 -> {
@@ -897,7 +871,7 @@ internal fun decodeTargetResistanceStatus(value: ByteArray): Float? {
         }
         else -> return null
     }
-    return raw / FTMS_RESISTANCE_SCALE
+    return raw / FtmsSpec.RESISTANCE_SCALE
 }
 
 /**

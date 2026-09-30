@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Pins the redacted, user-submitted physical KICKR application-log and raw-HCI corpora. */
 class WahooKickrCaptureCorpusTest {
@@ -155,7 +156,7 @@ class WahooKickrCaptureCorpusTest {
                 sourceId = MetricSourceId(
                     ConnectionId("kickr-core-raw", 1L),
                     MetricProtocol.FTMS,
-                    BluetoothIds.UUID_BIKING_DATA,
+                    FtmsUuids.UUID_BIKING_DATA,
                 ),
                 sourceClass = MetricSourceClass.FTMS,
                 arrivalMs = 1_000L,

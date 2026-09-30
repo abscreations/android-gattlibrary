@@ -2,6 +2,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsDataFlags
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Declarative overrides for machines whose FTMS data characteristic does not match the
@@ -163,7 +165,7 @@ object FtmsQuirkRegistry {
     private val MR_CAPTAIN_ROWER = FtmsQuirk(
         id = "mr-captain-rower-20",
         namePrefix = "xg",
-        characteristic = BluetoothIds.UUID_ROWING_MACHINE_DATA,
+        characteristic = FtmsUuids.UUID_ROWING_MACHINE_DATA,
         flagWords = setOf(0x0B3C, 0x0B42),
         packetLength = 20,
         layout = listOf(
@@ -214,11 +216,11 @@ object FtmsQuirkRegistry {
     private val LIFE_FITNESS_BIKE_CADENCE_26 = FtmsQuirk(
         id = "life-fitness-bike-cadence-26",
         namePrefix = "lf",
-        characteristic = BluetoothIds.UUID_BIKING_DATA,
+        characteristic = FtmsUuids.UUID_BIKING_DATA,
         flagWords = setOf(0x09FA),
         packetLength = 26,
         layout = emptyList(),
-        forceFlagBits = Flags.BIKE_CADENCE,
+        forceFlagBits = FtmsDataFlags.BIKE_CADENCE,
         evidence = "TMIW issue #462 official-app HCI, 22 physical packets at 0x09FA/26, all " +
             "with the cadence presence bit clear; corpus " +
             "life_fitness_issue_462_indoor_bike_capture.json. Length arithmetic: 24 as sent, " +
@@ -230,11 +232,11 @@ object FtmsQuirkRegistry {
     private val LIFE_FITNESS_BIKE_CADENCE_27 = FtmsQuirk(
         id = "life-fitness-bike-cadence-27",
         namePrefix = "lf",
-        characteristic = BluetoothIds.UUID_BIKING_DATA,
+        characteristic = FtmsUuids.UUID_BIKING_DATA,
         flagWords = setOf(0x0BFA),
         packetLength = 27,
         layout = emptyList(),
-        forceFlagBits = Flags.BIKE_CADENCE,
+        forceFlagBits = FtmsDataFlags.BIKE_CADENCE,
         evidence = "TMIW issue #462 official-app HCI, 93 physical packets at 0x0BFA/27, all " +
             "with the cadence presence bit clear. Length arithmetic: 25 as sent, 27 corrected, " +
             "27 observed. Differs from the 26-octet family only by the heart-rate bit.",
@@ -280,8 +282,8 @@ object FtmsQuirkRegistry {
      * When a fifth quirk needs one of them, wire that walker and add it here.
      */
     val CHARACTERISTICS_CONSULTING_REGISTRY: Set<UUID> = setOf(
-        BluetoothIds.UUID_ROWING_MACHINE_DATA,
-        BluetoothIds.UUID_BIKING_DATA,
+        FtmsUuids.UUID_ROWING_MACHINE_DATA,
+        FtmsUuids.UUID_BIKING_DATA,
     )
 
     fun find(deviceName: String?, characteristic: UUID, flags: Int, length: Int): FtmsQuirk? =

@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Consumers and integrity checks for the four QZ-derived Life Fitness evidence corpora.
@@ -100,7 +101,7 @@ class LifeFitnessQzCorpusTest {
                 sourceId = MetricSourceId(
                     ConnectionId("qz:1018", 1L),
                     MetricProtocol.FTMS,
-                    BluetoothIds.UUID_TREADMILL_DATA,
+                    FtmsUuids.UUID_TREADMILL_DATA,
                 ),
                 sourceClass = MetricSourceClass.FTMS,
                 arrivalMs = FixtureJson.int(case["relativeMs"]).toLong(),

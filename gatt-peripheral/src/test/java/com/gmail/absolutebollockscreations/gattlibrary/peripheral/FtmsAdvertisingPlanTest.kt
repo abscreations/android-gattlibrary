@@ -1,12 +1,12 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
-
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class FtmsAdvertisingPlanTest {
 
@@ -57,7 +57,7 @@ class FtmsAdvertisingPlanTest {
 
         assertEquals(
             listOf(
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_CSC_SERVICE,
                 BluetoothIds.UUID_CYCLING_POWER_SERVICE,
             ),
@@ -75,7 +75,7 @@ class FtmsAdvertisingPlanTest {
             includeNativeBikingSensors = true,
         )
 
-        assertEquals(listOf(BluetoothIds.UUID_FTMS_SERVICE), plan.serviceUuids)
+        assertEquals(listOf(FtmsUuids.UUID_FTMS_SERVICE), plan.serviceUuids)
     }
 
     @Test

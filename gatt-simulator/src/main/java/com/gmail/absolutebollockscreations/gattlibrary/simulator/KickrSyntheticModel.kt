@@ -13,6 +13,7 @@ import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 internal enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
 
@@ -503,14 +504,14 @@ internal object KickrStandardEncoders {
                 setOf(KickrEvidenceLabel.LOG, KickrEvidenceLabel.SYN)
         }
         return when (uuid) {
-            BluetoothIds.UUID_FITNESS_MACHINE_FEATURE -> KickrReadValue(
+            FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> KickrReadValue(
                 CORE_FTMS_FEATURE.copyOf(),
                 standardEvidence,
             )
-            BluetoothIds.UUID_TRAINING_STATUS -> KickrReadValue(trainingStatus.copyOf(), setOf(KickrEvidenceLabel.P))
-            BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE ->
+            FtmsUuids.UUID_TRAINING_STATUS -> KickrReadValue(trainingStatus.copyOf(), setOf(KickrEvidenceLabel.P))
+            FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE ->
                 KickrReadValue(SUPPORTED_RESISTANCE_RANGE.copyOf(), setOf(KickrEvidenceLabel.LOG))
-            BluetoothIds.UUID_SUPPORTED_POWER_RANGE ->
+            FtmsUuids.UUID_SUPPORTED_POWER_RANGE ->
                 KickrReadValue(SUPPORTED_POWER_RANGE.copyOf(), setOf(KickrEvidenceLabel.SYN))
             BluetoothIds.UUID_CYCLING_POWER_FEATURE -> KickrReadValue(CPS_FEATURE.copyOf(), setOf(KickrEvidenceLabel.LOG))
             BluetoothIds.UUID_SENSOR_LOCATION -> KickrReadValue(SENSOR_LOCATION.copyOf(), setOf(KickrEvidenceLabel.LOG))

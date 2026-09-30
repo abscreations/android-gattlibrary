@@ -12,6 +12,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Phase 10.1 reachability, adversarial fingerprint, ranking, and reconnect obligations. */
 class WahooKickrProductionPlumbingTest {
@@ -236,7 +237,7 @@ class WahooKickrProductionPlumbingTest {
         val coordinator = AdapterLivenessCoordinator(livenessTimeoutMs = 1_000L)
         val kickr = context(
             services = setOf(
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 WahooKickrUuids.CYCLING_POWER_SERVICE,
             ),
         )
@@ -364,7 +365,7 @@ class WahooKickrProductionPlumbingTest {
             sourceId = MetricSourceId(
                 kickr.connectionId,
                 MetricProtocol.FTMS,
-                BluetoothIds.UUID_BIKING_DATA,
+                FtmsUuids.UUID_BIKING_DATA,
             ),
             protocol = MetricProtocol.FTMS,
             sourceClass = MetricSourceClass.FTMS,

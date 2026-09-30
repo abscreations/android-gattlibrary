@@ -146,3 +146,229 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/bytes/Pr
 	public final fun zigZagEncode32 (I)J
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsDataFlags {
+	public static final field BIKE_AVGCAD I
+	public static final field BIKE_AVGPOWER I
+	public static final field BIKE_AVGSPEED I
+	public static final field BIKE_CADENCE I
+	public static final field BIKE_ELAPSED I
+	public static final field BIKE_EXPENERGY I
+	public static final field BIKE_HEARTRATE I
+	public static final field BIKE_INSTPOWER I
+	public static final field BIKE_METABOLIC I
+	public static final field BIKE_MORE I
+	public static final field BIKE_REMAINING I
+	public static final field BIKE_RESISTANCE I
+	public static final field BIKE_TOTALDIST I
+	public static final field CLIMB_AVGSTEPR I
+	public static final field CLIMB_ELAPSED I
+	public static final field CLIMB_ELEVGAIN I
+	public static final field CLIMB_EXPENERGY I
+	public static final field CLIMB_HEARTRATE I
+	public static final field CLIMB_METABOLIC I
+	public static final field CLIMB_MORE I
+	public static final field CLIMB_REMAINING I
+	public static final field CLIMB_STEPRATE I
+	public static final field CLIMB_STRIDE I
+	public static final field ELL_AVGPOWER I
+	public static final field ELL_AVGSPEED I
+	public static final field ELL_ELAPSED I
+	public static final field ELL_ELEVGAIN I
+	public static final field ELL_EXPENERGY I
+	public static final field ELL_HEARTRATE I
+	public static final field ELL_INCLINATION I
+	public static final field ELL_INSTPOWER I
+	public static final field ELL_METABOLIC I
+	public static final field ELL_MORE I
+	public static final field ELL_REMAINING I
+	public static final field ELL_RESISTANCE I
+	public static final field ELL_STEPCOUNT I
+	public static final field ELL_STRIDECOUNT I
+	public static final field ELL_TOTALDIST I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsDataFlags;
+	public static final field ROW_AVGPACE I
+	public static final field ROW_AVGPOWER I
+	public static final field ROW_AVGSTROKE I
+	public static final field ROW_ELAPSED I
+	public static final field ROW_EXPENERGY I
+	public static final field ROW_HEARTRATE I
+	public static final field ROW_INSTPACE I
+	public static final field ROW_INSTPOWER I
+	public static final field ROW_METABOLIC I
+	public static final field ROW_MORE I
+	public static final field ROW_REMAINING I
+	public static final field ROW_RESISTANCE I
+	public static final field ROW_TOTALDIST I
+	public static final field STEP_AVGSTEPR I
+	public static final field STEP_ELAPSED I
+	public static final field STEP_ELEVGAIN I
+	public static final field STEP_EXPENERGY I
+	public static final field STEP_HEARTRATE I
+	public static final field STEP_METABOLIC I
+	public static final field STEP_MORE I
+	public static final field STEP_REMAINING I
+	public static final field STEP_STEPRATE I
+	public static final field TREAD_AVGPACE I
+	public static final field TREAD_AVGSPEED I
+	public static final field TREAD_BELTFORCEPOWER I
+	public static final field TREAD_ELAPSEDTIME I
+	public static final field TREAD_ELEVATIONGAIN I
+	public static final field TREAD_EXPENERGY I
+	public static final field TREAD_HEARTRATE I
+	public static final field TREAD_INCLRAMPANGLE I
+	public static final field TREAD_INSTANTPACE I
+	public static final field TREAD_METABOLIC I
+	public static final field TREAD_MOREDATA I
+	public static final field TREAD_REMAININGTIME I
+	public static final field TREAD_TOTALDISTANCE I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile : java/lang/Enum {
+	public static final field ELLIPTICAL Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public static final field INDOOR_BIKE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public static final field INDOOR_ROWER Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public static final field STAIR_CLIMBER Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public static final field STAIR_STEPPER Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public static final field TREADMILL Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineType {
+	public static final field FM_FLAG_MACHINE_AVAILABLE I
+	public static final field FM_TYPE_CROSS_TRAINER I
+	public static final field FM_TYPE_INDOOR_BIKE I
+	public static final field FM_TYPE_ROWER I
+	public static final field FM_TYPE_STAIR_CLIMBER I
+	public static final field FM_TYPE_STEP_CLIMBER I
+	public static final field FM_TYPE_TREADMILL I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineType;
+	public final fun fitnessMachineTypeFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec {
+	public static final field INCLINE_SCALE F
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec;
+	public static final field POWER_SCALE F
+	public static final field RESISTANCE_SCALE F
+	public static final field SINT16_NOT_AVAILABLE I
+	public static final field SPEED_SCALE F
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Feature {
+	public static final field AVERAGE_SPEED I
+	public static final field CADENCE I
+	public static final field ELAPSED_TIME I
+	public static final field ELEVATION_GAIN I
+	public static final field EXPENDED_ENERGY I
+	public static final field FORCE_ON_BELT_AND_POWER I
+	public static final field HEART_RATE I
+	public static final field INCLINATION I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Feature;
+	public static final field METABOLIC_EQUIVALENT I
+	public static final field PACE I
+	public static final field POWER_MEASUREMENT I
+	public static final field REMAINING_TIME I
+	public static final field RESISTANCE_LEVEL I
+	public static final field STEP_COUNT I
+	public static final field STRIDE_COUNT I
+	public static final field TOTAL_DISTANCE I
+	public static final field USER_DATA_RETENTION I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Opcode {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Opcode;
+	public static final field REQUEST_CONTROL B
+	public static final field RESET B
+	public static final field RESPONSE_CODE B
+	public static final field SET_INDOOR_BIKE_SIMULATION B
+	public static final field SET_TARGETED_CADENCE B
+	public static final field SET_TARGET_HEART_RATE B
+	public static final field SET_TARGET_INCLINATION B
+	public static final field SET_TARGET_POWER B
+	public static final field SET_TARGET_RESISTANCE B
+	public static final field SET_TARGET_SPEED B
+	public static final field SET_WHEEL_CIRCUMFERENCE B
+	public static final field SPIN_DOWN_CONTROL B
+	public static final field START_RESUME B
+	public static final field STOP_PAUSE B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Result {
+	public static final field CONTROL_NOT_PERMITTED B
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Result;
+	public static final field INVALID_PARAMETER B
+	public static final field OPCODE_NOT_SUPPORTED B
+	public static final field OPERATION_FAILED B
+	public static final field SUCCESS B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Status {
+	public static final field CONTROL_PERMISSION_LOST B
+	public static final field INDOOR_BIKE_SIMULATION_PARAMETERS_CHANGED B
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$Status;
+	public static final field NO_STATUS B
+	public static final field RESET B
+	public static final field STARTED_OR_RESUMED_BY_USER B
+	public static final field STOPPED_BY_SAFETY_KEY B
+	public static final field STOPPED_OR_PAUSED_BY_USER B
+	public static final field TARGET_HEART_RATE_CHANGED B
+	public static final field TARGET_INCLINE_CHANGED B
+	public static final field TARGET_POWER_CHANGED B
+	public static final field TARGET_RESISTANCE_CHANGED B
+	public static final field TARGET_SPEED_CHANGED B
+	public static final field WHEEL_CIRCUMFERENCE_CHANGED B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$TargetFeature {
+	public static final field DISTANCE I
+	public static final field EXPENDED_ENERGY I
+	public static final field HEART_RATE I
+	public static final field INCLINATION I
+	public static final field INDOOR_BIKE_SIMULATION I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$TargetFeature;
+	public static final field POWER I
+	public static final field RESISTANCE I
+	public static final field SPEED I
+	public static final field SPIN_DOWN_CONTROL I
+	public static final field STEP_NUMBER I
+	public static final field STRIDE_NUMBER I
+	public static final field TARGETED_CADENCE I
+	public static final field TIME_IN_FIVE_HR_ZONES I
+	public static final field TIME_IN_THREE_HR_ZONES I
+	public static final field TIME_IN_TWO_HR_ZONES I
+	public static final field TRAINING_TIME I
+	public static final field WHEEL_CIRCUMFERENCE I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$TrainingStatus {
+	public static final field IDLE B
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsSpec$TrainingStatus;
+	public static final field MANUAL_MODE_QUICK_START B
+	public static final field OTHER B
+	public static final field POST_WORKOUT B
+	public static final field PRE_WORKOUT B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsUuids {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsUuids;
+	public final fun dataUuidForProfile (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/util/UUID;
+	public final fun getUUID_BIKING_DATA ()Ljava/util/UUID;
+	public final fun getUUID_ELLIPTICAL_DATA ()Ljava/util/UUID;
+	public final fun getUUID_FITNESS_MACHINE_CONTROL_POINT ()Ljava/util/UUID;
+	public final fun getUUID_FITNESS_MACHINE_FEATURE ()Ljava/util/UUID;
+	public final fun getUUID_FITNESS_MACHINE_STATUS ()Ljava/util/UUID;
+	public final fun getUUID_FTMS_SERVICE ()Ljava/util/UUID;
+	public final fun getUUID_ROWING_MACHINE_DATA ()Ljava/util/UUID;
+	public final fun getUUID_STAIR_CLIMBER_DATA ()Ljava/util/UUID;
+	public final fun getUUID_STAIR_STEPPER_DATA ()Ljava/util/UUID;
+	public final fun getUUID_SUPPORTED_HEART_RATE_RANGE ()Ljava/util/UUID;
+	public final fun getUUID_SUPPORTED_INCLINATION_RANGE ()Ljava/util/UUID;
+	public final fun getUUID_SUPPORTED_POWER_RANGE ()Ljava/util/UUID;
+	public final fun getUUID_SUPPORTED_RESISTANCE_RANGE ()Ljava/util/UUID;
+	public final fun getUUID_SUPPORTED_SPEED_RANGE ()Ljava/util/UUID;
+	public final fun getUUID_TRAINING_STATUS ()Ljava/util/UUID;
+	public final fun getUUID_TREADMILL_DATA ()Ljava/util/UUID;
+}
+

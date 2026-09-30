@@ -11,6 +11,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Phase 6 work unit 6.1 — plan §6, §11 obligations 0 and 1, D52 and D54.
@@ -56,8 +57,8 @@ class LifeFitnessFingerprintTest {
     /** Standard services a real inventory also carries; none of them may confuse the rule. */
     private fun noise() = listOf(
         ServiceInventory(
-            BluetoothIds.UUID_FTMS_SERVICE,
-            listOf(ch(BluetoothIds.UUID_TREADMILL_DATA, writable = false, notifyOrIndicate = true, hasCccd = true)),
+            FtmsUuids.UUID_FTMS_SERVICE,
+            listOf(ch(FtmsUuids.UUID_TREADMILL_DATA, writable = false, notifyOrIndicate = true, hasCccd = true)),
         ),
         ServiceInventory(UUID.fromString("0000fe13-0000-1000-8000-00805f9b34fb"), emptyList()),
         ServiceInventory(UUID.fromString("0000fd00-ebae-4526-9511-8357c35d7be2"), emptyList()),

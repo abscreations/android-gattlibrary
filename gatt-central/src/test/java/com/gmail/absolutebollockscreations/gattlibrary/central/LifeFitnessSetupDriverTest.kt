@@ -5,6 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Phase 6 work unit 6.5b part 2 — the transcript running against a link.
@@ -50,8 +51,8 @@ class LifeFitnessSetupDriverTest {
 
     private fun ftmsOnly() = listOf(
         LifeFitnessFingerprint.ServiceInventory(
-            BluetoothIds.UUID_FTMS_SERVICE,
-            listOf(ch(BluetoothIds.UUID_TREADMILL_DATA, writable = false, notify = true, cccd = true)),
+            FtmsUuids.UUID_FTMS_SERVICE,
+            listOf(ch(FtmsUuids.UUID_TREADMILL_DATA, writable = false, notify = true, cccd = true)),
         ),
     )
 

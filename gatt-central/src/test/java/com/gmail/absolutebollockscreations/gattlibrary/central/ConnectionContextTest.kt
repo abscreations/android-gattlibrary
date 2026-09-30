@@ -12,6 +12,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class ConnectionContextTest {
 
@@ -56,7 +57,7 @@ class ConnectionContextTest {
             initialState = BluetoothProfile.STATE_CONNECTED,
         )
         context.discoveredServiceUuids += setOf(
-            BluetoothIds.UUID_FTMS_SERVICE,
+            FtmsUuids.UUID_FTMS_SERVICE,
             BluetoothIds.UUID_C2_ERG_SERVICE,
         )
 
@@ -79,7 +80,7 @@ class ConnectionContextTest {
             gatt = null,
             initialState = BluetoothProfile.STATE_CONNECTED,
         )
-        lifeFitness.discoveredServiceUuids += BluetoothIds.UUID_FTMS_SERVICE
+        lifeFitness.discoveredServiceUuids += FtmsUuids.UUID_FTMS_SERVICE
         lifeFitness.lifeFitnessSetupState = LifeFitnessLinkSetupState.PENDING
         lifeFitnessRegistry.replaceHandlers(lifeFitness, emptyList())
         assertEquals(
@@ -166,7 +167,7 @@ class ConnectionContextTest {
             gatt = null,
             initialState = BluetoothProfile.STATE_CONNECTED,
         )
-        context.handlers += TestHandler(BluetoothIds.UUID_FTMS_SERVICE)
+        context.handlers += TestHandler(FtmsUuids.UUID_FTMS_SERVICE)
         context.discoveredServiceUuids += BluetoothIds.UUID_HRM_SERVICE
         var activationCalls = 0
         context.handlerActivator = { handler ->

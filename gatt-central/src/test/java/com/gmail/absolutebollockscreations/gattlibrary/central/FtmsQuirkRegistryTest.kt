@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Phase 4c exit criteria for the FTMS quirk registry.
@@ -54,7 +55,7 @@ class FtmsQuirkRegistryTest {
 
     @Test
     fun `mr captain layout decodes its reordered energy block and absent average pace`() {
-        val h = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
+        val h = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
 
         BtEngineFtmsParsers.doRower(h.emitter, mrCaptainFrame, deviceName = "XG-Rower-01")
 
@@ -86,7 +87,7 @@ class FtmsQuirkRegistryTest {
      */
     @Test
     fun `the same frame parsed without the quirk disagrees on power`() {
-        val h = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
+        val h = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
 
         BtEngineFtmsParsers.doRower(h.emitter, mrCaptainFrame, deviceName = null)
 
@@ -102,7 +103,7 @@ class FtmsQuirkRegistryTest {
     fun `a conforming rower packet from the same device is parsed normally`() {
         // Flags 0x0004 (total distance only), 5 octets: a shape the fingerprint rejects on both
         // flag word and length, from a device whose name still matches the prefix.
-        val h = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
+        val h = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
 
         BtEngineFtmsParsers.doRower(
             h.emitter,
@@ -117,7 +118,7 @@ class FtmsQuirkRegistryTest {
 
     @Test
     fun `the fingerprint requires name, flags and length together`() {
-        val uuid = BluetoothIds.UUID_ROWING_MACHINE_DATA
+        val uuid = FtmsUuids.UUID_ROWING_MACHINE_DATA
 
         assertNotNull(FtmsQuirkRegistry.find("XG-Rower", uuid, 0x0B3C, 20))
         assertNull("wrong name", FtmsQuirkRegistry.find("Concept2", uuid, 0x0B3C, 20))
@@ -126,7 +127,7 @@ class FtmsQuirkRegistryTest {
         assertNull("wrong length", FtmsQuirkRegistry.find("XG-Rower", uuid, 0x0B3C, 19))
         assertNull(
             "wrong characteristic",
-            FtmsQuirkRegistry.find("XG-Rower", BluetoothIds.UUID_BIKING_DATA, 0x0B3C, 20),
+            FtmsQuirkRegistry.find("XG-Rower", FtmsUuids.UUID_BIKING_DATA, 0x0B3C, 20),
         )
     }
 
@@ -138,7 +139,7 @@ class FtmsQuirkRegistryTest {
      */
     @Test
     fun `a schwinn ic4 bike packet is unaffected by the registry`() {
-        val h = harness(BluetoothIds.UUID_BIKING_DATA, FusionPersona.RIDE)
+        val h = harness(FtmsUuids.UUID_BIKING_DATA, FusionPersona.RIDE)
 
         BtEngineFtmsParsers.doBike(h.emitter, bytes(68, 2, 94, 11, 240, 0, 122, 0, 84))
 
@@ -193,7 +194,7 @@ class FtmsQuirkRegistryTest {
         // The layout is fixed, so a firmware that reordered its fields would present as
         // absurd values rather than as a parse failure. Octet 2 is stroke rate in half-units:
         // 0xFE is 127 spm, which no rower sustains.
-        val h = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
+        val h = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
 
         BtEngineFtmsParsers.doRower(
             h.emitter,
@@ -242,32 +243,32 @@ class FtmsQuirkRegistryTest {
 
         // Rower: Mr Captain's layout replacement. Average pace is flagged but absent, so a
         // standard walk would misread the tail; the quirk firing is what makes power correct.
-        val rower = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
+        val rower = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA, FusionPersona.ROW_PADDLE)
         BtEngineFtmsParsers.doRower(rower.emitter, mrCaptainPacket(), deviceName = "XG-070")
         assertNotNull(
             "the rower walker must consult the registry",
             rower.fusion.latestSample(MetricKind.STROKE_RATE),
         )
-        demonstrated += BluetoothIds.UUID_ROWING_MACHINE_DATA
+        demonstrated += FtmsUuids.UUID_ROWING_MACHINE_DATA
 
         // Bike: the Life Fitness flag correction. Cadence is absent without it and present with
         // it, from the identical packet — the cleanest possible demonstration that the lookup
         // happened.
         val packet = lifeFitnessBikePacket()
-        val without = harness(BluetoothIds.UUID_BIKING_DATA, FusionPersona.RIDE)
+        val without = harness(FtmsUuids.UUID_BIKING_DATA, FusionPersona.RIDE)
         BtEngineFtmsParsers.doBike(without.emitter, packet, deviceName = null)
         assertNull(
             "no quirk without an identity to match",
             without.fusion.latestSample(MetricKind.CADENCE),
         )
 
-        val with = harness(BluetoothIds.UUID_BIKING_DATA, FusionPersona.RIDE)
+        val with = harness(FtmsUuids.UUID_BIKING_DATA, FusionPersona.RIDE)
         BtEngineFtmsParsers.doBike(with.emitter, packet, deviceName = "LF Bike")
         assertNotNull(
             "the bike walker must consult the registry",
             with.fusion.latestSample(MetricKind.CADENCE),
         )
-        demonstrated += BluetoothIds.UUID_BIKING_DATA
+        demonstrated += FtmsUuids.UUID_BIKING_DATA
 
         assertEquals(
             "every characteristic in CHARACTERISTICS_CONSULTING_REGISTRY must be demonstrated " +

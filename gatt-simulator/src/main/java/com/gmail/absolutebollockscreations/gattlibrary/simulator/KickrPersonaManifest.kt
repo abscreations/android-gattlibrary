@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Field-level provenance carried into diagnostics and evidence exports. */
 internal enum class KickrEvidenceLabel { HCI, LOG, P, M, X, R, SYN }
@@ -159,7 +160,7 @@ internal data class KickrPersonaManifest(
                 localName = "Wahoo KICKR AEE4",
                 advertisedServices = listOf(
                     BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                    BluetoothIds.UUID_FTMS_SERVICE,
+                    FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 evidence = setOf(KickrEvidenceLabel.LOG),
             ),
@@ -175,7 +176,7 @@ internal data class KickrPersonaManifest(
                 localName = "KICKR CORE C3FB",
                 advertisedServices = listOf(
                     BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                    BluetoothIds.UUID_FTMS_SERVICE,
+                    FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 evidence = setOf(KickrEvidenceLabel.HCI),
                 exactLegacyPayload = ORIGINAL_CORE_ADVERTISING.copyOf(),
@@ -206,7 +207,7 @@ internal data class KickrPersonaManifest(
                 localName = "KICKR CORE 2 1A2B",
                 advertisedServices = listOf(
                     BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                    BluetoothIds.UUID_FTMS_SERVICE,
+                    FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 evidence = setOf(KickrEvidenceLabel.HCI, KickrEvidenceLabel.SYN),
                 exactLegacyPayload = CORE2_SIM_ADVERTISING.copyOf(),
@@ -225,7 +226,7 @@ internal data class KickrPersonaManifest(
                 // split stays within both legacy packet budgets and is therefore explicitly SYN.
                 advertisedServices = listOf(
                     BluetoothIds.UUID_CYCLING_POWER_SERVICE,
-                    BluetoothIds.UUID_FTMS_SERVICE,
+                    FtmsUuids.UUID_FTMS_SERVICE,
                     BluetoothIds.UUID_DEVICE_INFORMATION_SERVICE,
                 ),
                 scanResponseServices = listOf(BluetoothIds.UUID_WAHOO_RIDEON_SERVICE),
@@ -252,14 +253,14 @@ internal data class KickrPersonaManifest(
                     characteristic(BluetoothIds.UUID_CYCLING_POWER_CONTROL_POINT, WRITE_INDICATE, KickrEvidenceLabel.LOG),
                 ),
                 service(
-                    BluetoothIds.UUID_FTMS_SERVICE,
+                    FtmsUuids.UUID_FTMS_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_BIKING_DATA, NOTIFY, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_FITNESS_MACHINE_STATUS, NOTIFY, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_SUPPORTED_POWER_RANGE, READ, KickrEvidenceLabel.LOG),
-                    characteristic(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE_INDICATE, KickrEvidenceLabel.LOG),
+                    characteristic(FtmsUuids.UUID_BIKING_DATA, NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE, READ, KickrEvidenceLabel.LOG),
+                    characteristic(FtmsUuids.UUID_FITNESS_MACHINE_STATUS, NOTIFY, KickrEvidenceLabel.LOG),
+                    characteristic(FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE, READ, KickrEvidenceLabel.LOG),
+                    characteristic(FtmsUuids.UUID_SUPPORTED_POWER_RANGE, READ, KickrEvidenceLabel.LOG),
+                    characteristic(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE_INDICATE, KickrEvidenceLabel.LOG),
                 ),
                 service(
                     BluetoothIds.UUID_ZWIFT_HUB_SUPPORT_SERVICE,
@@ -350,7 +351,7 @@ internal data class KickrPersonaManifest(
                 zwiftService(BluetoothIds.UUID_WAHOO_RIDEON_CORE2_SERVICE, KickrEvidenceLabel.LOG),
                 requireNotNull(standard[BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01]),
                 ee06,
-                requireNotNull(standard[BluetoothIds.UUID_FTMS_SERVICE]),
+                requireNotNull(standard[FtmsUuids.UUID_FTMS_SERVICE]),
                 requireNotNull(standard[BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE0B]),
             )
         }
@@ -380,15 +381,15 @@ internal data class KickrPersonaManifest(
                     characteristic(BluetoothIds.UUID_USER_WEIGHT, READ_WRITE, *evidence.toTypedArray()),
                 ),
                 service(
-                    BluetoothIds.UUID_FTMS_SERVICE,
+                    FtmsUuids.UUID_FTMS_SERVICE,
                     evidence,
-                    characteristic(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE, READ, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_TRAINING_STATUS, READ_NOTIFY, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE_INDICATE, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_FITNESS_MACHINE_STATUS, NOTIFY, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_BIKING_DATA, NOTIFY, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_SUPPORTED_RESISTANCE_RANGE, READ, *evidence.toTypedArray()),
-                    characteristic(BluetoothIds.UUID_SUPPORTED_POWER_RANGE, READ, *evidence.toTypedArray()),
+                    characteristic(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE, READ, *evidence.toTypedArray()),
+                    characteristic(FtmsUuids.UUID_TRAINING_STATUS, READ_NOTIFY, *evidence.toTypedArray()),
+                    characteristic(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, WRITE_INDICATE, *evidence.toTypedArray()),
+                    characteristic(FtmsUuids.UUID_FITNESS_MACHINE_STATUS, NOTIFY, *evidence.toTypedArray()),
+                    characteristic(FtmsUuids.UUID_BIKING_DATA, NOTIFY, *evidence.toTypedArray()),
+                    characteristic(FtmsUuids.UUID_SUPPORTED_RESISTANCE_RANGE, READ, *evidence.toTypedArray()),
+                    characteristic(FtmsUuids.UUID_SUPPORTED_POWER_RANGE, READ, *evidence.toTypedArray()),
                 ),
                 service(
                     BluetoothIds.UUID_WAHOO_KICKR_MARKER_EE01,

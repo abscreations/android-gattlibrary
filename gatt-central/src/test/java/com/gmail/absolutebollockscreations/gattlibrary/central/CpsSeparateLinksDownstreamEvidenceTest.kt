@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Replays separate-link CPS selection and downstream elliptical output from session 8f8c. */
 class CpsSeparateLinksDownstreamEvidenceTest {
@@ -29,7 +30,7 @@ class CpsSeparateLinksDownstreamEvidenceTest {
         val upstreamState = BtEngineState()
         val upstreamFusion = MetricFusion(upstreamState)
         BtEngineFtmsParsers.doBike(
-            emitter(upstreamFusion, BluetoothIds.UUID_BIKING_DATA, 1L),
+            emitter(upstreamFusion, FtmsUuids.UUID_BIKING_DATA, 1L),
             hexBytes(FixtureJson.string(ftmsSource["hex"])),
         )
         assertEquals(
@@ -42,7 +43,7 @@ class CpsSeparateLinksDownstreamEvidenceTest {
         val expected = FixtureJson.obj(downstream["expect"])
         val outputState = BtEngineState()
         val outputFusion = MetricFusion(outputState)
-        val outputEmitter = emitter(outputFusion, BluetoothIds.UUID_ELLIPTICAL_DATA, 2L)
+        val outputEmitter = emitter(outputFusion, FtmsUuids.UUID_ELLIPTICAL_DATA, 2L)
         BtEngineFtmsParsers.doElliptical(
             outputEmitter,
             hexBytes(FixtureJson.string(FixtureJson.obj(downstream["core"])["hex"])),

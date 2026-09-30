@@ -88,6 +88,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.BleDebug
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsDataFlags
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 @GattLibraryInternalApi
 object BtEngineFtmsParsers {
@@ -131,7 +133,7 @@ object BtEngineFtmsParsers {
         // no special case. A non-matching packet from the same machine falls through unchanged.
         val quirk = FtmsQuirkRegistry.find(
             deviceName,
-            BluetoothIds.UUID_BIKING_DATA,
+            FtmsUuids.UUID_BIKING_DATA,
             asSent,
             value.size,
         )?.takeIf { it.isFlagCorrection }
@@ -149,20 +151,20 @@ object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Bike flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.BIKE_MORE) == 0) off = readSpeed(emitter, value, off)
-        if ((flags and Flags.BIKE_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
-        if ((flags and Flags.BIKE_CADENCE) != 0) off = readCadence(emitter, value, off, halfUnits = true)
-        if ((flags and Flags.BIKE_AVGCAD) != 0) off = readAvgCadence(emitter, value, off, halfUnits = true)
-        if ((flags and Flags.BIKE_TOTALDIST) != 0) off = readDistance(emitter, value, off)
-        if ((flags and Flags.BIKE_RESISTANCE) != 0) off = readResistance(emitter, value, off) { it.toDouble() }
-        if ((flags and Flags.BIKE_INSTPOWER) != 0) off = readPower(emitter, value, off)
-        if ((flags and Flags.BIKE_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
-        if ((flags and Flags.BIKE_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_MORE) == 0) off = readSpeed(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_CADENCE) != 0) off = readCadence(emitter, value, off, halfUnits = true)
+        if ((flags and FtmsDataFlags.BIKE_AVGCAD) != 0) off = readAvgCadence(emitter, value, off, halfUnits = true)
+        if ((flags and FtmsDataFlags.BIKE_TOTALDIST) != 0) off = readDistance(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_RESISTANCE) != 0) off = readResistance(emitter, value, off) { it.toDouble() }
+        if ((flags and FtmsDataFlags.BIKE_INSTPOWER) != 0) off = readPower(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.BIKE_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
-        if ((flags and Flags.BIKE_METABOLIC) != 0) off = readMet(emitter, value, off)
-        if ((flags and Flags.BIKE_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.BIKE_REMAINING) != 0) skip(b = value, off = off, n = 2)
+        if ((flags and FtmsDataFlags.BIKE_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_ELAPSED) != 0) off = readElapsed(emitter, value, off)
+        if ((flags and FtmsDataFlags.BIKE_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -183,7 +185,7 @@ object BtEngineFtmsParsers {
 
         val quirk = FtmsQuirkRegistry.find(
             deviceName,
-            BluetoothIds.UUID_ROWING_MACHINE_DATA,
+            FtmsUuids.UUID_ROWING_MACHINE_DATA,
             flags,
             value.size,
         )
@@ -192,24 +194,24 @@ object BtEngineFtmsParsers {
             return
         }
 
-        if ((flags and Flags.ROW_MORE) == 0) off = readStrokes(emitter, value, off)
-        if ((flags and Flags.ROW_AVGSTROKE) != 0) off = readAvgStrokes(emitter, value, off)
-        if ((flags and Flags.ROW_TOTALDIST) != 0) off = readDistance(emitter, value, off)
-        if ((flags and Flags.ROW_INSTPACE) != 0) {
+        if ((flags and FtmsDataFlags.ROW_MORE) == 0) off = readStrokes(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_AVGSTROKE) != 0) off = readAvgStrokes(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_TOTALDIST) != 0) off = readDistance(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_INSTPACE) != 0) {
             off = readPace(emitter, value, off, per500m = true)
         }
-        if ((flags and Flags.ROW_AVGPACE) != 0) {
+        if ((flags and FtmsDataFlags.ROW_AVGPACE) != 0) {
             off = readAvgPace(emitter, value, off, per500m = true)
         }
-        if ((flags and Flags.ROW_INSTPOWER) != 0) off = readPower(emitter, value, off)
-        if ((flags and Flags.ROW_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
-        if ((flags and Flags.ROW_RESISTANCE) != 0) off = readResistance(emitter, value, off) { it.toDouble() }
-        if ((flags and Flags.ROW_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_INSTPOWER) != 0) off = readPower(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_RESISTANCE) != 0) off = readResistance(emitter, value, off) { it.toDouble() }
+        if ((flags and FtmsDataFlags.ROW_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.ROW_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
-        if ((flags and Flags.ROW_METABOLIC) != 0) off = readMet(emitter, value, off)
-        if ((flags and Flags.ROW_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.ROW_REMAINING) != 0) skip(b = value, off = off, n = 2)
+        if ((flags and FtmsDataFlags.ROW_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_ELAPSED) != 0) off = readElapsed(emitter, value, off)
+        if ((flags and FtmsDataFlags.ROW_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     /**
@@ -234,31 +236,31 @@ object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Treadmill flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.TREAD_MOREDATA) == 0) off = readSpeed(emitter, value, off)
-        if ((flags and Flags.TREAD_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
-        if ((flags and Flags.TREAD_TOTALDISTANCE) != 0) off = readDistance(emitter, value, off)
-        if ((flags and Flags.TREAD_INCLRAMPANGLE) != 0) off = readInclineV1(emitter, value, off)
-        if ((flags and Flags.TREAD_ELEVATIONGAIN) != 0) off = readElevation(emitter, value, off, mode = 2)
+        if ((flags and FtmsDataFlags.TREAD_MOREDATA) == 0) off = readSpeed(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_TOTALDISTANCE) != 0) off = readDistance(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_INCLRAMPANGLE) != 0) off = readInclineV1(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_ELEVATIONGAIN) != 0) off = readElevation(emitter, value, off, mode = 2)
         var instantPaceRaw: Int? = null
         var averagePaceRaw: Int? = null
-        if ((flags and Flags.TREAD_INSTANTPACE) != 0) {
+        if ((flags and FtmsDataFlags.TREAD_INSTANTPACE) != 0) {
             if (has(value, off, 1)) instantPaceRaw = u8(value, off)
             off = readTreadmillPace(emitter, value, off, MetricKind.INSTANT_PACE)
         }
-        if ((flags and Flags.TREAD_AVGPACE) != 0) {
+        if ((flags and FtmsDataFlags.TREAD_AVGPACE) != 0) {
             if (has(value, off, 1)) averagePaceRaw = u8(value, off)
             off = readTreadmillPace(emitter, value, off, MetricKind.AVERAGE_PACE)
         }
         if (instantPaceRaw != null || averagePaceRaw != null) {
             onNativePace?.invoke(instantPaceRaw, averagePaceRaw)
         }
-        if ((flags and Flags.TREAD_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.TREAD_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
-        if ((flags and Flags.TREAD_METABOLIC) != 0) off = readMet(emitter, value, off)
-        if ((flags and Flags.TREAD_ELAPSEDTIME) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.TREAD_REMAININGTIME) != 0) off = skip(value, off, 2)
-        if ((flags and Flags.TREAD_BELTFORCEPOWER) != 0) readBeltForce(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_ELAPSEDTIME) != 0) off = readElapsed(emitter, value, off)
+        if ((flags and FtmsDataFlags.TREAD_REMAININGTIME) != 0) off = skip(value, off, 2)
+        if ((flags and FtmsDataFlags.TREAD_BELTFORCEPOWER) != 0) readBeltForce(emitter, value, off)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -286,14 +288,14 @@ object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Elliptical flags=0x%06X", flags)
         }
 
-        if ((flags and Flags.ELL_MORE) == 0) off = readSpeed(emitter, value, off)
-        if ((flags and Flags.ELL_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
-        if ((flags and Flags.ELL_TOTALDIST) != 0) off = readDistance(emitter, value, off)
-        if ((flags and Flags.ELL_STEPCOUNT) != 0) off = readEllipticalCadence(emitter, value, off)
-        if ((flags and Flags.ELL_STRIDECOUNT) != 0) off = readStrides(emitter, value, off, tenths = true)
-        if ((flags and Flags.ELL_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 3)
+        if ((flags and FtmsDataFlags.ELL_MORE) == 0) off = readSpeed(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_AVGSPEED) != 0) off = readAvgSpeed(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_TOTALDIST) != 0) off = readDistance(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_STEPCOUNT) != 0) off = readEllipticalCadence(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_STRIDECOUNT) != 0) off = readStrides(emitter, value, off, tenths = true)
+        if ((flags and FtmsDataFlags.ELL_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 3)
         // Inclination (bit 6) precedes Resistance Level (bit 7) - FTMS Table 4.6,
-        // and [Flags.ELL_INCLINATION] = 0x40 / [Flags.ELL_RESISTANCE] = 0x80 say
+        // and [FtmsDataFlags.ELL_INCLINATION] = 0x40 / [FtmsDataFlags.ELL_RESISTANCE] = 0x80 say
         // so too. These two were read in the opposite order until 2026-08-06,
         // which silently swapped the fields whenever a machine set both bits.
         //
@@ -313,18 +315,18 @@ object BtEngineFtmsParsers {
         // The two defects sat on the same line and looked like one: dividing the
         // *inclination* field by ten yields a plausible resistance level, which
         // is what made the field swap so quiet.
-        if ((flags and Flags.ELL_INCLINATION) != 0) off = readInclineV2(emitter, value, off)
-        if ((flags and Flags.ELL_RESISTANCE) != 0) {
+        if ((flags and FtmsDataFlags.ELL_INCLINATION) != 0) off = readInclineV2(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_RESISTANCE) != 0) {
             off = readResistance(emitter, value, off, resistanceToLevel)
         }
-        if ((flags and Flags.ELL_INSTPOWER) != 0) off = readPower(emitter, value, off)
-        if ((flags and Flags.ELL_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
-        if ((flags and Flags.ELL_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_INSTPOWER) != 0) off = readPower(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_AVGPOWER) != 0) off = readAvgPower(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.ELL_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
-        if ((flags and Flags.ELL_METABOLIC) != 0) off = readMet(emitter, value, off)
-        if ((flags and Flags.ELL_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.ELL_REMAINING) != 0) skip(b = value, off = off, n = 2)
+        if ((flags and FtmsDataFlags.ELL_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_ELAPSED) != 0) off = readElapsed(emitter, value, off)
+        if ((flags and FtmsDataFlags.ELL_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -339,16 +341,16 @@ object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Stepper flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.STEP_MORE) == 0) off = readFloors(emitter, value, off, mode = 2)
-        if ((flags and Flags.STEP_STEPRATE) != 0) off = readCadence(emitter, value, off, halfUnits = false)
-        if ((flags and Flags.STEP_AVGSTEPR) != 0) off = readAvgCadence(emitter, value, off, halfUnits = false)
-        if ((flags and Flags.STEP_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 1)
-        if ((flags and Flags.STEP_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
+        if ((flags and FtmsDataFlags.STEP_MORE) == 0) off = readFloors(emitter, value, off, mode = 2)
+        if ((flags and FtmsDataFlags.STEP_STEPRATE) != 0) off = readCadence(emitter, value, off, halfUnits = false)
+        if ((flags and FtmsDataFlags.STEP_AVGSTEPR) != 0) off = readAvgCadence(emitter, value, off, halfUnits = false)
+        if ((flags and FtmsDataFlags.STEP_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 1)
+        if ((flags and FtmsDataFlags.STEP_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.STEP_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
-        if ((flags and Flags.STEP_METABOLIC) != 0) off = readMet(emitter, value, off)
-        if ((flags and Flags.STEP_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.STEP_REMAINING) != 0) skip(b = value, off = off, n = 2)
+        if ((flags and FtmsDataFlags.STEP_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and FtmsDataFlags.STEP_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and FtmsDataFlags.STEP_ELAPSED) != 0) off = readElapsed(emitter, value, off)
+        if ((flags and FtmsDataFlags.STEP_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -363,17 +365,17 @@ object BtEngineFtmsParsers {
             Timber.tag(TAG).d("Climber flags=0x%04X", flags)
         }
 
-        if ((flags and Flags.CLIMB_MORE) == 0) off = readFloors(emitter, value, off, mode = 1)
-        if ((flags and Flags.CLIMB_STEPRATE) != 0) off = readCadence(emitter, value, off, halfUnits = false)
-        if ((flags and Flags.CLIMB_AVGSTEPR) != 0) off = readAvgCadence(emitter, value, off, halfUnits = false)
-        if ((flags and Flags.CLIMB_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 1)
-        if ((flags and Flags.CLIMB_STRIDE) != 0) off = readStrides(emitter, value, off, tenths = false)
-        if ((flags and Flags.CLIMB_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
+        if ((flags and FtmsDataFlags.CLIMB_MORE) == 0) off = readFloors(emitter, value, off, mode = 1)
+        if ((flags and FtmsDataFlags.CLIMB_STEPRATE) != 0) off = readCadence(emitter, value, off, halfUnits = false)
+        if ((flags and FtmsDataFlags.CLIMB_AVGSTEPR) != 0) off = readAvgCadence(emitter, value, off, halfUnits = false)
+        if ((flags and FtmsDataFlags.CLIMB_ELEVGAIN) != 0) off = readElevation(emitter, value, off, mode = 1)
+        if ((flags and FtmsDataFlags.CLIMB_STRIDE) != 0) off = readStrides(emitter, value, off, tenths = false)
+        if ((flags and FtmsDataFlags.CLIMB_EXPENERGY) != 0) off = readEnergy(emitter, value, off)
 
-        if ((flags and Flags.CLIMB_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
-        if ((flags and Flags.CLIMB_METABOLIC) != 0) off = readMet(emitter, value, off)
-        if ((flags and Flags.CLIMB_ELAPSED) != 0) off = readElapsed(emitter, value, off)
-        if ((flags and Flags.CLIMB_REMAINING) != 0) skip(b = value, off = off, n = 2)
+        if ((flags and FtmsDataFlags.CLIMB_HEARTRATE) != 0) off = readFtmsHeartRate(emitter, value, off)
+        if ((flags and FtmsDataFlags.CLIMB_METABOLIC) != 0) off = readMet(emitter, value, off)
+        if ((flags and FtmsDataFlags.CLIMB_ELAPSED) != 0) off = readElapsed(emitter, value, off)
+        if ((flags and FtmsDataFlags.CLIMB_REMAINING) != 0) skip(b = value, off = off, n = 2)
     }
 
     /**

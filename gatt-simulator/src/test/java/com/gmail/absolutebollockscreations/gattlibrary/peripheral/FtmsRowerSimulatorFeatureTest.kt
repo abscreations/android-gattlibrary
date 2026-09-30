@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.simulator.FtmsMockEngine
 import com.gmail.absolutebollockscreations.gattlibrary.simulator.FtmsMockTarget
 import org.junit.Assert.assertArrayEquals

@@ -9,26 +9,27 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import android.os.ParcelUuid
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Central registry of all Bluetooth SIG Assigned Numbers (UUIDs) and
- * FTMS/CSC/CPS opcodes used inside the FitBridge Bluetooth stack.
+ * CSC/CPS opcodes used inside the FitBridge Bluetooth stack. FTMS identifiers and vocabulary
+ * (UUIDs, opcodes, status codes, data flags, machine profile) moved to gatt-core `core.ftms` in LIB-19a.
  *
  * This file is meant to be the **single source of truth** for:
  *  1. Services we *scan* for (to detect device capabilities)
  *  2. Services/characteristics we *enable notifications/indications* on
  *  3. Characteristics we *read* for capability/range info
  *  4. Characteristics we *write* to (FTMS Control Point, HRM Control Point, CSC/CP CP)
- *  5. The numeric **opcodes** and **result codes** for FTMS Control Point
- *  6. The unit **scales** used to encode FTMS CP payloads
  *
  * ──────────────────────────────────────────────────────────────────────────────
  * ORGANIZATION
  * ──────────────────────────────────────────────────────────────────────────────
- *  • [BluetoothIds]         → All Bluetooth UUIDs, opcodes, status codes, and unit scales
- *  • [Flags]                → FTMS data-characteristic flag bitmasks
+ *  • [BluetoothIds]         → Non-FTMS Bluetooth UUIDs and vendor vocabulary
  *  • [BtServiceProfiles]    → Ancillary service-level enums and constants
- *                              (service modes, FTMS machine personas, device names,
+ *                              (service modes, device names,
  *                               max clients, default notify interval, FMF presets)
  *
  * Engine and service code should import from here rather than redeclaring IDs.
@@ -49,22 +50,8 @@ object BluetoothIds {
     // ─────────────────────────────────────────────────────────────
     // FTMS (Fitness Machine Service 0x1826)
     // ─────────────────────────────────────────────────────────────
-    val UUID_FTMS_SERVICE: UUID    = shortUuid(0x1826)
-    val FTMS_SERVICE_PARCEL: ParcelUuid = ParcelUuid(UUID_FTMS_SERVICE) // for scan filter
-
-    // FTMS Core Characteristics
-    val UUID_FITNESS_MACHINE_FEATURE: UUID       = shortUuid(0x2ACC)
-    val UUID_FITNESS_MACHINE_CONTROL_POINT: UUID = shortUuid(0x2AD9)
-    val UUID_FITNESS_MACHINE_STATUS: UUID        = shortUuid(0x2ADA)
-
-    /**
-     * Training Status (0x2AD3) — Read + Notify.
-     *
-     * Exposed by the peripheral role so a central can tell an idle machine from
-     * a running one without inferring it from the measurement stream. Absent
-     * from the previous FitBridge GATT schema entirely.
-     */
-    val UUID_TRAINING_STATUS: UUID               = shortUuid(0x2AD3)
+    /** FTMS service, from core so central, peripheral and simulator share one definition (LIB-19a). */
+    val FTMS_SERVICE_PARCEL: ParcelUuid = ParcelUuid(FtmsUuids.UUID_FTMS_SERVICE) // for scan filter
 
     // Additional standard services present in every captured legacy Life Fitness console.
     val UUID_DEVICE_INFORMATION_SERVICE: UUID = shortUuid(0x180A)
@@ -80,38 +67,6 @@ object BluetoothIds {
     val UUID_PNP_ID: UUID = shortUuid(0x2A50)
     val UUID_USER_DATA_SERVICE: UUID = shortUuid(0x181C)
     val UUID_LF_SECONDARY_SERVICE: UUID = shortUuid(0xFE13)
-
-    // FTMS Data Characteristics
-    val UUID_TREADMILL_DATA: UUID       = shortUuid(0x2ACD)
-    val UUID_ELLIPTICAL_DATA: UUID      = shortUuid(0x2ACE)
-    val UUID_STAIR_STEPPER_DATA: UUID   = shortUuid(0x2ACF)
-    val UUID_STAIR_CLIMBER_DATA: UUID   = shortUuid(0x2AD0)
-    val UUID_ROWING_MACHINE_DATA: UUID  = shortUuid(0x2AD1)
-    val UUID_BIKING_DATA: UUID          = shortUuid(0x2AD2)
-
-    // FTMS Capability Range Characteristics
-    val UUID_SUPPORTED_SPEED_RANGE: UUID       = shortUuid(0x2AD4)
-    val UUID_SUPPORTED_INCLINATION_RANGE: UUID = shortUuid(0x2AD5)
-    val UUID_SUPPORTED_RESISTANCE_RANGE: UUID  = shortUuid(0x2AD6)
-    val UUID_SUPPORTED_HEART_RATE_RANGE: UUID  = shortUuid(0x2AD7)
-    val UUID_SUPPORTED_POWER_RANGE: UUID       = shortUuid(0x2AD8)
-
-    // ─────────────────────────────────────────────────────────────
-    // FTMS Fitness Machine Status (0x2ADA) status opcodes
-    // ─────────────────────────────────────────────────────────────
-    // These are the values carried in the Fitness Machine Status characteristic,
-    // not the Control Point. They are shared between engine (consumer) and service (provider).
-    const val STATUS_NO_STATUS: Byte                             = 0x00
-    const val STATUS_MACHINE_RESET: Byte                         = 0x01
-    const val STATUS_USER_STOPPED_OR_PAUSED: Byte                = 0x02
-    const val STATUS_FITNESS_MACHINE_STOPPED_BY_SAFETY_KEY: Byte = 0x03
-    const val STATUS_USER_STARTED_OR_RESUMED: Byte               = 0x04
-    const val STATUS_TARGET_SPEED_CHANGED: Byte                  = 0x05
-    const val STATUS_TARGET_INCLINE_CHANGED: Byte                = 0x06
-    const val STATUS_TARGET_RESISTANCE_LEVEL_CHANGED: Byte       = 0x07
-    const val STATUS_TARGET_POWER_CHANGED: Byte                  = 0x08
-    const val STATUS_TARGET_HEART_RATE_CHANGED: Byte             = 0x09
-    const val STATUS_CONTROL_PERMISSION_LOST: Byte               = 0xFF.toByte()
 
     // ─────────────────────────────────────────────────────────────
     // Heart Rate (Service 0x180D)
@@ -605,54 +560,6 @@ object BluetoothIds {
     val UUID_CCCD: UUID = shortUuid(0x2902)
 
     // ─────────────────────────────────────────────────────────────
-    // FTMS Control Point (0x2AD9) opcodes / response codes
-    // ─────────────────────────────────────────────────────────────
-    // Opcodes
-    const val OPCODE_REQUEST_CONTROL: Byte        = 0x00
-    const val OPCODE_RESET: Byte                  = 0x01
-    const val OPCODE_SET_TARGET_SPEED: Byte       = 0x02   // 0.01 km/h units (UInt16)
-    const val OPCODE_SET_TARGET_INCLINATION: Byte = 0x03   // 0.1 percent grade units (SInt16)
-    const val OPCODE_SET_TARGET_RESISTANCE: Byte  = 0x04   // 0.1 level units (UInt8 — 2-byte write)
-    const val OPCODE_SET_TARGET_POWER: Byte       = 0x05   // watts (SInt16)
-    const val OPCODE_SET_TARGET_HEART_RATE: Byte = 0x06   // bpm (UInt8)
-    const val OPCODE_START_RESUME: Byte           = 0x07
-    const val OPCODE_STOP_PAUSE: Byte             = 0x08
-
-    // Central-role opcodes added 2026-08-10 with the §9.5.6 upstream simulation work. The
-    // provider side has had all four since Phase 0 (`FtmsSpec.kt`); only the central registry
-    // was missing, which is the asymmetry §9.5.6 describes.
-    const val OPCODE_SET_INDOOR_BIKE_SIMULATION: Byte = 0x11 // wind/grade/crr/cw, 7-byte write
-    const val OPCODE_SET_WHEEL_CIRCUMFERENCE: Byte    = 0x12 // 0.1 mm units (UInt16)
-    const val OPCODE_SPIN_DOWN_CONTROL: Byte          = 0x13 // calibration, not a target
-    const val OPCODE_SET_TARGETED_CADENCE: Byte       = 0x14 // 0.5 /minute units (UInt16)
-
-    // Response framing byte
-    // [0]=0x80 (Response Code), [1]=Request OpCode, [2]=Result Code
-    const val OPCODE_RESPONSE_CODE: Byte = -0x80 // 0x80 as signed byte
-
-    // Result codes
-    const val RESULT_SUCCESS: Byte               = 0x01
-    const val RESULT_OPCODE_NOT_SUPPORTED: Byte  = 0x02
-    const val RESULT_INVALID_PARAMETER: Byte     = 0x03
-    const val RESULT_OPERATION_FAILED: Byte      = 0x04
-    const val RESULT_CONTROL_NOT_PERMITTED: Byte = 0x05
-
-    // ─────────────────────────────────────────────────────────────
-    // FTMS unit scales for encoding Control Point payloads
-    // ─────────────────────────────────────────────────────────────
-    /** km/h * 100 → UInt16 */
-    const val FTMS_SPEED_SCALE = 100f
-
-    /** degrees * 10 → SInt16 */
-    const val FTMS_INCLINE_SCALE = 10f
-
-    /** level * 10 → UInt16 */
-    const val FTMS_RESISTANCE_SCALE = 10f
-
-    /** watts * 1 → UInt16 */
-    const val FTMS_POWER_SCALE = 1f
-
-    // ─────────────────────────────────────────────────────────────
     // Flywheel Sports (Nordic UART transport; gymnasticon v1.4.1, MIT)
     // ─────────────────────────────────────────────────────────────
     /** Exact served/advertised service. Do not confuse this with FE-C's `6E40FEC1-...`. */
@@ -757,115 +664,6 @@ object BluetoothIds {
 }
 
 // ============================================================================
-// 2) Flags — FTMS data characteristic flag bitmasks
-// ============================================================================
-internal object Flags {
-
-    // ─────────────────────────────────────────────────────────────
-    // Treadmill (0x2ACD)
-    // ─────────────────────────────────────────────────────────────
-    const val TREAD_MOREDATA       = 0x0001
-    const val TREAD_AVGSPEED       = 0x0002
-    const val TREAD_TOTALDISTANCE  = 0x0004
-    const val TREAD_INCLRAMPANGLE  = 0x0008
-    const val TREAD_ELEVATIONGAIN  = 0x0010
-    const val TREAD_INSTANTPACE    = 0x0020
-    const val TREAD_AVGPACE        = 0x0040
-    const val TREAD_EXPENERGY      = 0x0080
-    const val TREAD_HEARTRATE      = 0x0100
-    const val TREAD_METABOLIC      = 0x0200
-    const val TREAD_ELAPSEDTIME    = 0x0400
-    const val TREAD_REMAININGTIME  = 0x0800
-    const val TREAD_BELTFORCEPOWER = 0x1000
-
-    // ─────────────────────────────────────────────────────────────
-    // Elliptical (0x2ACE)
-    // ─────────────────────────────────────────────────────────────
-    const val ELL_MORE        = 0x0001
-    const val ELL_AVGSPEED    = 0x0002
-    const val ELL_TOTALDIST   = 0x0004
-    const val ELL_STEPCOUNT   = 0x0008
-    const val ELL_STRIDECOUNT = 0x0010
-    const val ELL_ELEVGAIN    = 0x0020
-    const val ELL_INCLINATION = 0x0040
-    const val ELL_RESISTANCE  = 0x0080
-    const val ELL_INSTPOWER   = 0x0100
-    const val ELL_AVGPOWER    = 0x0200
-    const val ELL_EXPENERGY   = 0x0400
-    const val ELL_HEARTRATE   = 0x0800
-    const val ELL_METABOLIC   = 0x1000
-    const val ELL_ELAPSED     = 0x2000
-    const val ELL_REMAINING   = 0x4000
-
-    // ─────────────────────────────────────────────────────────────
-    // Rower (0x2AD1)
-    // ─────────────────────────────────────────────────────────────
-    const val ROW_MORE        = 0x0001
-    const val ROW_AVGSTROKE   = 0x0002
-    const val ROW_TOTALDIST   = 0x0004
-    const val ROW_INSTPACE    = 0x0008
-    const val ROW_AVGPACE     = 0x0010
-    const val ROW_INSTPOWER   = 0x0020
-    const val ROW_AVGPOWER    = 0x0040
-    const val ROW_RESISTANCE  = 0x0080
-    const val ROW_EXPENERGY   = 0x0100
-    const val ROW_HEARTRATE   = 0x0200
-    const val ROW_METABOLIC   = 0x0400
-    const val ROW_ELAPSED     = 0x0800
-    const val ROW_REMAINING   = 0x1000
-
-    // ─────────────────────────────────────────────────────────────
-    // Indoor Bike (0x2AD2)
-    // ─────────────────────────────────────────────────────────────
-    // Spec bit order (FTMS Indoor Bike Data, 0x2AD2):
-    //   bit0 More Data, bit1 Average Speed, bit2 Instantaneous Cadence, bit3 Average Cadence, ...
-    // NOTE: bits 1 and 2 were previously swapped here. Both the encoder
-    // (BtServiceBikeData) and the parser (doBike) emit/consume the fields in the
-    // correct spec order (average speed BEFORE cadence), so correcting the two
-    // constants fixes both directions with no other change required.
-    const val BIKE_MORE       = 0x0001
-    const val BIKE_AVGSPEED   = 0x0002
-    const val BIKE_CADENCE    = 0x0004
-    const val BIKE_AVGCAD     = 0x0008
-    const val BIKE_TOTALDIST  = 0x0010
-    const val BIKE_RESISTANCE = 0x0020
-    const val BIKE_INSTPOWER  = 0x0040
-    const val BIKE_AVGPOWER   = 0x0080
-    const val BIKE_EXPENERGY  = 0x0100
-    const val BIKE_HEARTRATE  = 0x0200
-    const val BIKE_METABOLIC  = 0x0400
-    const val BIKE_ELAPSED    = 0x0800
-    const val BIKE_REMAINING  = 0x1000
-
-    // ─────────────────────────────────────────────────────────────
-    // Stepper (0x2ACF)
-    // ─────────────────────────────────────────────────────────────
-    const val STEP_MORE       = 0x0001
-    const val STEP_STEPRATE   = 0x0002
-    const val STEP_AVGSTEPR   = 0x0004
-    const val STEP_ELEVGAIN   = 0x0008
-    const val STEP_EXPENERGY  = 0x0010
-    const val STEP_HEARTRATE  = 0x0020
-    const val STEP_METABOLIC  = 0x0040
-    const val STEP_ELAPSED    = 0x0080
-    const val STEP_REMAINING  = 0x0100
-
-    // ─────────────────────────────────────────────────────────────
-    // Climber (0x2AD0)
-    // ─────────────────────────────────────────────────────────────
-    const val CLIMB_MORE      = 0x0001
-    const val CLIMB_STEPRATE  = 0x0002
-    const val CLIMB_AVGSTEPR  = 0x0004
-    const val CLIMB_ELEVGAIN  = 0x0008
-    const val CLIMB_STRIDE    = 0x0010
-    const val CLIMB_EXPENERGY = 0x0020
-    const val CLIMB_HEARTRATE = 0x0040
-    const val CLIMB_METABOLIC = 0x0080
-    const val CLIMB_ELAPSED   = 0x0100
-    const val CLIMB_REMAINING = 0x0200
-}
-
-// ============================================================================
 // 3) BtServiceProfiles — ancillary service-level enums / constants
 //    Shared across BtEngine + btService; NOT Bluetooth IDs themselves
 // ============================================================================
@@ -880,18 +678,6 @@ object BtServiceProfiles {
 
         /** Local provider exposes CSC (0x1816) + CPS (0x1818) together. */
         CSC_CPS,
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // FTMS machine personas (what we emulate on provider side)
-    // ─────────────────────────────────────────────────────────────
-    enum class FtmsMachineProfile {
-        INDOOR_BIKE,
-        ELLIPTICAL,
-        INDOOR_ROWER,
-        STAIR_CLIMBER,
-        STAIR_STEPPER,
-        TREADMILL,
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -989,31 +775,6 @@ object BtServiceProfiles {
     // payload we supply is only the trailing THREE octets: Flags + Machine Type.
     //
     // Flags field (Table 3.2): bit 0 = Fitness Machine Available, bits 1-7 RFU.
-    const val FM_FLAG_MACHINE_AVAILABLE: Int = 0x01
-
-    // Fitness Machine Type field (Table 3.3), uint16 little-endian, bits 6-15 RFU.
-    //
-    // CAUTION: the spec's "Step Climber" (bit 2) is the 0x2ACF Step Climber Data
-    // characteristic, which this codebase calls STAIR_STEPPER; the spec's "Stair
-    // Climber" (bit 3) is 0x2AD0, which this codebase calls STAIR_CLIMBER. The
-    // mapping below is deliberately crossed to match the spec, not the local names.
-    const val FM_TYPE_TREADMILL: Int     = 1 shl 0
-    const val FM_TYPE_CROSS_TRAINER: Int = 1 shl 1
-    const val FM_TYPE_STEP_CLIMBER: Int  = 1 shl 2
-    const val FM_TYPE_STAIR_CLIMBER: Int = 1 shl 3
-    const val FM_TYPE_ROWER: Int         = 1 shl 4
-    const val FM_TYPE_INDOOR_BIKE: Int   = 1 shl 5
-
-    /** Fitness Machine Type bit for an FTMS persona. Exactly one bit is set. */
-    fun fitnessMachineTypeFor(machine: FtmsMachineProfile): Int = when (machine) {
-        FtmsMachineProfile.TREADMILL     -> FM_TYPE_TREADMILL
-        FtmsMachineProfile.ELLIPTICAL    -> FM_TYPE_CROSS_TRAINER
-        FtmsMachineProfile.STAIR_STEPPER -> FM_TYPE_STEP_CLIMBER   // 0x2ACF
-        FtmsMachineProfile.STAIR_CLIMBER -> FM_TYPE_STAIR_CLIMBER  // 0x2AD0
-        FtmsMachineProfile.INDOOR_ROWER  -> FM_TYPE_ROWER
-        FtmsMachineProfile.INDOOR_BIKE   -> FM_TYPE_INDOOR_BIKE
-    }
-
     /**
      * Build the 3-octet FTMS Service Data payload for [machine].
      *
@@ -1021,8 +782,8 @@ object BtServiceProfiles {
      *   advertise the service while signalling that no machine is usable yet.
      */
     fun ftmsServiceDataFor(machine: FtmsMachineProfile, available: Boolean = true): ByteArray {
-        val type = fitnessMachineTypeFor(machine)
-        val flags = if (available) FM_FLAG_MACHINE_AVAILABLE else 0
+        val type = FtmsMachineType.fitnessMachineTypeFor(machine)
+        val flags = if (available) FtmsMachineType.FM_FLAG_MACHINE_AVAILABLE else 0
         return byteArrayOf(
             (flags and 0xFF).toByte(),
             (type and 0xFF).toByte(),
@@ -1042,12 +803,12 @@ object BtServiceProfiles {
         val machineTypes = (payload[1].toInt() and 0xFF) or
             ((payload[2].toInt() and 0xFF) shl 8)
         return when {
-            machineTypes and FM_TYPE_TREADMILL != 0 -> ActivityType.TREADMILL
-            machineTypes and FM_TYPE_ROWER != 0 -> ActivityType.ROWING
-            machineTypes and FM_TYPE_INDOOR_BIKE != 0 -> ActivityType.BIKING
-            machineTypes and FM_TYPE_CROSS_TRAINER != 0 -> ActivityType.ELLIPTICAL
-            machineTypes and FM_TYPE_STEP_CLIMBER != 0 -> ActivityType.STAIRSTEPPER
-            machineTypes and FM_TYPE_STAIR_CLIMBER != 0 -> ActivityType.STAIRCLIMBER
+            machineTypes and FtmsMachineType.FM_TYPE_TREADMILL != 0 -> ActivityType.TREADMILL
+            machineTypes and FtmsMachineType.FM_TYPE_ROWER != 0 -> ActivityType.ROWING
+            machineTypes and FtmsMachineType.FM_TYPE_INDOOR_BIKE != 0 -> ActivityType.BIKING
+            machineTypes and FtmsMachineType.FM_TYPE_CROSS_TRAINER != 0 -> ActivityType.ELLIPTICAL
+            machineTypes and FtmsMachineType.FM_TYPE_STEP_CLIMBER != 0 -> ActivityType.STAIRSTEPPER
+            machineTypes and FtmsMachineType.FM_TYPE_STAIR_CLIMBER != 0 -> ActivityType.STAIRCLIMBER
             else -> null
         }
     }
@@ -1226,20 +987,8 @@ object BtServiceProfiles {
     }
 
     /**
-     * Map an FTMS machine persona to its primary FTMS data characteristic UUID.
-     */
-    fun dataUuidForProfile(profile: FtmsMachineProfile): UUID = when (profile) {
-        FtmsMachineProfile.TREADMILL     -> BluetoothIds.UUID_TREADMILL_DATA
-        FtmsMachineProfile.ELLIPTICAL    -> BluetoothIds.UUID_ELLIPTICAL_DATA
-        FtmsMachineProfile.INDOOR_ROWER  -> BluetoothIds.UUID_ROWING_MACHINE_DATA
-        FtmsMachineProfile.STAIR_CLIMBER -> BluetoothIds.UUID_STAIR_CLIMBER_DATA
-        FtmsMachineProfile.STAIR_STEPPER -> BluetoothIds.UUID_STAIR_STEPPER_DATA
-        FtmsMachineProfile.INDOOR_BIKE   -> BluetoothIds.UUID_BIKING_DATA
-    }
-
-    /**
      * Convenience: ActivityType → FTMS data characteristic UUID.
      */
     fun dataUuidForActivity(type: ActivityType): UUID? =
-        ftmsProfileForActivity(type)?.let { dataUuidForProfile(it) }
+        ftmsProfileForActivity(type)?.let { FtmsUuids.dataUuidForProfile(it) }
 }

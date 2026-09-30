@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class KayakFirstMatcherTest {
     private val registry = DeviceMatcherRegistry.standard()
@@ -115,7 +116,7 @@ class KayakFirstMatcherTest {
 
     @Test
     fun `FTMS wins an ambiguous advertisement and FFE0 stays reachable`() {
-        val ftms = CanonicalUuid.fromUuid(BluetoothIds.UUID_FTMS_SERVICE)
+        val ftms = CanonicalUuid.fromUuid(FtmsUuids.UUID_FTMS_SERVICE)
         val candidates = registry.rankedCandidates(
             MatchObservation(advertisedServiceUuids = setOf(service, ftms)),
         )

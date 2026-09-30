@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Phase 6 work unit 6.5a — the composition of fingerprint, gate and transcript.
@@ -64,8 +65,8 @@ class LifeFitnessSetupCoordinatorTest {
         val decision = decide(
             listOf(
                 LifeFitnessFingerprint.ServiceInventory(
-                    BluetoothIds.UUID_FTMS_SERVICE,
-                    listOf(ch(BluetoothIds.UUID_TREADMILL_DATA, writable = false, notify = true)),
+                    FtmsUuids.UUID_FTMS_SERVICE,
+                    listOf(ch(FtmsUuids.UUID_TREADMILL_DATA, writable = false, notify = true)),
                 ),
             ),
             p = LifeFitnessProfile.EMPTY,

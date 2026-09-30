@@ -14,21 +14,21 @@
 //   All public functions here are called by BtEngine methods with the same names:
 //
 //   • requestControl(engine)
-//       - Sends OPCODE_REQUEST_CONTROL.
+//       - Sends FtmsSpec.Opcode.REQUEST_CONTROL.
 //       - Does not require existing control; used to acquire it.
 //       - Always enqueues a write; result is reported asynchronously via CP indication.
 //
 //   • startOrResume(engine)
-//       - Sends OPCODE_START_RESUME (start/resume workout).
+//       - Sends FtmsSpec.Opcode.START_RESUME (start/resume workout).
 //       - Requires that BtEngineState.haveControlFlow == true.
 //       - Uses cpWriteOrIgnore() to avoid writes when control isn’t granted.
 //
 //   • stopOrPause(engine)
-//       - Sends OPCODE_STOP_PAUSE (stop or pause workout).
+//       - Sends FtmsSpec.Opcode.STOP_PAUSE (stop or pause workout).
 //       - Requires control (same gate as startOrResume).
 //
 //   • reset(engine)
-//       - Sends OPCODE_RESET (0x01) to reset machine state/targets.
+//       - Sends FtmsSpec.Opcode.RESET (0x01) to reset machine state/targets.
 //       - Uses precheck() to ensure control and that the device actually advertises support.
 //
 // -------------------------------------------------------------------------------------------------
@@ -40,22 +40,22 @@
 //   • setTargetSpeedKmh(engine, kmh)
 //       - Feature gate: state.supportsSpeed
 //       - Applies [speedMin, speedMax, speedIncr] if speedRangeKnown.
-//       - Converts to 0.01 km/h units (FTMS_SPEED_SCALE) → UInt16 LE.
+//       - Converts to 0.01 km/h units (FtmsSpec.SPEED_SCALE) → UInt16 LE.
 //
 //   • setTargetInclinationPercent(engine, percent)
 //       - Feature gate: state.supportsInclination
 //       - Applies [inclineMin, inclineMax, inclineIncr] if inclineRangeKnown.
-//       - Converts to 0.1 % SInt16 LE (FTMS_INCLINE_SCALE).
+//       - Converts to 0.1 % SInt16 LE (FtmsSpec.INCLINE_SCALE).
 //
 //   • setTargetResistance(engine, level)
 //       - Feature gate: state.supportsResistance
 //       - Applies [resistanceMin, resistanceMax, resistanceIncr] if resistanceRangeKnown.
-//       - Converts to 0.1 “level” units → UInt16 LE (FTMS_RESISTANCE_SCALE).
+//       - Converts to 0.1 “level” units → UInt16 LE (FtmsSpec.RESISTANCE_SCALE).
 //
 //   • setTargetPowerWatts(engine, watts)
 //       - Feature gate: state.supportsPower
 //       - Applies [powerMin, powerMax, powerIncr] if powerRangeKnown.
-//       - Converts to scaled UInt16 LE using FTMS_POWER_SCALE.
+//       - Converts to scaled UInt16 LE using FtmsSpec.POWER_SCALE.
 //
 //   Range application is handled via snapToStep(value, min, max, step):
 //     - Clamps to [min, max].
@@ -86,25 +86,13 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.Manifest
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_INCLINE_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_POWER_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_RESISTANCE_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.FTMS_SPEED_SCALE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_REQUEST_CONTROL
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_RESET
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_INDOOR_BIKE_SIMULATION
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_INCLINATION
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_POWER
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_RESISTANCE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_SET_TARGET_SPEED
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_START_RESUME
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.OPCODE_STOP_PAUSE
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT
 import timber.log.Timber
 import kotlin.math.round
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 internal object BtEngineControlPoint {
 
@@ -138,7 +126,7 @@ internal object BtEngineControlPoint {
         // For requestControl we do NOT require haveControl, but we still ensure CCCDs are ready.
         if (!ensureCccdReady(engine, opName = "requestControl", requireControl = false)) return false
         Timber.tag(BtEngineState.TAG).i("CP: requestControl() → enqueue")
-        return enqueueControlPointWrite(engine, byteArrayOf(OPCODE_REQUEST_CONTROL))
+        return enqueueControlPointWrite(engine, byteArrayOf(FtmsSpec.Opcode.REQUEST_CONTROL))
     }
 
     /** Start or resume the workout on the machine (requires control). */
@@ -146,7 +134,7 @@ internal object BtEngineControlPoint {
     fun startOrResume(engine: BtEngine): Boolean {
         if (!ensureCccdReady(engine, opName = "startOrResume", requireControl = true)) return false
         Timber.tag(BtEngineState.TAG).i("CP: startOrResume() → enqueue")
-        return cpWriteOrIgnore(engine, byteArrayOf(OPCODE_START_RESUME))
+        return cpWriteOrIgnore(engine, byteArrayOf(FtmsSpec.Opcode.START_RESUME))
     }
 
     /** Stop or pause on the machine (requires control). */
@@ -154,7 +142,7 @@ internal object BtEngineControlPoint {
     fun stopOrPause(engine: BtEngine): Boolean {
         if (!ensureCccdReady(engine, opName = "stopOrPause", requireControl = true)) return false
         Timber.tag(BtEngineState.TAG).i("CP: stopOrPause() → enqueue")
-        return cpWriteOrIgnore(engine, byteArrayOf(OPCODE_STOP_PAUSE))
+        return cpWriteOrIgnore(engine, byteArrayOf(FtmsSpec.Opcode.STOP_PAUSE))
     }
 
     /** Reset the fitness machine’s current state/targets (FTMS CP opcode 0x01). */
@@ -162,7 +150,7 @@ internal object BtEngineControlPoint {
     fun reset(engine: BtEngine): Boolean {
         if (!ensureCccdReady(engine, opName = "reset", requireControl = true)) return false
         if (!precheck(engine, "reset", supported = true)) return false
-        val payload = byteArrayOf(OPCODE_RESET)
+        val payload = byteArrayOf(FtmsSpec.Opcode.RESET)
         return cpWriteOrIgnore(engine, payload)
     }
 
@@ -180,8 +168,8 @@ internal object BtEngineControlPoint {
             snapToStep(kph, engine.state.speedMin, engine.state.speedMax, engine.state.speedIncr)
         else kph
 
-        val scaled = (value * FTMS_SPEED_SCALE).toInt().coerceIn(0, 0xFFFF)
-        val payload = byteArrayOf(OPCODE_SET_TARGET_SPEED) + u16Wrapping(scaled)
+        val scaled = (value * FtmsSpec.SPEED_SCALE).toInt().coerceIn(0, 0xFFFF)
+        val payload = byteArrayOf(FtmsSpec.Opcode.SET_TARGET_SPEED) + u16Wrapping(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set speed → %.2f km/h (scaled=%d)", value, scaled)
         return enqueueControlPointWrite(engine, payload)
@@ -238,7 +226,7 @@ internal object BtEngineControlPoint {
         val crr = (rollingResistanceCoefficient * 10_000f).roundToInt().coerceIn(0, 0xFF)
         val cw = (windResistanceCoefficient * 100f).roundToInt().coerceIn(0, 0xFF)
 
-        val payload = byteArrayOf(OPCODE_SET_INDOOR_BIKE_SIMULATION) +
+        val payload = byteArrayOf(FtmsSpec.Opcode.SET_INDOOR_BIKE_SIMULATION) +
             s16Wrapping(wind) + s16Wrapping(grade) + byteArrayOf(crr.toByte(), cw.toByte())
 
         Timber.tag(BtEngineState.TAG).i(
@@ -258,9 +246,9 @@ internal object BtEngineControlPoint {
             snapToStep(percent, engine.state.inclineMin, engine.state.inclineMax, engine.state.inclineIncr)
         else percent
 
-        val scaled = (value * FTMS_INCLINE_SCALE).toInt()
+        val scaled = (value * FtmsSpec.INCLINE_SCALE).toInt()
             .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-        val payload = byteArrayOf(OPCODE_SET_TARGET_INCLINATION) + s16Wrapping(scaled)
+        val payload = byteArrayOf(FtmsSpec.Opcode.SET_TARGET_INCLINATION) + s16Wrapping(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set incline → %.1f %% (scaled=%d)", value, scaled)
         return enqueueControlPointWrite(engine, payload)
@@ -279,8 +267,8 @@ internal object BtEngineControlPoint {
         // FTMS 0x04 Set Target Resistance Level carries a single uint8 in 0.1 units,
         // so the write is 2 bytes total. Sending a uint16 here made conformant
         // machines reject the command with an invalid-parameter response.
-        val scaled = (value * FTMS_RESISTANCE_SCALE).toInt().coerceIn(0, 0xFF)
-        val payload = byteArrayOf(OPCODE_SET_TARGET_RESISTANCE, scaled.toByte())
+        val scaled = (value * FtmsSpec.RESISTANCE_SCALE).toInt().coerceIn(0, 0xFF)
+        val payload = byteArrayOf(FtmsSpec.Opcode.SET_TARGET_RESISTANCE, scaled.toByte())
 
         Timber.tag(BtEngineState.TAG).i("CP: set resistance → %.1f (scaled=%d, uint8)", value, scaled)
         return enqueueControlPointWrite(engine, payload)
@@ -296,8 +284,8 @@ internal object BtEngineControlPoint {
             snapToStep(watts.toFloat(), engine.state.powerMin, engine.state.powerMax, engine.state.powerIncr).toInt()
         else watts
 
-        val scaled = (snapped * FTMS_POWER_SCALE).toInt().coerceIn(0, 0xFFFF)
-        val payload = byteArrayOf(OPCODE_SET_TARGET_POWER) + u16Wrapping(scaled)
+        val scaled = (snapped * FtmsSpec.POWER_SCALE).toInt().coerceIn(0, 0xFFFF)
+        val payload = byteArrayOf(FtmsSpec.Opcode.SET_TARGET_POWER) + u16Wrapping(scaled)
 
         Timber.tag(BtEngineState.TAG).i("CP: set power → %d W (scaled=%d)", snapped, scaled)
         return enqueueControlPointWrite(engine, payload)

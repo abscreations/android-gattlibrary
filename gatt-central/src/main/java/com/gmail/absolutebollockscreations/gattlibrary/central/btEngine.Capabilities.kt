@@ -60,6 +60,7 @@ import kotlin.math.max
 import kotlin.math.min
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 internal object BtEngineCapabilities {
 
@@ -93,8 +94,8 @@ internal object BtEngineCapabilities {
      * and its state machine is not built. Recording the bit now means the capability is
      * available when that work happens, without claiming support in the meantime.
      */
-    private const val TARGET_SIMULATION_BIT = 1 shl 13
-    private const val TARGET_SPIN_DOWN_BIT = 1 shl 15
+    private const val TARGET_SIMULATION_BIT = 1 shl FtmsSpec.TargetFeature.INDOOR_BIKE_SIMULATION
+    private const val TARGET_SPIN_DOWN_BIT = 1 shl FtmsSpec.TargetFeature.SPIN_DOWN_CONTROL
 
     @SuppressLint("MissingPermission")
     fun parseFitnessMachineFeatures(engine: BtEngine, value: ByteArray) {

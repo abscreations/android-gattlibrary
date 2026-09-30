@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 /**
  * Mutable FTMS procedure state owned by exactly one GATT connection generation.

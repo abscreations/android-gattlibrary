@@ -96,7 +96,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Cy
 	public final fun component2 ()I
 	public final fun copy (ZI)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;
 	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;ZIILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;
-	public final fun effectiveFor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;
+	public final fun effectiveFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getEnabled ()Z
 	public final fun getWheelCircumferenceMm ()I
@@ -187,12 +187,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan$Companion {
-	public final fun bridgeLocalName (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Ljava/lang/String;
-	public static synthetic fun bridgeLocalName$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ILjava/lang/Object;)Ljava/lang/String;
-	public final fun forProfile (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan;
-	public static synthetic fun forProfile$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan;
-	public final fun localNameBudget (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)I
-	public static synthetic fun localNameBudget$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ILjava/lang/Object;)I
+	public final fun bridgeLocalName (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;ZLcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/lang/String;
+	public static synthetic fun bridgeLocalName$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;ZLcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ILjava/lang/Object;)Ljava/lang/String;
+	public final fun forProfile (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan;
+	public static synthetic fun forProfile$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan;
+	public final fun localNameBudget (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)I
+	public static synthetic fun localNameBudget$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsAdvertisingPlan$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ILjava/lang/Object;)I
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsClientConnectionStatus : java/lang/Enum {
@@ -267,8 +267,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public static final field COMPACT_FRAMING_MAX_PAYLOAD I
 	public static final field CROSS_TRAINER_TENTHS_SCALE I
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsDataEncoders;
-	public final fun encode (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Ljava/lang/Double;ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPayloadMode;Lkotlin/jvm/functions/Function1;Z)Ljava/util/List;
-	public static synthetic fun encode$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsDataEncoders;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Ljava/lang/Double;ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPayloadMode;Lkotlin/jvm/functions/Function1;ZILjava/lang/Object;)Ljava/util/List;
+	public final fun encode (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Ljava/lang/Double;ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPayloadMode;Lkotlin/jvm/functions/Function1;Z)Ljava/util/List;
+	public static synthetic fun encode$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsDataEncoders;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Ljava/lang/Double;ILcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPayloadMode;Lkotlin/jvm/functions/Function1;ZILjava/lang/Object;)Ljava/util/List;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsForegroundService : android/app/Service {
@@ -401,8 +401,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public final fun getSnapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;
 	public final fun getUpdateCount ()J
 	public final fun snapshotForNotification (J)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;
-	public final fun update (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)V
-	public static synthetic fun update$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricStore;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ILjava/lang/Object;)V
+	public final fun update (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)V
+	public static synthetic fun update$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricStore;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ILjava/lang/Object;)V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMetricStore$Companion {
@@ -426,8 +426,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralAdvertiserKt {
-	public static final fun buildFtmsFeaturePayload (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;ZLcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;)[B
-	public static synthetic fun buildFtmsFeaturePayload$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;ZLcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;ILjava/lang/Object;)[B
+	public static final fun buildFtmsFeaturePayload (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;ZLcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;)[B
+	public static synthetic fun buildFtmsFeaturePayload$default (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;ZLcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;ILjava/lang/Object;)[B
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController : com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralAdvertiser$Listener {
@@ -459,8 +459,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 	public final fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsControlSink;)V
 	public final fun setGarminCompatibilityFraming (Z)V
 	public final fun setNotifyIntervalMs (J)V
-	public final fun start (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V
-	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/lang/String;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+	public final fun start (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V
+	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/CyclingSensorConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
 	public final fun stop ()V
 	public final fun updateUpstreamAddress (Ljava/lang/String;)V
 }
@@ -750,113 +750,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsProfileSpecKt {
-	public static final fun getAdvertisedName (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Ljava/lang/String;
-	public static final fun getDataCharacteristic (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Ljava/util/UUID;
-	public static final fun getFeatureBits (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)I
-	public static final fun getMeasurementCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;
-	public static final fun getWireName (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Ljava/lang/String;
-	public static final fun providerMeasurementCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/util/Set;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;
-	public static synthetic fun providerMeasurementCapabilities$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec;
-	public static final field SINT16_NOT_AVAILABLE I
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Feature {
-	public static final field AVERAGE_SPEED I
-	public static final field CADENCE I
-	public static final field ELAPSED_TIME I
-	public static final field ELEVATION_GAIN I
-	public static final field EXPENDED_ENERGY I
-	public static final field FORCE_ON_BELT_AND_POWER I
-	public static final field HEART_RATE I
-	public static final field INCLINATION I
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Feature;
-	public static final field METABOLIC_EQUIVALENT I
-	public static final field PACE I
-	public static final field POWER_MEASUREMENT I
-	public static final field REMAINING_TIME I
-	public static final field RESISTANCE_LEVEL I
-	public static final field STEP_COUNT I
-	public static final field STRIDE_COUNT I
-	public static final field TOTAL_DISTANCE I
-	public static final field USER_DATA_RETENTION I
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Opcode {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Opcode;
-	public static final field REQUEST_CONTROL B
-	public static final field RESET B
-	public static final field RESPONSE_CODE B
-	public static final field SET_INDOOR_BIKE_SIMULATION B
-	public static final field SET_TARGETED_CADENCE B
-	public static final field SET_TARGET_HEART_RATE B
-	public static final field SET_TARGET_INCLINATION B
-	public static final field SET_TARGET_POWER B
-	public static final field SET_TARGET_RESISTANCE B
-	public static final field SET_TARGET_SPEED B
-	public static final field SET_WHEEL_CIRCUMFERENCE B
-	public static final field SPIN_DOWN_CONTROL B
-	public static final field START_RESUME B
-	public static final field STOP_PAUSE B
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Result {
-	public static final field CONTROL_NOT_PERMITTED B
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Result;
-	public static final field INVALID_PARAMETER B
-	public static final field OPCODE_NOT_SUPPORTED B
-	public static final field OPERATION_FAILED B
-	public static final field SUCCESS B
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Status {
-	public static final field CONTROL_PERMISSION_LOST B
-	public static final field INDOOR_BIKE_SIMULATION_PARAMETERS_CHANGED B
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$Status;
-	public static final field NO_STATUS B
-	public static final field RESET B
-	public static final field STARTED_OR_RESUMED_BY_USER B
-	public static final field STOPPED_BY_SAFETY_KEY B
-	public static final field STOPPED_OR_PAUSED_BY_USER B
-	public static final field TARGET_HEART_RATE_CHANGED B
-	public static final field TARGET_INCLINE_CHANGED B
-	public static final field TARGET_POWER_CHANGED B
-	public static final field TARGET_RESISTANCE_CHANGED B
-	public static final field TARGET_SPEED_CHANGED B
-	public static final field WHEEL_CIRCUMFERENCE_CHANGED B
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$TargetFeature {
-	public static final field DISTANCE I
-	public static final field EXPENDED_ENERGY I
-	public static final field HEART_RATE I
-	public static final field INCLINATION I
-	public static final field INDOOR_BIKE_SIMULATION I
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$TargetFeature;
-	public static final field POWER I
-	public static final field RESISTANCE I
-	public static final field SPEED I
-	public static final field SPIN_DOWN_CONTROL I
-	public static final field STEP_NUMBER I
-	public static final field STRIDE_NUMBER I
-	public static final field TARGETED_CADENCE I
-	public static final field TIME_IN_FIVE_HR_ZONES I
-	public static final field TIME_IN_THREE_HR_ZONES I
-	public static final field TIME_IN_TWO_HR_ZONES I
-	public static final field TRAINING_TIME I
-	public static final field WHEEL_CIRCUMFERENCE I
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$TrainingStatus {
-	public static final field IDLE B
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsSpec$TrainingStatus;
-	public static final field MANUAL_MODE_QUICK_START B
-	public static final field OTHER B
-	public static final field POST_WORKOUT B
-	public static final field PRE_WORKOUT B
+	public static final fun getAdvertisedName (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/lang/String;
+	public static final fun getDataCharacteristic (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/util/UUID;
+	public static final fun getFeatureBits (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)I
+	public static final fun getMeasurementCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;
+	public static final fun getWireName (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/lang/String;
+	public static final fun providerMeasurementCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/util/Set;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;
+	public static synthetic fun providerMeasurementCapabilities$default (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsMeasurementCapabilities;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsTargetRange {
@@ -1031,7 +931,7 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 	public abstract fun getFtmsController ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsPeripheralController;
 	public abstract fun getKickrRuntimeAllowed ()Z
 	public abstract fun getPeripheralStatus ()Lkotlinx/coroutines/flow/MutableStateFlow;
-	public abstract fun startStandardPersona (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$FtmsMachineProfile;)Z
+	public abstract fun startStandardPersona (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/peripheral/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Z
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/SwitchableFtmsControlSink : com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsControlSink {

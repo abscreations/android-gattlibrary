@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** Identifies one physical-link lifetime, including reconnects to the same BLE address. */
 data class ConnectionId(
@@ -614,7 +615,7 @@ internal class ConnectionRegistry {
         context.lifeFitnessSetupState != LifeFitnessLinkSetupState.NOT_REQUIRED ->
             BtEngineState.MachineIdentityFamily.LIFE_FITNESS
 
-        BluetoothIds.UUID_FTMS_SERVICE in context.discoveredServiceUuids ->
+        FtmsUuids.UUID_FTMS_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.FTMS
 
         else -> null
@@ -663,7 +664,7 @@ private val ConnectionContext.connectionKey: String
     get() = "${connectionId.address}#${connectionId.linkGeneration}"
 
 internal fun serviceTypeForUuid(uuid: UUID): BtEngineState.BtServiceType? = when (uuid) {
-    BluetoothIds.UUID_FTMS_SERVICE -> BtEngineState.BtServiceType.FTMS
+    FtmsUuids.UUID_FTMS_SERVICE -> BtEngineState.BtServiceType.FTMS
     BluetoothIds.UUID_HRM_SERVICE -> BtEngineState.BtServiceType.HeartRate
     BluetoothIds.UUID_CSC_SERVICE -> BtEngineState.BtServiceType.CSC
     BluetoothIds.UUID_RSC_SERVICE -> BtEngineState.BtServiceType.RSC

@@ -8,6 +8,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class CpsProductionPlumbingTest {
     @Test
@@ -71,7 +72,7 @@ class CpsProductionPlumbingTest {
         val active = activateMatchingProtocolHandlers(
             listOf(ftms, csc, rsc, cps),
             setOf(
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_FTMS_SERVICE,
                 BluetoothIds.UUID_CSC_SERVICE,
                 BluetoothIds.UUID_RSC_SERVICE,
                 BluetoothIds.UUID_CYCLING_POWER_SERVICE,

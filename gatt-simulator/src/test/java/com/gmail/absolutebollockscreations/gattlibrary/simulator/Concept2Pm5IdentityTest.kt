@@ -10,6 +10,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class Concept2Pm5IdentityTest {
     @Test
@@ -44,7 +45,7 @@ class Concept2Pm5IdentityTest {
             assertTrue(plan.includeTxPowerInAdvertisement)
             assertTrue(plan.advertisingServiceUuids.isEmpty())
             assertEquals(
-                listOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_DISCOVERY_SERVICE),
+                listOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_DISCOVERY_SERVICE),
                 plan.scanResponseServiceUuids,
             )
             assertArrayEquals(
@@ -157,7 +158,7 @@ class Concept2Pm5IdentityTest {
                     BluetoothIds.UUID_C2_PM_CONTROL_SERVICE,
                     BluetoothIds.UUID_C2_DEVICE_INFO_SERVICE,
                     BluetoothIds.UUID_C2_ERG_SERVICE,
-                    BluetoothIds.UUID_FTMS_SERVICE,
+                    FtmsUuids.UUID_FTMS_SERVICE,
                 ),
                 services.keys.toList(),
             )
@@ -170,11 +171,11 @@ class Concept2Pm5IdentityTest {
             assertFalse(services.containsKey(BluetoothIds.UUID_C2_HEART_RATE_RECEIVE_SERVICE))
             assertEquals(
                 listOf(
-                    BluetoothIds.UUID_FITNESS_MACHINE_FEATURE,
-                    if (machine == Concept2Machine.BIKE_ERG) BluetoothIds.UUID_BIKING_DATA
-                    else BluetoothIds.UUID_ROWING_MACHINE_DATA,
+                    FtmsUuids.UUID_FITNESS_MACHINE_FEATURE,
+                    if (machine == Concept2Machine.BIKE_ERG) FtmsUuids.UUID_BIKING_DATA
+                    else FtmsUuids.UUID_ROWING_MACHINE_DATA,
                 ),
-                services.getValue(BluetoothIds.UUID_FTMS_SERVICE).map { it.uuid },
+                services.getValue(FtmsUuids.UUID_FTMS_SERVICE).map { it.uuid },
             )
         }
     }
@@ -216,7 +217,7 @@ class Concept2Pm5IdentityTest {
             val plan = Concept2Pm5AdvertisingPlan.forPersona(persona)
             assertTrue(plan.localName.startsWith("PM"))
             if (compatibility.gattSurface == Concept2Pm5GattSurface.MODERN) {
-                assertTrue(BluetoothIds.UUID_FTMS_SERVICE in plan.scanResponseServiceUuids)
+                assertTrue(FtmsUuids.UUID_FTMS_SERVICE in plan.scanResponseServiceUuids)
                 assertTrue(BluetoothIds.UUID_C2_DISCOVERY_SERVICE in plan.scanResponseServiceUuids)
             } else {
                 assertEquals(listOf(BluetoothIds.UUID_C2_DISCOVERY_SERVICE), plan.advertisingServiceUuids)
@@ -239,7 +240,7 @@ class Concept2Pm5IdentityTest {
         )
         assertArrayEquals(
             byteArrayOf(0xA6.toByte(), 0x56, 0, 0, 0, 0, 0, 0),
-            profile.readFtms(BluetoothIds.UUID_FITNESS_MACHINE_FEATURE),
+            profile.readFtms(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE),
         )
     }
 

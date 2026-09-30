@@ -8,6 +8,7 @@ import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 
 class FlywheelConnectionAndGattTest {
     @Test
@@ -100,12 +101,12 @@ class FlywheelConnectionAndGattTest {
             coordinator.selectedAdapterId(context.connectionId),
         )
         val capabilities = providerMeasurementCapabilities(
-            BtServiceProfiles.FtmsMachineProfile.INDOOR_BIKE,
+            FtmsMachineProfile.INDOOR_BIKE,
             context.discoveredServiceUuids,
         )
         assertTrue(
             "indoor bike supplies mandatory instantaneous speed",
-            requiresSpeed(BtServiceProfiles.FtmsMachineProfile.INDOOR_BIKE),
+            requiresSpeed(FtmsMachineProfile.INDOOR_BIKE),
         )
         assertTrue(capabilities.averageSpeed)
         assertTrue(capabilities.cadence)

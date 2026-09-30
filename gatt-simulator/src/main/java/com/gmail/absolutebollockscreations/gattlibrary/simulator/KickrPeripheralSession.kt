@@ -7,6 +7,7 @@ import java.util.ArrayDeque
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 internal enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
 
@@ -75,7 +76,7 @@ internal class KickrPeripheralSession(
 
     @Synchronized
     fun handleFtmsControl(value: ByteArray): com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler.Outcome? {
-        if (subscription(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT) != PeripheralConnection.CccdMode.INDICATE ||
+        if (subscription(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT) != PeripheralConnection.CccdMode.INDICATE ||
             route !in setOf(null, KickrControlRoute.FTMS) ||
             !ftms.session.tryBeginProcedure()
         ) return null
@@ -86,16 +87,16 @@ internal class KickrPeripheralSession(
             ftms.session.finishProcedure()
             return null
         }
-        enqueue(KickrTxFrame(BluetoothIds.UUID_FITNESS_MACHINE_CONTROL_POINT, outcome.response, true))
+        enqueue(KickrTxFrame(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, outcome.response, true))
         outcome.status?.let { status ->
-            if (subscription(BluetoothIds.UUID_FITNESS_MACHINE_STATUS) == PeripheralConnection.CccdMode.NOTIFY) {
-                enqueue(KickrTxFrame(BluetoothIds.UUID_FITNESS_MACHINE_STATUS, status, false))
+            if (subscription(FtmsUuids.UUID_FITNESS_MACHINE_STATUS) == PeripheralConnection.CccdMode.NOTIFY) {
+                enqueue(KickrTxFrame(FtmsUuids.UUID_FITNESS_MACHINE_STATUS, status, false))
             }
         }
         if (outcome.trainingStatusChanged &&
-            subscription(BluetoothIds.UUID_TRAINING_STATUS) == PeripheralConnection.CccdMode.NOTIFY
+            subscription(FtmsUuids.UUID_TRAINING_STATUS) == PeripheralConnection.CccdMode.NOTIFY
         ) {
-            enqueue(KickrTxFrame(BluetoothIds.UUID_TRAINING_STATUS, ftms.session.trainingStatusPayload(), false))
+            enqueue(KickrTxFrame(FtmsUuids.UUID_TRAINING_STATUS, ftms.session.trainingStatusPayload(), false))
         }
         return outcome
     }

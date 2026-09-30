@@ -5,6 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Plan §5.4 adversarial corpus for the FTMS parsers, and the only coverage the stepper and
@@ -60,7 +61,7 @@ class FtmsAdversarialParserTest {
     private fun MetricFusion.valueOf(m: MetricKind): Double? = latestSample(m)?.value
 
     private fun bike(persona: FusionPersona = FusionPersona.RIDE) =
-        harness(BluetoothIds.UUID_BIKING_DATA, persona)
+        harness(FtmsUuids.UUID_BIKING_DATA, persona)
 
     /**
      * Indoor Bike, every optional field present. Flags `0x1FFE`: bit 0 clear (speed present) and
@@ -194,7 +195,7 @@ class FtmsAdversarialParserTest {
 
     @Test
     fun `treadmill inclination decodes a negative grade`() {
-        val h = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+        val h = harness(FtmsUuids.UUID_TREADMILL_DATA, FusionPersona.RUN)
         // Flags 0x0009: bit 0 set (no speed), inclination + ramp (bit 3).
         // Inclination -5.0 % = -50 = 0xFFCE, ramp -2.5 deg = -25 = 0xFFE7.
         BtEngineFtmsParsers.doTreadmill(h.emitter, bytes(0x09, 0x00, 0xCE, 0xFF, 0xE7, 0xFF))
@@ -215,12 +216,12 @@ class FtmsAdversarialParserTest {
         assertNull(b.fusion.valueOf(MetricKind.ENERGY))
 
         // Treadmill, flags 0x0081 = expended energy only, speed suppressed.
-        val t = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+        val t = harness(FtmsUuids.UUID_TREADMILL_DATA, FusionPersona.RUN)
         BtEngineFtmsParsers.doTreadmill(t.emitter, bytes(0x81, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF))
         assertNull(t.fusion.valueOf(MetricKind.ENERGY))
 
         // Climber, flags 0x0021 = expended energy only, floors suppressed.
-        val c = harness(BluetoothIds.UUID_STAIR_CLIMBER_DATA, FusionPersona.RUN)
+        val c = harness(FtmsUuids.UUID_STAIR_CLIMBER_DATA, FusionPersona.RUN)
         BtEngineFtmsParsers.doClimber(c.emitter, bytes(0x21, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF))
         assertNull(c.fusion.valueOf(MetricKind.ENERGY))
     }
@@ -242,19 +243,19 @@ class FtmsAdversarialParserTest {
     fun `the sint16 unavailable sentinel is honoured per field, not per flag`() {
         // Flags 0x0009: bit 0 set (no speed), inclination + ramp angle (bit 3).
         // Inclination 7.5 % = 75; ramp angle unavailable.
-        val a = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+        val a = harness(FtmsUuids.UUID_TREADMILL_DATA, FusionPersona.RUN)
         BtEngineFtmsParsers.doTreadmill(a.emitter, bytes(0x09, 0x00, 0x4B, 0x00, 0xFF, 0x7F))
         assertEquals(7.5, a.fusion.valueOf(MetricKind.INCLINATION)!!, 1e-9)
         assertNull("ramp angle is 0x7FFF", a.fusion.valueOf(MetricKind.RAMP_ANGLE))
 
         // The other way round: inclination unavailable, ramp angle 3.0 degrees = 30.
-        val b = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+        val b = harness(FtmsUuids.UUID_TREADMILL_DATA, FusionPersona.RUN)
         BtEngineFtmsParsers.doTreadmill(b.emitter, bytes(0x09, 0x00, 0xFF, 0x7F, 0x1E, 0x00))
         assertNull("inclination is 0x7FFF", b.fusion.valueOf(MetricKind.INCLINATION))
         assertEquals(3.0, b.fusion.valueOf(MetricKind.RAMP_ANGLE)!!, 1e-9)
 
         // Force on belt unavailable, power output 180 W. Flags 0x1001: no speed, bit 12.
-        val c = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+        val c = harness(FtmsUuids.UUID_TREADMILL_DATA, FusionPersona.RUN)
         BtEngineFtmsParsers.doTreadmill(c.emitter, bytes(0x01, 0x10, 0xFF, 0x7F, 0xB4, 0x00))
         assertNull("force on belt is 0x7FFF", c.fusion.valueOf(MetricKind.FORCE_ON_BELT))
         assertEquals(180.0, c.fusion.valueOf(MetricKind.POWER)!!, 1e-9)
@@ -262,7 +263,7 @@ class FtmsAdversarialParserTest {
         // 32766 is a real reading, one below the sentinel, and must survive decoding. The
         // force bound then excludes it from publication — decoding and publication are
         // different questions and only the first is being tested here.
-        val d = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+        val d = harness(FtmsUuids.UUID_TREADMILL_DATA, FusionPersona.RUN)
         BtEngineFtmsParsers.doTreadmill(d.emitter, bytes(0x01, 0x10, 0xFE, 0x7F, 0x64, 0x00))
         assertEquals(100.0, d.fusion.valueOf(MetricKind.POWER)!!, 1e-9)
         assertTrue(
@@ -274,7 +275,7 @@ class FtmsAdversarialParserTest {
     /** The cross trainer carries the same inclination pair on `0x2ACE`. */
     @Test
     fun `the elliptical honours the sint16 sentinel on its inclination pair`() {
-        val h = harness(BluetoothIds.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
+        val h = harness(FtmsUuids.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
         // Three-octet flags 0x000041: bit 0 set (no speed), inclination pair (bit 6).
         BtEngineFtmsParsers.doElliptical(h.emitter, bytes(0x41, 0x00, 0x00, 0xFF, 0x7F, 0x1E, 0x00))
 
@@ -286,7 +287,7 @@ class FtmsAdversarialParserTest {
     fun `elevation unavailable markers are dropped per component without losing valid gain`() {
         // Treadmill flags 0x0011: speed absent, elevation pair present. Elevation uses 0.1 m.
         for (unavailable in listOf(0x7FFF, 0xFFFF)) {
-            val h = harness(BluetoothIds.UUID_TREADMILL_DATA, FusionPersona.RUN)
+            val h = harness(FtmsUuids.UUID_TREADMILL_DATA, FusionPersona.RUN)
             BtEngineFtmsParsers.doTreadmill(
                 h.emitter,
                 bytes(
@@ -301,7 +302,7 @@ class FtmsAdversarialParserTest {
 
         // Cross Trainer flags 0x000021: speed absent, elevation pair present. Units are 1 m.
         for (unavailable in listOf(0xFFFF, 0x7FFF)) {
-            val h = harness(BluetoothIds.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
+            val h = harness(FtmsUuids.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
             BtEngineFtmsParsers.doElliptical(
                 h.emitter,
                 bytes(
@@ -388,7 +389,7 @@ class FtmsAdversarialParserTest {
 
     @Test
     fun `step climber decodes its two-field mandatory block and optional fields`() {
-        val h = harness(BluetoothIds.UUID_STAIR_STEPPER_DATA, FusionPersona.RUN)
+        val h = harness(FtmsUuids.UUID_STAIR_STEPPER_DATA, FusionPersona.RUN)
         // Flags 0x000E: bit 0 clear (floors + step count present), step rate (1),
         // average step rate (2), positive elevation gain (3).
         BtEngineFtmsParsers.doStepper(
@@ -414,7 +415,7 @@ class FtmsAdversarialParserTest {
 
     @Test
     fun `stair climber carries floors alone in its mandatory block, not floors and steps`() {
-        val h = harness(BluetoothIds.UUID_STAIR_CLIMBER_DATA, FusionPersona.RUN)
+        val h = harness(FtmsUuids.UUID_STAIR_CLIMBER_DATA, FusionPersona.RUN)
         // Flags 0x0010: bit 0 clear (floors present), stride count (bit 4), nothing between.
         // If the mandatory block were read as four octets like the stepper's, stride count
         // would decode from the wrong offset.
@@ -433,7 +434,7 @@ class FtmsAdversarialParserTest {
         val climber = bytes(0x10, 0x00, 0x2C, 0x01, 0xF4, 0x01)
 
         for (length in 0..stepper.size) {
-            val h = harness(BluetoothIds.UUID_STAIR_STEPPER_DATA, FusionPersona.RUN)
+            val h = harness(FtmsUuids.UUID_STAIR_STEPPER_DATA, FusionPersona.RUN)
             BtEngineFtmsParsers.doStepper(h.emitter, stepper.copyOf(length))
             if (length < 6) {
                 assertNull(
@@ -443,7 +444,7 @@ class FtmsAdversarialParserTest {
             }
         }
         for (length in 0..climber.size) {
-            val h = harness(BluetoothIds.UUID_STAIR_CLIMBER_DATA, FusionPersona.RUN)
+            val h = harness(FtmsUuids.UUID_STAIR_CLIMBER_DATA, FusionPersona.RUN)
             BtEngineFtmsParsers.doClimber(h.emitter, climber.copyOf(length))
             if (length < 4) {
                 assertNull(
@@ -460,15 +461,15 @@ class FtmsAdversarialParserTest {
     fun `flag-only and sub-flag packets decode nothing and do not throw`() {
         for (persona in listOf(FusionPersona.RIDE, FusionPersona.RUN, FusionPersona.ROW_PADDLE)) {
             for (packet in listOf(bytes(), bytes(0x01), bytes(0x01, 0x00))) {
-                val b = harness(BluetoothIds.UUID_BIKING_DATA, persona)
+                val b = harness(FtmsUuids.UUID_BIKING_DATA, persona)
                 BtEngineFtmsParsers.doBike(b.emitter, packet)
                 assertNull(b.fusion.valueOf(MetricKind.SPEED))
 
-                val t = harness(BluetoothIds.UUID_TREADMILL_DATA, persona)
+                val t = harness(FtmsUuids.UUID_TREADMILL_DATA, persona)
                 BtEngineFtmsParsers.doTreadmill(t.emitter, packet)
                 assertNull(t.fusion.valueOf(MetricKind.SPEED))
 
-                val r = harness(BluetoothIds.UUID_ROWING_MACHINE_DATA, persona)
+                val r = harness(FtmsUuids.UUID_ROWING_MACHINE_DATA, persona)
                 BtEngineFtmsParsers.doRower(r.emitter, packet)
                 assertNull(r.fusion.valueOf(MetricKind.STROKE_RATE))
             }
@@ -479,13 +480,13 @@ class FtmsAdversarialParserTest {
     fun `an elliptical packet shorter than its three-octet flag word decodes nothing`() {
         // 0x2ACE is the one FTMS data characteristic with a 24-bit flag field.
         for (packet in listOf(bytes(), bytes(0x00), bytes(0x00, 0x00))) {
-            val h = harness(BluetoothIds.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
+            val h = harness(FtmsUuids.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
             BtEngineFtmsParsers.doElliptical(h.emitter, packet)
             assertNull(h.fusion.valueOf(MetricKind.SPEED))
         }
 
         // Three octets of flags and nothing else is legal, and decodes nothing.
-        val h = harness(BluetoothIds.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
+        val h = harness(FtmsUuids.UUID_ELLIPTICAL_DATA, FusionPersona.RUN)
         BtEngineFtmsParsers.doElliptical(h.emitter, bytes(0x01, 0x00, 0x00))
         assertNull(h.fusion.valueOf(MetricKind.SPEED))
         assertNull(h.fusion.valueOf(MetricKind.DISTANCE))

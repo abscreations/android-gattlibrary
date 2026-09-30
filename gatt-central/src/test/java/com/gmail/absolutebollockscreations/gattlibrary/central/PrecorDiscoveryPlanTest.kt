@@ -4,13 +4,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 class PrecorDiscoveryPlanTest {
     @Test
     fun `discovery declines when the Precor service is absent`() {
         assertTrue(
             planPrecorDiscovery(
-                mapOf(BluetoothIds.UUID_FTMS_SERVICE to setOf(BluetoothIds.UUID_BIKING_DATA)),
+                mapOf(FtmsUuids.UUID_FTMS_SERVICE to setOf(FtmsUuids.UUID_BIKING_DATA)),
             ).isEmpty(),
         )
     }

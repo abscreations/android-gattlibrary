@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * The FTMS offset-desync defect and its D38 fix, pinned together.
@@ -83,7 +84,7 @@ class FtmsOffsetDesyncCharacterizationTest {
      */
     @Test
     fun `matrix treadmill 20-byte packet yields energy and no phantom heart rate`() {
-        val h = harness(BluetoothIds.UUID_TREADMILL_DATA)
+        val h = harness(FtmsUuids.UUID_TREADMILL_DATA)
 
         BtEngineFtmsParsers.doTreadmill(
             h.emitter,
@@ -139,7 +140,7 @@ class FtmsOffsetDesyncCharacterizationTest {
      */
     @Test
     fun `matrix bike 20-byte packet stops at the energy block with no bogus MET`() {
-        val h = harness(BluetoothIds.UUID_BIKING_DATA)
+        val h = harness(FtmsUuids.UUID_BIKING_DATA)
 
         BtEngineFtmsParsers.doBike(
             h.emitter,
@@ -182,7 +183,7 @@ class FtmsOffsetDesyncCharacterizationTest {
      */
     @Test
     fun `an unavailable total energy sentinel is dropped, not published as 65535 kcal`() {
-        val h = harness(BluetoothIds.UUID_BIKING_DATA)
+        val h = harness(FtmsUuids.UUID_BIKING_DATA)
 
         // Flags 0x0101: bit 0 set so speed is absent, bit 8 for expended energy. Total 0xFFFF,
         // per-hour 0xFFFF, per-minute 0xFF — a machine declaring it computes none of the three.
@@ -205,7 +206,7 @@ class FtmsOffsetDesyncCharacterizationTest {
     /** A real total beside unavailable rates still publishes the total. */
     @Test
     fun `a known total energy with unavailable rates still publishes the total`() {
-        val h = harness(BluetoothIds.UUID_BIKING_DATA)
+        val h = harness(FtmsUuids.UUID_BIKING_DATA)
 
         // Flags 0x0101 again: speed absent, expended energy present. Total 300 kcal, both
         // rates unavailable.
@@ -228,7 +229,7 @@ class FtmsOffsetDesyncCharacterizationTest {
      */
     @Test
     fun `conforming treadmill packet is already correct and must survive the fix`() {
-        val h = harness(BluetoothIds.UUID_TREADMILL_DATA)
+        val h = harness(FtmsUuids.UUID_TREADMILL_DATA)
 
         BtEngineFtmsParsers.doTreadmill(
             h.emitter,

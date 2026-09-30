@@ -8,6 +8,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /**
  * Plan §11.4 and §11.5 for the Concept2 PM: multi-characteristic subscription through one
@@ -50,7 +51,7 @@ class Concept2ProductionPlumbingTest {
 
         val active = activateMatchingProtocolHandlers(
             listOf(ftms, concept2),
-            setOf(BluetoothIds.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
+            setOf(FtmsUuids.UUID_FTMS_SERVICE, BluetoothIds.UUID_C2_ERG_SERVICE),
             offer = { true },
         )
         assertEquals("PM5 uses native Concept2 even when FTMS is served", listOf(concept2), active)
@@ -79,8 +80,8 @@ class Concept2ProductionPlumbingTest {
             emptyList<BtEngineGattCore.ProtocolHandler>(),
             resolveProtocolHandlerRoute(
                 active,
-                BluetoothIds.UUID_ROWING_MACHINE_DATA,
-                BluetoothIds.UUID_FTMS_SERVICE,
+                FtmsUuids.UUID_ROWING_MACHINE_DATA,
+                FtmsUuids.UUID_FTMS_SERVICE,
             ).owners,
         )
         assertNull(resolveProtocolHandlerRoute(active, UUID.randomUUID(), null).ownership)
