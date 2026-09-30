@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrCommand
 import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 
 /**
  * Persona policy for control-response indications.
@@ -109,9 +110,6 @@ internal object KickrLegacyCommandDecoder {
         KickrLegacyDecodeResult.Invalid("opcode 0x${opcode.toString(16)} requires $expected bytes, got $actual")
 
     private fun decoded(command: WahooKickrCommand) = KickrLegacyDecodeResult.Decoded(command)
-
-    private fun u16(value: ByteArray, offset: Int): Int =
-        (value[offset].toInt() and 0xFF) or ((value[offset + 1].toInt() and 0xFF) shl 8)
 }
 
 internal data class KickrLegacyControlOutcome(

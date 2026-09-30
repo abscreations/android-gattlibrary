@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.u8
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.BigEndian
+
 
 
 /** Specification-derived CSAFE framing used only by the simulated PM5 peripheral. */
@@ -357,11 +358,11 @@ internal class Concept2CsafeLink {
         }
         SET_TARGET_AVG_WATTS -> {
             if (command.data.size != 2) null
-            else u16be(command.data).let { state.copy(targetPowerWatts = it.takeIf { value -> value > 0 }) }
+            else BigEndian.u16(command.data, 0).let { state.copy(targetPowerWatts = it.takeIf { value -> value > 0 }) }
         }
         SET_TARGET_CALS_PER_HOUR -> {
             if (command.data.size != 2) null
-            else u16be(command.data).let { state.copy(targetCaloriesPerHour = it.takeIf { value -> value > 0 }) }
+            else BigEndian.u16(command.data, 0).let { state.copy(targetCaloriesPerHour = it.takeIf { value -> value > 0 }) }
         }
         SET_WORKOUT_INTERVAL_COUNT -> {
             val index = command.data.singleOrNull()?.u8() ?: return null
@@ -474,13 +475,9 @@ internal class Concept2CsafeLink {
         else -> null
     }
 
-    private fun u32be(bytes: ByteArray, offset: Int): Int? {
-        var value = 0L
-        repeat(4) { value = (value shl 8) or bytes[offset + it].u8().toLong() }
-        return value.takeIf { it <= Int.MAX_VALUE }?.toInt()
-    }
-
-    private fun u16be(bytes: ByteArray): Int = (bytes[0].u8() shl 8) or bytes[1].u8()
+    /** CSAFE big-endian 32-bit field; null above Int.MAX_VALUE (unchecked read, as before). */
+    private fun u32be(bytes: ByteArray, offset: Int): Int? =
+        BigEndian.u32(bytes, offset).takeIf { it <= Int.MAX_VALUE }?.toInt()
 
     private fun Byte.u8(): Int = toInt() and 0xFF
 

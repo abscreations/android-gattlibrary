@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 
 /**
  * Corpus-anchored frame encoder (plan §8.2).
@@ -104,11 +105,9 @@ internal class SchwinnX70FrameEncoder {
         (value.coerceAtLeast(0.0) * SchwinnX70Measurement.SIBLING_SPEED_DIVISOR)
             .roundToInt().coerceIn(0, 0xFFFF)
 
-    private fun putU16(target: ByteArray, offset: Int, value: Int) {
-        val bounded = value.coerceIn(0, 0xFFFF)
-        target[offset] = bounded.toByte()
-        target[offset + 1] = (bounded ushr 8).toByte()
-    }
+    /** Saturating (LIB-18b W2). */
+    private fun putU16(target: ByteArray, offset: Int, value: Int) =
+        LittleEndian.putU16Saturating(target, offset, value.toLong())
 
     private fun putU48(target: ByteArray, offset: Int, value: Long) {
         val bounded = value.coerceIn(0L, MAX_U48)

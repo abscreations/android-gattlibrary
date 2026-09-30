@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.u16le
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
 
 /**
  * Pure PM5 GATT description and offset-aware Device Information values.
@@ -53,10 +53,10 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
                 fixedAscii(persona.compatibility.firmwareIdentity, 20)
             BluetoothIds.UUID_C2_MANUFACTURER_NAME -> fixedAscii("Concept2", 16)
             BluetoothIds.UUID_C2_MACHINE_TYPE -> byteArrayOf(persona.machine.wireMachineType.toByte())
-            BluetoothIds.UUID_C2_ATT_RECEIVE_MTU -> u16le(negotiatedMtu.coerceIn(23, 517))
+            BluetoothIds.UUID_C2_ATT_RECEIVE_MTU -> u16Wrapping(negotiatedMtu.coerceIn(23, 517))
             // Android does not expose the controller's active DLE maximum to a GATT server.
             // The 1.30 baseline therefore declares the conservative BLE default (27 octets).
-            BluetoothIds.UUID_C2_LL_MAX_TX_RX_BYTES -> u16le(27)
+            BluetoothIds.UUID_C2_LL_MAX_TX_RX_BYTES -> u16Wrapping(27)
             else -> return null
         }
         return if (offset <= value.size) value.copyOfRange(offset, value.size) else null
@@ -114,7 +114,5 @@ internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5)
             require(source.size <= size)
             return ByteArray(size).also { source.copyInto(it) }
         }
-
-        private fun u16le(value: Int): ByteArray = byteArrayOf(value.toByte(), (value ushr 8).toByte())
     }
 }

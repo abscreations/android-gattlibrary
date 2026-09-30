@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 
 /**
  * Generated Life Fitness records. The four captured personas retain their physical field order and
@@ -96,20 +97,11 @@ internal object LifeFitnessPacketEncoder {
     private class Writer {
         private val out = ArrayList<Byte>(34)
 
-        fun u8(value: Int) { out += value.coerceIn(0, 0xFF).toByte() }
-        fun u16(value: Int) {
-            val v = value.coerceIn(0, 0xFFFF)
-            out += (v and 0xFF).toByte(); out += ((v ushr 8) and 0xFF).toByte()
-        }
-        fun s16(value: Int) {
-            val v = value.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) and 0xFFFF
-            out += (v and 0xFF).toByte(); out += ((v ushr 8) and 0xFF).toByte()
-        }
-        fun u24(value: Int) {
-            val v = value.coerceIn(0, 0xFFFFFF)
-            out += (v and 0xFF).toByte(); out += ((v ushr 8) and 0xFF).toByte()
-            out += ((v ushr 16) and 0xFF).toByte()
-        }
+        // Saturating: out-of-range simulator values clamp rather than wrap (LIB-18b W2).
+        fun u8(value: Int) { out.addAll(LittleEndian.u8Saturating(value.toLong()).asList()) }
+        fun u16(value: Int) { out.addAll(LittleEndian.u16Saturating(value.toLong()).asList()) }
+        fun s16(value: Int) { out.addAll(LittleEndian.s16Saturating(value.toLong()).asList()) }
+        fun u24(value: Int) { out.addAll(LittleEndian.u24Saturating(value.toLong()).asList()) }
         fun toByteArray(): ByteArray = out.toByteArray()
     }
 

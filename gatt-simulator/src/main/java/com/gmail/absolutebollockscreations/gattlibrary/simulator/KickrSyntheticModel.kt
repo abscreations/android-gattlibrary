@@ -6,13 +6,13 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSin
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsProcedureSession
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsTargetRange
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.s16le
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.u16le
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.u32le
 import java.util.UUID
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Wrapping
 
 internal enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
 
@@ -470,22 +470,22 @@ internal object KickrStandardEncoders {
      */
     val SUPPORTED_RESISTANCE_RANGE: ByteArray =
         requireNotNull(KickrFtmsCapabilities.VALUE.resistanceRange).encodeS16()
-    val SUPPORTED_POWER_RANGE: ByteArray = s16le(0) + s16le(2_000) + u16le(1)
+    val SUPPORTED_POWER_RANGE: ByteArray = s16Wrapping(0) + s16Wrapping(2_000) + u16Wrapping(1)
 
     fun cyclingPowerMeasurement(snapshot: KickrMachineSnapshot): ByteArray =
-        u16le(CPS_FLAGS_CAPTURE_SHAPE) +
-            s16le(snapshot.powerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())) +
-            u16le(snapshot.accumulatedTorqueRaw) +
-            u32le(snapshot.cumulativeWheelRevolutions.toInt()) +
-            u16le(snapshot.lastWheelEventTicks) +
-            u16le(snapshot.cumulativeCrankRevolutions) +
-            u16le(snapshot.lastCrankEventTicks)
+        u16Wrapping(CPS_FLAGS_CAPTURE_SHAPE) +
+            s16Wrapping(snapshot.powerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())) +
+            u16Wrapping(snapshot.accumulatedTorqueRaw) +
+            u32Wrapping(snapshot.cumulativeWheelRevolutions.toInt().toLong()) +
+            u16Wrapping(snapshot.lastWheelEventTicks) +
+            u16Wrapping(snapshot.cumulativeCrankRevolutions) +
+            u16Wrapping(snapshot.lastCrankEventTicks)
 
     fun indoorBikeData(snapshot: KickrMachineSnapshot): ByteArray =
-        u16le(FTMS_FLAGS_CAPTURE_SHAPE) +
-            u16le((snapshot.speedKph * 100.0).roundToInt().coerceIn(0, 0xFFFF)) +
-            u16le((snapshot.cadenceRpm * 2.0).roundToInt().coerceIn(0, 0xFFFF)) +
-            s16le(snapshot.powerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()))
+        u16Wrapping(FTMS_FLAGS_CAPTURE_SHAPE) +
+            u16Wrapping((snapshot.speedKph * 100.0).roundToInt().coerceIn(0, 0xFFFF)) +
+            u16Wrapping((snapshot.cadenceRpm * 2.0).roundToInt().coerceIn(0, 0xFFFF)) +
+            s16Wrapping(snapshot.powerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()))
 
     fun readValue(
         persona: KickrSimulatorPersona,
@@ -547,7 +547,7 @@ internal object KickrStandardEncoders {
             BluetoothIds.UUID_HARDWARE_REVISION -> stringValue(identity.hardwareRevision ?: "SIM", identity.evidence)
             BluetoothIds.UUID_FIRMWARE_REVISION -> stringValue(identity.firmwareRevision ?: "SIM.1", identity.evidence)
             // SIG Weight is uint16 at 0.005 kg resolution: 15,000 represents synthetic 75.0 kg.
-            BluetoothIds.UUID_USER_WEIGHT -> KickrReadValue(u16le(15_000), setOf(KickrEvidenceLabel.SYN))
+            BluetoothIds.UUID_USER_WEIGHT -> KickrReadValue(u16Wrapping(15_000), setOf(KickrEvidenceLabel.SYN))
             else -> null
         }
     }

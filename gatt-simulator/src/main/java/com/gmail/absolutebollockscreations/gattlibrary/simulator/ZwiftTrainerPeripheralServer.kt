@@ -8,6 +8,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoField
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import kotlin.math.roundToLong
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 
 internal enum class ZwiftTrainerStage { CONNECTED, NEGOTIATED, INITIALIZED, READY }
 
@@ -313,8 +314,8 @@ internal class ZwiftTrainerPeripheralServer(
         val current = model.snapshot().simulation
         val target = runCatching {
             KickrSimulationTarget(
-                windMps = simValues[1]?.let { RideOnProtoCodec.zigZagDecode32(it) / 100.0 } ?: current.windMps,
-                gradePercent = simValues[2]?.let { RideOnProtoCodec.zigZagDecode32(it) / 100.0 }
+                windMps = simValues[1]?.let { ProtobufVarint.zigZagDecode32(it) / 100.0 } ?: current.windMps,
+                gradePercent = simValues[2]?.let { ProtobufVarint.zigZagDecode32(it) / 100.0 }
                     ?: current.gradePercent,
                 cw = simValues[3]?.let { it / 10_000.0 } ?: current.cw,
                 crr = simValues[4]?.let { it / 100_000.0 } ?: current.crr,

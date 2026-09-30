@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.putU16Wrapping
 
 /**
  * Pure page 16 / page 25 / page 81 + ANT envelope encoder (plan §7, §10).
@@ -145,7 +146,7 @@ internal object FeCBleTelemetryEncoder {
         page[2] = (floor(state.positiveVerticalDistanceMeters * 10.0).toLong() and 0xFF).toByte()
         page[3] = (floor(state.movementCount).toLong() and 0xFF).toByte()
         page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
-        putU16(page, 5, state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
+        putU16Wrapping(page, 5, state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
         page[7] = (0x03 or ((state.feState.wireValue and 0x07) shl 4)).toByte()
         return page
     }
@@ -191,8 +192,8 @@ internal object FeCBleTelemetryEncoder {
         page[0] = BluetoothIds.FEC_PAGE_SPECIFIC_TRAINER_TORQUE_DATA.toByte()
         page[1] = (state.torqueEventCount and 0xFF).toByte()
         page[2] = (state.wheelTicks and 0xFF).toByte()
-        putU16(page, 3, (state.wheelPeriodTicks and 0xFFFF).toInt())
-        putU16(page, 5, (floor(state.accumulatedTorqueThirtySecondNm).toLong() and 0xFFFF).toInt())
+        putU16Wrapping(page, 3, (state.wheelPeriodTicks and 0xFFFF).toInt())
+        putU16Wrapping(page, 5, (floor(state.accumulatedTorqueThirtySecondNm).toLong() and 0xFFFF).toInt())
         page[7] = ((state.feState.wireValue and 0x07) shl 4).toByte()
         return page
     }
@@ -202,7 +203,7 @@ internal object FeCBleTelemetryEncoder {
         val page = ByteArray(8)
         page[0] = BluetoothIds.FEC_PAGE_FE_CAPABILITIES.toByte()
         for (offset in 1..4) page[offset] = 0xFF.toByte()
-        putU16(page, 5, state.equipmentType.maximumResistanceNewtons)
+        putU16Wrapping(page, 5, state.equipmentType.maximumResistanceNewtons)
         page[7] = if (state.controlEnabled && state.equipmentType.supportsControl) 0x07 else 0x00
         return page
     }
@@ -217,8 +218,8 @@ internal object FeCBleTelemetryEncoder {
         page[1] = 0xFF.toByte()
         page[2] = 0xFF.toByte()
         page[3] = hardwareRevision.toByte()
-        putU16(page, 4, manufacturerId)
-        putU16(page, 6, modelNumber)
+        putU16Wrapping(page, 4, manufacturerId)
+        putU16Wrapping(page, 6, modelNumber)
         return page
     }
 
@@ -272,13 +273,8 @@ internal object FeCBleTelemetryEncoder {
         page[2] = 0xFF.toByte()
         page[3] = (floor(state.movementCount).toLong() and 0xFF).toByte()
         page[4] = (state.cadenceRpm?.coerceIn(0, 0xFE) ?: 0xFF).toByte()
-        putU16(page, 5, state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
+        putU16Wrapping(page, 5, state.instantaneousPowerWatts?.coerceIn(0, 0xFFFE) ?: 0xFFFF)
         page[7] = (0x01 or ((state.feState.wireValue and 0x07) shl 4)).toByte()
         return page
-    }
-
-    private fun putU16(page: ByteArray, offset: Int, value: Int) {
-        page[offset] = (value and 0xFF).toByte()
-        page[offset + 1] = ((value ushr 8) and 0xFF).toByte()
     }
 }

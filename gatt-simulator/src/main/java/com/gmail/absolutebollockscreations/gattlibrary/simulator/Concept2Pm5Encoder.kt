@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.io.ByteArrayOutputStream
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 
 /** Bounds-safe PM5 1.30 measurement encoders. */
 internal object Concept2Pm5Encoder {
@@ -171,13 +172,11 @@ internal object Concept2Pm5Encoder {
 
     private class Writer {
         private val out = ByteArrayOutputStream()
-        fun u8(value: Int) = out.write(value.coerceIn(0, 0xFF))
-        fun u16(value: Int) {
-            val v = value.coerceIn(0, 0xFFFF); out.write(v); out.write(v ushr 8)
-        }
-        fun u24(value: Int) {
-            val v = value.coerceIn(0, 0xFFFFFF); out.write(v); out.write(v ushr 8); out.write(v ushr 16)
-        }
+        // Saturating: out-of-range simulator values clamp rather than wrap (LIB-18b W2).
+        fun u8(value: Int) = put(LittleEndian.u8Saturating(value.toLong()))
+        fun u16(value: Int) = put(LittleEndian.u16Saturating(value.toLong()))
+        fun u24(value: Int) = put(LittleEndian.u24Saturating(value.toLong()))
+        private fun put(bytes: ByteArray) = out.write(bytes, 0, bytes.size)
         fun bytes(): ByteArray = out.toByteArray()
     }
 }

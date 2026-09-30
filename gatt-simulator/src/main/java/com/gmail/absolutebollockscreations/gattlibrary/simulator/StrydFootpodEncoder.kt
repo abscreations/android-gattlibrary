@@ -2,6 +2,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Saturating
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u32Saturating
 
 /**
  * Running Speed and Cadence (0x1814) and Cycling Power (0x1818) encoders for the Stryd footpod
@@ -79,7 +82,7 @@ internal object StrydFootpodEncoder {
             u16le((speedMps.coerceAtLeast(0.0) * 256.0).roundToInt()) +
             byteArrayOf(cadenceStridesPerMinute.coerceIn(0, 0xFF).toByte()) +
             u16le(strideLengthCm.coerceIn(0, 0xFFFF)) +
-            u32le((totalDistanceMetres.coerceAtLeast(0.0) * 10.0).toLong())
+            u32Saturating((totalDistanceMetres.coerceAtLeast(0.0) * 10.0).toLong())
     }
 
     /**
@@ -124,12 +127,12 @@ internal object StrydFootpodEncoder {
         cumulativeStrides: Int,
         lastStrideEventTime1024: Int,
     ): ByteArray = u16le(CPS_FLAGS) +
-        s16le(instantaneousPowerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())) +
+        s16Wrapping(instantaneousPowerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())) +
         u16le(cumulativeStrides and 0xFFFF) +
         u16le(lastStrideEventTime1024 and 0xFFFF)
 
     /** Cycling Power Feature (0x2A65), derived from [CPS_FLAGS] the same way [rscFeature] is. */
-    fun cyclingPowerFeature(): ByteArray = u32le(CPS_FEATURE_CRANK_REVOLUTION_DATA.toLong())
+    fun cyclingPowerFeature(): ByteArray = u32Saturating(CPS_FEATURE_CRANK_REVOLUTION_DATA.toLong())
 
     /** Sensor Location (0x2A5D). */
     fun sensorLocation(): ByteArray = byteArrayOf(SENSOR_LOCATION_IN_SHOE.toByte())
@@ -155,25 +158,8 @@ internal object StrydFootpodEncoder {
     // Octet helpers
     // ─────────────────────────────────────────────────────────────
 
-    private fun u16le(value: Int): ByteArray {
-        val v = value.coerceIn(0, 0xFFFF)
-        return byteArrayOf((v and 0xFF).toByte(), ((v ushr 8) and 0xFF).toByte())
-    }
-
-    private fun s16le(value: Int): ByteArray = byteArrayOf(
-        (value and 0xFF).toByte(),
-        ((value shr 8) and 0xFF).toByte(),
-    )
-
-    private fun u32le(value: Long): ByteArray {
-        val v = value.coerceIn(0L, 0xFFFF_FFFFL)
-        return byteArrayOf(
-            (v and 0xFF).toByte(),
-            ((v ushr 8) and 0xFF).toByte(),
-            ((v ushr 16) and 0xFF).toByte(),
-            ((v ushr 24) and 0xFF).toByte(),
-        )
-    }
+    /** Saturating (LIB-18b W2). */
+    private fun u16le(value: Int): ByteArray = u16Saturating(value.toLong())
 }
 
 /**

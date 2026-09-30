@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.KeiserMSeriesMeasurement
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 
 /** Renders the dynamic part Android supplies to Keiser's manufacturer-data AD structure. */
 internal object KeiserMSeriesSimulatorEncoder {
@@ -54,14 +55,11 @@ internal object KeiserMSeriesSimulatorEncoder {
     private fun scaledTenths(value: Double?): Int =
         ((value ?: 0.0).coerceAtLeast(0.0) * 10.0).roundToInt()
 
-    private fun putU16(target: ByteArray, offset: Int, value: Number) {
-        val bounded = value.toLong().coerceIn(0L, U16_MAX.toLong()).toInt()
-        target[offset] = bounded.toByte()
-        target[offset + 1] = (bounded ushr 8).toByte()
-    }
+    /** Saturating (LIB-18b W2); [value] may be any number and is truncated toward zero first. */
+    private fun putU16(target: ByteArray, offset: Int, value: Number) =
+        LittleEndian.putU16Saturating(target, offset, value.toLong())
 
     private const val U8_MAX = 0xff
-    private const val U16_MAX = 0xffff
     private const val DISTANCE_METRIC_BIT = 0x8000
     private const val DISTANCE_TENTHS_MASK = 0x7fff
     private const val MAX_ELAPSED_SECONDS = 255 * 60 + 59

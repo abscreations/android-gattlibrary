@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.PrecorMeasurement
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 
 /** Encoder for the fixed 19-byte Precor Spinner Chrono Power measurement fixture. */
 internal object PrecorChronoEncoder {
@@ -35,20 +36,12 @@ internal object PrecorChronoEncoder {
     private fun scaled(value: Double?, scale: Double): Int =
         ((value ?: 0.0).coerceAtLeast(0.0) * scale).roundToInt()
 
-    private fun putU16(target: ByteArray, offset: Int, value: Number) {
-        val bounded = value.toLong().coerceIn(0L, U16_MAX.toLong()).toInt()
-        target[offset] = bounded.toByte()
-        target[offset + 1] = (bounded ushr 8).toByte()
-    }
+    /** Saturating (LIB-18b W2); [value] may be any number and is truncated toward zero first. */
+    private fun putU16(target: ByteArray, offset: Int, value: Number) =
+        LittleEndian.putU16Saturating(target, offset, value.toLong())
 
-    private fun putU24(target: ByteArray, offset: Int, value: Int) {
-        val bounded = value.coerceIn(0, U24_MAX)
-        target[offset] = bounded.toByte()
-        target[offset + 1] = (bounded ushr 8).toByte()
-        target[offset + 2] = (bounded ushr 16).toByte()
-    }
+    private fun putU24(target: ByteArray, offset: Int, value: Int) =
+        LittleEndian.putU24Saturating(target, offset, value.toLong())
 
     private const val U8_MAX = 0xFF
-    private const val U16_MAX = 0xFFFF
-    private const val U24_MAX = 0xFFFFFF
 }

@@ -7,18 +7,18 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorE
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsTargetRange
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.s16le
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.u16le
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 
 /** Standard packet behavior directly exercised by Zwift in the physical Flux-2 capture. */
 internal object TacxFlux2StandardEncoders {
     const val INDOOR_BIKE_DATA_FLAGS = 0x0044
 
     fun indoorBikeData(state: FeCBleMachineState): ByteArray =
-        u16le(INDOOR_BIKE_DATA_FLAGS) +
-            u16le((state.speedMps * 360.0).roundToInt().coerceIn(0, 0xFFFF)) +
-            u16le(((state.cadenceRpm ?: 0) * 2).coerceIn(0, 0xFFFF)) +
-            s16le((state.instantaneousPowerWatts ?: 0).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()))
+        u16Wrapping(INDOOR_BIKE_DATA_FLAGS) +
+            u16Wrapping((state.speedMps * 360.0).roundToInt().coerceIn(0, 0xFFFF)) +
+            u16Wrapping(((state.cadenceRpm ?: 0) * 2).coerceIn(0, 0xFFFF)) +
+            s16Wrapping((state.instantaneousPowerWatts ?: 0).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()))
 
     /** The capture's CPS packets carry both wheel and crank event fields (flags `0x0030`). */
     fun cyclingPowerMeasurement(

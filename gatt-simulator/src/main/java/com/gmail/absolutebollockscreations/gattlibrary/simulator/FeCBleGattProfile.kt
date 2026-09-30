@@ -7,8 +7,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingServiceRegistry
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.s16le
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.u16le
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 
 /** Full UUIDs observed in the Neo GATT discovery; none are alias-derived. */
 internal object TacxGattIds {
@@ -223,5 +223,5 @@ internal val TACX_FLUX_2_SIMULATOR_FTMS_FEATURE = byteArrayOf(0x82.toByte(), 0x4
 internal val TACX_FLUX_2_CPS_FEATURE = byteArrayOf(0x0C, 0x00, 0x00, 0x00)
 
 /** Range values are simulator bounds, not claims about the captured trainer. */
-internal val TACX_FLUX_2_SYNTHETIC_RESISTANCE_RANGE = s16le(0) + s16le(1_000) + u16le(1)
-internal val TACX_FLUX_2_SYNTHETIC_POWER_RANGE = s16le(0) + s16le(2_000) + u16le(1)
+internal val TACX_FLUX_2_SYNTHETIC_RESISTANCE_RANGE = s16Wrapping(0) + s16Wrapping(1_000) + u16Wrapping(1)
+internal val TACX_FLUX_2_SYNTHETIC_POWER_RANGE = s16Wrapping(0) + s16Wrapping(2_000) + u16Wrapping(1)

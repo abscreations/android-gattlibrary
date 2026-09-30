@@ -10,6 +10,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16Wrapping
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s16Wrapping
 
 /**
  * Control Point tests.
@@ -241,7 +243,7 @@ class FtmsControlPointTest {
             ),
         )
         val out = FtmsControlPointHandler(sink).handle(
-            byteArrayOf(O.SET_TARGET_POWER) + s16le(1_001),
+            byteArrayOf(O.SET_TARGET_POWER) + s16Wrapping(1_001),
             hasControl = true,
         )
         assertEquals(R.INVALID_PARAMETER, result(out))
@@ -308,13 +310,13 @@ class FtmsControlPointTest {
         val cp = FtmsControlPointHandler(sink)
         val session = FtmsProcedureSession().apply { hasControl = true }
         val out = cp.handle(
-            byteArrayOf(O.SET_TARGET_RESISTANCE) + s16le(300),
+            byteArrayOf(O.SET_TARGET_RESISTANCE) + s16Wrapping(300),
             session,
         )
         assertEquals(R.SUCCESS, result(out))
         assertEquals(30.0, sink.resistance!!, 0.001)
         assertArrayEquals(
-            byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED) + s16le(300),
+            byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED) + s16Wrapping(300),
             out.status,
         )
     }
@@ -611,39 +613,39 @@ class FtmsControlPointTest {
                 assertArrayEquals(byteArrayOf(0x80.toByte(), opcode, R.SUCCESS), it.response)
             }
 
-        apply(O.SET_TARGET_SPEED, u16le(0))
+        apply(O.SET_TARGET_SPEED, u16Wrapping(0))
         assertEquals(0.0, sink.speed!!, 0.001)
-        apply(O.SET_TARGET_SPEED, u16le(3_000))
+        apply(O.SET_TARGET_SPEED, u16Wrapping(3_000))
         assertEquals(30.0, sink.speed!!, 0.001)
 
-        apply(O.SET_TARGET_INCLINATION, s16le(-100))
+        apply(O.SET_TARGET_INCLINATION, s16Wrapping(-100))
         assertEquals(-10.0, sink.inclination!!, 0.001)
-        apply(O.SET_TARGET_INCLINATION, s16le(300))
+        apply(O.SET_TARGET_INCLINATION, s16Wrapping(300))
         assertEquals(30.0, sink.inclination!!, 0.001)
 
-        apply(O.SET_TARGET_RESISTANCE, s16le(10))
+        apply(O.SET_TARGET_RESISTANCE, s16Wrapping(10))
         assertEquals(1.0, sink.resistance!!, 0.001)
-        apply(O.SET_TARGET_RESISTANCE, s16le(300))
+        apply(O.SET_TARGET_RESISTANCE, s16Wrapping(300))
         assertEquals(30.0, sink.resistance!!, 0.001)
 
-        apply(O.SET_TARGET_POWER, s16le(1))
+        apply(O.SET_TARGET_POWER, s16Wrapping(1))
         assertEquals(1, sink.power)
-        apply(O.SET_TARGET_POWER, s16le(1_000))
+        apply(O.SET_TARGET_POWER, s16Wrapping(1_000))
         assertEquals(1_000, sink.power)
-        val exactPower = apply(O.SET_TARGET_POWER, s16le(237))
+        val exactPower = apply(O.SET_TARGET_POWER, s16Wrapping(237))
         assertEquals(237, sink.power)
         assertArrayEquals(
-            byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED) + s16le(237),
+            byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED) + s16Wrapping(237),
             exactPower.status,
         )
 
-        apply(O.SET_TARGET_SPEED, u16le(65_535))
+        apply(O.SET_TARGET_SPEED, u16Wrapping(65_535))
         assertEquals(30.0, sink.speed!!, 0.001)
-        apply(O.SET_TARGET_INCLINATION, s16le(Short.MIN_VALUE.toInt()))
+        apply(O.SET_TARGET_INCLINATION, s16Wrapping(Short.MIN_VALUE.toInt()))
         assertEquals(-10.0, sink.inclination!!, 0.001)
-        apply(O.SET_TARGET_RESISTANCE, s16le(2_000))
+        apply(O.SET_TARGET_RESISTANCE, s16Wrapping(2_000))
         assertEquals(30.0, sink.resistance!!, 0.001)
-        apply(O.SET_TARGET_POWER, s16le(Short.MAX_VALUE.toInt()))
+        apply(O.SET_TARGET_POWER, s16Wrapping(Short.MAX_VALUE.toInt()))
         assertEquals(1_000, sink.power)
     }
 

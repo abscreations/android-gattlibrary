@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 
 /** Typed outcome of decoding one FEC3 write. Never throws; unknown/malformed input is a value. */
 internal sealed interface FeCBleControlCommand {
@@ -85,7 +86,7 @@ internal object FeCBleControlDecoder {
 
     /** Page 49 (`0x31`): `31 FF FF FF FF FF PP PP`, watts = uint16LE(6,7) / 4.0. */
     private fun decodeTargetPower(page: ByteArray): FeCBleControlCommand {
-        val raw = u16le(page, 6)
+        val raw = u16(page, 6)
         return FeCBleControlCommand.TargetPower(raw / 4.0)
     }
 
@@ -103,14 +104,14 @@ internal object FeCBleControlDecoder {
 
     /** Page 51 (`0x33`): `33 FF FF FF FF GG GG RR`. grade = uint16LE(5,6)*0.01 - 200; crr = RR*0.00005. */
     private fun decodeTrackResistance(page: ByteArray): FeCBleControlCommand {
-        val grade = u16le(page, 5) * 0.01 - 200.0
+        val grade = u16(page, 5) * 0.01 - 200.0
         val crr = (page[7].toInt() and 0xFF) * 0.00005
         return FeCBleControlCommand.TrackResistance(grade, crr)
     }
 
     /** Page 55 (`0x37`): `37 WW WW FF BD BW DD GR`. Only bytes 1-2 (weight) have an established meaning. */
     private fun decodeUserConfiguration(page: ByteArray): FeCBleControlCommand {
-        val raw = u16le(page, 1)
+        val raw = u16(page, 1)
         val weight = if (raw == 0xFFFF) null else raw / 100.0
         return FeCBleControlCommand.UserConfiguration(weight, page.copyOf())
     }
@@ -134,10 +135,6 @@ internal object FeCBleControlDecoder {
             transmitUntilAcknowledged = untilAcknowledged,
         )
     }
-
-    private fun u16le(page: ByteArray, offset: Int): Int =
-        (page[offset].toInt() and 0xFF) or ((page[offset + 1].toInt() and 0xFF) shl 8)
-
     private val KNOWN_CONTROL_PAGES = setOf(
         BluetoothIds.FEC_PAGE_BASIC_RESISTANCE,
         BluetoothIds.FEC_PAGE_TARGET_POWER,
