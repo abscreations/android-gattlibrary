@@ -3,6 +3,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRecord
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DroppedEvent
 
 /** Eviction and drain behaviour of the §0.9.5 ring, without threads. */
 class CaptureRingTest {

@@ -1,4 +1,4 @@
-package com.gmail.absolutebollockscreations.gattlibrary.central.capture
+package com.gmail.absolutebollockscreations.gattlibrary.core.capture
 
 import java.util.UUID
 import org.junit.Assert.assertEquals

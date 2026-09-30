@@ -1,6 +1,7 @@
-package com.gmail.absolutebollockscreations.gattlibrary.central.capture
+package com.gmail.absolutebollockscreations.gattlibrary.core.capture
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 import java.util.UUID
 
 /**
@@ -40,13 +41,13 @@ import java.util.UUID
  * tests assert on encoded lines rather than on instances.
  */
 @GattLibraryInternalApi
-sealed interface CaptureEvent {
+public sealed interface CaptureEvent {
 
     /** The `ev` discriminator written to the wire. */
-    val ev: String
+    public val ev: String
 
     /** Session-scoped connection label, or null for connection-less events. */
-    val conn: String?
+    public val conn: String?
 }
 
 /**
@@ -69,7 +70,7 @@ sealed interface CaptureEvent {
  * carried it onward.
  */
 @GattLibraryInternalApi
-enum class CaptureRole(val tag: String, val fileSuffix: String) {
+public enum class CaptureRole(public val tag: String, public val fileSuffix: String) {
     /** FitBridge as GATT client. `notify` and `read` mean *received*. */
     CENTRAL("BLECAP", "central"),
 
@@ -77,15 +78,15 @@ enum class CaptureRole(val tag: String, val fileSuffix: String) {
     PERIPHERAL("BLECAP-P", "peripheral"),
     ;
 
-    companion object {
+    public companion object {
         /** True for any reserved capture tag. Human-log trees reject all of them. */
-        fun isCaptureTag(tag: String?): Boolean = entries.any { it.tag == tag }
+        public fun isCaptureTag(tag: String?): Boolean = entries.any { it.tag == tag }
     }
 }
 
 /** Why a payload was withheld. Written verbatim as the `redacted` field. */
 @GattLibraryInternalApi
-enum class RedactionReason(val wireName: String) {
+public enum class RedactionReason(public val wireName: String) {
     /** Name, email, age, gender, height, weight — Life Fitness (Phase 6). */
     USER_PROFILE("user_profile"),
 
@@ -110,7 +111,28 @@ enum class RedactionReason(val wireName: String) {
  * registry that can be mutated too late.
  */
 @GattLibraryInternalApi
-object SensitiveCharacteristics {
+public object SensitiveCharacteristics {
+
+    /**
+     * Body metrics that are deliberately **not** redaction-registered (D102).
+     *
+     * Weight and height are personal data, and until 2026-09-08 they were redacted with the rest
+     * of the profile. Two things changed that. They are load-bearing inputs to several vendor
+     * power and energy models rather than identifiers, so a capture that hides them cannot be used
+     * to diagnose a wrong power figure — the single most common thing these captures are exported
+     * to investigate. And a capture is only ever produced by a user who armed it and only ever
+     * leaves the device through a share sheet the user drives, so disclosure is consented rather
+     * than incidental.
+     *
+     * The identifying fields are a different question and stay registered: a name, an email
+     * address, an age or a gender diagnoses nothing, so retaining them would buy no troubleshooting
+     * value at real cost. Keep that asymmetry when adding to this list — the test is whether the
+     * value would appear in a bug report's *explanation*, not merely in its data.
+     */
+    public val DIAGNOSTICALLY_RETAINED_CHARACTERISTICS: List<UUID> = listOf(
+        SigUuids.UUID_USER_WEIGHT,
+        SigUuids.UUID_USER_HEIGHT,
+    )
 
     private val byUuid: Map<UUID, RedactionReason> = mapOf(
         // Life Fitness vendor token 1 — 32-byte ASCII hex string.
@@ -139,14 +161,14 @@ object SensitiveCharacteristics {
         // Weight (2A98) and height (2A8E) are deliberately absent under D102. They are model
         // inputs rather than identifiers, a capture that hides them cannot diagnose a wrong power
         // figure, and captures are armed and shared by the user rather than collected. See
-        // BluetoothIds.DIAGNOSTICALLY_RETAINED_CHARACTERISTICS for the reasoning and the test that
+        // DIAGNOSTICALLY_RETAINED_CHARACTERISTICS for the reasoning and the test that
         // pins it. Everything above identifies a person and stays registered.
     )
 
-    fun reasonFor(characteristic: UUID): RedactionReason? = byUuid[characteristic]
+    public fun reasonFor(characteristic: UUID): RedactionReason? = byUuid[characteristic]
 
     /** Every registered characteristic, for the redaction test to enumerate. */
-    fun all(): Map<UUID, RedactionReason> = byUuid
+    public fun all(): Map<UUID, RedactionReason> = byUuid
 }
 
 // ── connection-less events ────────────────────────────────────────────────────
@@ -156,7 +178,8 @@ object SensitiveCharacteristics {
  * parsed-only record is insufficient, because the whole metric stream lives in
  * manufacturer data this app does not yet decode.
  */
-internal data class ScanEvent(
+@GattLibraryInternalApi
+public data class ScanEvent(
     val name: String?,
     val rssi: Int,
     val serviceUuids: List<String>,
@@ -171,7 +194,7 @@ internal data class ScanEvent(
 
 /** Ring-buffer or writer-queue overflow marker. */
 @GattLibraryInternalApi
-data class DroppedEvent(val count: Int) : CaptureEvent {
+public data class DroppedEvent(val count: Int) : CaptureEvent {
     override val ev: String get() = "dropped"
     override val conn: String? get() = null
 }
@@ -179,7 +202,7 @@ data class DroppedEvent(val count: Int) : CaptureEvent {
 // ── connection lifecycle ──────────────────────────────────────────────────────
 
 @GattLibraryInternalApi
-data class ConnectEvent(
+public data class ConnectEvent(
     override val conn: String,
     /** Link generation from §0.2, so a reconnect is distinguishable. */
     val generation: Int,
@@ -197,7 +220,7 @@ data class ConnectEvent(
 }
 
 @GattLibraryInternalApi
-data class DisconnectEvent(
+public data class DisconnectEvent(
     override val conn: String,
     val reason: String,
     val generation: Int,
@@ -210,19 +233,22 @@ data class DisconnectEvent(
  * useful event for triage: "it connects but shows nothing" is usually answered
  * by looking at what the device actually exposes.
  */
-internal data class GattInventoryEvent(
+@GattLibraryInternalApi
+public data class GattInventoryEvent(
     override val conn: String,
     val services: List<CapturedService>,
 ) : CaptureEvent {
     override val ev: String get() = "gatt_inventory"
 }
 
-internal data class CapturedService(
+@GattLibraryInternalApi
+public data class CapturedService(
     val uuid: String,
     val characteristics: List<CapturedCharacteristic>,
 )
 
-internal data class CapturedCharacteristic(
+@GattLibraryInternalApi
+public data class CapturedCharacteristic(
     val uuid: String,
     /** Raw property bitmask, not a decoded list — decoding can be wrong later. */
     val properties: Int,
@@ -230,7 +256,7 @@ internal data class CapturedCharacteristic(
 )
 
 @GattLibraryInternalApi
-data class CccdEvent(
+public data class CccdEvent(
     override val conn: String,
     val characteristic: String,
     val enabled: Boolean,
@@ -242,7 +268,7 @@ data class CccdEvent(
 // ── traffic ───────────────────────────────────────────────────────────────────
 
 @GattLibraryInternalApi
-data class NotifyEvent(
+public data class NotifyEvent(
     override val conn: String,
     val characteristic: String,
     val payload: ByteArray,
@@ -251,7 +277,7 @@ data class NotifyEvent(
 }
 
 @GattLibraryInternalApi
-data class ReadEvent(
+public data class ReadEvent(
     override val conn: String,
     val characteristic: String,
     val payload: ByteArray,
@@ -270,16 +296,16 @@ data class ReadEvent(
  * the hole this design exists to close.
  */
 @GattLibraryInternalApi
-class WriteEvent private constructor(
+public class WriteEvent private constructor(
     override val conn: String,
-    val characteristic: String,
-    val payload: ByteArray,
-    val withoutResponse: Boolean,
+    public val characteristic: String,
+    public val payload: ByteArray,
+    public val withoutResponse: Boolean,
 ) : CaptureEvent {
 
     override val ev: String get() = "write"
 
-    companion object {
+    public companion object {
         /**
          * Builds a write event, redacting the payload when either the
          * characteristic is registered in [SensitiveCharacteristics] or the
@@ -289,7 +315,7 @@ class WriteEvent private constructor(
          * `redactAs` parameter exists for payloads whose characteristic UUID is
          * only known at runtime, which is the Life Fitness user service case.
          */
-        fun of(
+        public fun of(
             conn: String,
             characteristic: UUID,
             payload: ByteArray,
@@ -323,7 +349,8 @@ class WriteEvent private constructor(
  * Note what is missing: there is no `payload`, no `hex`, no `bytes`. The length
  * is retained because it is diagnostically useful and reveals nothing.
  */
-internal data class RedactedWriteEvent(
+@GattLibraryInternalApi
+public data class RedactedWriteEvent(
     override val conn: String,
     val characteristic: String,
     val reason: RedactionReason,
@@ -336,7 +363,8 @@ internal data class RedactedWriteEvent(
 // ── decisions and decoded output ──────────────────────────────────────────────
 
 /** Matcher evidence per §0.7, so a wrong selection can be understood later. */
-internal data class MatchEvent(
+@GattLibraryInternalApi
+public data class MatchEvent(
     override val conn: String,
     val candidates: List<MatchCandidate>,
     val selected: String?,
@@ -344,7 +372,8 @@ internal data class MatchEvent(
     override val ev: String get() = "match"
 }
 
-internal data class MatchCandidate(
+@GattLibraryInternalApi
+public data class MatchCandidate(
     val adapterId: String,
     val score: Int,
     val evidence: String,
@@ -357,7 +386,8 @@ internal data class MatchCandidate(
  * data needed to add a correct fingerprint later, and it is also one of the
  * arming triggers in §0.9.5.
  */
-internal data class DemoteEvent(
+@GattLibraryInternalApi
+public data class DemoteEvent(
     override val conn: String,
     val from: String,
     val to: String?,
@@ -373,7 +403,8 @@ internal data class DemoteEvent(
  * correlated with the value. This pairing is what makes a capture convertible
  * into a §5 fixture.
  */
-internal data class SampleEvent(
+@GattLibraryInternalApi
+public data class SampleEvent(
     override val conn: String,
     val sourceId: String,
     val metric: String,
@@ -385,7 +416,8 @@ internal data class SampleEvent(
 }
 
 /** Structural lifecycle/decision record for an advertisement-only metric source. */
-internal data class AdvertisementSourceEvent(
+@GattLibraryInternalApi
+public data class AdvertisementSourceEvent(
     override val conn: String?,
     val family: String,
     val candidate: String,
@@ -399,7 +431,8 @@ internal data class AdvertisementSourceEvent(
     override val ev: String get() = "advertisement_source"
 }
 
-internal data class ErrorEvent(
+@GattLibraryInternalApi
+public data class ErrorEvent(
     override val conn: String?,
     val where: String,
     val message: String,
@@ -418,7 +451,7 @@ internal data class ErrorEvent(
  * when the thing happened.
  */
 @GattLibraryInternalApi
-data class CaptureRecord(
+public data class CaptureRecord(
     val atMs: Long,
     val seq: Long,
     val event: CaptureEvent,
@@ -432,7 +465,7 @@ data class CaptureRecord(
 
 /** First line of every capture file. */
 @GattLibraryInternalApi
-data class CaptureHeader(
+public data class CaptureHeader(
     val appVersion: String,
     val androidSdk: Int,
     val deviceModel: String,
@@ -441,8 +474,8 @@ data class CaptureHeader(
     val t0Ms: Long,
     val captureVersion: Int = CAPTURE_VERSION,
 ) {
-    companion object {
-        const val CAPTURE_VERSION = 1
+    public companion object {
+        public const val CAPTURE_VERSION: Int = 1
     }
 }
 
@@ -453,23 +486,24 @@ data class CaptureHeader(
  * is no cross-session device identity to leak because FitBridge does not keep
  * one.
  */
-internal class ConnectionLabels {
+@GattLibraryInternalApi
+public class ConnectionLabels {
 
     private val lock = Any()
     private val labels = LinkedHashMap<String, String>()
     private var next = 1
 
     /** Stable label for [address] within this session. */
-    fun labelFor(address: String): String = synchronized(lock) {
+    public fun labelFor(address: String): String = synchronized(lock) {
         labels.getOrPut(address.lowercase()) { "c${next++}" }
     }
 
     /** Existing label, or null if this address has never been labelled. */
-    fun existingLabel(address: String): String? = synchronized(lock) {
+    public fun existingLabel(address: String): String? = synchronized(lock) {
         labels[address.lowercase()]
     }
 
-    fun clear() = synchronized(lock) {
+    public fun clear(): Unit = synchronized(lock) {
         labels.clear()
         next = 1
     }

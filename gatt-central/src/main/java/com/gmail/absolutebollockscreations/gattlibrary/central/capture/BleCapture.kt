@@ -3,6 +3,12 @@ package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureJson
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRecord
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRole
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ConnectionLabels
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DroppedEvent
 
 /**
  * The emission seam and arming switch for the diagnostic capture channel

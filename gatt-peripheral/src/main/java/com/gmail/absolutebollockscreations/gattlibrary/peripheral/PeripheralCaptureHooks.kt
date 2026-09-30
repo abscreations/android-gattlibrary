@@ -2,13 +2,13 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureRole
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CccdEvent
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.ConnectEvent
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.DisconnectEvent
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.NotifyEvent
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.ReadEvent
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.WriteEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRole
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CccdEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ConnectEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DisconnectEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.NotifyEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ReadEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.WriteEvent
 import java.util.UUID
 
 /**

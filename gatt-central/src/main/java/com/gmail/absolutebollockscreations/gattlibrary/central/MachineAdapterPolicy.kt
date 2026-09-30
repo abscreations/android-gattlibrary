@@ -2,8 +2,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTrigger
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.DemoteEvent
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.ErrorEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DemoteEvent
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ErrorEvent
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
 

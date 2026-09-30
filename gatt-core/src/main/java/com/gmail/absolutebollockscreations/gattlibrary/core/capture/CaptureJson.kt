@@ -1,4 +1,4 @@
-package com.gmail.absolutebollockscreations.gattlibrary.central.capture
+package com.gmail.absolutebollockscreations.gattlibrary.core.capture
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 /**
@@ -21,12 +21,12 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * line termination.
  */
 @GattLibraryInternalApi
-object CaptureJson {
+public object CaptureJson {
 
     private val HEX = "0123456789abcdef".toCharArray()
 
     /** First line of a capture file. */
-    fun header(header: CaptureHeader): String = buildString(128) {
+    public fun header(header: CaptureHeader): String = buildString(128) {
         append('{')
         appendNumberField("capture_version", header.captureVersion.toLong(), first = true)
         appendStringField("app", header.appVersion)
@@ -37,7 +37,7 @@ object CaptureJson {
         append('}')
     }
 
-    fun encode(record: CaptureRecord): String = buildString(160) {
+    public fun encode(record: CaptureRecord): String = buildString(160) {
         append('{')
         appendNumberField("t", record.atMs, first = true)
         appendNumberField("seq", record.seq)

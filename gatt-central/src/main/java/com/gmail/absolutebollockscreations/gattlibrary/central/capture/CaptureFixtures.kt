@@ -1,5 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureJson
+
 /**
  * Converts a capture NDJSON file into a §5 fixture.
  *

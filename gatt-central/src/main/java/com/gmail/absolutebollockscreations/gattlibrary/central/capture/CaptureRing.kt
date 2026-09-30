@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central.capture
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.ArrayDeque
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRecord
 
 /**
  * Bounded in-memory buffer of the most recent capture events (plan §0.9.5).

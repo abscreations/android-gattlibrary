@@ -114,7 +114,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public final fun getC2_ERG_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
 	public final fun getCSC_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
 	public final fun getCYCLING_POWER_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
-	public final fun getDIAGNOSTICALLY_RETAINED_CHARACTERISTICS ()Ljava/util/List;
 	public final fun getFTMS_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
 	public final fun getGLUCOSE_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
 	public final fun getHRM_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
@@ -987,8 +986,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Captu
 	public final fun read (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/util/UUID;[B)V
 	public final fun sample (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSample;)V
 	public final fun scan (Ljava/lang/String;ILjava/util/List;Ljava/util/Map;Ljava/util/Map;)V
-	public final fun wrote (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/util/UUID;[BZLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;)V
-	public static synthetic fun wrote$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/CaptureHooks;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/util/UUID;[BZLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;ILjava/lang/Object;)V
+	public final fun wrote (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/util/UUID;[BZLcom/gmail/absolutebollockscreations/gattlibrary/core/capture/RedactionReason;)V
+	public static synthetic fun wrote$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/CaptureHooks;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Ljava/util/UUID;[BZLcom/gmail/absolutebollockscreations/gattlibrary/core/capture/RedactionReason;ILjava/lang/Object;)V
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/CccdRecoveryDecision {
@@ -4863,85 +4862,14 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/captu
 	public final fun armedBy ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureTrigger;
 	public final fun bufferedCount ()I
 	public final fun disarm (Ljava/lang/String;)V
-	public final fun emit (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;)V
-	public static synthetic fun emit$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/BleCapture;Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;ILjava/lang/Object;)V
+	public final fun emit (Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureRole;)V
+	public static synthetic fun emit$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/BleCapture;Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureRole;ILjava/lang/Object;)V
 	public final fun isArmed ()Z
 	public final fun labelFor (Ljava/lang/String;)Ljava/lang/String;
 	public final fun resetClock ()V
 	public final fun resetSession ()V
 	public final fun setClockForTest (Lkotlin/jvm/functions/Function0;)V
 	public final fun summary (Ljava/lang/String;[Ljava/lang/Object;)V
-}
-
-public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public abstract fun getConn ()Ljava/lang/String;
-	public abstract fun getEv ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureHeader {
-	public static final field CAPTURE_VERSION I
-	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureHeader$Companion;
-	public fun <init> (Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JI)V
-	public synthetic fun <init> (Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JIILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()I
-	public final fun component3 ()Ljava/lang/String;
-	public final fun component4 ()Ljava/lang/String;
-	public final fun component5 ()J
-	public final fun component6 ()I
-	public final fun copy (Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JI)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureHeader;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureHeader;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JIILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureHeader;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getAndroidSdk ()I
-	public final fun getAppVersion ()Ljava/lang/String;
-	public final fun getCaptureVersion ()I
-	public final fun getDeviceModel ()Ljava/lang/String;
-	public final fun getSession ()Ljava/lang/String;
-	public final fun getT0Ms ()J
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureHeader$Companion {
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureJson {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureJson;
-	public final fun encode (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRecord;)Ljava/lang/String;
-	public final fun header (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureHeader;)Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRecord {
-	public fun <init> (JJLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;)V
-	public synthetic fun <init> (JJLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun component1 ()J
-	public final fun component2 ()J
-	public final fun component3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;
-	public final fun component4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;
-	public final fun copy (JJLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRecord;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRecord;JJLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRecord;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getAtMs ()J
-	public final fun getEvent ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;
-	public final fun getRole ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;
-	public final fun getSeq ()J
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole : java/lang/Enum {
-	public static final field CENTRAL Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;
-	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole$Companion;
-	public static final field PERIPHERAL Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun getFileSuffix ()Ljava/lang/String;
-	public final fun getTag ()Ljava/lang/String;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureRole$Companion {
-	public final fun isCaptureTag (Ljava/lang/String;)Z
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureTrigger : java/lang/Enum {
@@ -4955,132 +4883,5 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/captu
 	public final fun getWireName ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureTrigger;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureTrigger;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/CccdEvent : com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()Z
-	public final fun component4 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CccdEvent;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CccdEvent;Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CccdEvent;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getCharacteristic ()Ljava/lang/String;
-	public fun getConn ()Ljava/lang/String;
-	public final fun getEnabled ()Z
-	public fun getEv ()Ljava/lang/String;
-	public final fun getResult ()Ljava/lang/String;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/ConnectEvent : com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public fun <init> (Ljava/lang/String;ILjava/lang/Integer;)V
-	public synthetic fun <init> (Ljava/lang/String;ILjava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()I
-	public final fun component3 ()Ljava/lang/Integer;
-	public final fun copy (Ljava/lang/String;ILjava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/ConnectEvent;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/ConnectEvent;Ljava/lang/String;ILjava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/ConnectEvent;
-	public fun equals (Ljava/lang/Object;)Z
-	public fun getConn ()Ljava/lang/String;
-	public fun getEv ()Ljava/lang/String;
-	public final fun getGeneration ()I
-	public final fun getMtu ()Ljava/lang/Integer;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/DisconnectEvent : com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;I)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()I
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/DisconnectEvent;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/DisconnectEvent;Ljava/lang/String;Ljava/lang/String;IILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/DisconnectEvent;
-	public fun equals (Ljava/lang/Object;)Z
-	public fun getConn ()Ljava/lang/String;
-	public fun getEv ()Ljava/lang/String;
-	public final fun getGeneration ()I
-	public final fun getReason ()Ljava/lang/String;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/DroppedEvent : com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public fun <init> (I)V
-	public final fun component1 ()I
-	public final fun copy (I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/DroppedEvent;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/DroppedEvent;IILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/DroppedEvent;
-	public fun equals (Ljava/lang/Object;)Z
-	public fun getConn ()Ljava/lang/String;
-	public final fun getCount ()I
-	public fun getEv ()Ljava/lang/String;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/NotifyEvent : com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;[B)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()[B
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;[B)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/NotifyEvent;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/NotifyEvent;Ljava/lang/String;Ljava/lang/String;[BILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/NotifyEvent;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getCharacteristic ()Ljava/lang/String;
-	public fun getConn ()Ljava/lang/String;
-	public fun getEv ()Ljava/lang/String;
-	public final fun getPayload ()[B
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/ReadEvent : com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;[B)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()[B
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;[B)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/ReadEvent;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/ReadEvent;Ljava/lang/String;Ljava/lang/String;[BILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/ReadEvent;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getCharacteristic ()Ljava/lang/String;
-	public fun getConn ()Ljava/lang/String;
-	public fun getEv ()Ljava/lang/String;
-	public final fun getPayload ()[B
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason : java/lang/Enum {
-	public static final field ATHLETE_WEIGHT Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;
-	public static final field USER_PROFILE Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;
-	public static final field VENDOR_TOKEN Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun getWireName ()Ljava/lang/String;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/SensitiveCharacteristics {
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/SensitiveCharacteristics;
-	public final fun all ()Ljava/util/Map;
-	public final fun reasonFor (Ljava/util/UUID;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/WriteEvent : com/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent {
-	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/WriteEvent$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;[BZLkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun getCharacteristic ()Ljava/lang/String;
-	public fun getConn ()Ljava/lang/String;
-	public fun getEv ()Ljava/lang/String;
-	public final fun getPayload ()[B
-	public final fun getWithoutResponse ()Z
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/capture/WriteEvent$Companion {
-	public final fun of (Ljava/lang/String;Ljava/util/UUID;[BZLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;
-	public static synthetic fun of$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/WriteEvent$Companion;Ljava/lang/String;Ljava/util/UUID;[BZLcom/gmail/absolutebollockscreations/gattlibrary/central/capture/RedactionReason;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/capture/CaptureEvent;
 }
 

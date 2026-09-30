@@ -5,6 +5,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureJson
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRecord
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRole
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ReadEvent
 
 /**
  * Downstream reads are recorded.

@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DroppedEvent
 
 /**
  * Plan §0.9.5: the ring fills continuously and arming flushes it first.
