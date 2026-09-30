@@ -9,7 +9,7 @@ import org.junit.Test
  * Encoder and gait-model coverage for the Stryd footpod persona.
  *
  * The fixtures in the first three tests are **verbatim captured frames** from the sanitized corpus
- * (`docs/evidence/stryd/`), not values computed from this implementation. That is the point: an
+ * (`gatt-fixtures/.../fixtures/hardware/stryd/`), not values computed from this implementation. That is the point: an
  * encoder that agrees with itself proves nothing, so each one feeds the frame's own decoded field
  * values back in and asserts the octets come out identical. Every one of the corpus's 3,717 RSC
  * and CPS frames round-trips this way; these are four representative ones.

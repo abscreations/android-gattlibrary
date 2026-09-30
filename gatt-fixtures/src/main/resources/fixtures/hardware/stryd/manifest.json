@@ -1,0 +1,174 @@
+{
+  "corpus": "stryd-footpod-ble",
+  "source": "qdomyos-zwift application debug logs (iOS/macOS Qt BLE central)",
+  "capture_type": "application-layer GATT notifications, not an over-the-air sniffer trace",
+  "sanitization": [
+    "wall-clock timestamps replaced with milliseconds relative to first frame of session",
+    "CoreBluetooth peer UUIDs and MAC address fields dropped",
+    "per-unit manufacturer-data payload dropped; company ID and length retained",
+    "non-Stryd devices from the scan log never extracted",
+    "source log filenames replaced with session pseudonyms"
+  ],
+  "sessions": [
+    {
+      "id": "session-A",
+      "advertised_local_names": [
+        "Stryd"
+      ],
+      "mfg_company_ids": [
+        43690
+      ],
+      "mfg_payload_len_bytes": [
+        6
+      ],
+      "duration_s": 355.1,
+      "frame_counts": {
+        "battery_level": 19,
+        "rsc_measurement": 355,
+        "cycling_power_measurement": 356,
+        "stryd_proprietary_a": 710
+      },
+      "total_frames": 1440,
+      "redundant_copies_in_source_archive": 2,
+      "notification_cadence_ms": {
+        "cycling_power_measurement": {
+          "median_gap_ms": 992,
+          "p05_gap_ms": 930,
+          "p95_gap_ms": 1053
+        },
+        "rsc_measurement": {
+          "median_gap_ms": 994,
+          "p05_gap_ms": 899,
+          "p95_gap_ms": 1081
+        },
+        "stryd_proprietary_a": {
+          "median_gap_ms": 61,
+          "p05_gap_ms": 1,
+          "p95_gap_ms": 1056
+        },
+        "battery_level": {
+          "median_gap_ms": 10017,
+          "p05_gap_ms": 2555,
+          "p95_gap_ms": 60047
+        }
+      }
+    },
+    {
+      "id": "session-B",
+      "advertised_local_names": [
+        "StrydX"
+      ],
+      "mfg_company_ids": [
+        43690
+      ],
+      "mfg_payload_len_bytes": [
+        6
+      ],
+      "duration_s": 1229.1,
+      "frame_counts": {
+        "battery_level": 41,
+        "rsc_measurement": 1230,
+        "cycling_power_measurement": 1230,
+        "stryd_proprietary_a": 3687
+      },
+      "total_frames": 6188,
+      "redundant_copies_in_source_archive": 1,
+      "notification_cadence_ms": {
+        "cycling_power_measurement": {
+          "median_gap_ms": 991,
+          "p05_gap_ms": 958,
+          "p95_gap_ms": 1051
+        },
+        "rsc_measurement": {
+          "median_gap_ms": 991,
+          "p05_gap_ms": 933,
+          "p95_gap_ms": 1052
+        },
+        "stryd_proprietary_a": {
+          "median_gap_ms": 3,
+          "p05_gap_ms": 1,
+          "p95_gap_ms": 1019
+        },
+        "battery_level": {
+          "median_gap_ms": 30001,
+          "p05_gap_ms": 5010,
+          "p95_gap_ms": 60002
+        }
+      }
+    },
+    {
+      "id": "session-C",
+      "advertised_local_names": [
+        "StrydX"
+      ],
+      "mfg_company_ids": [
+        43690
+      ],
+      "mfg_payload_len_bytes": [
+        6
+      ],
+      "duration_s": 131.0,
+      "frame_counts": {
+        "rsc_measurement": 132,
+        "cycling_power_measurement": 132,
+        "stryd_proprietary_a": 262
+      },
+      "total_frames": 526,
+      "redundant_copies_in_source_archive": 1,
+      "notification_cadence_ms": {
+        "cycling_power_measurement": {
+          "median_gap_ms": 991,
+          "p05_gap_ms": 930,
+          "p95_gap_ms": 1050
+        },
+        "rsc_measurement": {
+          "median_gap_ms": 991,
+          "p05_gap_ms": 930,
+          "p95_gap_ms": 1050
+        },
+        "stryd_proprietary_a": {
+          "median_gap_ms": 108,
+          "p05_gap_ms": 2,
+          "p95_gap_ms": 1018
+        }
+      }
+    },
+    {
+      "id": "session-D",
+      "advertised_local_names": [
+        "Stryd"
+      ],
+      "mfg_company_ids": [
+        43690
+      ],
+      "mfg_payload_len_bytes": [
+        6
+      ],
+      "duration_s": 140.0,
+      "frame_counts": {
+        "rsc_measurement": 141,
+        "cycling_power_measurement": 141,
+        "stryd_proprietary_a": 140
+      },
+      "total_frames": 422,
+      "redundant_copies_in_source_archive": 1,
+      "notification_cadence_ms": {
+        "cycling_power_measurement": {
+          "median_gap_ms": 990,
+          "p05_gap_ms": 988,
+          "p95_gap_ms": 1033
+        },
+        "rsc_measurement": {
+          "median_gap_ms": 991,
+          "p05_gap_ms": 964,
+          "p95_gap_ms": 1048
+        },
+        "stryd_proprietary_a": {
+          "median_gap_ms": 991,
+          "p05_gap_ms": 963,
+          "p95_gap_ms": 1048
+        }
+      }
+    }
+  ]
+}

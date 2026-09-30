@@ -22,12 +22,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    sourceSets {
-        // The sanitized Stryd capture corpus lives with the evidence documents; the golden test reads
-        // it from the classpath by file name rather than keeping a second copy.
-        getByName("test").resources.directories.add("../docs/evidence/stryd")
-    }
-
     testOptions {
         unitTests {
             isReturnDefaultValues = true
