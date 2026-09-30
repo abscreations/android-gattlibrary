@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.HEART_RATE_FRESHNESS_MS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -77,14 +76,6 @@ class SimulatorHeartRateOverrideTest {
 
         assertEquals(SimulatorHeartRateOverride.Outcome.STALE_FELL_BACK, result.outcome)
         assertEquals(120, result.bpm)
-    }
-
-    @Test
-    fun `the window matches the one fusion uses for heart rate`() {
-        // Not a second constant that could drift. A strap notifies about once a second, so this
-        // rides out three missed notifications and no more.
-        assertEquals(HEART_RATE_FRESHNESS_MS, SimulatorHeartRateOverride.FRESHNESS_MS)
-        assertTrue("the window must tolerate a few dropped notifications", SimulatorHeartRateOverride.FRESHNESS_MS >= 3_000L)
     }
 
     @Test

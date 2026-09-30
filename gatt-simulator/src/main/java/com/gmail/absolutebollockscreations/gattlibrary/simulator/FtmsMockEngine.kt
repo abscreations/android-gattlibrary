@@ -24,7 +24,8 @@ import kotlin.random.Random
  */
 
 /** Inclusive bounds for one synthetic instantaneous metric. */
-internal data class FtmsMockRange(val min: Double, val max: Double) {
+@SimulatorProbeApi
+data class FtmsMockRange(val min: Double, val max: Double) {
     fun at(fraction: Double): Double = min + (max - min) * fraction
     fun clamp(value: Double): Double = value.coerceIn(min, max)
 }
@@ -38,7 +39,8 @@ internal data class FtmsMockRange(val min: Double, val max: Double) {
  * per metric would produce 300 W at 40 rpm and make the output useless for
  * judging whether a downstream display is sane.
  */
-internal data class FtmsMockProfile(
+@SimulatorProbeApi
+data class FtmsMockProfile(
     val machine: FtmsMachineProfile,
     val power: FtmsMockRange,
     val heartRate: FtmsMockRange,
@@ -137,7 +139,8 @@ internal data class FtmsMockProfile(
  * that must agree, and the reason FitBridge's resistance handling was wrong for
  * as long as nothing exercised it.
  */
-internal object FtmsMockControlProfile {
+@SimulatorProbeApi
+object FtmsMockControlProfile {
 
     /**
      * One shared set of full machine limits for every simulator persona.
@@ -264,7 +267,8 @@ data class FtmsMockSample(
  * Not thread-safe by itself; [FtmsSimulator] owns the only instance and drives it
  * from a single coroutine.
  */
-internal class FtmsMockEngine(
+@SimulatorProbeApi
+class FtmsMockEngine(
     machine: FtmsMachineProfile,
     val controlsEnabled: Boolean = false,
     private val random: Random = Random.Default,

@@ -5,7 +5,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
  * the decoder is an independent reverse of the wire format, so its result type must not be central's
  * `WahooKickrCommand`. Tests map between the two to prove they agree.
  */
-internal sealed interface KickrLegacyCommand {
+@SimulatorProbeApi
+sealed interface KickrLegacyCommand {
     data object Unlock : KickrLegacyCommand
     data class Resistance(val fraction: Double) : KickrLegacyCommand
     data class StandardLevel(val level: Int) : KickrLegacyCommand

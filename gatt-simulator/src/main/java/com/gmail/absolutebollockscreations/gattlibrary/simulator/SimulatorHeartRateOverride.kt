@@ -34,7 +34,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
  * come from `BtEngineState.externalHeartRate`, which `MetricFusion` populates **only** from a
  * source whose class is `HRM`. That separation already existed; this override simply depends on it.
  */
-internal object SimulatorHeartRateOverride {
+@SimulatorProbeApi
+object SimulatorHeartRateOverride {
 
     /**
      * How recently the strap must have reported for its value to be used.

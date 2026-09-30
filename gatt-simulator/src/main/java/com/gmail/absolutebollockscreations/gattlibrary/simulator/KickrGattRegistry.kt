@@ -6,7 +6,8 @@ import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Mechanical Android translation of the evidence-labelled pure KICKR manifest. */
-internal object KickrGattRegistry {
+@SimulatorProbeApi
+object KickrGattRegistry {
     fun buildServices(manifest: KickrPersonaManifest): List<BluetoothGattService> =
         manifest.services.map { service ->
             BluetoothGattService(service.uuid, BluetoothGattService.SERVICE_TYPE_PRIMARY).apply {
@@ -21,7 +22,8 @@ internal object KickrGattRegistry {
         }
     }
 
-    internal fun flags(propertiesToMap: Set<KickrGattProperty>): Pair<Int, Int> {
+    @SimulatorProbeApi
+    fun flags(propertiesToMap: Set<KickrGattProperty>): Pair<Int, Int> {
         var properties = 0
         var permissions = 0
         if (KickrGattProperty.READ in propertiesToMap) {

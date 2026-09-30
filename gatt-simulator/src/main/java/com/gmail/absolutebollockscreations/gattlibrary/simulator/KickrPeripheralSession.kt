@@ -9,19 +9,22 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
-internal enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
+@SimulatorProbeApi
+enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
 
 /** Which Zwift Click button a simulator UI tap represents - see KickrPeripheralSession.sendZwiftClickShift()'s KDoc. */
 enum class ZwiftClickDirection { UP, DOWN }
 
-internal data class KickrTxFrame(
+@SimulatorProbeApi
+data class KickrTxFrame(
     val characteristicUuid: UUID,
     val value: ByteArray,
     val indicate: Boolean,
 )
 
 /** Android-free per-link generation state used by the GATT callback and exhaustive tests. */
-internal class KickrPeripheralSession(
+@SimulatorProbeApi
+class KickrPeripheralSession(
     val generation: Long,
     val model: KickrSyntheticModel,
     legacyAckMode: KickrLegacyAckMode? = null,

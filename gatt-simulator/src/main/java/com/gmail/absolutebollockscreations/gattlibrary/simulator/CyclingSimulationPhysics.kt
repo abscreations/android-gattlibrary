@@ -14,7 +14,8 @@ import kotlin.math.sin
  * braking to hold the published speed) is clamped to zero because these personas publish rider
  * power, not brake power.
  */
-internal object CyclingSimulationPhysics {
+@SimulatorProbeApi
+object CyclingSimulationPhysics {
     const val DEFAULT_RIDER_MASS_KG = 75.0
     const val DEFAULT_BIKE_MASS_KG = 10.0
     const val DEFAULT_TOTAL_MASS_KG = DEFAULT_RIDER_MASS_KG + DEFAULT_BIKE_MASS_KG

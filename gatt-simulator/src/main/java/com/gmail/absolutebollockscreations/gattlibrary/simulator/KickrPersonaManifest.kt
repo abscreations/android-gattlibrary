@@ -9,7 +9,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.ZwiftUuids
 
 /** Field-level provenance carried into diagnostics and evidence exports. */
-internal enum class KickrEvidenceLabel { HCI, LOG, P, M, X, R, SYN }
+@SimulatorProbeApi
+enum class KickrEvidenceLabel { HCI, LOG, P, M, X, R, SYN }
 
 enum class KickrSimulatorPersona(
     val displayLabel: String,
@@ -21,9 +22,11 @@ enum class KickrSimulatorPersona(
     ZWIFT_HUB_CAPTURED("Zwift Hub — captured GATT", true),
 }
 
-internal enum class KickrGattProperty { READ, WRITE, WRITE_WITHOUT_RESPONSE, NOTIFY, INDICATE }
+@SimulatorProbeApi
+enum class KickrGattProperty { READ, WRITE, WRITE_WITHOUT_RESPONSE, NOTIFY, INDICATE }
 
-internal data class KickrCharacteristicManifest(
+@SimulatorProbeApi
+data class KickrCharacteristicManifest(
     val uuid: UUID,
     val properties: Set<KickrGattProperty>,
     val evidence: Set<KickrEvidenceLabel>,
@@ -32,13 +35,15 @@ internal data class KickrCharacteristicManifest(
         KickrGattProperty.NOTIFY in properties || KickrGattProperty.INDICATE in properties
 }
 
-internal data class KickrServiceManifest(
+@SimulatorProbeApi
+data class KickrServiceManifest(
     val uuid: UUID,
     val characteristics: List<KickrCharacteristicManifest>,
     val evidence: Set<KickrEvidenceLabel>,
 )
 
-internal data class KickrDeviceIdentity(
+@SimulatorProbeApi
+data class KickrDeviceIdentity(
     val manufacturer: String?,
     val hardwareRevision: String?,
     val firmwareRevision: String?,
@@ -46,7 +51,8 @@ internal data class KickrDeviceIdentity(
 )
 
 /** Pure advertising contract. [exactLegacyPayload] is present only for byte-captured advertising. */
-internal data class KickrAdvertisingPlan(
+@SimulatorProbeApi
+data class KickrAdvertisingPlan(
     val localName: String,
     val advertisedServices: List<UUID>,
     val scanResponseServices: List<UUID> = emptyList(),
@@ -139,7 +145,8 @@ internal data class KickrAdvertisingPlan(
     }
 }
 
-internal data class KickrPersonaManifest(
+@SimulatorProbeApi
+data class KickrPersonaManifest(
     val persona: KickrSimulatorPersona,
     val advertising: KickrAdvertisingPlan,
     val identity: KickrDeviceIdentity,

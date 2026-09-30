@@ -5,14 +5,17 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnService
 import kotlin.math.roundToLong
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 
-internal enum class ZwiftTrainerStage { CONNECTED, NEGOTIATED, INITIALIZED, READY }
+@SimulatorProbeApi
+enum class ZwiftTrainerStage { CONNECTED, NEGOTIATED, INITIALIZED, READY }
 
-internal data class ZwiftTrainerServerFrame(
+@SimulatorProbeApi
+data class ZwiftTrainerServerFrame(
     val async: Boolean,
     val value: ByteArray,
 )
 
-internal data class ZwiftTrainerServerOutcome(
+@SimulatorProbeApi
+data class ZwiftTrainerServerOutcome(
     val accepted: Boolean,
     val negotiated: Boolean = false,
     val frames: List<ZwiftTrainerServerFrame> = emptyList(),
@@ -20,7 +23,8 @@ internal data class ZwiftTrainerServerOutcome(
 )
 
 /** Per-link peripheral inverse of the production Zwift trainer-control session. */
-internal class ZwiftTrainerPeripheralServer(
+@SimulatorProbeApi
+class ZwiftTrainerPeripheralServer(
     // Retained for callers/manifest wiring; no longer gates handshake acceptance (see isHandshake).
     @Suppress("UNUSED_PARAMETER") form: RideOnServiceForm,
     private val model: KickrSyntheticModel,

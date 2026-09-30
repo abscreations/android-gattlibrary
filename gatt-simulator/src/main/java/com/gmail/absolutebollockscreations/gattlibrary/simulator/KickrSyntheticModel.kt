@@ -17,7 +17,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.ZwiftUuids
 
-internal enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
+@SimulatorProbeApi
+enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
 
 /**
  * Which protocol surface last wrote a control target on this shared model.
@@ -32,12 +33,14 @@ internal enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
  * companion "was this a direct target, an ERG power target, or a full simulation payload"
  * axis; the two together select one [SimulatorControlModeLabels] string.
  */
-internal enum class KickrControlSource { NONE, FTMS, LEGACY_KICKR, RIDE_ON }
+@SimulatorProbeApi
+enum class KickrControlSource { NONE, FTMS, LEGACY_KICKR, RIDE_ON }
 
 /** DIRECT covers resistance-level and virtual-gear writes; see [KickrControlSource]. */
 internal enum class KickrControlKind { DIRECT, ERG, SIMULATION }
 
-internal data class KickrSimulationTarget(
+@SimulatorProbeApi
+data class KickrSimulationTarget(
     val windMps: Double = 0.0,
     val gradePercent: Double = 0.0,
     val crr: Double = 0.004,
@@ -46,7 +49,8 @@ internal data class KickrSimulationTarget(
 )
 
 /** One immutable state read by every standard and proprietary encoder. */
-internal data class KickrMachineSnapshot(
+@SimulatorProbeApi
+data class KickrMachineSnapshot(
     val elapsedSeconds: Double,
     val running: Boolean,
     val mode: KickrControlMode,
@@ -77,7 +81,8 @@ internal data class KickrMachineSnapshot(
  * This is an interoperability model, not a mechanical KICKR claim. Its bounded convergence makes
  * accepted controls externally observable while keeping all wire surfaces coherent.
  */
-internal class KickrSyntheticModel(
+@SimulatorProbeApi
+class KickrSyntheticModel(
     initialWheelCircumferenceMm: Double = DEFAULT_WHEEL_CIRCUMFERENCE_MM,
 ) {
     /**
@@ -457,7 +462,8 @@ internal class KickrSyntheticModel(
     }
 }
 
-internal object KickrStandardEncoders {
+@SimulatorProbeApi
+object KickrStandardEncoders {
     const val CPS_FLAGS_CAPTURE_SHAPE = 0x0034
     const val FTMS_FLAGS_CAPTURE_SHAPE = 0x0044
 
@@ -559,12 +565,14 @@ internal object KickrStandardEncoders {
         KickrReadValue(value.toByteArray(Charsets.UTF_8), evidence)
 }
 
-internal data class KickrReadValue(
+@SimulatorProbeApi
+data class KickrReadValue(
     val bytes: ByteArray,
     val evidence: Set<KickrEvidenceLabel>,
 )
 
-internal object KickrFtmsCapabilities {
+@SimulatorProbeApi
+object KickrFtmsCapabilities {
     val VALUE = TargetCapabilities(
         resistance = true,
         power = true,
@@ -615,7 +623,8 @@ internal class KickrSyntheticFtmsControlSink(
 }
 
 /** One pure FTMS procedure session; Android indication ordering is added in KS-S3. */
-internal class KickrFtmsControlProcessor(
+@SimulatorProbeApi
+class KickrFtmsControlProcessor(
     val model: KickrSyntheticModel = KickrSyntheticModel(),
 ) {
     val session = FtmsProcedureSession()

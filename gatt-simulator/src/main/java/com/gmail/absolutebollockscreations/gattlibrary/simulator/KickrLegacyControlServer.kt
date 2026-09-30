@@ -19,19 +19,22 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.WahooKickrSpe
  * is one observed client convention, not something every real KICKR enforces - so this server
  * now accepts legacy control opcodes with or without a prior Unlock.
  */
-internal enum class KickrLegacyAckMode(val evidence: KickrEvidenceLabel) {
+@SimulatorProbeApi
+enum class KickrLegacyAckMode(val evidence: KickrEvidenceLabel) {
     ACKNOWLEDGING_SYNTHETIC(KickrEvidenceLabel.SYN),
     SILENT_CORROBORATED(KickrEvidenceLabel.X),
 }
 
-internal sealed interface KickrLegacyDecodeResult {
+@SimulatorProbeApi
+sealed interface KickrLegacyDecodeResult {
     data class Decoded(val command: KickrLegacyCommand) : KickrLegacyDecodeResult
     data class Invalid(val reason: String) : KickrLegacyDecodeResult
     data class Unsupported(val opcode: Int) : KickrLegacyDecodeResult
 }
 
 /** Reverse of the production encoder, independently length/range checked before every access. */
-internal object KickrLegacyCommandDecoder {
+@SimulatorProbeApi
+object KickrLegacyCommandDecoder {
     fun decode(value: ByteArray): KickrLegacyDecodeResult {
         if (value.isEmpty()) return KickrLegacyDecodeResult.Invalid("empty command")
         val opcode = value[0].toInt() and 0xFF
@@ -111,7 +114,8 @@ internal object KickrLegacyCommandDecoder {
     private fun decoded(command: KickrLegacyCommand) = KickrLegacyDecodeResult.Decoded(command)
 }
 
-internal data class KickrLegacyControlOutcome(
+@SimulatorProbeApi
+data class KickrLegacyControlOutcome(
     val accepted: Boolean,
     val response: ByteArray? = null,
     val decoded: KickrLegacyDecodeResult,
@@ -125,7 +129,8 @@ internal data class KickrLegacyControlOutcome(
  * [handle]), and reports "has this link exercised legacy control since it connected/reset" for
  * [KickrPeripheralAdvertiser.diagnostics]'s `LEGACY_LOCKED`/`LEGACY_UNLOCKED` stage label.
  */
-internal class KickrLegacyControlServer(
+@SimulatorProbeApi
+class KickrLegacyControlServer(
     private val model: KickrSyntheticModel,
     val ackMode: KickrLegacyAckMode,
 ) {

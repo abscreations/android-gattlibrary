@@ -35,8 +35,10 @@ object SimulatorControlModeLabels {
 
     const val AUTOMATIC = "Automatic"
 
-    internal const val FTMS_DIRECT = "FTMS - ${Kind.DIRECT}"
-    internal const val FTMS_ERG = "FTMS - ${Kind.ERG}"
+    @SimulatorProbeApi
+    const val FTMS_DIRECT = "FTMS - ${Kind.DIRECT}"
+    @SimulatorProbeApi
+    const val FTMS_ERG = "FTMS - ${Kind.ERG}"
     const val FTMS_SIM = "FTMS - ${Kind.SIM}"
 
     const val ANT_DIRECT = "ANT+ ${Kind.DIRECT}"
