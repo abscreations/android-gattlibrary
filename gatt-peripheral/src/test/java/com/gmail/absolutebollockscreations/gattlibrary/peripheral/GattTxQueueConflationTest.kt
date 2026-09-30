@@ -31,6 +31,12 @@ class GattTxQueueConflationTest {
 
     private fun scope() = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    private suspend fun awaitStats(queue: GattTxQueue, condition: (GattTxQueue.Stats) -> Boolean) {
+        withTimeout(2_000) {
+            while (!condition(queue.stats())) delay(1)
+        }
+    }
+
     private class Harness {
         val posted = Channel<GattTxQueue.Request>(Channel.UNLIMITED)
         fun post(request: GattTxQueue.Request): Boolean = posted.trySend(request).isSuccess
@@ -107,7 +113,9 @@ class GattTxQueueConflationTest {
             val pending = mutableListOf<Deferred<GattTxQueue.Outcome>>()
             repeat(50) { i ->
                 pending += scope.dataSend(queue, "AA", ftmsData, "r$i", listOf(byteArrayOf(i.toByte())))
-                delay(5)
+                // Wait for the record to actually reach the queue rather than sleeping: under a
+                // loaded parallel build a fixed delay let two sends race (LIB-19e follow-up).
+                awaitStats(queue) { it.queuedDataPayloads == 1 && it.superseded == i.toLong() }
             }
 
             assertEquals("at most one payload waits per slot", 1, queue.stats().queuedDataPayloads)
@@ -271,7 +279,7 @@ class GattTxQueueConflationTest {
                         purpose = "ctl$i",
                     )
                 }
-                delay(20)
+                awaitStats(queue) { it.queuedControlPayloads == i }
             }
             assertEquals("every control payload is retained", 4, queue.stats().queuedControlPayloads)
             assertEquals(0L, queue.stats().superseded)

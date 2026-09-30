@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTrigger
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.BleCapture
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureTrigger
 import java.util.UUID
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

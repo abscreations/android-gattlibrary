@@ -174,6 +174,23 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/BleCapture {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/BleCapture;
+	public static final field TAG Ljava/lang/String;
+	public final fun arm (Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;)V
+	public final fun armedBy ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public final fun bufferedCount ()I
+	public final fun disarm (Ljava/lang/String;)V
+	public final fun emit (Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureRole;)V
+	public static synthetic fun emit$default (Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/BleCapture;Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureEvent;Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureRole;ILjava/lang/Object;)V
+	public final fun isArmed ()Z
+	public final fun labelFor (Ljava/lang/String;)Ljava/lang/String;
+	public final fun resetClock ()V
+	public final fun resetSession ()V
+	public final fun setClockForTest (Lkotlin/jvm/functions/Function0;)V
+	public final fun summary (Ljava/lang/String;[Ljava/lang/Object;)V
+}
+
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureEvent {
 	public abstract fun getConn ()Ljava/lang/String;
 	public abstract fun getEv ()Ljava/lang/String;
@@ -243,6 +260,19 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureRole$Companion {
 	public final fun isCaptureTag (Ljava/lang/String;)Z
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger : java/lang/Enum {
+	public static final field FLYWHEEL_CONNECTION_INTERVAL_QUIRK Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public static final field LIVENESS_DEMOTION Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public static final field MANUAL Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public static final field PARSER_REJECTION Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public static final field UNMATCHED_DEVICE Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public static final field VENDOR_SETUP_FAILURE Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getWireName ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureTrigger;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/CapturedCharacteristic {

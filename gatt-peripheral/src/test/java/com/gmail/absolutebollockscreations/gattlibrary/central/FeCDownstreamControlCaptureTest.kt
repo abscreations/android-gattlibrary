@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTrigger
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.BleCapture
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureTrigger
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.TargetCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.buildFtmsFeaturePayload

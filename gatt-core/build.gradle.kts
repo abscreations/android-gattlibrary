@@ -47,7 +47,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
 }
 
 dependencies {
-    // No dependencies: gatt-core is the base of the graph.
+    // Base of the graph: no project dependencies. Timber carries the capture emission channel (LIB-19e).
+    implementation(libs.timber)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -3,11 +3,11 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.BleCapture
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.AdvertisementSourceEvent
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CapturedCharacteristic
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CapturedService
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.CaptureTrigger
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureTrigger
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CccdEvent
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ConnectEvent
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DisconnectEvent

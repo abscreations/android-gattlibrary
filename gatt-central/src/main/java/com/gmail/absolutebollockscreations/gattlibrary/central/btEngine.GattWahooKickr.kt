@@ -5,7 +5,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.central.capture.BleCapture
+import com.gmail.absolutebollockscreations.gattlibrary.core.capture.BleCapture
 import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ErrorEvent
 import timber.log.Timber
 import java.util.UUID

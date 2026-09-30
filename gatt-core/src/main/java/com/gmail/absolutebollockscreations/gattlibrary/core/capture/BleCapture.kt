@@ -1,15 +1,8 @@
-package com.gmail.absolutebollockscreations.gattlibrary.central.capture
+package com.gmail.absolutebollockscreations.gattlibrary.core.capture
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
-import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureEvent
-import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureJson
-import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRecord
-import com.gmail.absolutebollockscreations.gattlibrary.core.capture.CaptureRole
-import com.gmail.absolutebollockscreations.gattlibrary.core.capture.ConnectionLabels
-import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DroppedEvent
-
 /**
  * The emission seam and arming switch for the diagnostic capture channel
  * (plan §0.9.2, §0.9.5).
@@ -40,7 +33,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DroppedEvent
  * misreport when the thing happened.
  */
 @GattLibraryInternalApi
-object BleCapture {
+public object BleCapture {
 
     /**
      * Reserved Timber tag for the central role.
@@ -48,7 +41,7 @@ object BleCapture {
      * Retained as a constant because it is the original tag and several call
      * sites and tests name it directly. [CaptureRole.tag] is the general form.
      */
-    const val TAG: String = "BLECAP"
+    public const val TAG: String = "BLECAP"
 
     private val lock = Any()
     private val sequence = AtomicLong(0L)
@@ -66,23 +59,23 @@ object BleCapture {
     private var clock: () -> Long = System::currentTimeMillis
 
     /** True while events are reaching disk. */
-    fun isArmed(): Boolean = armed
+    public fun isArmed(): Boolean = armed
 
     /** What armed the current capture, or null when disarmed. */
-    fun armedBy(): CaptureTrigger? = armedBy
+    public fun armedBy(): CaptureTrigger? = armedBy
 
     /**
      * Session-scoped label for a device address, so no MAC reaches an event body
      * (§0.9.6). Callers pass the address; only the label is ever emitted.
      */
-    fun labelFor(address: String): String = labels.labelFor(address)
+    public fun labelFor(address: String): String = labels.labelFor(address)
 
     /**
      * Records one event. Never throws, and never blocks on I/O — disarmed it is
      * an in-memory append, armed it is a non-blocking enqueue inside
      * `RotatingLogSink`. Safe to call from a GATT callback thread.
      */
-    fun emit(event: CaptureEvent, role: CaptureRole = CaptureRole.CENTRAL) {
+    public fun emit(event: CaptureEvent, role: CaptureRole = CaptureRole.CENTRAL) {
         val record = CaptureRecord(
             atMs = clock(),
             // One counter across both roles on purpose: interleaving the two
@@ -111,7 +104,7 @@ object BleCapture {
      * publish is a non-blocking enqueue and arming happens at most once a
      * session.
      */
-    fun arm(trigger: CaptureTrigger) {
+    public fun arm(trigger: CaptureTrigger) {
         // Plain vars with initialisers rather than vals assigned inside the
         // lambda: an early non-local return past a `val` assignment is exactly
         // the definite-assignment shape that has bitten this file before.
@@ -152,7 +145,7 @@ object BleCapture {
      * Stops writing to disk. The ring keeps filling, so a later trigger still has
      * history to flush.
      */
-    fun disarm(reason: String) {
+    public fun disarm(reason: String) {
         var was: CaptureTrigger? = null
         synchronized(lock) {
             if (!armed) return
@@ -167,12 +160,12 @@ object BleCapture {
      * Human-log breadcrumb. Written on an ordinary tag on purpose: it is the only
      * thing that lets someone reading the human log know a capture exists.
      */
-    fun summary(message: String, vararg args: Any?) {
+    public fun summary(message: String, vararg args: Any?) {
         Timber.tag(SUMMARY_TAG).i(message, *args)
     }
 
     /** Clears session-scoped state. Called when a capture session ends. */
-    fun resetSession() {
+    public fun resetSession() {
         synchronized(lock) {
             armed = false
             armedBy = null
@@ -183,7 +176,7 @@ object BleCapture {
     }
 
     /** Buffered-but-unwritten event count. Diagnostic and test seam. */
-    fun bufferedCount(): Int = synchronized(lock) { ring.size() }
+    public fun bufferedCount(): Int = synchronized(lock) { ring.size() }
 
     private fun publishLocked(record: CaptureRecord) {
         runCatching { Timber.tag(record.role.tag).i(CaptureJson.encode(record)) }
@@ -191,12 +184,12 @@ object BleCapture {
 
     /** Test seam for a deterministic clock. */
     @GattLibraryInternalApi
-    fun setClockForTest(source: () -> Long) {
+    public fun setClockForTest(source: () -> Long) {
         clock = source
     }
 
     @GattLibraryInternalApi
-    fun resetClock() {
+    public fun resetClock() {
         clock = System::currentTimeMillis
     }
 

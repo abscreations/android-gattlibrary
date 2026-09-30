@@ -1,4 +1,4 @@
-package com.gmail.absolutebollockscreations.gattlibrary.central.capture
+package com.gmail.absolutebollockscreations.gattlibrary.core.capture
 
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -8,8 +8,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import timber.log.Timber
-import com.gmail.absolutebollockscreations.gattlibrary.core.capture.DroppedEvent
-
 /**
  * Plan §0.9.5: the ring fills continuously and arming flushes it first.
  *
