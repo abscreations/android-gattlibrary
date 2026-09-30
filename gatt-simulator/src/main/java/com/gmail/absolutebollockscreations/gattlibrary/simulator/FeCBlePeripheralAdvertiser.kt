@@ -22,7 +22,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
 import androidx.annotation.RequiresPermission
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong

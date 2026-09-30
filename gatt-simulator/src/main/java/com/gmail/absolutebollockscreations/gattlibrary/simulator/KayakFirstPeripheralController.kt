@@ -24,7 +24,6 @@ import android.os.SystemClock
 import android.os.Looper
 import android.os.ParcelUuid
 import androidx.core.content.ContextCompat
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstCommandCodec
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant

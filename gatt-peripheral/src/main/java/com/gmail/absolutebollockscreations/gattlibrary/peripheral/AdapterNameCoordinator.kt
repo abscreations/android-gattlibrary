@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
 import java.util.ArrayDeque
 import timber.log.Timber
 

@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPointHandler
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlSink
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsProcedureSession

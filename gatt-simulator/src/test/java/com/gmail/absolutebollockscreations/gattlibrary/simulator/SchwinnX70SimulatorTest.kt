@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import android.bluetooth.BluetoothGattCharacteristic
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
 import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70PowerModel
 import kotlin.math.abs

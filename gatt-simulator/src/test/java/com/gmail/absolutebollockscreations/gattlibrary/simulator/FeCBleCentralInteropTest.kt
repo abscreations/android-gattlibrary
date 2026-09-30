@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.FeCControlEncoder
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.FeCEquipmentState as EngineFeState
 import com.gmail.absolutebollockscreations.gattlibrary.central.FeCFrameCodec
 import com.gmail.absolutebollockscreations.gattlibrary.central.FeCFrameDecodeResult

@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.concurrent.atomic.AtomicLong
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService

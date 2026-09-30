@@ -9,6 +9,13 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
 
 class FtmsServiceDataParserTest {
 
+    /** Test-local builder: the reader is checked against bytes assembled independently of the server's encoder. */
+    private fun payloadFor(machine: FtmsMachineProfile, available: Boolean = true): ByteArray {
+        val type = FtmsMachineType.fitnessMachineTypeFor(machine)
+        val flags = if (available) FtmsMachineType.FM_FLAG_MACHINE_AVAILABLE else 0
+        return byteArrayOf(flags.toByte(), (type and 0xFF).toByte(), ((type ushr 8) and 0xFF).toByte())
+    }
+
     @Test
     fun `each simulated persona round trips through advertised service data`() {
         val expected = mapOf(
@@ -21,35 +28,35 @@ class FtmsServiceDataParserTest {
         )
 
         expected.forEach { (profile, activity) ->
-            val payload = BtServiceProfiles.ftmsServiceDataFor(profile)
+            val payload = payloadFor(profile)
             assertEquals(
                 profile.name,
                 activity,
-                BtServiceProfiles.activityTypeFromFtmsServiceData(payload),
+                FtmsServiceDataParser.activityType(payload),
             )
         }
     }
 
     @Test
     fun `machine availability flag does not hide the advertised type`() {
-        val payload = BtServiceProfiles.ftmsServiceDataFor(
+        val payload = payloadFor(
             FtmsMachineProfile.INDOOR_ROWER,
             available = false,
         )
 
         assertEquals(
             ActivityType.ROWING,
-            BtServiceProfiles.activityTypeFromFtmsServiceData(payload),
+            FtmsServiceDataParser.activityType(payload),
         )
     }
 
     @Test
     fun `missing truncated and unknown payloads do not infer a type`() {
-        assertNull(BtServiceProfiles.activityTypeFromFtmsServiceData(null))
-        assertNull(BtServiceProfiles.activityTypeFromFtmsServiceData(byteArrayOf()))
-        assertNull(BtServiceProfiles.activityTypeFromFtmsServiceData(byteArrayOf(1, 2)))
+        assertNull(FtmsServiceDataParser.activityType(null))
+        assertNull(FtmsServiceDataParser.activityType(byteArrayOf()))
+        assertNull(FtmsServiceDataParser.activityType(byteArrayOf(1, 2)))
         assertNull(
-            BtServiceProfiles.activityTypeFromFtmsServiceData(
+            FtmsServiceDataParser.activityType(
                 byteArrayOf(1, 0, 1),
             ),
         )
@@ -79,7 +86,7 @@ class FtmsServiceDataParserTest {
             assertEquals(
                 "priority index $expectedIndex",
                 priority[expectedIndex].second,
-                BtServiceProfiles.activityTypeFromFtmsServiceData(payload),
+                FtmsServiceDataParser.activityType(payload),
             )
         }
     }

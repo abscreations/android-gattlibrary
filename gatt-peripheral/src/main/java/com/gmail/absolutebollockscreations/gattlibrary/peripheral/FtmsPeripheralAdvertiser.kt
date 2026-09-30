@@ -28,7 +28,6 @@ import android.os.SystemClock
 import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import java.util.UUID
 import java.util.concurrent.CancellationException

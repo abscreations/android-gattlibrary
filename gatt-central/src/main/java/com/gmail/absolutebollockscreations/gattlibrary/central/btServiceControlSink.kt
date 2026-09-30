@@ -45,7 +45,7 @@
  * TYPICAL IMPLEMENTATION (btService side)
  * ---------------------------------------
  *  - `startAdvertisingFtms(...)` / `startAdvertisingCscCps()`:
- *      • Switch into the appropriate [BtServiceProfiles.ServiceMode] (FTMS or CSC_CPS).
+ *      • Switch into the appropriate `ServiceMode` (server-owned, `peripheral.BtServiceProfiles`) (FTMS or CSC_CPS).
  *      • Build the GATT service set via [BtServiceRegistry.forMode], using the provided
  *        [BtEngineState.FtmsCapabilities] to populate 0x2ACC and Supported-* Range
  *        characteristics for the current real FTMS device.
@@ -93,7 +93,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
  * Thin control surface that BtEngine can use to drive the local provider-side
  * GATT services (btService module) without depending on service-layer types.
  *
- * Shared enums / profiles come from [BtServiceProfiles] in bluetoothIds.kt.
+ * Service enums / profiles are server-owned (`peripheral.BtServiceProfiles`).
  */
 interface BtServiceControlSink {
 
@@ -122,7 +122,7 @@ interface BtServiceControlSink {
      * Start advertising a combined CSC + CPS (0x1816 + 0x1818) bike profile.
      *
      * For now this is a single “bike” persona; if we add more later we can
-     * extend this method to take a [BtServiceProfiles.CscCpsProfile].
+     * extend this method to take a `CscCpsProfile` (server-owned).
      */
     fun startAdvertisingCscCps()
 

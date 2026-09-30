@@ -3,7 +3,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
 import java.util.UUID

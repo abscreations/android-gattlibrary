@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import android.bluetooth.BluetoothDevice
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids

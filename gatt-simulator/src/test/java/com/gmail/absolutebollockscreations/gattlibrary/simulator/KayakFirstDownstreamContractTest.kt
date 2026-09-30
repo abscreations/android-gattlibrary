@@ -1,7 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.ConnectionId
 import com.gmail.absolutebollockscreations.gattlibrary.central.FusionPersona

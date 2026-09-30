@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import android.bluetooth.BluetoothGattCharacteristic
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import org.junit.Assert.assertEquals

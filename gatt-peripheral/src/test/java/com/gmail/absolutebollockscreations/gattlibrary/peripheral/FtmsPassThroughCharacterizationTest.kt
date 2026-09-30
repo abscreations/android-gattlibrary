@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceControlSink
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade

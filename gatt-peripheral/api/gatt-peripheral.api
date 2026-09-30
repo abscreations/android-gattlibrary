@@ -35,6 +35,38 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 	public abstract fun postDelayed (Ljava/lang/Object;JLkotlin/jvm/functions/Function0;)V
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles {
+	public static final field DEVICE_NAME_CSC_CPS Ljava/lang/String;
+	public static final field DEVICE_NAME_FTMS_BIKE Ljava/lang/String;
+	public static final field DEVICE_NAME_FTMS_CLIMBER Ljava/lang/String;
+	public static final field DEVICE_NAME_FTMS_ELLIPTICAL Ljava/lang/String;
+	public static final field DEVICE_NAME_FTMS_ROWER Ljava/lang/String;
+	public static final field DEVICE_NAME_FTMS_STEPPER Ljava/lang/String;
+	public static final field DEVICE_NAME_FTMS_TREAD Ljava/lang/String;
+	public static final field DEVICE_NAME_PREFIX Ljava/lang/String;
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles;
+	public static final field LEGACY_DEVICE_NAME_PREFIX Ljava/lang/String;
+	public static final field MAX_CLIENTS I
+	public final fun deviceNameFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/lang/String;
+	public final fun ftmsServiceDataFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Z)[B
+	public static synthetic fun ftmsServiceDataFor$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZILjava/lang/Object;)[B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$CscCpsProfile : java/lang/Enum {
+	public static final field BIKE Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$CscCpsProfile;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$CscCpsProfile;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$CscCpsProfile;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$ServiceMode : java/lang/Enum {
+	public static final field CSC_CPS Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$ServiceMode;
+	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$ServiceMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$ServiceMode;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/BtServiceProfiles$ServiceMode;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/ConnectableAdvertisingGate {
 	public fun <init> ()V
 	public final fun onConnected (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/ConnectableAdvertisingGate$Action;

@@ -610,7 +610,7 @@ private fun BtEngine.upsertDiscoveredDevice(
             // FTMS service data first, because it is a per-advertisement claim from the device;
             // the definition's declared activity is the fallback for a family that has no service
             // data to carry one. For Keiser only the second can ever apply.
-            BtServiceProfiles.activityTypeFromFtmsServiceData(
+            FtmsServiceDataParser.activityType(
                 result.scanRecord?.getServiceData(BluetoothIds.FTMS_SERVICE_PARCEL)
             )?.ordinal ?: advertisedActivityType?.ordinal
         } else {

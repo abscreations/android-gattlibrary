@@ -1,7 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 import java.util.UUID
@@ -273,7 +271,3 @@ internal fun requiresSpeed(profile: FtmsMachineProfile): Boolean = when (profile
     FtmsMachineProfile.STAIR_CLIMBER,
     -> false
 }
-
-/** Unused import guard: keeps [BluetoothIds] referenced for readers of this file. */
-@Suppress("unused")
-private val ftmsServiceUuid: UUID = FtmsUuids.UUID_FTMS_SERVICE

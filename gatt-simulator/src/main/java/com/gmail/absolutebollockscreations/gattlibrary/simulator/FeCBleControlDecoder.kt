@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 

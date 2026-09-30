@@ -1,7 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.BtServiceProfiles
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import java.util.UUID

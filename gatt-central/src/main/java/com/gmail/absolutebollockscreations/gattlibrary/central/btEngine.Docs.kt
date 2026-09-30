@@ -369,7 +369,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *
  *
  * ───────────────────────────────────────────────────────────────────────────────
- * MODULE: BluetoothIds / BtServiceProfiles (bluetoothIds.kt); FTMS vocabulary lives in gatt-core core.ftms
+ * MODULE: BluetoothIds (bluetoothIds.kt); server-owned BtServiceProfiles lives in peripheral (LIB-19h); FTMS vocabulary lives in gatt-core core.ftms
  * ───────────────────────────────────────────────────────────────────────────────
  *
  * PURPOSE
@@ -399,15 +399,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *          TREAD_* (Treadmill), ELL_* (Elliptical), ROW_* (Rower),
  *          BIKE_* (Indoor Bike), STEP_* (Stepper), CLIMB_* (Climber).
  *
- *  - object BtServiceProfiles
- *      • ServiceMode (FTMS vs CSC_CPS).
- *      • CscCpsProfile (BIKE).
- *      • Advertised device names for each persona.
- *      • FTMS Feature presets (FMF_*) and TSF_NONE.
- *      • Helpers:
- *          ftmsProfileForActivity(ActivityType): FtmsMachineProfile?
- *          (FtmsUuids.dataUuidForProfile in core.ftms)
- *          dataUuidForActivity(ActivityType): UUID?
+ *  - object BtServiceProfiles: moved to `peripheral.BtServiceProfiles` (LIB-19h): ServiceMode, CscCpsProfile,
+ *    advertised device names, FTMS Service Data builder, MAX_CLIENTS. Dead FMF/TSF presets and the
+ *    activity/UUID glue helpers were deleted.
  *
  *  - Byte helpers:
  *      • Byte helpers: see gatt-core `core.bytes` (LittleEndian, BigEndian, ByteCursor).

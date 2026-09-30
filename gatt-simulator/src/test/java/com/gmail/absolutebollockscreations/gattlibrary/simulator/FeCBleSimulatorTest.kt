@@ -1,6 +1,5 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingRevolutionSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.CyclingSensorEncoders
 import org.junit.Assert.assertEquals

@@ -909,50 +909,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtSer
 	public static fun setWheelCircumferenceMm (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade;F)Z
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles {
-	public static final field DEFAULT_NOTIFY_INTERVAL_MS J
-	public static final field DEVICE_NAME_CSC_CPS Ljava/lang/String;
-	public static final field DEVICE_NAME_FTMS_BIKE Ljava/lang/String;
-	public static final field DEVICE_NAME_FTMS_CLIMBER Ljava/lang/String;
-	public static final field DEVICE_NAME_FTMS_ELLIPTICAL Ljava/lang/String;
-	public static final field DEVICE_NAME_FTMS_ROWER Ljava/lang/String;
-	public static final field DEVICE_NAME_FTMS_STEPPER Ljava/lang/String;
-	public static final field DEVICE_NAME_FTMS_TREAD Ljava/lang/String;
-	public static final field DEVICE_NAME_PREFIX Ljava/lang/String;
-	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles;
-	public static final field LEGACY_DEVICE_NAME_PREFIX Ljava/lang/String;
-	public static final field MAX_CLIENTS I
-	public static final field TSF_NONE I
-	public final fun activityTypeFromFtmsServiceData ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
-	public final fun dataUuidForActivity (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)Ljava/util/UUID;
-	public final fun deviceNameFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/lang/String;
-	public final fun fmfFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)I
-	public final fun ftmsProfileForActivity (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;
-	public final fun ftmsServiceDataFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Z)[B
-	public static synthetic fun ftmsServiceDataFor$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZILjava/lang/Object;)[B
-	public final fun getFMF_ELLIPTICAL ()I
-	public final fun getFMF_INDOOR_BIKE ()I
-	public final fun getFMF_ROWER ()I
-	public final fun getFMF_STAIR_CLIMBER ()I
-	public final fun getFMF_STAIR_STEPPER ()I
-	public final fun getFMF_TREADMILL ()I
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$CscCpsProfile : java/lang/Enum {
-	public static final field BIKE Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$CscCpsProfile;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$CscCpsProfile;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$CscCpsProfile;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode : java/lang/Enum {
-	public static final field CSC_CPS Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode;
-	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceProfiles$ServiceMode;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/CanonicalUuid {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/CanonicalUuid$Companion;
 	public static final synthetic fun box-impl (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CanonicalUuid;
@@ -2283,6 +2239,11 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/FtmsQ
 	public final fun find (Ljava/lang/String;Ljava/util/UUID;II)Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsQuirk;
 	public final fun getAll ()Ljava/util/List;
 	public final fun getCHARACTERISTICS_CONSULTING_REGISTRY ()Ljava/util/Set;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/FtmsServiceDataParser {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/FtmsServiceDataParser;
+	public final fun activityType ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FusionPersona : java/lang/Enum {
