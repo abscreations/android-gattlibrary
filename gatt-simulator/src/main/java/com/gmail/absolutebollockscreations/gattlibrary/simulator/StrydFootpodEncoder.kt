@@ -38,7 +38,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
  * proprietary services are not implemented at all: one has an unknown payload and the other never
  * notified once in five captures, and the plan forbids inventing either.
  */
-internal object StrydFootpodEncoder {
+@SimulatorProbeApi
+object StrydFootpodEncoder {
 
     // ─────────────────────────────────────────────────────────────
     // RSC Measurement (0x2A53) - fixed 10 octets

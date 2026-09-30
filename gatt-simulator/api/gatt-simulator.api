@@ -2809,6 +2809,26 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 public abstract interface annotation class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorProbeApi : java/lang/annotation/Annotation {
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/StrydFootpodEncoder {
+	public static final field BATTERY_PERIOD_MS J
+	public static final field CPS_FEATURE_CRANK_REVOLUTION_DATA I
+	public static final field CPS_FLAGS I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/StrydFootpodEncoder;
+	public static final field MEASUREMENT_PERIOD_MS J
+	public static final field RSC_FLAGS_RUNNING I
+	public static final field RSC_FLAGS_WALKING I
+	public static final field RSC_FLAG_RUNNING I
+	public static final field RSC_FLAG_STRIDE_LENGTH I
+	public static final field RSC_FLAG_TOTAL_DISTANCE I
+	public static final field RUN_THRESHOLD_MPS D
+	public static final field SENSOR_LOCATION_IN_SHOE I
+	public final fun cyclingPowerFeature ()[B
+	public final fun cyclingPowerMeasurement (III)[B
+	public final fun rscFeature ()[B
+	public final fun rscMeasurement (DIIDZ)[B
+	public final fun sensorLocation ()[B
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection : java/lang/Enum {
 	public static final field DOWN Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;
 	public static final field UP Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;
