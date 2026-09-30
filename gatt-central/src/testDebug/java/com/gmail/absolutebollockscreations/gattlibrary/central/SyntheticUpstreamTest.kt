@@ -1,20 +1,17 @@
-package com.gmail.absolutebollockscreations.gattlibrary.peripheral
+package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.bluetooth.BluetoothProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.central.LegacyConnectionRole
-import com.gmail.absolutebollockscreations.gattlibrary.server.SimulatedUpstreamSample
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class EngineSimulatedUpstreamHostTest {
+class SyntheticUpstreamTest {
     @Test
     fun `local simulator session never becomes a connected physical device`() {
         val state = BtEngineState()
-        val projection = EngineSimulatedUpstreamHost(state)
+        val projection = SyntheticUpstream(state)
 
         projection.beginSession(haveControl = true)
 
@@ -45,7 +42,7 @@ class EngineSimulatedUpstreamHostTest {
         )
         state.setConnectionState(physical, BluetoothProfile.STATE_CONNECTED)
         val physicalKey = state.connectedDevices.value.single().connectionKey
-        val projection = EngineSimulatedUpstreamHost(state)
+        val projection = SyntheticUpstream(state)
 
         projection.beginSession(haveControl = false)
         projection.endSession()
@@ -57,11 +54,11 @@ class EngineSimulatedUpstreamHostTest {
     @Test
     fun `published samples land in engine state and untouched metrics stay untouched`() {
         val state = BtEngineState()
-        val host = EngineSimulatedUpstreamHost(state)
+        val host = SyntheticUpstream(state)
         host.beginSession(haveControl = false)
 
         host.publish(
-            SimulatedUpstreamSample(
+            SyntheticSample(
                 elapsedSeconds = 5,
                 heartRate = 120,
                 caloriesTotal = 3,

@@ -1,35 +1,44 @@
-package com.gmail.absolutebollockscreations.gattlibrary.peripheral
+package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.server.MovementCountKind
-import com.gmail.absolutebollockscreations.gattlibrary.server.SimulatedUpstreamHost
-import com.gmail.absolutebollockscreations.gattlibrary.server.SimulatedUpstreamSample
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Bridge: the simulator's [SimulatedUpstreamHost] over the real [BtEngineState] (LIB-19k).
+ * Debug-variant-only injection seam (L24, LIB-27): lets a synthetic-data generator drive the engine
+ * state as though a machine were attached, without a BLE link.
+ *
+ * This lives in `src/debug` on purpose. It is not part of the release ABI, so `BtEngineState` and
+ * its setters can become central-internal without a public write path surviving for simulation. The
+ * simulator never sees this type; the debug app maps the simulator's `SimulatedUpstreamHost`
+ * contract onto it (central does not depend on gatt-server).
  *
  * A simulator is a downstream peripheral plus a local metric producer, so it projects into workout
  * state without registering an upstream BLE link: the scanner's connection registry represents
  * physical central-role links, and registering a simulator there would make it look like a machine
  * FitBridge connected to and expose a disconnect action that only stops advertising.
  */
-class EngineSimulatedUpstreamHost(
+class SyntheticUpstream(
     private val engineState: BtEngineState,
-) : SimulatedUpstreamHost {
-    override val machineLinkAttached: Boolean get() = engineState.gatt != null
-    override val machineConnectionState: StateFlow<Int> get() = engineState.connectionState
-    override val externalHeartRate: StateFlow<Int?> get() = engineState.externalHeartRate
-    override val lastExternalHeartRateAtMs: Long get() = engineState.lastExternalAt
+) {
+    /** True when a real machine link exists. */
+    val machineLinkAttached: Boolean get() = engineState.gatt != null
 
-    override fun beginSession(haveControl: Boolean) {
+    /** `BluetoothProfile.STATE_*` of the machine link. */
+    val machineConnectionState: StateFlow<Int> get() = engineState.connectionState
+
+    /** Latest external strap heart rate, or null. */
+    val externalHeartRate: StateFlow<Int?> get() = engineState.externalHeartRate
+
+    /** Wall-clock ms at which [externalHeartRate] was last updated; zero means never. */
+    val lastExternalHeartRateAtMs: Long get() = engineState.lastExternalAt
+
+    fun beginSession(haveControl: Boolean) {
         engineState.setActiveSession(true)
         engineState.setIsRunning(true)
         engineState.setHaveControl(haveControl)
     }
 
     /** Leave the state object as an idle machine would, not mid-workout. */
-    override fun endSession() {
+    fun endSession() {
         engineState.setHaveControl(false)
         engineState.setIsRunning(false)
         engineState.setActiveSession(false)
@@ -63,7 +72,7 @@ class EngineSimulatedUpstreamHost(
      * untouched when the persona does not produce it - a simulated rower must not publish an
      * inclination any more than a real one would.
      */
-    override fun publish(sample: SimulatedUpstreamSample) {
+    fun publish(sample: SyntheticSample) {
         engineState.setElapsedSeconds(sample.elapsedSeconds)
         engineState.setHeartRate(sample.heartRate)
         engineState.setExpEnergyTotal(sample.caloriesTotal)
@@ -92,12 +101,12 @@ class EngineSimulatedUpstreamHost(
         sample.movementCount?.let { count ->
             when (sample.movementCountKind) {
                 null -> Unit
-                MovementCountKind.STROKES -> {
+                SyntheticMovementKind.STROKES -> {
                     engineState.setStrokeCount(count)
                     sample.cadence?.let { engineState.setStrokeRate(it) }
                 }
-                MovementCountKind.STEPS -> engineState.setTotalSteps(count)
-                MovementCountKind.STRIDES -> engineState.setTotalStrides(count.toDouble())
+                SyntheticMovementKind.STEPS -> engineState.setTotalSteps(count)
+                SyntheticMovementKind.STRIDES -> engineState.setTotalStrides(count.toDouble())
             }
         }
     }
@@ -106,3 +115,32 @@ class EngineSimulatedUpstreamHost(
         const val MILES_TO_KM = 1.609344
     }
 }
+
+/** What [SyntheticSample.movementCount] means for the synthetic machine. */
+enum class SyntheticMovementKind { STROKES, STEPS, STRIDES }
+
+/** One coherent synthetic sample in engine units; null means "this machine has no such metric". */
+data class SyntheticSample(
+    val elapsedSeconds: Int,
+    val heartRate: Int,
+    val caloriesTotal: Int,
+    val caloriesPerHour: Int,
+    val speedKph: Double? = null,
+    val averageSpeedKph: Double? = null,
+    val distanceMeters: Int? = null,
+    val cadence: Double? = null,
+    val averageCadence: Double? = null,
+    val resistance: Int? = null,
+    val inclinationPercent: Double? = null,
+    val powerWatts: Int? = null,
+    val averagePowerWatts: Int? = null,
+    val forceOnBeltNewtons: Int? = null,
+    /** Minutes per km. */
+    val instantPaceMinPerKm: Double? = null,
+    val averagePaceMinPerKm: Double? = null,
+    val movementCount: Int? = null,
+    /** Routes [movementCount]; null drops it. */
+    val movementCountKind: SyntheticMovementKind? = null,
+    val positiveElevationMeters: Double? = null,
+    val floors: Int? = null,
+)

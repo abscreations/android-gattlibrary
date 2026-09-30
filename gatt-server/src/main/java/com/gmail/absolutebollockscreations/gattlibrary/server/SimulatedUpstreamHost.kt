@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
  * What a synthetic-data generator (the FTMS simulator) needs from the host's machine engine, and
  * where it puts its samples. Defined here so the simulator depends on this contract rather than on
  * central's `BtEngineState` (L22, LIB-19k); the host bridge (`EngineSimulatedUpstreamHost` in
- * gatt-peripheral) implements it over the real engine state.
+ * the debug app, over central's debug-only `SyntheticUpstream`, LIB-27) implements it over the real engine state.
  *
  * Read side: whether a real machine is attached or connecting (the simulator must not fight it), and
  * the live external heart-rate strap, which overrides the generated value. Write side: begin and end
