@@ -119,7 +119,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
             frame.uuid == Concept2Uuids.UUID_C2_ADDITIONAL_STROKE_DATA ||
             frame.uuid == Concept2Uuids.UUID_C2_FORCE_CURVE_DATA ||
             (frame.uuid == Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION &&
-                frame.value.firstOrNull()?.let { (it.toInt() and 0xFF) in STROKE_IDS } == true)
+                frame.value.firstOrNull()?.let { (it.toInt() and 0xFF) in Concept2Pm5RecordSelection.STROKE_IDS } == true)
 
     fun hasWorkoutMeasurementSubscription(): Boolean =
         clients.values.any { it.session.hasWorkoutMeasurementSubscription }
@@ -570,10 +570,10 @@ internal class Concept2Pm5PeripheralAdvertiser(
     }
 
     private fun enqueueLive(client: Client, snapshot: Concept2Pm5Snapshot) {
-        val liveIds = liveIdsFor(snapshot)
+        val liveIds = Concept2Pm5RecordSelection.liveIdsFor(snapshot)
         liveIds.forEach { id ->
             val uuid = Concept2Pm5Session.uuidForId(id) ?: return@forEach
-            if (id != ADDITIONAL_STATUS_3_ID && client.session.isSubscribed(uuid)) {
+            if (id != Concept2Pm5RecordSelection.ADDITIONAL_STATUS_3_ID && client.session.isSubscribed(uuid)) {
                 Concept2Pm5Encoder.individual(uuid, snapshot)?.let {
                     enqueue(client, Frame(uuid, it, true))
                 }
@@ -592,7 +592,7 @@ internal class Concept2Pm5PeripheralAdvertiser(
             client.lastSummarySequence = snapshot.summarySequence
             enqueueEventIds(client, snapshot, listOf(0x39, 0x3A, 0x3C))
         }
-        if (forceCurveAvailable(persona?.machine, snapshot) &&
+        if (Concept2Pm5RecordSelection.forceCurveAvailable(persona?.machine, snapshot) &&
             snapshot.forceCurveSequence > client.lastForceCurveSequence &&
             client.session.isSubscribed(Concept2Uuids.UUID_C2_FORCE_CURVE_DATA)
         ) {
@@ -753,18 +753,5 @@ internal class Concept2Pm5PeripheralAdvertiser(
         private const val FTMS_ROWER_PERIOD_MS = 1_000L
         private const val MAX_PENDING = 24
         private const val DIAGNOSTICS_PERIOD_MS = 10_000L
-        private const val ADDITIONAL_STATUS_3_ID = 0x3E
-        private val LIVE_IDS = listOf(0x31, 0x32, 0x33, 0x35, 0x36, 0x3B, ADDITIONAL_STATUS_3_ID)
-        private val STROKE_IDS = setOf(0x35, 0x36)
-
-        internal fun liveIdsFor(snapshot: Concept2Pm5Snapshot): List<Int> =
-            if (snapshot.strokeDataAvailable) LIVE_IDS else LIVE_IDS.filterNot(STROKE_IDS::contains)
-
-        /** BikeErg has captured 0x35/0x36 records but no physical handle-force curve. */
-        internal fun forceCurveAvailable(
-            machine: Concept2Machine?,
-            snapshot: Concept2Pm5Snapshot,
-        ): Boolean = snapshot.strokeDataAvailable &&
-            machine != Concept2Machine.BIKE_ERG
     }
 }

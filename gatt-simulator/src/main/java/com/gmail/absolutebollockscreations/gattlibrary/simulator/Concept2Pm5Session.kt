@@ -5,7 +5,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Pure per-link PM5 state: subscriptions, rate and deterministic mux position. */
-internal class Concept2Pm5Session {
+@SimulatorProbeApi
+class Concept2Pm5Session {
     private val subscriptions = mutableSetOf<UUID>()
     private val csafe = Concept2CsafeLink()
     private var heartRateInputBytes: ByteArray? = null

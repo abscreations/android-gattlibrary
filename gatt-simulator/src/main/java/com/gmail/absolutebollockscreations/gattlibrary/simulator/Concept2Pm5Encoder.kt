@@ -6,7 +6,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Bounds-safe PM5 1.30 measurement encoders. */
-internal object Concept2Pm5Encoder {
+@SimulatorProbeApi
+object Concept2Pm5Encoder {
     /**
      * PM5 207.000's two-notification FTMS Rower Data report.
      *

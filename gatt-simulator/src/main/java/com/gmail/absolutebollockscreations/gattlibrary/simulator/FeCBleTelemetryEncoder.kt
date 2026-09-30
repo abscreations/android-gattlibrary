@@ -16,7 +16,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
  * and the future central `FeCFrameCodec`/`FeCPageParsers` must be independently pinned against the
  * same external vectors so a single offset bug cannot pass both sides at once.
  */
-internal object FeCBleTelemetryEncoder {
+@SimulatorProbeApi
+object FeCBleTelemetryEncoder {
 
     /** ANT serial envelope around 8 page bytes: sync, length, msg-id, channel, page, XOR checksum. */
     fun buildAntFrame(pageBytes: ByteArray, messageType: Int = FecBleUuids.FEC_ANT_MSG_BROADCAST_DATA): ByteArray {

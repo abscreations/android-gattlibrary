@@ -139,7 +139,8 @@ enum class FeCEquipmentType(
 }
 
 /** Page 16 / page 25 bits 4-6: the four FE-C equipment states (plan §9). */
-internal enum class FeCEquipmentState(val wireValue: Int) {
+@SimulatorProbeApi
+enum class FeCEquipmentState(val wireValue: Int) {
     OFF(1),
     READY(2),
     IN_USE(3),
@@ -147,7 +148,8 @@ internal enum class FeCEquipmentState(val wireValue: Int) {
 }
 
 /** Page 16 byte 7 bits 0-1: heart-rate source, preserved independently of the state bits. */
-internal enum class FeCHeartRateSource(val wireValue: Int) {
+@SimulatorProbeApi
+enum class FeCHeartRateSource(val wireValue: Int) {
     INVALID(0),
     HAND_CONTACT(1),
     EM(2),
@@ -177,7 +179,8 @@ enum class FeCBleSimulatorOverlay {
 }
 
 /** Which control page most recently established the active load-shaping behaviour. */
-internal enum class FeCBleControlMode {
+@SimulatorProbeApi
+enum class FeCBleControlMode {
     FREE,
     BASIC_RESISTANCE,
     ERG,
@@ -185,20 +188,23 @@ internal enum class FeCBleControlMode {
 }
 
 /** Decoded, retained page-50 fields. Encoded-domain only; see FEC-SQ2 — no physical unit is claimed. */
-internal data class FeCBleWindConfig(
+@SimulatorProbeApi
+data class FeCBleWindConfig(
     val windCoefficient: Double,
     val windSpeedEncodedUnit: Int,
     val draftingFactor: Double,
 )
 
 /** Decoded page-51 fields. */
-internal data class FeCBleTrackConfig(
+@SimulatorProbeApi
+data class FeCBleTrackConfig(
     val gradePercent: Double,
     val crr: Double,
 )
 
 /** Decoded page-55 fields, Incyclist-compatible interpretation only (plan §13.5). */
-internal data class FeCBleUserConfig(
+@SimulatorProbeApi
+data class FeCBleUserConfig(
     val userWeightKg: Double?,
     val rawPage: ByteArray,
 ) {
@@ -220,7 +226,8 @@ internal data class FeCBleUserConfig(
  * and rollover tests are straightforward: the wire value is always `internalCounter & mask`,
  * computed only at the encoder boundary.
  */
-internal class FeCBleMachineState(
+@SimulatorProbeApi
+class FeCBleMachineState(
     val equipmentType: FeCEquipmentType,
     val controlEnabled: Boolean = equipmentType.supportsControl,
     val serialNumber: Long = DEFAULT_SERIAL,

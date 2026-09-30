@@ -1251,7 +1251,8 @@ class FtmsSimulator(
         internal const val PERIOD_MS = 500L
 
         /** ErgData sample-rate value 2 requests one PM5 sample every 250 ms. */
-        internal const val CONCEPT2_PERIOD_MS = 250L
+        @SimulatorProbeApi
+        const val CONCEPT2_PERIOD_MS = 250L
 
         /** Capture corpus median is 1.02 seconds; one second preserves the physical cadence. */
         internal const val LIFE_FITNESS_PERIOD_MS = 1_000L

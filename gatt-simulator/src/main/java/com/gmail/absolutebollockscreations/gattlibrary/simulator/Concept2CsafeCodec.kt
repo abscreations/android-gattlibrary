@@ -5,7 +5,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.BigEndian
 
 
 /** Specification-derived CSAFE framing used only by the simulated PM5 peripheral. */
-internal object Concept2CsafeCodec {
+@SimulatorProbeApi
+object Concept2CsafeCodec {
     const val MAX_WIRE_FRAME_SIZE = 120
 
     data class Command(val identifier: Int, val data: ByteArray)
@@ -130,7 +131,8 @@ internal object Concept2CsafeCodec {
  * This has no reference to BtEngine or any physical-control path. C3 will replace the handshake
  * fields with device-global virtual PM state; the autonomous measurement engine remains unchanged.
  */
-internal class Concept2CsafeLink {
+@SimulatorProbeApi
+class Concept2CsafeLink {
     data class HandshakeState(
         val workoutType: Int? = null,
         val screenType: Int? = null,

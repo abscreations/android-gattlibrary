@@ -109,7 +109,7 @@ class Concept2Pm5EncoderTest {
         assertEquals(0, bike.peakForceTenthsPound)
         assertEquals(0, bike.averageForceTenthsPound)
         assertTrue(bike.forceCurvePounds.isEmpty())
-        assertFalse(Concept2Pm5PeripheralAdvertiser.forceCurveAvailable(Concept2Machine.BIKE_ERG, bike))
+        assertFalse(Concept2Pm5RecordSelection.forceCurveAvailable(Concept2Machine.BIKE_ERG, bike))
 
         assertTrue(Concept2Pm5Encoder.multiplexed(0x35, bike) != null)
         assertTrue(Concept2Pm5Encoder.multiplexed(0x36, bike) != null)
@@ -459,16 +459,16 @@ class Concept2Pm5EncoderTest {
         assertEquals(0, wirePaused.driveLengthCentimetres)
         assertEquals(0, wirePaused.peakForceTenthsPound)
         assertFalse(wirePaused.strokeDataAvailable)
-        assertFalse(0x35 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(wirePaused))
-        assertFalse(0x36 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(wirePaused))
+        assertFalse(0x35 in Concept2Pm5RecordSelection.liveIdsFor(wirePaused))
+        assertFalse(0x36 in Concept2Pm5RecordSelection.liveIdsFor(wirePaused))
 
         assertTrue(engine.startWorkout())
         val resumed = engine.tick(0.5)
         assertTrue(resumed.elapsedCentiseconds > paused.elapsedCentiseconds)
         assertTrue(resumed.distanceDecimetres >= paused.distanceDecimetres)
         assertTrue(resumed.strokeDataAvailable)
-        assertTrue(0x35 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(resumed))
-        assertTrue(0x36 in Concept2Pm5PeripheralAdvertiser.liveIdsFor(resumed))
+        assertTrue(0x35 in Concept2Pm5RecordSelection.liveIdsFor(resumed))
+        assertTrue(0x36 in Concept2Pm5RecordSelection.liveIdsFor(resumed))
     }
 
     @Test

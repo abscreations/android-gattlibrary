@@ -4,7 +4,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /** Typed outcome of decoding one FEC3 write. Never throws; unknown/malformed input is a value. */
-internal sealed interface FeCBleControlCommand {
+@SimulatorProbeApi
+sealed interface FeCBleControlCommand {
     data class BasicResistance(val resistancePercent: Double) : FeCBleControlCommand
     data class TargetPower(val watts: Double) : FeCBleControlCommand
     data class WindResistance(
@@ -26,7 +27,8 @@ internal sealed interface FeCBleControlCommand {
     data class Rejected(val reason: RejectReason) : FeCBleControlCommand
 }
 
-internal enum class RejectReason {
+@SimulatorProbeApi
+enum class RejectReason {
     BAD_LENGTH,
     BAD_SYNC,
     BAD_CHECKSUM,
@@ -40,7 +42,8 @@ internal enum class RejectReason {
  * (plan §7.2). The channel byte is recorded but never used to reject a write — the Tacx guide
  * says the channel number is ignored when sending to the trainer.
  */
-internal object FeCBleControlDecoder {
+@SimulatorProbeApi
+object FeCBleControlDecoder {
 
     /** Decode one raw FEC3 write. Malformed envelopes return [FeCBleControlCommand.Rejected]. */
     fun decode(raw: ByteArray): FeCBleControlCommand {

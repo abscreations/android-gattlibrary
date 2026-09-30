@@ -14,13 +14,15 @@ enum class Concept2Scenario {
     FINISH,
 }
 
-internal object Concept2Pm5OperationalState {
+@SimulatorProbeApi
+object Concept2Pm5OperationalState {
     const val READY = 1
     const val WORKOUT = 2
     const val IDLE = 10
 }
 
-internal enum class Concept2Pm5StartupPhase {
+@SimulatorProbeApi
+enum class Concept2Pm5StartupPhase {
     IDLE,
     SUBSCRIBED_IDLE,
     WAITING_FOR_ACCELERATION,
@@ -85,7 +87,8 @@ data class Concept2Pm5Snapshot(
 )
 
 /** Deterministic autonomous PM5 workout; it never accepts a Bluetooth control operation. */
-internal class Concept2Pm5MockEngine(
+@SimulatorProbeApi
+class Concept2Pm5MockEngine(
     private val machine: Concept2Machine,
     var scenario: Concept2Scenario = Concept2Scenario.STEADY,
     startsPaused: Boolean = false,
@@ -113,7 +116,8 @@ internal class Concept2Pm5MockEngine(
         private set
     val isWorkoutComplete: Boolean get() = programPhase == Concept2ProgramPhase.COMPLETE
 
-    internal var startupPhase: Concept2Pm5StartupPhase = Concept2Pm5StartupPhase.IDLE
+    @SimulatorProbeApi
+    var startupPhase: Concept2Pm5StartupPhase = Concept2Pm5StartupPhase.IDLE
         private set
 
     /** Start the first pull, or resume model advancement without resetting accumulated metrics. */

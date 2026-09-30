@@ -14,7 +14,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
  * entirely, because `PM5 430392046` has no heart-rate-receive service, so a client that
  * writes belt heart rate into the PM must find nowhere to write it here either.
  */
-internal class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
+@SimulatorProbeApi
+class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
     val services: Map<UUID, List<Concept2CharacteristicManifest>> = buildMap {
         if (persona.compatibility.exposesFtms) {
             // Registration order reproduces the captured post-GAP/GATT handle order.
