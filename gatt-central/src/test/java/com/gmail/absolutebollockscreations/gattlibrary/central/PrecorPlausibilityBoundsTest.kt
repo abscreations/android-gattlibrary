@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
 
 /** Phase 5b §11b: every bounded Chrono field crosses decode, emission and fusion. */
 class PrecorPlausibilityBoundsTest {
@@ -113,7 +114,7 @@ class PrecorPlausibilityBoundsTest {
         distanceMetres: Int = 1_000,
         calories: Int = 50,
         powerWatts: Int = 180,
-    ): ByteArray = ByteArray(PrecorMeasurement.FRAME_LENGTH).also { frame ->
+    ): ByteArray = ByteArray(PrecorSpec.FRAME_LENGTH).also { frame ->
         frame[0] = 83
         frame[1] = 89
         frame[2] = 22

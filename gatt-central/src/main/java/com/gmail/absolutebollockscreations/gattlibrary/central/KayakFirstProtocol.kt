@@ -1,39 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
-
-/**
- * The 17 display-selector IDs defined by pinned Apache-2.0 TMIW source.
- *
- * These codes configure console display slots. They are not command-6 array indexes; in
- * particular selectors 15, 17, and 18 do not prove a command-6 energy or power field.
- */
-enum class KayakFirstDisplayMetric(val wireCode: Int, val displayLabel: String) {
-    ELAPSED_TIME(0, "Elapsed Time"),
-    TOTAL_DISTANCE(2, "Total Distance"),
-    AVERAGE_SPEED(3, "Average Speed"),
-    INSTANTANEOUS_SPEED(4, "Instantaneous Speed"),
-    AVERAGE_STROKE_RATE(5, "Average Stroke Rate"),
-    INSTANTANEOUS_STROKE_RATE(6, "Inst. Stroke Rate"),
-    AVERAGE_200M_PACE(7, "Average 200m Pace (sec)"),
-    INSTANTANEOUS_200M_PACE(8, "Inst. 200m Pace (sec)"),
-    AVERAGE_500M_PACE(9, "Average 500m Pace (sec)"),
-    INSTANTANEOUS_500M_PACE(10, "Inst. 500m Pace (sec)"),
-    AVERAGE_1000M_PACE(11, "Average 1000m Pace (sec)"),
-    INSTANTANEOUS_1000M_PACE(12, "Inst. 1000m Pace (sec)"),
-    AVERAGE_FORCE(13, "Average Force"),
-    INSTANTANEOUS_FORCE(14, "Instantaneous Force"),
-    TOTAL_EXPENDED_ENERGY(15, "Total Expended Energy"),
-    INSTANTANEOUS_POWER(17, "Instantaneous Power"),
-    AVERAGE_POWER(18, "Average Power"),
-    ;
-
-    companion object {
-        private val byWireCode = entries.associateBy(KayakFirstDisplayMetric::wireCode)
-
-        fun fromWireCode(code: Int): KayakFirstDisplayMetric? = byWireCode[code]
-    }
-}
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstDisplayMetric
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 /** Immutable five-slot snapshot shared later by settings, setup, and the simulator. */
 data class KayakFirstDisplayConfiguration(
@@ -84,16 +54,6 @@ enum class KayakFirstSportMode(val wireCode: Int) {
     CANOEING(1),
     KAYAKING(2),
 }
-
-/**
- * Which console handshake dialect a connection uses.
- *
- * [LEGACY] is the pinned TMIW command-2 form proven by the V2/Blue captures. [BULL] is the
- * command-21 form shipped by the KayakFit desktop application against physical Bull consoles,
- * whose fourth and fifth fields are athlete weight and boat weight rather than weight and sport.
- * Both dialects share every other command in the profile.
- */
-enum class KayakFirstHandshakeVariant { LEGACY, BULL }
 
 /**
  * Which **Blue** handshake dialect the user picks before connecting.
@@ -171,7 +131,7 @@ sealed interface KayakFirstCommand {
         override val unixEpochSeconds: Long,
         override val timezoneOffsetMinutes: Int,
         override val athleteWeightKg: Int = KayakFirstCommandCodec.NEUTRAL_WEIGHT_KG,
-        val boatWeightKg: Int = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG,
+        val boatWeightKg: Int = KayakFirstSpec.DEFAULT_BOAT_WEIGHT_KG,
     ) : Handshake {
         override val variant = KayakFirstHandshakeVariant.BULL
 
@@ -207,9 +167,6 @@ object KayakFirstCommandCodec {
      * fixed 80 kg makes every displayed derived value wrong for most users.
      */
     const val NEUTRAL_WEIGHT_KG = 80
-
-    /** Boat mass sent when nothing is configured; equals the E2 4.2.0 hull constant. */
-    const val DEFAULT_BOAT_WEIGHT_KG = 12
 
     val WEIGHT_RANGE_KG = 20..250
     val BOAT_WEIGHT_RANGE_KG = 1..60

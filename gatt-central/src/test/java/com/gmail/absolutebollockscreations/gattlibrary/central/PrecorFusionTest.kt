@@ -5,6 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
 
 /** Phase 5b §11.6 coverage through the real Chrono decoder and emission mapping. */
 class PrecorFusionTest {
@@ -149,7 +150,7 @@ class PrecorFusionTest {
         distanceMetres: Int,
         calories: Int,
         powerWatts: Int,
-    ): ByteArray = ByteArray(PrecorMeasurement.FRAME_LENGTH).also { frame ->
+    ): ByteArray = ByteArray(PrecorSpec.FRAME_LENGTH).also { frame ->
         frame[0] = 83.toByte()
         frame[1] = 89.toByte()
         frame[2] = 22.toByte()

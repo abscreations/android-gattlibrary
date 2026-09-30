@@ -554,14 +554,14 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Kay
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow {
-	public fun <init> (ILcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Ljava/lang/String;)V
+	public fun <init> (ILcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Ljava/lang/String;)V
 	public final fun component1 ()I
-	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
 	public final fun component3 ()Ljava/lang/String;
-	public final fun copy (ILcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow;ILcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow;
+	public final fun copy (ILcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow;ILcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelRow;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getMetric ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
+	public final fun getMetric ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
 	public final fun getSlot ()I
 	public final fun getValue ()Ljava/lang/String;
 	public fun hashCode ()I

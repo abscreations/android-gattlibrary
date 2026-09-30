@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /**
  * Scan admission for the first advertisement-only family (plan §6.4, phase 11.4).
@@ -36,7 +37,7 @@ class KeiserScanAdmissionTest {
 
     private fun observation(
         localName: String? = "M3 1234",
-        companyId: Int = KeiserMSeriesMeasurement.COMPANY_ID,
+        companyId: Int = KeiserMSeriesSpec.COMPANY_ID,
         payload: ByteArray? = canonicalField,
     ): MatchObservation {
         val payloads = payload?.let { mapOf(companyId to ManufacturerPayload(it)) }.orEmpty()
@@ -115,7 +116,7 @@ class KeiserScanAdmissionTest {
         assertEquals(17, androidValue.size)
 
         val canonicalized = ManufacturerPayload.fromAndroidScanRecord(
-            KeiserMSeriesMeasurement.COMPANY_ID,
+            KeiserMSeriesSpec.COMPANY_ID,
             androidValue,
         )
 
@@ -160,7 +161,7 @@ class KeiserScanAdmissionTest {
 
         assertTrue(
             "a Keiser puts no service UUID on the air, so only a manufacturer filter reaches it",
-            HardwareScanFilterSpec.ManufacturerId(KeiserMSeriesMeasurement.COMPANY_ID) in specs,
+            HardwareScanFilterSpec.ManufacturerId(KeiserMSeriesSpec.COMPANY_ID) in specs,
         )
         assertEquals(
             "the spec list is derived from the registry and must not drift from it",
@@ -181,7 +182,7 @@ class KeiserScanAdmissionTest {
         // A GATT family is already reachable through its service UUID. Adding its company
         // identifier would widen the radio filter to every product that company ships.
         assertEquals(
-            listOf(HardwareScanFilterSpec.ManufacturerId(KeiserMSeriesMeasurement.COMPANY_ID)),
+            listOf(HardwareScanFilterSpec.ManufacturerId(KeiserMSeriesSpec.COMPANY_ID)),
             hardwareScanFilterSpecs().filterIsInstance<HardwareScanFilterSpec.ManufacturerId>(),
         )
     }
@@ -217,7 +218,7 @@ class KeiserScanAdmissionTest {
             ) in specs,
         )
         assertTrue(
-            HardwareScanFilterSpec.ManufacturerId(KeiserMSeriesMeasurement.COMPANY_ID) in specs,
+            HardwareScanFilterSpec.ManufacturerId(KeiserMSeriesSpec.COMPANY_ID) in specs,
         )
     }
 

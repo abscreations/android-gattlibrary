@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.PrecorMeasurement
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
 
 /** Encoder for the fixed 19-byte Precor Spinner Chrono Power measurement fixture. */
 internal object PrecorChronoEncoder {
@@ -10,8 +11,8 @@ internal object PrecorChronoEncoder {
     const val PAIR_PERIOD_MS = 1_000L
 
     fun encode(sample: FtmsMockSample): ByteArray {
-        val frame = ByteArray(PrecorMeasurement.FRAME_LENGTH)
-        PrecorMeasurement.MAGIC_PREFIX.forEachIndexed { index, value -> frame[index] = value.toByte() }
+        val frame = ByteArray(PrecorSpec.FRAME_LENGTH)
+        PrecorSpec.MAGIC_PREFIX.forEachIndexed { index, value -> frame[index] = value.toByte() }
 
         putU16(frame, 3, sample.elapsedSeconds)
         frame[5] = sample.heartRate.coerceIn(0, U8_MAX).toByte()
@@ -31,7 +32,7 @@ internal object PrecorChronoEncoder {
 
     /** Ordered notifications observed on `a026e01d-…` in QZ issue #261's physical capture. */
     fun encodeNotifications(sample: FtmsMockSample): List<ByteArray> =
-        listOf(encode(sample), PrecorMeasurement.auxiliaryFrame())
+        listOf(encode(sample), PrecorSpec.auxiliaryFrame())
 
     private fun scaled(value: Double?, scale: Double): Int =
         ((value ?: 0.0).coerceAtLeast(0.0) * scale).roundToInt()

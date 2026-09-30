@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u8
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /**
  * Bounds-checked decoder for the Keiser M-series advertisement payload (plan §11, phase 11.3).
@@ -113,19 +114,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
  */
 @GattLibraryInternalApi
 object KeiserMSeriesMeasurement {
-
-    /** Bluetooth SIG company identifier assigned to Keiser, little-endian on the wire as `02 01`. */
-    const val COMPANY_ID = 0x0102
-
-    /** The invariant first two octets of the canonical field. */
-    val MAGIC_PREFIX = intArrayOf(0x02, 0x01)
-
-    /** Canonical length once byte 18 is present. */
-    const val CURRENT_FIELD_LENGTH = 19
-
-    /** Canonical length for firmware that predates the resistance byte. */
-    const val LEGACY_FIELD_LENGTH = 18
-
     /** Smallest firmware minor byte that carries byte 18. Compared as a byte, never as text. */
     const val RESISTANCE_FROM_MINOR = 0x21
 
@@ -207,8 +195,8 @@ object KeiserMSeriesMeasurement {
      */
     fun firmwareVersion(data: ByteArray): FirmwareVersion? {
         if (data.size < MINIMUM_HEADER_LENGTH) return null
-        for (index in MAGIC_PREFIX.indices) {
-            if (u8(data, index) != MAGIC_PREFIX[index]) return null
+        for (index in KeiserMSeriesSpec.MAGIC_PREFIX.indices) {
+            if (u8(data, index) != KeiserMSeriesSpec.MAGIC_PREFIX[index]) return null
         }
         return FirmwareVersion(u8(data, OFFSET_FIRMWARE_MAJOR), u8(data, OFFSET_FIRMWARE_MINOR))
     }
@@ -350,7 +338,7 @@ object KeiserMSeriesMeasurement {
         }
 
     private fun expectedLength(firmwareMinor: Int): Int =
-        if (carriesResistance(firmwareMinor)) CURRENT_FIELD_LENGTH else LEGACY_FIELD_LENGTH
+        if (carriesResistance(firmwareMinor)) KeiserMSeriesSpec.CURRENT_FIELD_LENGTH else KeiserMSeriesSpec.LEGACY_FIELD_LENGTH
 }
 
 /**

@@ -20,6 +20,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.capture.ScanEvent
 import com.gmail.absolutebollockscreations.gattlibrary.central.capture.WriteEvent
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 
 /**
  * One-line call sites for the §0.9 capture channel, so the GATT callbacks stay
@@ -62,7 +63,7 @@ object CaptureHooks {
             AdvertisementSourceEvent(
                 conn = sourceKey?.let { BleCapture.labelFor("advertisement:$it") },
                 family = "keiser_m_series",
-                candidate = KEISER_M_SERIES_CANDIDATE_ID,
+                candidate = MachineFamilyIds.KEISER_M_SERIES,
                 systemId = systemId,
                 firmware = firmware,
                 generation = generation,

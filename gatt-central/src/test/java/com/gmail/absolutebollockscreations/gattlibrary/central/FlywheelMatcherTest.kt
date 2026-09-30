@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 
 class FlywheelMatcherTest {
     private val registry = DeviceMatcherRegistry.standard()
@@ -18,7 +19,7 @@ class FlywheelMatcherTest {
                 localName = "Flywheel 1",
                 advertisedServiceUuids = setOf(service),
             ),
-        ).single { it.candidateId == FLYWHEEL_CANDIDATE_ID }
+        ).single { it.candidateId == MachineFamilyIds.FLYWHEEL_SPORTS }
 
         assertTrue(candidate.machineRole)
         assertEquals(MatchTransport.GATT, candidate.transport)
@@ -37,8 +38,8 @@ class FlywheelMatcherTest {
             MatchObservation(advertisedServiceUuids = setOf(service)),
         )
 
-        assertTrue(nameOnly.none { it.candidateId == FLYWHEEL_CANDIDATE_ID })
-        assertTrue(serviceOnly.none { it.candidateId == FLYWHEEL_CANDIDATE_ID })
+        assertTrue(nameOnly.none { it.candidateId == MachineFamilyIds.FLYWHEEL_SPORTS })
+        assertTrue(serviceOnly.none { it.candidateId == MachineFamilyIds.FLYWHEEL_SPORTS })
     }
 
     @Test
@@ -57,7 +58,7 @@ class FlywheelMatcherTest {
 
         for (observation in observations) {
             assertTrue(
-                registry.rankedCandidates(observation).none { it.candidateId == FLYWHEEL_CANDIDATE_ID },
+                registry.rankedCandidates(observation).none { it.candidateId == MachineFamilyIds.FLYWHEEL_SPORTS },
             )
         }
         assertFalse(similarBase == service)

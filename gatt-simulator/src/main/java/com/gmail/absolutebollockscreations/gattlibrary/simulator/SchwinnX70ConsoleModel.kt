@@ -5,6 +5,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70PowerMo
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 
 /**
  * One coherent console state, from which all three streams are rendered.
@@ -143,7 +144,7 @@ internal class SchwinnX70ConsoleModel {
      *
      * The main frame carries a resistance level, not a power. Every consumer that reads it —
      * FitBridge's own 270 path, TMIW, QZ — recovers power from `(cadence, resistance)` through
-     * [SchwinnX70PowerModel.RESISTANCE_POWER_COEFFICIENTS]. So the level is not decoration: it *is*
+     * [SchwinnX70Spec.RESISTANCE_POWER_COEFFICIENTS]. So the level is not decoration: it *is*
      * the power, encoded. Publishing a level derived from anything else makes the main stream
      * contradict the sibling stream's measured power on the same tick.
      *

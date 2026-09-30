@@ -27,7 +27,7 @@ import androidx.core.content.ContextCompat
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstCommandCodec
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstHandshakeVariant
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
@@ -36,6 +36,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForeground
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 /** Debug peripheral for the capture-corroborated KayakFirst FFE0/FFE1 console surface. */
 internal class KayakFirstPeripheralController(
@@ -68,7 +70,7 @@ internal class KayakFirstPeripheralController(
         var inFlight = false
         var setupStage = "connected"
         var sport = 1
-        var boatWeightKg = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG.toDouble()
+        var boatWeightKg = KayakFirstSpec.DEFAULT_BOAT_WEIGHT_KG.toDouble()
         var display = KayakFirstDisplayConfiguration.DEFAULT
         var running = false
         var lastGeneratedEventKey: Long? = null
@@ -359,10 +361,10 @@ internal class KayakFirstPeripheralController(
 
     private fun handleOrange(
         client: Client,
-        command: com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeCommand,
+        command: com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand,
     ) {
         status = status.copy(lastCommand = command.name.lowercase())
-        if (command == com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeCommand.RESET) {
+        if (command == com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand.RESET) {
             client.orangeSequence = 0L
             client.orangeResetAtMs = SystemClock.elapsedRealtime()
             client.setupStage = "reset"

@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.KeiserMSeriesMeasurement
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /** Renders the dynamic part Android supplies to Keiser's manufacturer-data AD structure. */
 internal object KeiserMSeriesSimulatorEncoder {
@@ -11,7 +12,7 @@ internal object KeiserMSeriesSimulatorEncoder {
     const val SAMPLE_PERIOD_MS = 354L
 
     /** Company ID is supplied separately to Android and is therefore absent from this value. */
-    const val MANUFACTURER_PAYLOAD_LENGTH = KeiserMSeriesMeasurement.CURRENT_FIELD_LENGTH - 2
+    const val MANUFACTURER_PAYLOAD_LENGTH = KeiserMSeriesSpec.CURRENT_FIELD_LENGTH - 2
 
     fun encode(
         sample: FtmsMockSample,
@@ -48,8 +49,8 @@ internal object KeiserMSeriesSimulatorEncoder {
     /** Reattaches the little-endian company prefix used by the production decoder and fixtures. */
     fun canonicalField(manufacturerPayload: ByteArray): ByteArray =
         byteArrayOf(
-            (KeiserMSeriesMeasurement.COMPANY_ID and 0xff).toByte(),
-            (KeiserMSeriesMeasurement.COMPANY_ID ushr 8).toByte(),
+            (KeiserMSeriesSpec.COMPANY_ID and 0xff).toByte(),
+            (KeiserMSeriesSpec.COMPANY_ID ushr 8).toByte(),
         ) + manufacturerPayload
 
     private fun scaledTenths(value: Double?): Int =

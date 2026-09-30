@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /**
  * The advertisement-only source's state machine, on a fake clock (plan §6.5, phase 11.5).
@@ -169,7 +170,7 @@ class KeiserAdvertisementSourceTest {
         assertEquals(origin, powerSource.originId)
         assertEquals(MetricProtocol.VENDOR, powerSource.protocol)
         assertEquals(
-            MetricEndpointId.ManufacturerData(KeiserMSeriesMeasurement.COMPANY_ID),
+            MetricEndpointId.ManufacturerData(KeiserMSeriesSpec.COMPANY_ID),
             powerSource.endpointId,
         )
         assertEquals(origin, requireNotNull(fusion.selectedSource(MetricKind.SPEED)).originId)

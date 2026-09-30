@@ -10,6 +10,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.WahooKickrSpec
 
 class KickrLegacyControlServerTest {
     private val commands = listOf(
@@ -201,7 +202,7 @@ class KickrLegacyControlServerTest {
         val server = KickrLegacyControlServer(model, KickrLegacyAckMode.ACKNOWLEDGING_SYNTHETIC)
         server.handle(bytes(WahooKickrCommand.Unlock))
         val before = model.snapshot()
-        assertFalse(server.handle(byteArrayOf(WahooKickrUuids.OPCODE_ERG.toByte(), 0x01)).accepted)
+        assertFalse(server.handle(byteArrayOf(WahooKickrSpec.OPCODE_ERG.toByte(), 0x01)).accepted)
         assertFalse(server.handle(byteArrayOf(0x7F)).accepted)
         assertEquals(before, model.snapshot())
     }

@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import android.bluetooth.BluetoothGattCharacteristic
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -14,6 +14,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConn
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 class KickrGattRegistryTest {
     @Test
@@ -174,13 +175,13 @@ class KickrGattRegistryTest {
             KickrSyntheticModel(),
             zwiftServiceForm = RideOnServiceForm.ORIGINAL,
         )
-        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
-        assertFalse(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
+        session.subscribe(RideOnSpec.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        assertFalse(session.handleZwiftControl(RideOnSpec.HANDSHAKE_ORIGINAL)!!.accepted)
         assertNull(session.route)
-        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
-        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)!!.accepted)
+        session.subscribe(RideOnSpec.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        assertTrue(session.handleZwiftControl(RideOnSpec.HANDSHAKE_ORIGINAL)!!.accepted)
         assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
-        assertEquals(RideOnUuids.SYNC_TX, session.beginNext()!!.characteristicUuid)
+        assertEquals(RideOnSpec.SYNC_TX, session.beginNext()!!.characteristicUuid)
         session.subscribe(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT, PeripheralConnection.CccdMode.INDICATE)
         assertNull(session.handleFtmsControl(byteArrayOf(0x00)))
         session.clear()
@@ -199,9 +200,9 @@ class KickrGattRegistryTest {
             KickrSyntheticModel(),
             zwiftServiceForm = RideOnServiceForm.CORE2,
         )
-        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
-        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
-        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
+        session.subscribe(RideOnSpec.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        session.subscribe(RideOnSpec.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        assertTrue(session.handleZwiftControl(RideOnSpec.HANDSHAKE_CORE2)!!.accepted)
         assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
     }
 
@@ -217,12 +218,12 @@ class KickrGattRegistryTest {
 
         assertNull(session.legacy)
         assertTrue(kickrStandardMeasurementFrames(manifest, session.model.snapshot()).isNotEmpty())
-        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
-        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        session.subscribe(RideOnSpec.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        session.subscribe(RideOnSpec.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
         // Real Zwift wrote "RideOn" 02 03 to this persona's 128-bit ORIGINAL service in the
         // 2026-08-30 capture, not 02 02 - both must be accepted (see the CORE2-session test
         // above and the KDoc on ZwiftTrainerPeripheralServer.handle()).
-        assertTrue(session.handleZwiftControl(RideOnUuids.HANDSHAKE_CORE2)!!.accepted)
+        assertTrue(session.handleZwiftControl(RideOnSpec.HANDSHAKE_CORE2)!!.accepted)
         assertEquals(KickrControlRoute.ZWIFT_PROPRIETARY, session.route)
     }
 

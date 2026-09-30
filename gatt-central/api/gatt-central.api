@@ -194,7 +194,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun setHrZoneModeFromApp (Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;)V
 	public fun setIndoorBikeSimulation (FFFF)Z
 	public final fun setKayakFirstDisplayConfiguration (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;)V
-	public final fun setKayakFirstHandshakeVariant (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;)V
+	public final fun setKayakFirstHandshakeVariant (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;)V
 	public final fun setKayakFirstSportMode (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSportMode;)V
 	public final fun setLifeFitnessProfileFromApp (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessProfile;I)V
 	public final fun setRestingHrFromApp (Ljava/lang/Integer;)V
@@ -860,10 +860,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattRscKt {
 	public static final fun emitRscMetrics (Lcom/gmail/absolutebollockscreations/gattlibrary/central/RscMeasurement$Reading;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricEmitter;)V
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_GattSchwinnX70Kt {
-	public static final fun getSCHWINN_X70_INITIALISATION ()[B
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_scanKt {
@@ -1608,12 +1604,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Devic
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceMatcherRegistry$Companion {
 	public final fun of (Ljava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceMatcherRegistry;
 	public final fun standard ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceMatcherRegistry;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceMatchingKt {
-	public static final field FLYWHEEL_CANDIDATE_ID Ljava/lang/String;
-	public static final field KAYAK_FIRST_CANDIDATE_ID Ljava/lang/String;
-	public static final field KEISER_M_SERIES_CANDIDATE_ID Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceService : java/lang/Enum {
@@ -2439,7 +2429,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 	public final fun getBoatWeightKg ()I
 	public fun getTimezoneOffsetMinutes ()I
 	public fun getUnixEpochSeconds ()J
-	public fun getVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
+	public fun getVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -2459,7 +2449,7 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 	public abstract fun getAthleteWeightKg ()I
 	public abstract fun getTimezoneOffsetMinutes ()I
 	public abstract fun getUnixEpochSeconds ()J
-	public abstract fun getVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
+	public abstract fun getVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstCommand$LegacyHandshake : com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstCommand$Handshake {
@@ -2476,7 +2466,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 	public final fun getSport ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSportMode;
 	public fun getTimezoneOffsetMinutes ()I
 	public fun getUnixEpochSeconds ()J
-	public fun getVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
+	public fun getVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -2510,7 +2500,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstCommandCodec {
-	public static final field DEFAULT_BOAT_WEIGHT_KG I
 	public static final field DEFAULT_PAYLOAD_CAPACITY I
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstCommandCodec;
 	public static final field NEUTRAL_WEIGHT_KG I
@@ -2520,7 +2509,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDerivedMetrics {
-	public static final field DEFAULT_PULL_LENGTH_M D
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDerivedMetrics;
 	public static final field KAYAK_MASS_KG D
 	public static final field MODEL_COEFFICIENT D
@@ -2536,59 +2524,29 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration$Companion;
 	public static final field SLOT_COUNT I
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;)V
-	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun component3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun component4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun component5 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun component5 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getSlot1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun getSlot2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun getSlot3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun getSlot4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun getSlot5 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
+	public final fun getSlot1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getSlot5 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
 	public final fun getSlots ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-	public final fun withSlot (ILcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
+	public final fun withSlot (ILcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration$Companion {
 	public final fun fromWireCodes (Ljava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
 	public final fun getDEFAULT ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric : java/lang/Enum {
-	public static final field AVERAGE_1000M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field AVERAGE_200M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field AVERAGE_500M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field AVERAGE_FORCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field AVERAGE_POWER Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field AVERAGE_SPEED Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field AVERAGE_STROKE_RATE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric$Companion;
-	public static final field ELAPSED_TIME Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field INSTANTANEOUS_1000M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field INSTANTANEOUS_200M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field INSTANTANEOUS_500M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field INSTANTANEOUS_FORCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field INSTANTANEOUS_POWER Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field INSTANTANEOUS_SPEED Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field INSTANTANEOUS_STROKE_RATE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field TOTAL_DISTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static final field TOTAL_EXPENDED_ENERGY Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public final fun getDisplayLabel ()Ljava/lang/String;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun getWireCode ()I
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric$Companion {
-	public final fun fromWireCode (I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayMetric;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstEmissionKt {
@@ -2616,14 +2574,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstGeneration;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstGeneration;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant : java/lang/Enum {
-	public static final field BULL Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
-	public static final field LEGACY Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstMeasurement {
@@ -2746,30 +2696,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstMeasurementRejection;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand : java/lang/Enum {
-	public static final field AUXILIARY Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand$Companion;
-	public static final field RESET Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-	public static final field T_H Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-	public static final field T_MAX Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-	public static final field T_MIN Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-	public static final field T_V Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-	public final fun bytes ()[B
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun getWire ()B
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand$Companion {
-	public final fun fromLine (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangePhysics {
-	public static final field BOAT_MASS_OFFSET_KG D
-	public static final field DRAG_COEFFICIENT D
-	public static final field FLYWHEEL_INERTIA D
-	public static final field FORCE_RADIUS_METRES D
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangePhysics;
 	public final fun calculate (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingTuple;Ljava/lang/Double;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangePhysicsResult;
 }
@@ -2862,21 +2789,21 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeSession {
 	public fun <init> (Lkotlin/jvm/functions/Function0;)V
-	public final fun assumeResetComplete ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
+	public final fun assumeResetComplete ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
 	public final fun onResponse (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeResponse;J)Lkotlin/Pair;
 	public final fun reset ()V
-	public final fun start ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
+	public final fun start ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingResponse {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;JJ)V
-	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;JJ)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
 	public final fun component2 ()J
 	public final fun component3 ()J
-	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;JJ)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingResponse;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingResponse;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;JJILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingResponse;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;JJ)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingResponse;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingResponse;Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;JJILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeTimingResponse;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getCommand ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstOrangeCommand;
+	public final fun getCommand ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
 	public final fun getSequence ()J
 	public final fun getTimingMicroseconds ()J
 	public final fun getTimingSeconds ()D
@@ -2906,7 +2833,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 	public static final field LEGACY_CANOEING Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstProtocolChoice;
 	public static final field LEGACY_KAYAKING Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstProtocolChoice;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun getHandshakeVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstHandshakeVariant;
+	public final fun getHandshakeVariant ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
 	public final fun getSportMode ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSportMode;
 	public final fun isLegacy ()Z
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstProtocolChoice;
@@ -2988,13 +2915,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Keise
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KeiserMSeriesMeasurement {
 	public static final field BIKE_GONE_TIMEOUT_MS J
-	public static final field COMPANY_ID I
-	public static final field CURRENT_FIELD_LENGTH I
 	public static final field FAST_INTERVAL_MAJOR I
 	public static final field FAST_INTERVAL_MINOR I
 	public static final field FAST_STATS_TIMEOUT_MS J
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/KeiserMSeriesMeasurement;
-	public static final field LEGACY_FIELD_LENGTH I
 	public static final field METRES_PER_TENTH_KILOMETRE D
 	public static final field METRES_PER_TENTH_MILE D
 	public static final field RESISTANCE_FROM_MINOR I
@@ -3003,7 +2927,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Keise
 	public final fun carriesResistance (I)Z
 	public final fun firmwareText (II)Ljava/lang/String;
 	public final fun firmwareVersion ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KeiserMSeriesMeasurement$FirmwareVersion;
-	public final fun getMAGIC_PREFIX ()[I
 	public final fun isKeiserField ([B)Z
 	public final fun isRealtime (I)Z
 	public final fun parse ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KeiserMSeriesMeasurement$Reading;
@@ -4087,11 +4010,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Preco
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/PrecorMeasurement {
-	public static final field FRAME_LENGTH I
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/PrecorMeasurement;
-	public final fun auxiliaryFrame ()[B
-	public final fun getMAGIC_PREFIX ()[I
-	public final fun isAuxiliaryFrame ([B)Z
 	public final fun isChronoFrame ([B)Z
 	public final fun parse ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/central/PrecorMeasurement$Reading;
 }
@@ -4245,10 +4164,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Ranke
 	public final fun getTransport ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/RideOnControlSessionKt {
-	public static final fun getRIDEON_GEAR_RATIOS ()Ljava/util/List;
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/RideOnControlTarget {
@@ -4420,14 +4335,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/RideO
 	public fun toString ()Ljava/lang/String;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/RideOnServiceForm : java/lang/Enum {
-	public static final field CORE2 Lcom/gmail/absolutebollockscreations/gattlibrary/central/RideOnServiceForm;
-	public static final field ORIGINAL Lcom/gmail/absolutebollockscreations/gattlibrary/central/RideOnServiceForm;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/RideOnServiceForm;
-	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/RideOnServiceForm;
-}
-
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/RideOnSimulationParam {
 	public fun <init> (IIJJ)V
 	public final fun component1 ()I
@@ -4473,29 +4380,9 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/RideO
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/RideOnUuids {
-	public static final field HUB_INFO_MARKER J
-	public static final field HUB_REQUEST_DATA_ID_GEAR_RATIO J
-	public static final field HUB_REQUEST_DATA_ID_GENERAL_INFO J
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/RideOnUuids;
-	public static final field MAX_PACKET_BYTES I
-	public static final field OPCODE_CLICK_BUTTON_STATUS I
-	public static final field OPCODE_DEVICE_INFO_REQUEST I
-	public static final field OPCODE_HUB_COMMAND I
-	public static final field OPCODE_HUB_REQUEST I
-	public static final field OPCODE_HUB_REQUEST_RESPONSE I
-	public static final field OPCODE_RIDING_DATA I
-	public static final field OPCODE_STATUS_MESSAGE I
-	public static final field OPCODE_VIRTUAL_SHIFT I
-	public static final field OPCODE_VIRTUAL_SHIFT_RESPONSE I
 	public static final field RIDING_DATA_FIELD5_SPEED_MULTIPLIER D
 	public static final field RIDING_DATA_FIELD6_OBSERVED_CONSTANT J
-	public final fun getASYNC_TX ()Ljava/util/UUID;
-	public final fun getCORE2_SERVICE ()Ljava/util/UUID;
-	public final fun getHANDSHAKE_CORE2 ()[B
-	public final fun getHANDSHAKE_ORIGINAL ()[B
-	public final fun getORIGINAL_SERVICE ()Ljava/util/UUID;
-	public final fun getSYNC_RX ()Ljava/util/UUID;
-	public final fun getSYNC_TX ()Ljava/util/UUID;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/RscMeasurement {
@@ -4539,22 +4426,15 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Schwi
 	public static final field FRAME_LENGTH_IS_FIRST_OCTET Z
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/SchwinnX70Measurement;
 	public static final field KM_PER_MILE D
-	public static final field MAIN_FRAME_LENGTH I
 	public static final field MAX_PLAUSIBLE_KCAL_PER_HOUR D
 	public static final field MIN_RATE_CHECK_SECONDS D
-	public static final field SIBLING_FRAME_LENGTH I
 	public static final field SIBLING_POWER_DIVISOR D
 	public static final field SIBLING_SPEED_DIVISOR D
-	public static final field STREAM_MARKER_LENGTH I
-	public static final field STREAM_MARKER_TRAILER I
-	public static final field SUPPLEMENTAL_FRAME_LENGTH I
 	public static final field SUPPLEMENTAL_GUARD I
 	public static final field TICKS_PER_SECOND D
 	public static final field TIME_TICK_MODULUS I
 	public static final field TMIW_CALORIE_DIVISOR I
-	public final fun getMAIN_PREFIX ()[I
 	public final fun getSIBLING_TAGS ()Ljava/util/Map;
-	public final fun getSTREAM_MARKER_PREFIX ()[I
 	public final fun getSUPPLEMENTAL_TAGS ()Ljava/util/Map;
 	public final fun isMainFrame ([B)Z
 	public final fun isSiblingFrame ([B)Z
@@ -4635,7 +4515,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Schwi
 	public static final field MINIMUM_RESISTANCE I
 	public static final field ROLLING_RESISTANCE_COEFFICIENT D
 	public final fun damp (Lcom/gmail/absolutebollockscreations/gattlibrary/central/SchwinnX70PowerModel$DampedPower;DD)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SchwinnX70PowerModel$DampedPower;
-	public final fun getRESISTANCE_POWER_COEFFICIENTS ()Ljava/util/List;
 	public final fun powerWatts (II)D
 	public final fun speedKphFromPower (DD)D
 	public static synthetic fun speedKphFromPower$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/SchwinnX70PowerModel;DDILjava/lang/Object;)D
@@ -4948,24 +4827,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Wahoo
 	public static final field ERG_MIN_INTERVAL_MS J
 	public static final field INDICATION_TIMEOUT_MS J
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/WahooKickrUuids;
-	public static final field MAX_CRR D
-	public static final field MAX_CW D
-	public static final field MAX_ERG_WATTS I
-	public static final field MAX_STANDARD_LEVEL I
-	public static final field MAX_TOTAL_MASS_KG D
-	public static final field MAX_WHEEL_CIRCUMFERENCE_MM D
-	public static final field MIN_ERG_WATTS I
-	public static final field MIN_STANDARD_LEVEL I
-	public static final field OPCODE_ERG I
-	public static final field OPCODE_GRADE I
-	public static final field OPCODE_RESISTANCE I
-	public static final field OPCODE_ROLLING_RESISTANCE I
-	public static final field OPCODE_SIMULATION I
-	public static final field OPCODE_STANDARD_LEVEL I
-	public static final field OPCODE_UNLOCK I
-	public static final field OPCODE_WHEEL_CIRCUMFERENCE I
-	public static final field OPCODE_WIND_RESISTANCE I
-	public static final field OPCODE_WIND_SPEED I
 	public static final field UNLOCK_MAX_ATTEMPTS I
 	public static final field UNLOCK_MIN_ATTEMPT_INTERVAL_MS J
 	public static final field UNLOCK_OVERALL_TIMEOUT_MS J

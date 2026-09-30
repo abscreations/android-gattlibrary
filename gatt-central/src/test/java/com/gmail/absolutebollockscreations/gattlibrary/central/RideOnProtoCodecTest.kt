@@ -6,14 +6,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 class RideOnProtoCodecTest {
     @Test
     fun `UUID contract and service-specific handshakes are exact`() {
-        assertEquals(WahooUuids.UUID_WAHOO_RIDEON_SERVICE, RideOnUuids.ORIGINAL_SERVICE)
-        assertEquals(WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE, RideOnUuids.CORE2_SERVICE)
-        assertArrayEquals(hex("52 69 64 65 4F 6E 02 02"), RideOnUuids.HANDSHAKE_ORIGINAL)
-        assertArrayEquals(hex("52 69 64 65 4F 6E 02 03"), RideOnUuids.HANDSHAKE_CORE2)
+        assertEquals(WahooUuids.UUID_WAHOO_RIDEON_SERVICE, RideOnSpec.ORIGINAL_SERVICE)
+        assertEquals(WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE, RideOnSpec.CORE2_SERVICE)
+        assertArrayEquals(hex("52 69 64 65 4F 6E 02 02"), RideOnSpec.HANDSHAKE_ORIGINAL)
+        assertArrayEquals(hex("52 69 64 65 4F 6E 02 03"), RideOnSpec.HANDSHAKE_CORE2)
     }
 
     @Test
@@ -97,13 +98,13 @@ class RideOnProtoCodecTest {
             shortField = "1",
         )
         val outer = decoded(reply)
-        assertEquals(RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE, outer.opcode)
+        assertEquals(RideOnSpec.OPCODE_HUB_REQUEST_RESPONSE, outer.opcode)
         assertEquals(0L, varint(outer.fields, 1))
         val level2 = (outer.fields.single { it.number == 2 } as RideOnProtoField.Bytes).value
         val level2Fields = decoded(byteArrayOf(0) + level2).fields
         val inner = (level2Fields.single { it.number == 1 } as RideOnProtoField.Bytes).value
         val innerFields = decoded(byteArrayOf(0) + inner).fields
-        assertEquals(RideOnUuids.HUB_INFO_MARKER, varint(innerFields, 1))
+        assertEquals(RideOnSpec.HUB_INFO_MARKER, varint(innerFields, 1))
         assertArrayEquals(
             "KICKR CORE\u0000".toByteArray(Charsets.US_ASCII),
             (innerFields.single { it.number == 3 } as RideOnProtoField.Bytes).value,
@@ -156,7 +157,7 @@ class RideOnProtoCodecTest {
             ),
         )
         val decoded = decoded(packet)
-        assertEquals(RideOnUuids.OPCODE_HUB_COMMAND, decoded.opcode)
+        assertEquals(RideOnSpec.OPCODE_HUB_COMMAND, decoded.opcode)
         val simulation = (decoded.fields.single { it.number == 4 } as RideOnProtoField.Bytes).value
         val physical = (decoded.fields.single { it.number == 5 } as RideOnProtoField.Bytes).value
 
@@ -195,7 +196,7 @@ class RideOnProtoCodecTest {
         assertInvalid(byteArrayOf(0x03, 0x0A, 0x05, 1, 2))
         assertInvalid(byteArrayOf(0x03, 0x0B))
         assertInvalid(byteArrayOf(0x03, 0x08) + ByteArray(11) { 0x80.toByte() })
-        assertInvalid(ByteArray(RideOnUuids.MAX_PACKET_BYTES + 1))
+        assertInvalid(ByteArray(RideOnSpec.MAX_PACKET_BYTES + 1))
     }
 
     @Test

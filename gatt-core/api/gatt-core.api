@@ -146,6 +146,27 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/bytes/Pr
 	public final fun zigZagEncode32 (I)J
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/catalog/MachineFamilyIds {
+	public static final field CONCEPT2_PM Ljava/lang/String;
+	public static final field FEC_BLE Ljava/lang/String;
+	public static final field FLYWHEEL_SPORTS Ljava/lang/String;
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/catalog/MachineFamilyIds;
+	public static final field KAYAK_FIRST Ljava/lang/String;
+	public static final field KEISER_M_SERIES Ljava/lang/String;
+	public static final field LIFE_FITNESS Ljava/lang/String;
+	public static final field PRECOR_CHRONO Ljava/lang/String;
+	public static final field SCHWINN_X70 Ljava/lang/String;
+	public static final field SIG_CPS Ljava/lang/String;
+	public static final field SIG_CSC Ljava/lang/String;
+	public static final field SIG_FTMS Ljava/lang/String;
+	public static final field SIG_GLUCOSE Ljava/lang/String;
+	public static final field SIG_HRM Ljava/lang/String;
+	public static final field SIG_RSC Ljava/lang/String;
+	public static final field WAHOO_KICKR_LEGACY Ljava/lang/String;
+	public static final field WAHOO_RIDEON_CORE2 Ljava/lang/String;
+	public static final field WAHOO_RIDEON_ORIGINAL Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsDataFlags {
 	public static final field BIKE_AVGCAD I
 	public static final field BIKE_AVGPOWER I
@@ -595,5 +616,156 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/ids/Zwif
 	public final fun getUUID_ZWIFT_HUB_SUPPORT_NOTIFY ()Ljava/util/UUID;
 	public final fun getUUID_ZWIFT_HUB_SUPPORT_READ ()Ljava/util/UUID;
 	public final fun getUUID_ZWIFT_HUB_SUPPORT_SERVICE ()Ljava/util/UUID;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric : java/lang/Enum {
+	public static final field AVERAGE_1000M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field AVERAGE_200M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field AVERAGE_500M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field AVERAGE_FORCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field AVERAGE_POWER Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field AVERAGE_SPEED Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field AVERAGE_STROKE_RATE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric$Companion;
+	public static final field ELAPSED_TIME Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field INSTANTANEOUS_1000M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field INSTANTANEOUS_200M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field INSTANTANEOUS_500M_PACE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field INSTANTANEOUS_FORCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field INSTANTANEOUS_POWER Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field INSTANTANEOUS_SPEED Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field INSTANTANEOUS_STROKE_RATE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field TOTAL_DISTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static final field TOTAL_EXPENDED_ENERGY Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public final fun getDisplayLabel ()Ljava/lang/String;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getWireCode ()I
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric$Companion {
+	public final fun fromWireCode (I)Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstDisplayMetric;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant : java/lang/Enum {
+	public static final field BULL Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
+	public static final field LEGACY Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand : java/lang/Enum {
+	public static final field AUXILIARY Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand$Companion;
+	public static final field RESET Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public static final field T_H Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public static final field T_MAX Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public static final field T_MIN Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public static final field T_V Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public final fun bytes ()[B
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getWire ()B
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand$Companion {
+	public final fun fromLine (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstOrangeCommand;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstSpec {
+	public static final field BOAT_MASS_OFFSET_KG D
+	public static final field DEFAULT_BOAT_WEIGHT_KG I
+	public static final field DEFAULT_PULL_LENGTH_M D
+	public static final field DRAG_COEFFICIENT D
+	public static final field FLYWHEEL_INERTIA D
+	public static final field FORCE_RADIUS_METRES D
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstSpec;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/KeiserMSeriesSpec {
+	public static final field COMPANY_ID I
+	public static final field CURRENT_FIELD_LENGTH I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KeiserMSeriesSpec;
+	public static final field LEGACY_FIELD_LENGTH I
+	public final fun getMAGIC_PREFIX ()[I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/PrecorSpec {
+	public static final field FRAME_LENGTH I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/PrecorSpec;
+	public final fun auxiliaryFrame ()[B
+	public final fun getMAGIC_PREFIX ()[I
+	public final fun isAuxiliaryFrame ([B)Z
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/RideOnServiceForm : java/lang/Enum {
+	public static final field CORE2 Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/RideOnServiceForm;
+	public static final field ORIGINAL Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/RideOnServiceForm;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/RideOnServiceForm;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/RideOnServiceForm;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/RideOnSpec {
+	public static final field HUB_INFO_MARKER J
+	public static final field HUB_REQUEST_DATA_ID_GEAR_RATIO J
+	public static final field HUB_REQUEST_DATA_ID_GENERAL_INFO J
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/RideOnSpec;
+	public static final field MAX_PACKET_BYTES I
+	public static final field OPCODE_CLICK_BUTTON_STATUS I
+	public static final field OPCODE_DEVICE_INFO_REQUEST I
+	public static final field OPCODE_HUB_COMMAND I
+	public static final field OPCODE_HUB_REQUEST I
+	public static final field OPCODE_HUB_REQUEST_RESPONSE I
+	public static final field OPCODE_RIDING_DATA I
+	public static final field OPCODE_STATUS_MESSAGE I
+	public static final field OPCODE_VIRTUAL_SHIFT I
+	public static final field OPCODE_VIRTUAL_SHIFT_RESPONSE I
+	public final fun getASYNC_TX ()Ljava/util/UUID;
+	public final fun getCORE2_SERVICE ()Ljava/util/UUID;
+	public final fun getGEAR_RATIOS ()Ljava/util/List;
+	public final fun getHANDSHAKE_CORE2 ()[B
+	public final fun getHANDSHAKE_ORIGINAL ()[B
+	public final fun getORIGINAL_SERVICE ()Ljava/util/UUID;
+	public final fun getSYNC_RX ()Ljava/util/UUID;
+	public final fun getSYNC_TX ()Ljava/util/UUID;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/SchwinnX70Spec {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/SchwinnX70Spec;
+	public static final field MAIN_FRAME_LENGTH I
+	public static final field SIBLING_FRAME_LENGTH I
+	public static final field STREAM_MARKER_LENGTH I
+	public static final field STREAM_MARKER_TRAILER I
+	public static final field SUPPLEMENTAL_FRAME_LENGTH I
+	public final fun getINITIALISATION ()[B
+	public final fun getMAIN_PREFIX ()[I
+	public final fun getRESISTANCE_POWER_COEFFICIENTS ()Ljava/util/List;
+	public final fun getSTREAM_MARKER_PREFIX ()[I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/vendor/WahooKickrSpec {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/WahooKickrSpec;
+	public static final field MAX_CRR D
+	public static final field MAX_CW D
+	public static final field MAX_ERG_WATTS I
+	public static final field MAX_STANDARD_LEVEL I
+	public static final field MAX_TOTAL_MASS_KG D
+	public static final field MAX_WHEEL_CIRCUMFERENCE_MM D
+	public static final field MIN_ERG_WATTS I
+	public static final field MIN_STANDARD_LEVEL I
+	public static final field OPCODE_ERG I
+	public static final field OPCODE_GRADE I
+	public static final field OPCODE_RESISTANCE I
+	public static final field OPCODE_ROLLING_RESISTANCE I
+	public static final field OPCODE_SIMULATION I
+	public static final field OPCODE_STANDARD_LEVEL I
+	public static final field OPCODE_UNLOCK I
+	public static final field OPCODE_WHEEL_CIRCUMFERENCE I
+	public static final field OPCODE_WIND_RESISTANCE I
+	public static final field OPCODE_WIND_SPEED I
 }
 

@@ -5,6 +5,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u48
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 
 /**
  * Bounds-checked decoders for the Schwinn x70 family — 170, 270 and 570 (plan §7).
@@ -72,51 +73,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
  */
 @GattLibraryInternalApi
 object SchwinnX70Measurement {
-
-    /** 270 / 570 main stream. Exact length; a 16- or 18-octet frame is not one of these. */
-    const val MAIN_FRAME_LENGTH = 17
-
-    /** 170 supplemental stream: heart rate and resistance (V16). */
-    const val SUPPLEMENTAL_FRAME_LENGTH = 20
-
-    /** 170 sibling stream: speed and power (V15a, published under D72). */
-    const val SIBLING_FRAME_LENGTH = 14
-
-    /** The invariant first three octets of a main frame, `0x11 0x20 0x00`. */
-    val MAIN_PREFIX = intArrayOf(17, 32, 0)
-
-    /**
-     * The console's stream marker: a 5-octet frame on the measurement characteristic.
-     *
-     * **Registered 2026-08-18 to stop counting a legitimate frame as corruption.** `05 09 01 01 00`
-     * and `05 09 01 03 00` arrive on [SchwinnX70Uuids.UUID_X70_MEASUREMENT], self-describe their
-     * length in byte 0, and appear in four of five captured sessions — as the **first**
-     * main-characteristic frame of the link in both single-connection ones. [parseMain] requires
-     * exactly 17 octets, so before this existed every one of them incremented the handler's
-     * rejected-frame counter. That counter feeds the §11 evidence record and diagnostic capture,
-     * so it was wrong on every x70 session that produced a main stream.
-     *
-     * **This recognises the frame; it does not decode it.**
-     *
-     * **Widened 2026-08-19, because the first version repeated the defect it was written to fix.**
-     * It required the first three octets to be `05 09 01`, generalised from two samples. A 570u
-     * corpus then produced `05 09 02 01 00` — byte 2 is `0x02` — which the check rejected and the
-     * handler counted as corruption, which is precisely what `isStreamMarker` exists to stop.
-     *
-     * Five variants are now observed across three consoles: `05 09 01 00 00`, `05 09 01 01 00`,
-     * `05 09 01 03 00` and `05 09 02 01 00`. Bytes 2 and 3 both vary and neither is understood.
-     * What holds everywhere is the length, the `05 09` opening, and a zero last octet, so that is
-     * what is checked — enough to reject a foreign 5-octet frame, and no more than the evidence
-     * supports.
-     */
-    const val STREAM_MARKER_LENGTH = 5
-
-    /** The two leading octets that hold across every observed variant. */
-    val STREAM_MARKER_PREFIX = intArrayOf(0x05, 0x09)
-
-    /** Byte 4 is zero in every observed marker; bytes 2 and 3 vary and mean nothing known. */
-    const val STREAM_MARKER_TRAILER = 0x00
-
     /**
      * Whether [data] is the measurement characteristic's stream marker rather than a measurement.
      *
@@ -125,11 +81,11 @@ object SchwinnX70Measurement {
      * defect §7 exists to avoid repeating.
      */
     fun isStreamMarker(data: ByteArray): Boolean {
-        if (data.size != STREAM_MARKER_LENGTH) return false
-        for (index in STREAM_MARKER_PREFIX.indices) {
-            if (u8(data, index) != STREAM_MARKER_PREFIX[index]) return false
+        if (data.size != SchwinnX70Spec.STREAM_MARKER_LENGTH) return false
+        for (index in SchwinnX70Spec.STREAM_MARKER_PREFIX.indices) {
+            if (u8(data, index) != SchwinnX70Spec.STREAM_MARKER_PREFIX[index]) return false
         }
-        return u8(data, STREAM_MARKER_LENGTH - 1) == STREAM_MARKER_TRAILER
+        return u8(data, SchwinnX70Spec.STREAM_MARKER_LENGTH - 1) == SchwinnX70Spec.STREAM_MARKER_TRAILER
     }
 
     /**
@@ -256,9 +212,9 @@ object SchwinnX70Measurement {
     const val MIN_RATE_CHECK_SECONDS = 20.0
 
     fun isMainFrame(data: ByteArray): Boolean {
-        if (data.size != MAIN_FRAME_LENGTH) return false
-        for (index in MAIN_PREFIX.indices) {
-            if (u8(data, index) != MAIN_PREFIX[index]) return false
+        if (data.size != SchwinnX70Spec.MAIN_FRAME_LENGTH) return false
+        for (index in SchwinnX70Spec.MAIN_PREFIX.indices) {
+            if (u8(data, index) != SchwinnX70Spec.MAIN_PREFIX[index]) return false
         }
         return true
     }
@@ -328,7 +284,7 @@ object SchwinnX70Measurement {
     data class Supplemental(val heartRateBpm: Int, val resistance: Int)
 
     fun isSupplementalFrame(data: ByteArray): Boolean =
-        data.size == SUPPLEMENTAL_FRAME_LENGTH &&
+        data.size == SchwinnX70Spec.SUPPLEMENTAL_FRAME_LENGTH &&
             SUPPLEMENTAL_TAGS.all { (offset, tag) -> u8(data, offset) == tag }
 
     fun parseSupplemental(data: ByteArray): Supplemental? {
@@ -437,7 +393,7 @@ object SchwinnX70Measurement {
     }
 
     fun isSiblingFrame(data: ByteArray): Boolean =
-        data.size == SIBLING_FRAME_LENGTH && SIBLING_TAGS.all { (offset, tag) -> u8(data, offset) == tag }
+        data.size == SchwinnX70Spec.SIBLING_FRAME_LENGTH && SIBLING_TAGS.all { (offset, tag) -> u8(data, offset) == tag }
 
     fun parseSibling(data: ByteArray): Sibling? {
         if (!isSiblingFrame(data)) return null

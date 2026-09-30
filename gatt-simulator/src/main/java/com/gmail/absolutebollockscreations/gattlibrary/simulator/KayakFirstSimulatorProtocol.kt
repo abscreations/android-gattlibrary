@@ -4,12 +4,13 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDerivedMetrics
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayMetric
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstHandshakeVariant
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstDisplayMetric
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 internal fun kayakFirstIdleSample() = FtmsMockSample(
     elapsedSeconds = 0,
@@ -202,7 +203,7 @@ internal object KayakFirstSimulatorTelemetryEncoder {
         val watts = (powerWatts ?: 0).coerceAtLeast(0).toDouble()
         val cadence = (cadenceSpm ?: 0.0).coerceAtLeast(0.0)
         if (watts <= 0.0 || cadence <= 0.0) return "0"
-        val force = watts * 60.0 / (KayakFirstDerivedMetrics.DEFAULT_PULL_LENGTH_M * cadence)
+        val force = watts * 60.0 / (KayakFirstSpec.DEFAULT_PULL_LENGTH_M * cadence)
         return force.roundToInt().coerceAtLeast(0).toString()
     }
 }

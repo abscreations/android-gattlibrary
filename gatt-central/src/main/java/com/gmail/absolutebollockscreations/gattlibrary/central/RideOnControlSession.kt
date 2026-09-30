@@ -15,9 +15,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
-
-@GattLibraryInternalApi
-enum class RideOnServiceForm { ORIGINAL, CORE2 }
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 internal data class RideOnSessionTiming(
     val negotiationTimeoutMs: Long = 3_000,
@@ -34,9 +33,9 @@ internal class RideOnSubscriptionGate(private val connectionId: ConnectionId) {
     private val ready = mutableSetOf<UUID>()
     @Synchronized fun markReady(eventConnectionId: ConnectionId, characteristic: UUID): Boolean {
         if (eventConnectionId != connectionId) return false
-        if (characteristic != RideOnUuids.ASYNC_TX && characteristic != RideOnUuids.SYNC_TX) return false
+        if (characteristic != RideOnSpec.ASYNC_TX && characteristic != RideOnSpec.SYNC_TX) return false
         ready += characteristic
-        return ready.contains(RideOnUuids.ASYNC_TX) && ready.contains(RideOnUuids.SYNC_TX)
+        return ready.contains(RideOnSpec.ASYNC_TX) && ready.contains(RideOnSpec.SYNC_TX)
     }
 }
 
@@ -101,15 +100,15 @@ internal class RideOnControlSession(
 
     fun onPacket(eventConnectionId: ConnectionId, characteristic: UUID, bytes: ByteArray) {
         if (closed.get() || eventConnectionId != connectionId) return
-        if (characteristic != RideOnUuids.ASYNC_TX && characteristic != RideOnUuids.SYNC_TX) return
+        if (characteristic != RideOnSpec.ASYNC_TX && characteristic != RideOnSpec.SYNC_TX) return
         val decoded = RideOnProtoCodec.decode(bytes)
         if (decoded is RideOnDecodeResult.Decoded &&
-            decoded.packet.opcode == RideOnUuids.OPCODE_RIDING_DATA
+            decoded.packet.opcode == RideOnSpec.OPCODE_RIDING_DATA
         ) {
             decodeRideOnTelemetry(bytes)?.let(onRidingData)
         }
         if (decoded is RideOnDecodeResult.Decoded &&
-            decoded.packet.opcode == RideOnUuids.OPCODE_VIRTUAL_SHIFT_RESPONSE
+            decoded.packet.opcode == RideOnSpec.OPCODE_VIRTUAL_SHIFT_RESPONSE
         ) {
             val sequence = decoded.packet.fields
                 .filterIsInstance<RideOnProtoField.Varint>()
@@ -142,7 +141,7 @@ internal class RideOnControlSession(
     }
 
     fun submitVirtualGear(index: Int): Boolean {
-        if (!controlGranted || closed.get() || index !in 1..RIDEON_GEAR_RATIOS.size) return false
+        if (!controlGranted || closed.get() || index !in 1..RideOnSpec.GEAR_RATIOS.size) return false
         pendingGear.set(index)
         workWake.trySend(Unit)
         return true
@@ -178,7 +177,7 @@ internal class RideOnControlSession(
         val activeWaiter = sequence to waiter
         shiftWaiter.set(activeWaiter)
         val accepted = write(
-            RideOnProtoCodec.virtualShift(1, sequence, RIDEON_GEAR_RATIOS[index - 1].toLong()),
+            RideOnProtoCodec.virtualShift(1, sequence, RideOnSpec.GEAR_RATIOS[index - 1].toLong()),
             "virtual-shift",
         )
         if (!accepted) {
@@ -194,7 +193,7 @@ internal class RideOnControlSession(
 
     private suspend fun write(payload: ByteArray, label: String): Boolean = runCatching {
         transport.write(
-            RideOnUuids.SYNC_RX,
+            RideOnSpec.SYNC_RX,
             payload,
             GattWriteMode.WITHOUT_RESPONSE,
             timing.writeTimeoutMs,
@@ -203,8 +202,8 @@ internal class RideOnControlSession(
     }.getOrDefault(false)
 
     private fun handshake() = when (serviceForm) {
-        RideOnServiceForm.ORIGINAL -> RideOnUuids.HANDSHAKE_ORIGINAL
-        RideOnServiceForm.CORE2 -> RideOnUuids.HANDSHAKE_CORE2
+        RideOnServiceForm.ORIGINAL -> RideOnSpec.HANDSHAKE_ORIGINAL
+        RideOnServiceForm.CORE2 -> RideOnSpec.HANDSHAKE_CORE2
     }
 
     private fun attemptBudgetMs(): Long =
@@ -222,10 +221,3 @@ internal class RideOnControlSession(
         const val UINT32_MAX = 0xFFFF_FFFFL
     }
 }
-
-@GattLibraryInternalApi
-val RIDEON_GEAR_RATIOS = listOf(
-    7500, 8700, 9900, 11100, 12300, 13800, 15300, 16800,
-    18600, 20400, 22200, 24000, 26099, 28200, 30300, 32400,
-    34900, 37400, 39900, 42399, 45400, 48400, 51400, 54899,
-)

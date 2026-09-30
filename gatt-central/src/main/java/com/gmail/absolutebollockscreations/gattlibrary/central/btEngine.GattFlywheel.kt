@@ -12,6 +12,7 @@ import timber.log.Timber
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 
 internal data class FlywheelCharacteristicInventory(
     val properties: Int,
@@ -58,7 +59,7 @@ internal fun planFlywheelDiscovery(
 ): FlywheelDiscoveryPlan {
     fun reject(reason: FlywheelDiscoveryFailure) = FlywheelDiscoveryPlan(false, reason, emptyList())
 
-    if (advertisementCandidateId != FLYWHEEL_CANDIDATE_ID) {
+    if (advertisementCandidateId != MachineFamilyIds.FLYWHEEL_SPORTS) {
         return reject(FlywheelDiscoveryFailure.ADVERTISEMENT_IDENTITY_NOT_CONFIRMED)
     }
     val characteristics = inventory.services[FlywheelUuids.UUID_FLYWHEEL_SERVICE]

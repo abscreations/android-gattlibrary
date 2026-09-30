@@ -11,6 +11,10 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 internal data class KayakFirstCharacteristicInventory(
     val properties: Int,
@@ -45,7 +49,7 @@ internal fun planKayakFirstDiscovery(
     fun reject(reason: KayakFirstDiscoveryFailure) =
         KayakFirstDiscoveryPlan(false, reason, null)
 
-    if (advertisementCandidateId != KAYAK_FIRST_CANDIDATE_ID) {
+    if (advertisementCandidateId != MachineFamilyIds.KAYAK_FIRST) {
         return reject(KayakFirstDiscoveryFailure.ADVERTISEMENT_CANDIDATE_MISSING)
     }
     val service = inventory.services[KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE]
@@ -132,7 +136,7 @@ internal class KayakFirstProtocolHandler(
     private var selectedHandshakeVariant: KayakFirstHandshakeVariant =
         KayakFirstHandshakeVariant.LEGACY
     private var selectedAthleteWeightKg: Int = KayakFirstCommandCodec.NEUTRAL_WEIGHT_KG
-    private var selectedBoatWeightKg: Int = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG
+    private var selectedBoatWeightKg: Int = KayakFirstSpec.DEFAULT_BOAT_WEIGHT_KG
 
     internal fun hasStructuralMatch(): Boolean = structuralMatch
     internal fun isProtocolConfirmed(): Boolean = protocolConfirmed

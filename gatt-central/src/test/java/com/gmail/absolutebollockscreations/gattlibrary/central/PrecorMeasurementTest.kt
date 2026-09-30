@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
 
 /**
  * FitBridge-authored adversarial coverage for the Precor Chrono parser — plan §5.4, §11a, §11b.
@@ -51,21 +52,21 @@ class PrecorMeasurementTest {
 
     @Test
     fun `captured auxiliary notification has an exact defensive predicate`() {
-        val auxiliary = PrecorMeasurement.auxiliaryFrame()
-        assertTrue(PrecorMeasurement.isAuxiliaryFrame(auxiliary))
+        val auxiliary = PrecorSpec.auxiliaryFrame()
+        assertTrue(PrecorSpec.isAuxiliaryFrame(auxiliary))
         assertNull(PrecorMeasurement.parse(auxiliary))
 
         auxiliary[2] = 0x01
-        assertFalse(PrecorMeasurement.isAuxiliaryFrame(auxiliary))
-        assertFalse(PrecorMeasurement.isAuxiliaryFrame(byteArrayOf(0x24, 0x08)))
-        assertArrayEquals(byteArrayOf(0x24, 0x08, 0x00), PrecorMeasurement.auxiliaryFrame())
+        assertFalse(PrecorSpec.isAuxiliaryFrame(auxiliary))
+        assertFalse(PrecorSpec.isAuxiliaryFrame(byteArrayOf(0x24, 0x08)))
+        assertArrayEquals(byteArrayOf(0x24, 0x08, 0x00), PrecorSpec.auxiliaryFrame())
     }
 
     @Test
     fun `a frame of any length other than 19 is rejected`() {
         val valid = validFrame()
         for (length in 0..25) {
-            if (length == PrecorMeasurement.FRAME_LENGTH) continue
+            if (length == PrecorSpec.FRAME_LENGTH) continue
             val truncated = ByteArray(length) { index ->
                 if (index < valid.size) valid[index] else 0
             }

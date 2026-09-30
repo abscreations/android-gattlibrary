@@ -21,6 +21,7 @@ import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.AdapterNameCoordinator
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsForegroundService
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.advertisedName
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /** Pure legacy-envelope facts, kept separate from Android objects for focused unit coverage. */
 internal data class KeiserMSeriesAdvertisingPlan(
@@ -45,7 +46,7 @@ internal data class KeiserMSeriesAdvertisingPlan(
             val name = persona.advertisedName
             return KeiserMSeriesAdvertisingPlan(
                 localName = name,
-                manufacturerId = KeiserMSeriesMeasurement.COMPANY_ID,
+                manufacturerId = KeiserMSeriesSpec.COMPANY_ID,
                 manufacturerPayload = payload.copyOf(),
                 connectable = false,
                 scannable = false,

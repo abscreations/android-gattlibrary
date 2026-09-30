@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 @GattLibraryInternalApi
 data class RideOnTelemetry(
@@ -14,7 +15,7 @@ data class RideOnTelemetry(
 @GattLibraryInternalApi
 fun decodeRideOnTelemetry(packet: ByteArray): RideOnTelemetry? {
     val decoded = (RideOnProtoCodec.decode(packet) as? RideOnDecodeResult.Decoded)?.packet ?: return null
-    if (decoded.opcode != RideOnUuids.OPCODE_RIDING_DATA) return null
+    if (decoded.opcode != RideOnSpec.OPCODE_RIDING_DATA) return null
     val known = decoded.fields.filter { it.number in 1..6 }
     if (known.any { it !is RideOnProtoField.Varint }) return null
     if (known.groupBy { it.number }.any { it.value.size != 1 }) return null

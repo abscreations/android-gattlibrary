@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 
 class FlywheelDiscoveryPlanTest {
     private val notify = BluetoothGattCharacteristic.PROPERTY_NOTIFY
@@ -17,7 +18,7 @@ class FlywheelDiscoveryPlanTest {
     @Test
     fun `exact inventory plans one TX subscription and no RX operation`() {
         for (rxProperties in listOf(write, writeNoResponse, write or writeNoResponse)) {
-            val plan = planFlywheelDiscovery(FLYWHEEL_CANDIDATE_ID, inventory(rxProperties = rxProperties))
+            val plan = planFlywheelDiscovery(MachineFamilyIds.FLYWHEEL_SPORTS, inventory(rxProperties = rxProperties))
             assertTrue(plan.activate)
             assertNull(plan.failure)
             assertEquals(
@@ -61,7 +62,7 @@ class FlywheelDiscoveryPlanTest {
             inventory(includeRx = false) to FlywheelDiscoveryFailure.MISSING_RX,
         )
         for ((inventory, expected) in cases) {
-            val plan = planFlywheelDiscovery(FLYWHEEL_CANDIDATE_ID, inventory)
+            val plan = planFlywheelDiscovery(MachineFamilyIds.FLYWHEEL_SPORTS, inventory)
             assertFalse(plan.activate)
             assertEquals(expected, plan.failure)
             assertTrue(plan.operations.isEmpty())
@@ -78,7 +79,7 @@ class FlywheelDiscoveryPlanTest {
                 FlywheelDiscoveryFailure.RX_NOT_WRITABLE,
         )
         for ((inventory, expected) in cases) {
-            val plan = planFlywheelDiscovery(FLYWHEEL_CANDIDATE_ID, inventory)
+            val plan = planFlywheelDiscovery(MachineFamilyIds.FLYWHEEL_SPORTS, inventory)
             assertFalse(plan.activate)
             assertEquals(expected, plan.failure)
             assertTrue(plan.operations.isEmpty())
@@ -95,7 +96,7 @@ class FlywheelDiscoveryPlanTest {
             extras = mapOf(extraService to mapOf(extraCharacteristic to characteristic(notify, true))),
         )
 
-        assertTrue(planFlywheelDiscovery(FLYWHEEL_CANDIDATE_ID, inventory).activate)
+        assertTrue(planFlywheelDiscovery(MachineFamilyIds.FLYWHEEL_SPORTS, inventory).activate)
     }
 
     private fun inventory(

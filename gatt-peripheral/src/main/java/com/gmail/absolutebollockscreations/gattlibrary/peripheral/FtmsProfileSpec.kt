@@ -3,7 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceProfiles
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
-import com.gmail.absolutebollockscreations.gattlibrary.central.KEISER_M_SERIES_CANDIDATE_ID
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
@@ -227,7 +227,7 @@ fun providerMeasurementCapabilities(
     advertisementCandidateId: String? = null,
 ): FtmsMeasurementCapabilities = when {
     profile == FtmsMachineProfile.INDOOR_BIKE &&
-        advertisementCandidateId == KEISER_M_SERIES_CANDIDATE_ID ->
+        advertisementCandidateId == MachineFamilyIds.KEISER_M_SERIES ->
         keiserMSeriesMeasurementCapabilities
 
     profile == FtmsMachineProfile.INDOOR_BIKE &&

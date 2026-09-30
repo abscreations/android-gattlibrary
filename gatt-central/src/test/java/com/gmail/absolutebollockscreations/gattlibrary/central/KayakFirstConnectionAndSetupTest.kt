@@ -13,6 +13,9 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstDisplayMetric
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 
 class KayakFirstConnectionAndSetupTest {
     private val notify = BluetoothGattCharacteristic.PROPERTY_NOTIFY
@@ -20,7 +23,7 @@ class KayakFirstConnectionAndSetupTest {
 
     @Test
     fun `exact same-parent FFE1 surface plans one notification subscription`() {
-        val plan = planKayakFirstDiscovery(KAYAK_FIRST_CANDIDATE_ID, inventory())
+        val plan = planKayakFirstDiscovery(MachineFamilyIds.KAYAK_FIRST, inventory())
 
         assertTrue(plan.activate)
         assertNull(plan.failure)
@@ -37,25 +40,25 @@ class KayakFirstConnectionAndSetupTest {
             planKayakFirstDiscovery(null, inventory()) to
                 KayakFirstDiscoveryFailure.ADVERTISEMENT_CANDIDATE_MISSING,
             planKayakFirstDiscovery(
-                KAYAK_FIRST_CANDIDATE_ID,
+                MachineFamilyIds.KAYAK_FIRST,
                 KayakFirstGattInventory(emptyMap()),
             ) to KayakFirstDiscoveryFailure.MISSING_SERVICE,
-            planKayakFirstDiscovery(KAYAK_FIRST_CANDIDATE_ID, inventory(includeIo = false)) to
+            planKayakFirstDiscovery(MachineFamilyIds.KAYAK_FIRST, inventory(includeIo = false)) to
                 KayakFirstDiscoveryFailure.MISSING_IO,
             planKayakFirstDiscovery(
-                KAYAK_FIRST_CANDIDATE_ID,
+                MachineFamilyIds.KAYAK_FIRST,
                 inventory(ioProperties = writeNoResponse),
             ) to KayakFirstDiscoveryFailure.IO_NOT_NOTIFY,
             planKayakFirstDiscovery(
-                KAYAK_FIRST_CANDIDATE_ID,
+                MachineFamilyIds.KAYAK_FIRST,
                 inventory(ioProperties = notify),
             ) to KayakFirstDiscoveryFailure.IO_NOT_WRITE_WITHOUT_RESPONSE,
             planKayakFirstDiscovery(
-                KAYAK_FIRST_CANDIDATE_ID,
+                MachineFamilyIds.KAYAK_FIRST,
                 inventory(hasCccd = false),
             ) to KayakFirstDiscoveryFailure.IO_MISSING_CCCD,
             planKayakFirstDiscovery(
-                KAYAK_FIRST_CANDIDATE_ID,
+                MachineFamilyIds.KAYAK_FIRST,
                 KayakFirstGattInventory(
                     mapOf(
                         wrongParent to mapOf(
@@ -85,7 +88,7 @@ class KayakFirstConnectionAndSetupTest {
             ),
         )
         val plan = planKayakFirstDiscovery(
-            KAYAK_FIRST_CANDIDATE_ID,
+            MachineFamilyIds.KAYAK_FIRST,
             inventory(
                 ioProperties = notify or writeNoResponse or
                     BluetoothGattCharacteristic.PROPERTY_READ,

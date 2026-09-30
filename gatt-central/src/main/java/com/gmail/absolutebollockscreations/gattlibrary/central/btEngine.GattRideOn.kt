@@ -6,26 +6,28 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.annotation.RequiresPermission
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 internal data class RideOnGattInventory(val services: Map<UUID, Map<UUID, Int>>)
 internal data class RideOnGattMatch(val serviceUuid: UUID, val properties: Map<UUID, Int>)
 
 internal fun matchRideOnGatt(inventory: RideOnGattInventory): RideOnGattMatch? {
-    val candidates = listOf(RideOnUuids.ORIGINAL_SERVICE, RideOnUuids.CORE2_SERVICE)
+    val candidates = listOf(RideOnSpec.ORIGINAL_SERVICE, RideOnSpec.CORE2_SERVICE)
     for (serviceUuid in candidates) {
         val characteristics = inventory.services[serviceUuid] ?: continue
-        val asyncTx = characteristics[RideOnUuids.ASYNC_TX] ?: continue
-        val syncRx = characteristics[RideOnUuids.SYNC_RX] ?: continue
-        val syncTx = characteristics[RideOnUuids.SYNC_TX] ?: continue
+        val asyncTx = characteristics[RideOnSpec.ASYNC_TX] ?: continue
+        val syncRx = characteristics[RideOnSpec.SYNC_RX] ?: continue
+        val syncTx = characteristics[RideOnSpec.SYNC_TX] ?: continue
         if (asyncTx and BluetoothGattCharacteristic.PROPERTY_NOTIFY == 0) continue
         if (syncRx and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE == 0) continue
         if (syncTx and BluetoothGattCharacteristic.PROPERTY_INDICATE == 0) continue
         return RideOnGattMatch(
             serviceUuid,
             mapOf(
-                RideOnUuids.ASYNC_TX to asyncTx,
-                RideOnUuids.SYNC_RX to syncRx,
-                RideOnUuids.SYNC_TX to syncTx,
+                RideOnSpec.ASYNC_TX to asyncTx,
+                RideOnSpec.SYNC_RX to syncRx,
+                RideOnSpec.SYNC_TX to syncTx,
             ),
         )
     }
@@ -73,7 +75,7 @@ internal fun rideOnAdapterCandidate(
 
 /** Discovery-only in 2.2: validates and records structure, performs no subscriptions or writes. */
 internal class RideOnProtocolHandler : BtEngineGattCore.ProtocolHandler {
-    override val primaryServices = setOf(RideOnUuids.ORIGINAL_SERVICE, RideOnUuids.CORE2_SERVICE)
+    override val primaryServices = setOf(RideOnSpec.ORIGINAL_SERVICE, RideOnSpec.CORE2_SERVICE)
     internal var structuralMatch: RideOnGattMatch? = null
         private set
     internal var controlSession: RideOnControlSession? = null
@@ -118,7 +120,7 @@ internal class RideOnProtocolHandler : BtEngineGattCore.ProtocolHandler {
         if (!RideOnActivationPolicy.isQualified(model, firmware)) return false
         val gatt = context.gatt ?: return false
         val transport = BtEngineGattTransport(engine, context.connectionId)
-        val form = if (match.serviceUuid == RideOnUuids.CORE2_SERVICE) RideOnServiceForm.CORE2
+        val form = if (match.serviceUuid == RideOnSpec.CORE2_SERVICE) RideOnServiceForm.CORE2
         else RideOnServiceForm.ORIGINAL
         val session = RideOnControlSession(
             transport,
@@ -132,8 +134,8 @@ internal class RideOnProtocolHandler : BtEngineGattCore.ProtocolHandler {
             },
         )
         bindQualifiedSession(session)
-        if (!transport.enableNotifications(RideOnUuids.ASYNC_TX) ||
-            !transport.enableNotifications(RideOnUuids.SYNC_TX)
+        if (!transport.enableNotifications(RideOnSpec.ASYNC_TX) ||
+            !transport.enableNotifications(RideOnSpec.SYNC_TX)
         ) {
             resetLinkState()
             return false
@@ -173,7 +175,7 @@ internal class RideOnProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
 private fun emitRideOnTelemetry(engine: BtEngine, gatt: BluetoothGatt, telemetry: RideOnTelemetry) {
     val emitter = engine.metricEmitterFor(
-        gatt, RideOnUuids.ASYNC_TX, MetricProtocol.VENDOR, MetricSourceClass.VENDOR_NATIVE,
+        gatt, RideOnSpec.ASYNC_TX, MetricProtocol.VENDOR, MetricSourceClass.VENDOR_NATIVE,
     ) ?: return
     telemetry.powerWatts?.let { emitter.emit(MetricKind.POWER, it.toDouble()) }
     telemetry.cadenceRpm?.let { emitter.emit(MetricKind.CADENCE, it.toDouble()) }

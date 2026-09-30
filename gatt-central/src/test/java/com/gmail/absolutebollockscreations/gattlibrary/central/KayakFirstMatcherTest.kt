@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 
 class KayakFirstMatcherTest {
     private val registry = DeviceMatcherRegistry.standard()
@@ -72,7 +73,7 @@ class KayakFirstMatcherTest {
         observations.forEach { observation ->
             assertTrue(
                 registry.rankedCandidates(observation).none {
-                    it.candidateId == KAYAK_FIRST_CANDIDATE_ID
+                    it.candidateId == MachineFamilyIds.KAYAK_FIRST
                 },
             )
         }
@@ -123,14 +124,14 @@ class KayakFirstMatcherTest {
         )
 
         assertEquals("sig.ftms", candidates.first().candidateId)
-        assertTrue(candidates.any { it.candidateId == KAYAK_FIRST_CANDIDATE_ID })
+        assertTrue(candidates.any { it.candidateId == MachineFamilyIds.KAYAK_FIRST })
         assertTrue(service in registry.scanFilterServiceUuids())
         assertTrue(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE in hardwareScanServiceUuids())
     }
 
     private fun candidate(observation: MatchObservation): RankedMatchCandidate =
         registry.rankedCandidates(observation).single {
-            it.candidateId == KAYAK_FIRST_CANDIDATE_ID
+            it.candidateId == MachineFamilyIds.KAYAK_FIRST
         }
 
     private fun kinds(candidate: RankedMatchCandidate): Set<MatchEvidenceKind> =

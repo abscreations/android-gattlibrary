@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 
 /**
  * Schwinn x70 decoder coverage — plan §7, §11a, §11b.
@@ -216,7 +217,7 @@ class SchwinnX70MeasurementTest {
     fun `a frame of any length other than 17 is rejected`() {
         val valid = packetOf(corpus().first())
         for (length in 0..24) {
-            if (length == SchwinnX70Measurement.MAIN_FRAME_LENGTH) continue
+            if (length == SchwinnX70Spec.MAIN_FRAME_LENGTH) continue
             val truncated = ByteArray(length) { index -> if (index < valid.size) valid[index] else 0 }
             assertNull("a $length-octet frame is not a main frame", SchwinnX70Measurement.parseMain(truncated))
         }
@@ -454,7 +455,7 @@ class SchwinnX70MeasurementTest {
                 packet[0].toInt() and 0xFF,
             )
         }
-        assertEquals(SchwinnX70Measurement.MAIN_FRAME_LENGTH, SchwinnX70Measurement.MAIN_PREFIX[0])
+        assertEquals(SchwinnX70Spec.MAIN_FRAME_LENGTH, SchwinnX70Spec.MAIN_PREFIX[0])
 
         val sequences = pairedCorpus().map {
             requireNotNull(SchwinnX70Measurement.parseSibling(bytesOf(it, "sibling"))).sequence

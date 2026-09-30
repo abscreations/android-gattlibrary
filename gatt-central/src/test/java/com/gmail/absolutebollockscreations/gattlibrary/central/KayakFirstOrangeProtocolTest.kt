@@ -9,6 +9,8 @@ import org.junit.Test
 import kotlin.math.PI
 import kotlin.math.pow
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
 
 class KayakFirstOrangeProtocolTest {
     @Test
@@ -54,10 +56,10 @@ class KayakFirstOrangeProtocolTest {
         )
         assertEquals(
             KayakFirstDiscoveryFailure.IO_MISSING_CCCD,
-            planKayakFirstDiscovery(KAYAK_FIRST_CANDIDATE_ID, inventory).failure,
+            planKayakFirstDiscovery(MachineFamilyIds.KAYAK_FIRST, inventory).failure,
         )
         val orange = planKayakFirstDiscovery(
-            KAYAK_FIRST_CANDIDATE_ID,
+            MachineFamilyIds.KAYAK_FIRST,
             inventory,
             allowMissingCccd = true,
         )

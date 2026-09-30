@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
 
 /**
  * Phase 5 exit criterion: replay the real Orange UART transcript end to end.

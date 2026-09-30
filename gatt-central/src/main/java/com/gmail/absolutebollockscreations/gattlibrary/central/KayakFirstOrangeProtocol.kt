@@ -4,6 +4,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 
 import kotlin.math.PI
 import kotlin.math.pow
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 enum class KayakFirstGeneration { ORANGE, BLUE }
 
@@ -13,23 +15,6 @@ fun kayakFirstGeneration(localName: String?): KayakFirstGeneration? {
         KayakFirstGeneration.ORANGE
     } else {
         KayakFirstGeneration.BLUE
-    }
-}
-
-@GattLibraryInternalApi
-enum class KayakFirstOrangeCommand(val wire: Byte) {
-    T_MIN('1'.code.toByte()),
-    T_H('2'.code.toByte()),
-    T_MAX('3'.code.toByte()),
-    T_V('4'.code.toByte()),
-    AUXILIARY('5'.code.toByte()),
-    RESET('9'.code.toByte());
-
-    fun bytes(): ByteArray = byteArrayOf(wire)
-
-    companion object {
-        fun fromLine(line: String): KayakFirstOrangeCommand? =
-            entries.firstOrNull { line.length == 1 && it.wire == line[0].code.toByte() }
     }
 }
 
@@ -175,10 +160,6 @@ data class KayakFirstOrangePhysicsResult(
 /** E2 4.2.0 manufacturer equations recovered from the official Orange application. */
 @GattLibraryInternalApi
 object KayakFirstOrangePhysics {
-    const val FLYWHEEL_INERTIA = 0.02527962
-    const val FORCE_RADIUS_METRES = 0.027
-    const val DRAG_COEFFICIENT = 0.1419262
-    const val BOAT_MASS_OFFSET_KG = 12.0
 
     fun calculate(
         timing: KayakFirstOrangeTimingTuple,
@@ -195,14 +176,14 @@ object KayakFirstOrangePhysics {
         val mass = athleteWeightKg?.takeIf { it.isFinite() && it > 0.0 } ?: return null
         val omegaMax = 2.0 * PI / timing.tMinSeconds
         val omegaMin = 2.0 * PI / timing.tMaxSeconds
-        val power = (0.5 * FLYWHEEL_INERTIA * omegaMax.pow(2.0) -
-            0.5 * FLYWHEEL_INERTIA * omegaMin.pow(2.0)) / timing.tHSeconds
-        val force = FLYWHEEL_INERTIA * (omegaMax - omegaMin) /
-            (FORCE_RADIUS_METRES * timing.tHSeconds)
+        val power = (0.5 * KayakFirstSpec.FLYWHEEL_INERTIA * omegaMax.pow(2.0) -
+            0.5 * KayakFirstSpec.FLYWHEEL_INERTIA * omegaMin.pow(2.0)) / timing.tHSeconds
+        val force = KayakFirstSpec.FLYWHEEL_INERTIA * (omegaMax - omegaMin) /
+            (KayakFirstSpec.FORCE_RADIUS_METRES * timing.tHSeconds)
         if (!power.isFinite() || !force.isFinite() || power < 0.0 || force < 0.0) return null
-        val effectiveMass = mass + BOAT_MASS_OFFSET_KG
+        val effectiveMass = mass + KayakFirstSpec.BOAT_MASS_OFFSET_KG
         val speed = if (power == 0.0) 0.0 else {
-            (power / (DRAG_COEFFICIENT * effectiveMass.pow(2.0 / 3.0))).pow(1.0 / 3.0)
+            (power / (KayakFirstSpec.DRAG_COEFFICIENT * effectiveMass.pow(2.0 / 3.0))).pow(1.0 / 3.0)
         }
         val strokeRate = 60.0 / (timing.tHSeconds + timing.tVSeconds)
         if (!speed.isFinite() || !strokeRate.isFinite()) return null

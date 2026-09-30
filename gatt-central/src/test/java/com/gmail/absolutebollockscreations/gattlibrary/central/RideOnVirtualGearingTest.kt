@@ -13,6 +13,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Collections
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RideOnVirtualGearingTest {
@@ -24,12 +26,12 @@ class RideOnVirtualGearingTest {
         override fun enableNotifications(uuid: UUID) = true
         override suspend fun write(uuid: UUID, payload: ByteArray, mode: GattWriteMode, timeoutMs: Long, operationName: String): Boolean {
             writes += payload.copyOf()
-            if (payload.contentEquals(RideOnUuids.HANDSHAKE_CORE2)) {
-                session.onPacket(connectionId, RideOnUuids.SYNC_TX, payload)
+            if (payload.contentEquals(RideOnSpec.HANDSHAKE_CORE2)) {
+                session.onPacket(connectionId, RideOnSpec.SYNC_TX, payload)
             } else if ((payload[0].toInt() and 0xFF) == 0x3F && respondToShifts) {
                 val decoded = (RideOnProtoCodec.decode(payload) as RideOnDecodeResult.Decoded).packet
                 val sequence = (decoded.fields.first { it.number == 2 } as RideOnProtoField.Varint).value
-                session.onPacket(connectionId, RideOnUuids.SYNC_TX, byteArrayOf(0x40, 0x10) + varint(sequence))
+                session.onPacket(connectionId, RideOnSpec.SYNC_TX, byteArrayOf(0x40, 0x10) + varint(sequence))
             }
             return true
         }
@@ -37,10 +39,10 @@ class RideOnVirtualGearingTest {
 
     @Test
     fun `gear table is fixed monotonic and gear 12 sequence zero matches vector`() = runTest {
-        assertEquals(24, RIDEON_GEAR_RATIOS.size)
-        assertTrue(RIDEON_GEAR_RATIOS.zipWithNext().all { it.first < it.second })
-        assertEquals(7500, RIDEON_GEAR_RATIOS.first())
-        assertEquals(54899, RIDEON_GEAR_RATIOS.last())
+        assertEquals(24, RideOnSpec.GEAR_RATIOS.size)
+        assertTrue(RideOnSpec.GEAR_RATIOS.zipWithNext().all { it.first < it.second })
+        assertEquals(7500, RideOnSpec.GEAR_RATIOS.first())
+        assertEquals(54899, RideOnSpec.GEAR_RATIOS.last())
         val transport = readyTransport()
         assertTrue(transport.session.submitVirtualGear(12))
         runCurrent()
@@ -60,7 +62,7 @@ class RideOnVirtualGearingTest {
         assertTrue(transport.session.submitVirtualGear(1))
         runCurrent()
         assertEquals(before + 1, transport.writes.size)
-        transport.session.onPacket(transport.connectionId, RideOnUuids.SYNC_TX, hex("40 10 63"))
+        transport.session.onPacket(transport.connectionId, RideOnSpec.SYNC_TX, hex("40 10 63"))
         assertTrue(transport.session.submitVirtualGear(2))
         advanceTimeBy(shiftTimeout)
         runCurrent()

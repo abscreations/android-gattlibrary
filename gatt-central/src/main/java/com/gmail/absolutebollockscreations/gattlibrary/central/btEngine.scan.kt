@@ -76,6 +76,7 @@ import timber.log.Timber
 import java.util.Locale
 import java.util.WeakHashMap
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 private data class ScanSession(
     val callback: ScanCallback,
@@ -147,7 +148,7 @@ internal fun BtEngine.startScanImpl(
             // its own selection. Delivery must not deduplicate by address or payload: a Keiser
             // holding a steady effort repeats the same nineteen bytes, and every repeat is a fresh
             // liveness proof even when its content has not changed.
-            observation.manufacturerPayloads[KeiserMSeriesMeasurement.COMPANY_ID]?.let { payload ->
+            observation.manufacturerPayloads[KeiserMSeriesSpec.COMPANY_ID]?.let { payload ->
                 keiserSource.onAdvertisement(
                     KeiserAdvertisement(address = address, payload = payload),
                     arrivalMs = SystemClock.elapsedRealtime(),

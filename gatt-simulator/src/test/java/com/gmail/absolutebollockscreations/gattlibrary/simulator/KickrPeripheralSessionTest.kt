@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoCodec
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -10,6 +10,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 class KickrPeripheralSessionTest {
     @Test
@@ -30,8 +31,8 @@ class KickrPeripheralSessionTest {
             model = KickrSyntheticModel(),
             zwiftServiceForm = RideOnServiceForm.ORIGINAL,
         )
-        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
-        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        session.subscribe(RideOnSpec.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        session.subscribe(RideOnSpec.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
         assertFalse(session.sendZwiftClickShift(ZwiftClickDirection.UP))
         assertEquals(0, session.pendingCount)
     }
@@ -39,7 +40,7 @@ class KickrPeripheralSessionTest {
     @Test
     fun `Zwift Click is rejected while negotiated but not both TX characteristics are subscribed`() {
         val session = ready()
-        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.DISABLED)
+        session.subscribe(RideOnSpec.SYNC_TX, PeripheralConnection.CccdMode.DISABLED)
         assertFalse(session.sendZwiftClickShift(ZwiftClickDirection.UP))
     }
 
@@ -50,7 +51,7 @@ class KickrPeripheralSessionTest {
         assertEquals(2, session.pendingCount)
 
         val pressed = session.beginNext()!!
-        assertEquals(RideOnUuids.ASYNC_TX, pressed.characteristicUuid)
+        assertEquals(RideOnSpec.ASYNC_TX, pressed.characteristicUuid)
         assertFalse(pressed.indicate)
         assertArrayEquals(
             RideOnProtoCodec.clickKeyPadStatus(upPressed = true, downPressed = false),
@@ -83,9 +84,9 @@ class KickrPeripheralSessionTest {
             model = KickrSyntheticModel(),
             zwiftServiceForm = RideOnServiceForm.ORIGINAL,
         )
-        session.subscribe(RideOnUuids.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
-        session.subscribe(RideOnUuids.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
-        check(session.handleZwiftControl(RideOnUuids.HANDSHAKE_ORIGINAL)?.accepted == true)
+        session.subscribe(RideOnSpec.ASYNC_TX, PeripheralConnection.CccdMode.NOTIFY)
+        session.subscribe(RideOnSpec.SYNC_TX, PeripheralConnection.CccdMode.INDICATE)
+        check(session.handleZwiftControl(RideOnSpec.HANDSHAKE_ORIGINAL)?.accepted == true)
         check(session.handleZwiftControl(hex("00 08 00"))?.accepted == true)
         // Draining the negotiation's own frames (handshake ack + 2 status frames + general-info
         // reply) so pendingCount below reflects only what sendZwiftClickShift() itself enqueues.

@@ -9,6 +9,7 @@ import org.junit.Test
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 
 /**
  * x70 production plumbing — plan §7, §11 obligation 0.
@@ -30,11 +31,11 @@ class SchwinnX70PlumbingTest {
         // already disagree and nothing can choose between them — the V13 mistake.
         assertEquals(
             listOf(0x07, 0x01, 0xD3, 0x00, 0x1F, 0x05, 0x01),
-            SCHWINN_X70_INITIALISATION.map { it.toInt() and 0xFF },
+            SchwinnX70Spec.INITIALISATION.map { it.toInt() and 0xFF },
         )
-        assertTrue(SchwinnX70Measurement.isWellFormedCommand(SCHWINN_X70_INITIALISATION))
-        assertEquals(0x100, SCHWINN_X70_INITIALISATION.sumOf { it.toInt() and 0xFF })
-        assertEquals(SCHWINN_X70_INITIALISATION.size, SCHWINN_X70_INITIALISATION[0].toInt() and 0xFF)
+        assertTrue(SchwinnX70Measurement.isWellFormedCommand(SchwinnX70Spec.INITIALISATION))
+        assertEquals(0x100, SchwinnX70Spec.INITIALISATION.sumOf { it.toInt() and 0xFF })
+        assertEquals(SchwinnX70Spec.INITIALISATION.size, SchwinnX70Spec.INITIALISATION[0].toInt() and 0xFF)
     }
 
     @Test
@@ -46,7 +47,7 @@ class SchwinnX70PlumbingTest {
         assertTrue(SchwinnX70Measurement.isWellFormedCommand(tmiw))
         assertFalse(
             "the two commands genuinely differ",
-            tmiw.contentEquals(SCHWINN_X70_INITIALISATION),
+            tmiw.contentEquals(SchwinnX70Spec.INITIALISATION),
         )
     }
 

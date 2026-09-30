@@ -7,6 +7,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 class RideOnStructuralMatcherTest {
     private val notify = BluetoothGattCharacteristic.PROPERTY_NOTIFY
@@ -14,26 +15,26 @@ class RideOnStructuralMatcherTest {
     private val indicate = BluetoothGattCharacteristic.PROPERTY_INDICATE
 
     private fun inventory(
-        service: java.util.UUID = RideOnUuids.ORIGINAL_SERVICE,
+        service: java.util.UUID = RideOnSpec.ORIGINAL_SERVICE,
         asyncProperties: Int = notify,
         rxProperties: Int = writeNoResponse,
         txProperties: Int = indicate,
     ) = RideOnGattInventory(
         mapOf(
             service to mapOf(
-                RideOnUuids.ASYNC_TX to asyncProperties,
-                RideOnUuids.SYNC_RX to rxProperties,
-                RideOnUuids.SYNC_TX to txProperties,
+                RideOnSpec.ASYNC_TX to asyncProperties,
+                RideOnSpec.SYNC_RX to rxProperties,
+                RideOnSpec.SYNC_TX to txProperties,
             ),
         ),
     )
 
     @Test
     fun `both exact service forms match the complete surface`() {
-        assertEquals(RideOnUuids.ORIGINAL_SERVICE, matchRideOnGatt(inventory())?.serviceUuid)
+        assertEquals(RideOnSpec.ORIGINAL_SERVICE, matchRideOnGatt(inventory())?.serviceUuid)
         assertEquals(
-            RideOnUuids.CORE2_SERVICE,
-            matchRideOnGatt(inventory(RideOnUuids.CORE2_SERVICE))?.serviceUuid,
+            RideOnSpec.CORE2_SERVICE,
+            matchRideOnGatt(inventory(RideOnSpec.CORE2_SERVICE))?.serviceUuid,
         )
     }
 
@@ -48,10 +49,10 @@ class RideOnStructuralMatcherTest {
 
     @Test
     fun `partial and wrong-property surfaces fail closed`() {
-        val complete = inventory().services.getValue(RideOnUuids.ORIGINAL_SERVICE)
+        val complete = inventory().services.getValue(RideOnSpec.ORIGINAL_SERVICE)
         for (missing in complete.keys) {
             assertNull(matchRideOnGatt(RideOnGattInventory(
-                mapOf(RideOnUuids.ORIGINAL_SERVICE to (complete - missing)),
+                mapOf(RideOnSpec.ORIGINAL_SERVICE to (complete - missing)),
             )))
         }
         assertNull(matchRideOnGatt(inventory(asyncProperties = BluetoothGattCharacteristic.PROPERTY_READ)))
@@ -63,11 +64,11 @@ class RideOnStructuralMatcherTest {
     fun `characteristics split across parents do not form a union match`() {
         assertNull(matchRideOnGatt(RideOnGattInventory(
             mapOf(
-                RideOnUuids.ORIGINAL_SERVICE to mapOf(
-                    RideOnUuids.ASYNC_TX to notify,
-                    RideOnUuids.SYNC_RX to writeNoResponse,
+                RideOnSpec.ORIGINAL_SERVICE to mapOf(
+                    RideOnSpec.ASYNC_TX to notify,
+                    RideOnSpec.SYNC_RX to writeNoResponse,
                 ),
-                RideOnUuids.CORE2_SERVICE to mapOf(RideOnUuids.SYNC_TX to indicate),
+                RideOnSpec.CORE2_SERVICE to mapOf(RideOnSpec.SYNC_TX to indicate),
             ),
         )))
     }

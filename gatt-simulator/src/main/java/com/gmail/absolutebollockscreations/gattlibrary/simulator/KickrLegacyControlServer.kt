@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrCommand
 import com.gmail.absolutebollockscreations.gattlibrary.central.WahooKickrUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u16
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.WahooKickrSpec
 
 /**
  * Persona policy for control-response indications.
@@ -38,58 +39,58 @@ internal object KickrLegacyCommandDecoder {
         val opcode = value[0].toInt() and 0xFF
         fun exact(size: Int): Boolean = value.size == size
         return when (opcode) {
-            WahooKickrUuids.OPCODE_UNLOCK -> when {
+            WahooKickrSpec.OPCODE_UNLOCK -> when {
                 !exact(3) -> invalidLength(opcode, 3, value.size)
                 value[1].toInt() and 0xFF != 0xEE || value[2].toInt() and 0xFF != 0xFC ->
                     KickrLegacyDecodeResult.Invalid("invalid unlock marker")
                 else -> decoded(WahooKickrCommand.Unlock)
             }
-            WahooKickrUuids.OPCODE_RESISTANCE -> ifExact(value, 3, opcode) {
+            WahooKickrSpec.OPCODE_RESISTANCE -> ifExact(value, 3, opcode) {
                 val raw = u16(value, 1)
                 if (raw > 0x3FFF) KickrLegacyDecodeResult.Invalid("resistance exceeds 14 bits")
                 else decoded(WahooKickrCommand.Resistance(1.0 - raw / 16_383.0))
             }
-            WahooKickrUuids.OPCODE_STANDARD_LEVEL -> ifExact(value, 2, opcode) {
+            WahooKickrSpec.OPCODE_STANDARD_LEVEL -> ifExact(value, 2, opcode) {
                 val level = value[1].toInt() and 0xFF
-                if (level !in WahooKickrUuids.MIN_STANDARD_LEVEL..WahooKickrUuids.MAX_STANDARD_LEVEL) {
+                if (level !in WahooKickrSpec.MIN_STANDARD_LEVEL..WahooKickrSpec.MAX_STANDARD_LEVEL) {
                     KickrLegacyDecodeResult.Invalid("standard level out of range")
                 } else decoded(WahooKickrCommand.StandardLevel(level))
             }
-            WahooKickrUuids.OPCODE_ERG -> ifExact(value, 3, opcode) {
+            WahooKickrSpec.OPCODE_ERG -> ifExact(value, 3, opcode) {
                 val watts = u16(value, 1)
-                if (watts !in WahooKickrUuids.MIN_ERG_WATTS..WahooKickrUuids.MAX_ERG_WATTS) {
+                if (watts !in WahooKickrSpec.MIN_ERG_WATTS..WahooKickrSpec.MAX_ERG_WATTS) {
                     KickrLegacyDecodeResult.Invalid("ERG watts out of range")
                 } else decoded(WahooKickrCommand.Erg(watts))
             }
-            WahooKickrUuids.OPCODE_SIMULATION -> ifExact(value, 7, opcode) {
+            WahooKickrSpec.OPCODE_SIMULATION -> ifExact(value, 7, opcode) {
                 val mass = u16(value, 1) / 100.0
                 val crr = u16(value, 3) / 10_000.0
                 val cw = u16(value, 5) / 1_000.0
                 when {
-                    mass <= 0.0 || mass > WahooKickrUuids.MAX_TOTAL_MASS_KG ->
+                    mass <= 0.0 || mass > WahooKickrSpec.MAX_TOTAL_MASS_KG ->
                         KickrLegacyDecodeResult.Invalid("simulation mass out of range")
-                    crr > WahooKickrUuids.MAX_CRR -> KickrLegacyDecodeResult.Invalid("CRR out of range")
-                    cw > WahooKickrUuids.MAX_CW -> KickrLegacyDecodeResult.Invalid("CW out of range")
+                    crr > WahooKickrSpec.MAX_CRR -> KickrLegacyDecodeResult.Invalid("CRR out of range")
+                    cw > WahooKickrSpec.MAX_CW -> KickrLegacyDecodeResult.Invalid("CW out of range")
                     else -> decoded(WahooKickrCommand.Simulation(mass, crr, cw))
                 }
             }
-            WahooKickrUuids.OPCODE_ROLLING_RESISTANCE -> ifExact(value, 3, opcode) {
+            WahooKickrSpec.OPCODE_ROLLING_RESISTANCE -> ifExact(value, 3, opcode) {
                 val crr = u16(value, 1) / 10_000.0
-                if (crr > WahooKickrUuids.MAX_CRR) KickrLegacyDecodeResult.Invalid("CRR out of range")
+                if (crr > WahooKickrSpec.MAX_CRR) KickrLegacyDecodeResult.Invalid("CRR out of range")
                 else decoded(WahooKickrCommand.RollingResistance(crr))
             }
-            WahooKickrUuids.OPCODE_WIND_RESISTANCE -> ifExact(value, 3, opcode) {
+            WahooKickrSpec.OPCODE_WIND_RESISTANCE -> ifExact(value, 3, opcode) {
                 val cw = u16(value, 1) / 1_000.0
-                if (cw > WahooKickrUuids.MAX_CW) KickrLegacyDecodeResult.Invalid("CW out of range")
+                if (cw > WahooKickrSpec.MAX_CW) KickrLegacyDecodeResult.Invalid("CW out of range")
                 else decoded(WahooKickrCommand.WindResistance(cw))
             }
-            WahooKickrUuids.OPCODE_GRADE -> ifExact(value, 3, opcode) {
+            WahooKickrSpec.OPCODE_GRADE -> ifExact(value, 3, opcode) {
                 decoded(WahooKickrCommand.Grade(u16(value, 1) * 200.0 / 65_535.0 - 100.0))
             }
-            WahooKickrUuids.OPCODE_WIND_SPEED -> ifExact(value, 3, opcode) {
+            WahooKickrSpec.OPCODE_WIND_SPEED -> ifExact(value, 3, opcode) {
                 decoded(WahooKickrCommand.WindSpeed(u16(value, 1) / 1_000.0 - 32.768))
             }
-            WahooKickrUuids.OPCODE_WHEEL_CIRCUMFERENCE -> ifExact(value, 3, opcode) {
+            WahooKickrSpec.OPCODE_WHEEL_CIRCUMFERENCE -> ifExact(value, 3, opcode) {
                 val circumference = u16(value, 1) / 10.0
                 if (circumference < KickrSyntheticModel.MIN_WHEEL_CIRCUMFERENCE_MM) {
                     KickrLegacyDecodeResult.Invalid("wheel circumference out of range")
@@ -140,7 +141,7 @@ internal class KickrLegacyControlServer(
         val command = decoded.command
         if (command == WahooKickrCommand.Unlock) {
             unlocked = true
-            return KickrLegacyControlOutcome(true, success(WahooKickrUuids.OPCODE_UNLOCK), decoded)
+            return KickrLegacyControlOutcome(true, success(WahooKickrSpec.OPCODE_UNLOCK), decoded)
         }
         // No unlock precondition here - see this class's KDoc. A client that skips Unlock and
         // goes straight to control still reaches [apply] below; [unlocked] flips true as a

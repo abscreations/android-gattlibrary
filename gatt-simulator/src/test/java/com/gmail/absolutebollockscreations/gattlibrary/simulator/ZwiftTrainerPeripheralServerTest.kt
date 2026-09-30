@@ -1,11 +1,11 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.RIDEON_GEAR_RATIOS
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnControlTarget
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnDecodeResult
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoCodec
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoField
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import com.gmail.absolutebollockscreations.gattlibrary.central.decodeRideOnTelemetry
 import com.gmail.absolutebollockscreations.gattlibrary.central.encodeRideOnTarget
@@ -20,13 +20,13 @@ class ZwiftTrainerPeripheralServerTest {
     fun `CORE2 form accepts both handshake form bytes and uses shared FreeWheel vectors`() {
         val model = KickrSyntheticModel()
         val server = ZwiftTrainerPeripheralServer(RideOnServiceForm.CORE2, model)
-        val handshake = server.handle(RideOnUuids.HANDSHAKE_CORE2, true)
+        val handshake = server.handle(RideOnSpec.HANDSHAKE_CORE2, true)
         assertTrue(handshake.accepted)
         // Handshake acceptance now also emits the two QZ-derived OPCODE_STATUS_MESSAGE (0x2A)
         // frames alongside the echoed acknowledgement - see ZwiftTrainerPeripheralServer.handle()'s
         // KDoc.
         assertEquals(3, handshake.frames.size)
-        assertArrayEquals(RideOnUuids.HANDSHAKE_CORE2, handshake.frames[0].value)
+        assertArrayEquals(RideOnSpec.HANDSHAKE_CORE2, handshake.frames[0].value)
         assertFalse(handshake.frames[0].async)
         assertTrue(handshake.frames[1].async)
         assertTrue(handshake.frames[2].async)
@@ -51,19 +51,19 @@ class ZwiftTrainerPeripheralServerTest {
         // session. The form byte is not tied to which RideOn service UUID was discovered, so
         // acceptance no longer depends on the configured RideOnServiceForm at all.
         val server = subject()
-        val accepted = server.handle(RideOnUuids.HANDSHAKE_CORE2, true)
+        val accepted = server.handle(RideOnSpec.HANDSHAKE_CORE2, true)
         assertTrue(accepted.accepted && accepted.negotiated)
-        assertArrayEquals(RideOnUuids.HANDSHAKE_CORE2, accepted.frames[0].value)
+        assertArrayEquals(RideOnSpec.HANDSHAKE_CORE2, accepted.frames[0].value)
         assertEquals(ZwiftTrainerStage.NEGOTIATED, server.stage)
     }
 
     @Test
     fun `original form requires both CCCDs and still accepts the 02 02 marker too`() {
         val server = subject()
-        assertFalse(server.handle(RideOnUuids.HANDSHAKE_ORIGINAL, false).accepted)
-        val accepted = server.handle(RideOnUuids.HANDSHAKE_ORIGINAL, true)
+        assertFalse(server.handle(RideOnSpec.HANDSHAKE_ORIGINAL, false).accepted)
+        val accepted = server.handle(RideOnSpec.HANDSHAKE_ORIGINAL, true)
         assertTrue(accepted.accepted && accepted.negotiated)
-        assertArrayEquals(RideOnUuids.HANDSHAKE_ORIGINAL, accepted.frames[0].value)
+        assertArrayEquals(RideOnSpec.HANDSHAKE_ORIGINAL, accepted.frames[0].value)
         assertEquals(ZwiftTrainerStage.NEGOTIATED, server.stage)
     }
 
@@ -75,7 +75,7 @@ class ZwiftTrainerPeripheralServerTest {
         // how Zwift treats its own-brand trainer). An exact-length contentEquals match against
         // the bare 8-byte handshake rejected this every time, which is the wire-level cause of
         // that persona sticking on "connecting" for the entire session.
-        val suffixed = RideOnUuids.HANDSHAKE_CORE2 +
+        val suffixed = RideOnSpec.HANDSHAKE_CORE2 +
             hex("49 43 A0 A2 54 BE 75 2A E6 54 70 AE")
         val server = subject()
         val accepted = server.handle(suffixed, true)
@@ -95,7 +95,7 @@ class ZwiftTrainerPeripheralServerTest {
     @Test
     fun `captured initialization order gates commands`() {
         val server = subject()
-        assertTrue(server.handle(RideOnUuids.HANDSHAKE_ORIGINAL, true).accepted)
+        assertTrue(server.handle(RideOnSpec.HANDSHAKE_ORIGINAL, true).accepted)
         assertFalse(server.handle(hex("04 18 FA 01"), true).accepted)
         assertTrue(server.handle(hex("41 08 05"), true).accepted)
         assertEquals(ZwiftTrainerStage.INITIALIZED, server.stage)
@@ -121,7 +121,7 @@ class ZwiftTrainerPeripheralServerTest {
         // bike movement (docs/evidence/phase-10, 2026-08-30 Zwift/CORE2 btsnoop capture).
         val model = KickrSyntheticModel()
         val server = ZwiftTrainerPeripheralServer(RideOnServiceForm.CORE2, model)
-        assertTrue(server.handle(RideOnUuids.HANDSHAKE_CORE2, true).accepted)
+        assertTrue(server.handle(RideOnSpec.HANDSHAKE_CORE2, true).accepted)
         assertEquals(ZwiftTrainerStage.NEGOTIATED, server.stage)
 
         val ready = server.handle(hex("00 08 00"), true)
@@ -156,7 +156,7 @@ class ZwiftTrainerPeripheralServerTest {
         val server = ready(model)
         check(server.handle(RideOnProtoCodec.virtualShift(1, 0, 24_000), true).accepted)
 
-        val gearQuery = server.handle(RideOnProtoCodec.hubRequest(RideOnUuids.HUB_REQUEST_DATA_ID_GEAR_RATIO), true)
+        val gearQuery = server.handle(RideOnProtoCodec.hubRequest(RideOnSpec.HUB_REQUEST_DATA_ID_GEAR_RATIO), true)
         assertTrue("gear-ratio HubRequest should be accepted: ${gearQuery.reason}", gearQuery.accepted)
         assertArrayEquals(RideOnProtoCodec.hubRequestGearRatio(24_000), gearQuery.frames.single().value)
 
@@ -369,7 +369,7 @@ class ZwiftTrainerPeripheralServerTest {
     fun `all 24 gears update state and echo exact uint32 sequence`() {
         val model = KickrSyntheticModel()
         val server = ready(model)
-        RIDEON_GEAR_RATIOS.forEachIndexed { index, ratio ->
+        RideOnSpec.GEAR_RATIOS.forEachIndexed { index, ratio ->
             val sequence = if (index == 23) 0xFFFF_FFFFL else index.toLong()
             val outcome = server.handle(RideOnProtoCodec.virtualShift(1, sequence, ratio.toLong()), true)
             assertTrue("gear ${index + 1}: ${outcome.reason}", outcome.accepted)
@@ -405,7 +405,7 @@ class ZwiftTrainerPeripheralServerTest {
             hex("04 18 64 18 65"),
             hex("04 1A 01 00"),
             RideOnProtoCodec.virtualShift(2, 0, 24_000),
-            ByteArray(RideOnUuids.MAX_PACKET_BYTES + 1) { 0x04 },
+            ByteArray(RideOnSpec.MAX_PACKET_BYTES + 1) { 0x04 },
         ).forEach { assertFalse(server.handle(it, true).accepted) }
         assertEquals(before, model.snapshot())
     }
@@ -530,7 +530,7 @@ class ZwiftTrainerPeripheralServerTest {
         ZwiftTrainerPeripheralServer(RideOnServiceForm.ORIGINAL, model)
 
     private fun ready(model: KickrSyntheticModel): ZwiftTrainerPeripheralServer = subject(model).also {
-        check(it.handle(RideOnUuids.HANDSHAKE_ORIGINAL, true).accepted)
+        check(it.handle(RideOnSpec.HANDSHAKE_ORIGINAL, true).accepted)
         check(it.handle(hex("41 08 05"), true).accepted)
         check(it.handle(hex("00 08 00"), true).accepted)
     }

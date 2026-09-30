@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 import kotlin.math.pow
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 /** Manufacturer-model estimates used only when KayakFirst does not transmit a native metric. */
 @GattLibraryInternalApi
@@ -10,18 +11,10 @@ object KayakFirstDerivedMetrics {
     const val MODEL_COEFFICIENT = 0.1419262
     const val KAYAK_MASS_KG = 12.0
 
-    /**
-     * Effective handle pull length used by the force/cadence power model.
-     *
-     * `0.600 m` is the KayakFit shipped calibration, fitted so that
-     * `force x length x cadence / 60` reproduces the console's own displayed power. It is a
-     * FitBridge/KayakFit model parameter, not a KayakFirst-published constant.
-     */
-    const val DEFAULT_PULL_LENGTH_M = 0.600
     val PULL_LENGTH_RANGE_M = 0.3..1.2
 
     fun normalizePullLength(metres: Double?): Double =
-        metres?.takeIf { it.isFinite() && it in PULL_LENGTH_RANGE_M } ?: DEFAULT_PULL_LENGTH_M
+        metres?.takeIf { it.isFinite() && it in PULL_LENGTH_RANGE_M } ?: KayakFirstSpec.DEFAULT_PULL_LENGTH_M
 
     /**
      * Preferred Blue/Bull estimator: mechanical work per stroke over stroke period.
@@ -33,7 +26,7 @@ object KayakFirstDerivedMetrics {
     fun estimatePowerFromForceAndCadence(
         forceNewtons: Double,
         cadenceSpm: Int,
-        pullLengthM: Double = DEFAULT_PULL_LENGTH_M,
+        pullLengthM: Double = KayakFirstSpec.DEFAULT_PULL_LENGTH_M,
     ): Double? {
         if (!forceNewtons.isFinite() || forceNewtons < 0.0) return null
         if (cadenceSpm < 0) return null
@@ -64,7 +57,7 @@ object KayakFirstDerivedMetrics {
     fun estimatePower(
         reading: KayakFirstMeasurement.Reading,
         athleteWeightKg: Double?,
-        pullLengthM: Double = DEFAULT_PULL_LENGTH_M,
+        pullLengthM: Double = KayakFirstSpec.DEFAULT_PULL_LENGTH_M,
     ): Double? = estimatePowerFromForceAndCadence(
         reading.forceNewtons,
         reading.cadenceSpm,

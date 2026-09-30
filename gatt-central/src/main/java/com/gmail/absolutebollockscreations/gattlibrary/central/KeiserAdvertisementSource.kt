@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import timber.log.Timber
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /**
  * The bike the user picked, for this session only (plan §6.6).
@@ -108,7 +109,7 @@ internal data class KeiserRowMetadata(val systemId: Int, val firmware: String)
 internal fun keiserRowMetadata(
     payloads: Map<Int, ManufacturerPayload>,
 ): KeiserRowMetadata? {
-    val payload = payloads[KeiserMSeriesMeasurement.COMPANY_ID] ?: return null
+    val payload = payloads[KeiserMSeriesSpec.COMPANY_ID] ?: return null
     val reading = KeiserMSeriesMeasurement.parse(payload.copyBytes()) ?: return null
     return KeiserRowMetadata(systemId = reading.systemId, firmware = reading.firmware)
 }
@@ -446,7 +447,7 @@ internal class KeiserAdvertisementSource(
                 // changing which random address it speaks from, and fusion must not treat it as one.
                 originId = MetricOriginId.Advertisement(bound.sourceKey, generation),
                 protocol = MetricProtocol.VENDOR,
-                endpointId = MetricEndpointId.ManufacturerData(KeiserMSeriesMeasurement.COMPANY_ID),
+                endpointId = MetricEndpointId.ManufacturerData(KeiserMSeriesSpec.COMPANY_ID),
             ),
             sourceClass = MetricSourceClass.VENDOR_NATIVE,
             arrivalMs = arrivalMs,

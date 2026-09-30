@@ -9,6 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Collections
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 class RideOnTargetMappingTest {
     private class Transport : GattTransport {
@@ -18,8 +20,8 @@ class RideOnTargetMappingTest {
         override fun enableNotifications(uuid: UUID) = true
         override suspend fun write(uuid: UUID, payload: ByteArray, mode: GattWriteMode, timeoutMs: Long, operationName: String): Boolean {
             writes += payload.copyOf()
-            if (payload.contentEquals(RideOnUuids.HANDSHAKE_CORE2)) {
-                session.onPacket(connectionId, RideOnUuids.SYNC_TX, payload)
+            if (payload.contentEquals(RideOnSpec.HANDSHAKE_CORE2)) {
+                session.onPacket(connectionId, RideOnSpec.SYNC_TX, payload)
             }
             return true
         }

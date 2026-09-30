@@ -11,6 +11,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import timber.log.Timber
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 
 /**
  * Schwinn x70 protocol handler — 170 / 270 / 570 (plan §7), measurement-only.
@@ -192,7 +193,7 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 ?.contains(SchwinnX70Uuids.UUID_X70_CONTROL) == true
         ) {
             initialisationWritten = true
-            engine.pushWrite(context, SCHWINN_X70_INITIALISATION, SchwinnX70Uuids.UUID_X70_CONTROL)
+            engine.pushWrite(context, SchwinnX70Spec.INITIALISATION, SchwinnX70Uuids.UUID_X70_CONTROL)
         }
         return true
     }
@@ -408,19 +409,6 @@ class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
         deviceClassificationPublished = true
     }
 }
-
-/**
- * The initialization command, sent verbatim (V17).
- *
- * QZ's literal, chosen because a physical console was observed accepting it. Byte 0 is the frame
- * length and every octet sums to `0x100`; both properties are asserted by test rather than computed
- * here, because a command FitBridge generated would be a third value for a field where two already
- * disagree and nothing can choose between them.
- */
-@GattLibraryInternalApi
-val SCHWINN_X70_INITIALISATION: ByteArray = byteArrayOf(
-    0x07, 0x01, 0xD3.toByte(), 0x00, 0x1F, 0x05, 0x01,
-)
 
 /**
  * Pure discovery contract: subscribe to whichever measurement streams this console offers.

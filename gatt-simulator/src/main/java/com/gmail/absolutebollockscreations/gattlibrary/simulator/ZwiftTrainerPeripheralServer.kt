@@ -1,11 +1,11 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.RIDEON_GEAR_RATIOS
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnDecodeResult
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnDecodedPacket
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoCodec
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnProtoField
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import kotlin.math.roundToLong
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
@@ -110,7 +110,7 @@ internal class ZwiftTrainerPeripheralServer(
         // fast path above - only enforced as "out of order" before READY, since real Zwift may
         // resend it later in the session the same way it resends the general-information
         // request.
-        if (value.isNotEmpty() && value[0] == RideOnUuids.OPCODE_DEVICE_INFO_REQUEST.toByte()) {
+        if (value.isNotEmpty() && value[0] == RideOnSpec.OPCODE_DEVICE_INFO_REQUEST.toByte()) {
             if (stage != ZwiftTrainerStage.READY &&
                 stage != ZwiftTrainerStage.NEGOTIATED &&
                 stage != ZwiftTrainerStage.INITIALIZED
@@ -140,9 +140,9 @@ internal class ZwiftTrainerPeripheralServer(
         val packet = (RideOnProtoCodec.decode(value) as? RideOnDecodeResult.Decoded)?.packet
             ?: return rejected("malformed protobuf packet")
         return when (packet.opcode) {
-            RideOnUuids.OPCODE_HUB_REQUEST -> handleHubRequest(packet)
-            RideOnUuids.OPCODE_HUB_COMMAND -> handleHubCommand(packet)
-            RideOnUuids.OPCODE_VIRTUAL_SHIFT -> handleVirtualShift(packet)
+            RideOnSpec.OPCODE_HUB_REQUEST -> handleHubRequest(packet)
+            RideOnSpec.OPCODE_HUB_COMMAND -> handleHubCommand(packet)
+            RideOnSpec.OPCODE_VIRTUAL_SHIFT -> handleVirtualShift(packet)
             else -> rejected("unsupported opcode 0x${packet.opcode.toString(16)}")
         }
     }
@@ -211,9 +211,9 @@ internal class ZwiftTrainerPeripheralServer(
     // already granted.
     private fun handleHubRequest(packet: RideOnDecodedPacket): ZwiftTrainerServerOutcome {
         val dataId = (packet.fields.singleOrNull { it.number == 1 } as? RideOnProtoField.Varint)?.value
-            ?: RideOnUuids.HUB_REQUEST_DATA_ID_GENERAL_INFO
+            ?: RideOnSpec.HUB_REQUEST_DATA_ID_GENERAL_INFO
         val frame = when (dataId) {
-            RideOnUuids.HUB_REQUEST_DATA_ID_GEAR_RATIO -> ZwiftTrainerServerFrame(
+            RideOnSpec.HUB_REQUEST_DATA_ID_GEAR_RATIO -> ZwiftTrainerServerFrame(
                 async = true,
                 value = RideOnProtoCodec.hubRequestGearRatio(
                     (model.snapshot().gearRatio * 10_000.0).roundToLong(),
@@ -223,7 +223,7 @@ internal class ZwiftTrainerPeripheralServer(
             // Zwift keeps re-sending the dataId-0 general-information request after negotiation
             // completes, and must keep getting the same structured 0x3C reply it got the first
             // time, not a bare RidingData frame.
-            RideOnUuids.HUB_REQUEST_DATA_ID_GENERAL_INFO -> generalInfoFrame()
+            RideOnSpec.HUB_REQUEST_DATA_ID_GENERAL_INFO -> generalInfoFrame()
             // Every other dataId - including the undocumented 1-7 range and dataId 16, observed
             // on the wire from real Zwift on 2026-08-30 - previously fell back to a bare
             // RidingData notify (telemetryFrame()). That reply is indistinguishable from
@@ -287,7 +287,7 @@ internal class ZwiftTrainerPeripheralServer(
             val physicalValues = optionalVarints(phy, required = setOf(2), optional = emptySet())
                 ?: return rejected("bare Physical command must carry a gear ratio")
             val rawRatio = physicalValues.getValue(2)
-            val index = RIDEON_GEAR_RATIOS.indexOf(rawRatio.toInt()) + 1
+            val index = RideOnSpec.GEAR_RATIOS.indexOf(rawRatio.toInt()) + 1
             if (index <= 0 || !model.setVirtualGear(index, rawRatio / 10_000.0)) {
                 return rejected("gear ratio is not in the 24-gear table")
             }
@@ -333,7 +333,7 @@ internal class ZwiftTrainerPeripheralServer(
         // write (see KickrSyntheticModel.markDirectControl's KDoc) - it must not flip the
         // control-mode label to RideOn-Direct.
         val gear = physicalValues?.get(2)?.let { rawRatio ->
-            val index = RIDEON_GEAR_RATIOS.indexOf(rawRatio.toInt()) + 1
+            val index = RideOnSpec.GEAR_RATIOS.indexOf(rawRatio.toInt()) + 1
             if (index <= 0) return rejected("gear ratio is not in the 24-gear table")
             index to (rawRatio / 10_000.0)
         }
@@ -364,7 +364,7 @@ internal class ZwiftTrainerPeripheralServer(
         val simFields = payload?.let { nested(it.value) }
         val rawRatio = simFields?.let { exactVarints(it, setOf(7))?.get(7) }
         val gearApplied = rawRatio?.let { ratio ->
-            val index = RIDEON_GEAR_RATIOS.indexOf(ratio.toInt()) + 1
+            val index = RideOnSpec.GEAR_RATIOS.indexOf(ratio.toInt()) + 1
             index > 0 && model.setVirtualGear(index, ratio / 10_000.0)
         } ?: false
         if (gearApplied) {

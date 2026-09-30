@@ -2,7 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
 import java.util.UUID
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.NordicUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids

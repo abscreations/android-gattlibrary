@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstDisplayMetric
 
 class KayakFirstProtocolTest {
     private val resource = "fixtures/simulated/kayak_first_adversarial_v1.json"

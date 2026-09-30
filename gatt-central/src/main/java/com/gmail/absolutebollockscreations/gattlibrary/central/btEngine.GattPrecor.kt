@@ -10,6 +10,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import timber.log.Timber
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
 
 /**
  * Precor Spinner Chrono Power protocol handler (plan §5b), measurement-only.
@@ -150,7 +151,7 @@ class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
      */
     @GattLibraryInternalApi
     fun decodeNotification(value: ByteArray): PrecorMeasurement.Reading? {
-        if (PrecorMeasurement.isAuxiliaryFrame(value)) return null
+        if (PrecorSpec.isAuxiliaryFrame(value)) return null
         val reading = PrecorMeasurement.parse(value)
         if (reading == null) {
             // Counted, and logged only at verbose. A device serving this service that sends

@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnServiceForm
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnServiceForm
 import com.gmail.absolutebollockscreations.gattlibrary.central.RideOnUuids
 import java.util.ArrayDeque
 import java.util.UUID
@@ -9,6 +9,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.peripheral.FtmsControlPoi
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.PeripheralConnection
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 internal enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
 
@@ -107,8 +108,8 @@ internal class KickrPeripheralSession(
         val server = zwift ?: return null
         if (route !in setOf(null, KickrControlRoute.ZWIFT_PROPRIETARY)) return null
         val bothTxSubscribed =
-            subscription(RideOnUuids.ASYNC_TX) == PeripheralConnection.CccdMode.NOTIFY &&
-                subscription(RideOnUuids.SYNC_TX) == PeripheralConnection.CccdMode.INDICATE
+            subscription(RideOnSpec.ASYNC_TX) == PeripheralConnection.CccdMode.NOTIFY &&
+                subscription(RideOnSpec.SYNC_TX) == PeripheralConnection.CccdMode.INDICATE
         val outcome = server.handle(value, bothTxSubscribed)
         if (outcome.negotiated && !acquire(KickrControlRoute.ZWIFT_PROPRIETARY)) return null
         if (outcome.accepted) enqueueZwiftFrames(outcome)
@@ -119,8 +120,8 @@ internal class KickrPeripheralSession(
     fun enqueueZwiftTelemetry() {
         val server = zwift ?: return
         if (!server.controlReady ||
-            subscription(RideOnUuids.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
-            subscription(RideOnUuids.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
+            subscription(RideOnSpec.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
+            subscription(RideOnSpec.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
         ) return
         enqueueZwiftFrame(server.telemetryFrame())
     }
@@ -135,7 +136,7 @@ internal class KickrPeripheralSession(
      * Gated on the same bothTxSubscribed/controlReady conditions as [enqueueZwiftTelemetry] - a
      * real Zwift Click is technically its own BLE peripheral, but FitBridge models it as extra
      * opcodes on the KICKR/Zwift Hub persona's already-negotiated RideOn connection rather than
-     * standing up a second simulated peripheral (see RideOnUuids.OPCODE_CLICK_BUTTON_STATUS's
+     * standing up a second simulated peripheral (see RideOnSpec.OPCODE_CLICK_BUTTON_STATUS's
      * KDoc for why the shared service/characteristic UUIDs make that a faithful shortcut, not a
      * protocol violation).
      */
@@ -143,8 +144,8 @@ internal class KickrPeripheralSession(
     fun sendZwiftClickShift(direction: ZwiftClickDirection): Boolean {
         val server = zwift ?: return false
         if (!server.controlReady ||
-            subscription(RideOnUuids.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
-            subscription(RideOnUuids.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
+            subscription(RideOnSpec.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
+            subscription(RideOnSpec.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
         ) return false
         val up = direction == ZwiftClickDirection.UP
         val down = direction == ZwiftClickDirection.DOWN
@@ -159,7 +160,7 @@ internal class KickrPeripheralSession(
     private fun enqueueZwiftFrame(frame: com.gmail.absolutebollockscreations.gattlibrary.simulator.ZwiftTrainerServerFrame) {
         enqueue(
             KickrTxFrame(
-                if (frame.async) RideOnUuids.ASYNC_TX else RideOnUuids.SYNC_TX,
+                if (frame.async) RideOnSpec.ASYNC_TX else RideOnSpec.SYNC_TX,
                 frame.value,
                 indicate = !frame.async,
             ),

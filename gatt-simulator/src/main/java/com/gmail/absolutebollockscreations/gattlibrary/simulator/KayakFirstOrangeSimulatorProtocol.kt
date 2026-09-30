@@ -1,6 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeCommand
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangePhysics
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangePhysicsResult
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeTimingTuple
@@ -8,6 +8,7 @@ import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.roundToLong
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 internal object KayakFirstOrangeSimulatorProtocol {
     const val ADVERTISED_NAME = "17100001"
@@ -55,7 +56,7 @@ internal object KayakFirstOrangeSimulatorProtocol {
         val tMax = CAPTURED_T_MAX_US / 1_000_000.0
         val omegaMin = 2.0 * PI / tMax
         val omegaMaxSquared = omegaMin.pow(2.0) +
-            2.0 * powerWatts * tH / KayakFirstOrangePhysics.FLYWHEEL_INERTIA
+            2.0 * powerWatts * tH / KayakFirstSpec.FLYWHEEL_INERTIA
         val tMin = 2.0 * PI / kotlin.math.sqrt(omegaMaxSquared)
         return KayakFirstOrangeTimingTuple(tMin, tH, tMax, tV)
     }

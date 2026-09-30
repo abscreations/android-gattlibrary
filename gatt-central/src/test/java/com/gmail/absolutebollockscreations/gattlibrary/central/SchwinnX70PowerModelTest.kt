@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 
 /**
  * The 270/570 power estimate — plan §7, §11b, and the D10 provenance rule.
@@ -19,7 +20,7 @@ class SchwinnX70PowerModelTest {
 
     @Test
     fun `the coefficient table is twenty-five rows and is not silently extensible`() {
-        assertEquals(25, SchwinnX70PowerModel.RESISTANCE_POWER_COEFFICIENTS.size)
+        assertEquals(25, SchwinnX70Spec.RESISTANCE_POWER_COEFFICIENTS.size)
     }
 
     @Test
@@ -240,7 +241,16 @@ class SchwinnX70PowerModelTest {
                 "SchwinnX70PowerModel.kt",
         )
         assertTrue("the model source is findable", source.isFile)
-        val text = source.readText()
+        // The coefficient table and its provenance moved to core (LIB-19c); the caveats stay here.
+        val specSource = java.io.File(
+            "gatt-core/src/main/java/com/gmail/absolutebollockscreations/gattlibrary/core/vendor/" +
+                "SchwinnX70Spec.kt",
+        ).takeIf { it.isFile } ?: java.io.File(
+            "../gatt-core/src/main/java/com/gmail/absolutebollockscreations/gattlibrary/core/vendor/" +
+                "SchwinnX70Spec.kt",
+        )
+        assertTrue("the spec source is findable", specSource.isFile)
+        val text = source.readText() + specSource.readText()
 
         assertTrue("the third-party origin is stated", text.contains("ANT_Libraries"))
         assertTrue("the ESTIMATED consequence is stated", text.contains("MetricQuality.ESTIMATED"))

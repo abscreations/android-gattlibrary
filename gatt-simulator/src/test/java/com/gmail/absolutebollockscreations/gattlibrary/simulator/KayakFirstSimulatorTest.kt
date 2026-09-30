@@ -1,12 +1,12 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayConfiguration
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDisplayMetric
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstDisplayMetric
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstDerivedMetrics
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstHandshakeVariant
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstMeasurement
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstMeasurementDecodeResult
-import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeCommand
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeResponse
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeResponseParser
 import com.gmail.absolutebollockscreations.gattlibrary.central.KayakFirstOrangeSession

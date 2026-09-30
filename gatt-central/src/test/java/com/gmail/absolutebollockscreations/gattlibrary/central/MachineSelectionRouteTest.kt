@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /**
  * Selection routing and scanner-row metadata (plan §6.6, phase 11.5b).
@@ -73,7 +74,7 @@ class MachineSelectionRouteTest {
         val metadata = requireNotNull(
             keiserRowMetadata(
                 mapOf(
-                    KeiserMSeriesMeasurement.COMPANY_ID to ManufacturerPayload(canonicalField),
+                    KeiserMSeriesSpec.COMPANY_ID to ManufacturerPayload(canonicalField),
                 ),
             ),
         )
@@ -89,7 +90,7 @@ class MachineSelectionRouteTest {
         val review = canonicalField.copyOf().also { it[4] = 0xFF.toByte() }
         val metadata = requireNotNull(
             keiserRowMetadata(
-                mapOf(KeiserMSeriesMeasurement.COMPANY_ID to ManufacturerPayload(review)),
+                mapOf(KeiserMSeriesSpec.COMPANY_ID to ManufacturerPayload(review)),
             ),
         )
 
@@ -106,7 +107,7 @@ class MachineSelectionRouteTest {
         assertNull(
             keiserRowMetadata(
                 mapOf(
-                    KeiserMSeriesMeasurement.COMPANY_ID to
+                    KeiserMSeriesSpec.COMPANY_ID to
                         ManufacturerPayload(canonicalField.copyOf(18)),
                 ),
             ),

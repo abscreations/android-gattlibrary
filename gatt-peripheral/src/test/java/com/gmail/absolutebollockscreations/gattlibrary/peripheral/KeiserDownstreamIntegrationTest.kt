@@ -3,7 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.FusionPersona
-import com.gmail.absolutebollockscreations.gattlibrary.central.KEISER_M_SERIES_CANDIDATE_ID
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 import com.gmail.absolutebollockscreations.gattlibrary.central.KeiserMSeriesMeasurement
 import com.gmail.absolutebollockscreations.gattlibrary.central.KeiserSpeedEstimator
 import com.gmail.absolutebollockscreations.gattlibrary.central.MetricEmitter
@@ -21,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 class KeiserDownstreamIntegrationTest {
 
@@ -84,7 +85,7 @@ class KeiserDownstreamIntegrationTest {
         val measurements = providerMeasurementCapabilities(
             FtmsMachineProfile.INDOOR_BIKE,
             emptySet(),
-            KEISER_M_SERIES_CANDIDATE_ID,
+            MachineFamilyIds.KEISER_M_SERIES,
         )
         assertTrue(measurements.averageSpeed)
         assertTrue(measurements.cadence)
@@ -165,7 +166,7 @@ class KeiserDownstreamIntegrationTest {
         MetricSourceId(
             origin,
             MetricProtocol.VENDOR,
-            MetricEndpointId.ManufacturerData(KeiserMSeriesMeasurement.COMPANY_ID),
+            MetricEndpointId.ManufacturerData(KeiserMSeriesSpec.COMPANY_ID),
         ),
         sourceClass,
         arrivalMs,

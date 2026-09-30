@@ -5,6 +5,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import kotlin.math.abs
 import kotlin.math.cbrt
 import kotlin.math.sqrt
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 
 /**
  * Estimated power for the Schwinn x70's **17-byte main frame** (plan §7).
@@ -59,42 +60,6 @@ import kotlin.math.sqrt
  */
 @GattLibraryInternalApi
 object SchwinnX70PowerModel {
-
-    /**
-     * Quadratic coefficients per resistance level: `a`, `b`, `c` for `a·rpm² + b·rpm + c`.
-     *
-     * Source: TMIW `schwinn_x70.dart`, adapted from
-     * `ursoft/ANT_Libraries` `WROOM_esp32.ino`. Third-party, unverified, and the weakest evidence in
-     * Phase 7 — recorded as such in §7 rather than smoothed over.
-     */
-    val RESISTANCE_POWER_COEFFICIENTS: List<Triple<Double, Double, Double>> = listOf(
-        Triple(-0.0014, 0.7920, -13.985),
-        Triple(-0.0004, 0.9991, -19.051),
-        Triple(0.0015, 0.9179, -13.745),
-        Triple(0.0040, 0.9857, -13.095),
-        Triple(0.0027, 1.3958, -22.741),
-        Triple(0.0057, 1.1586, -15.126),
-        Triple(-0.0013, 2.4666, -49.052),
-        Triple(0.0002, 2.6349, -52.390),
-        Triple(0.0034, 2.6240, -48.072),
-        Triple(0.0147, 1.6372, -19.653),
-        Triple(0.0062, 2.5851, -43.254),
-        Triple(0.0064, 3.2864, -59.336),
-        Triple(0.0048, 3.6734, -69.245),
-        Triple(0.0184, 2.1842, -28.936),
-        Triple(0.0052, 4.3939, -78.603),
-        Triple(0.0094, 3.8871, -65.982),
-        Triple(0.0165, 3.3074, -49.906),
-        Triple(0.0251, 3.2956, -44.436),
-        Triple(0.0281, 2.9107, -38.767),
-        Triple(0.0311, 2.9435, -35.851),
-        Triple(0.0141, 5.5646, -88.686),
-        Triple(0.0517, 1.8361, -13.777),
-        Triple(0.0467, 2.9273, -35.908),
-        Triple(0.0429, 4.1821, -50.141),
-        Triple(0.0652, 3.6670, -46.863),
-    )
-
     /** The minimum legal resistance the console reports. Level 1 selects the first row. */
     const val MINIMUM_RESISTANCE = 1
 
@@ -112,7 +77,7 @@ object SchwinnX70PowerModel {
      */
     fun powerWatts(cadenceRpm: Int, resistance: Int): Double {
         val level = maxOf(resistance, MINIMUM_RESISTANCE)
-        val (a, b, c) = RESISTANCE_POWER_COEFFICIENTS[(level - 1) % RESISTANCE_POWER_COEFFICIENTS.size]
+        val (a, b, c) = SchwinnX70Spec.RESISTANCE_POWER_COEFFICIENTS[(level - 1) % SchwinnX70Spec.RESISTANCE_POWER_COEFFICIENTS.size]
         val raw = a * cadenceRpm * cadenceRpm + b * cadenceRpm + c
         return maxOf(raw, 0.0)
     }

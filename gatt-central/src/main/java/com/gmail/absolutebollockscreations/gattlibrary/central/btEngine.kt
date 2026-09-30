@@ -132,6 +132,9 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleConfig
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleDefaults
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 internal const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
 internal const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
@@ -253,7 +256,7 @@ class BtEngine internal constructor(
 
     /** Boat mass transmitted by the command-21 handshake. */
     @Volatile
-    internal var kayakFirstBoatWeightKg: Int = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG
+    internal var kayakFirstBoatWeightKg: Int = KayakFirstSpec.DEFAULT_BOAT_WEIGHT_KG
         private set
 
     internal fun setKayakFirstBoatWeightKg(weightKg: Int) {
@@ -296,7 +299,7 @@ class BtEngine internal constructor(
                     ?.let {
                         BtEngineState.ActiveAdvertisementMachine(
                             address = it.selection.address,
-                            candidateId = KEISER_M_SERIES_CANDIDATE_ID,
+                            candidateId = MachineFamilyIds.KEISER_M_SERIES,
                             systemId = it.selection.systemId,
                             model = it.selection.model,
                             firmware = it.firmware,

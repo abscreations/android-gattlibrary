@@ -5,6 +5,7 @@ import kotlin.math.roundToLong
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursor
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursorFailure
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 @GattLibraryInternalApi
 sealed interface RideOnProtoField {
@@ -44,8 +45,8 @@ data class RideOnPhysicalParam(
 object RideOnProtoCodec {
     fun decode(packet: ByteArray): RideOnDecodeResult {
         if (packet.isEmpty()) return RideOnDecodeResult.Invalid("missing opcode")
-        if (packet.size > RideOnUuids.MAX_PACKET_BYTES) {
-            return RideOnDecodeResult.Invalid("packet exceeds ${RideOnUuids.MAX_PACKET_BYTES} bytes")
+        if (packet.size > RideOnSpec.MAX_PACKET_BYTES) {
+            return RideOnDecodeResult.Invalid("packet exceeds ${RideOnSpec.MAX_PACKET_BYTES} bytes")
         }
         val reader = Reader(packet, 1)
         val fields = mutableListOf<RideOnProtoField>()
@@ -88,7 +89,7 @@ object RideOnProtoCodec {
     }
 
     fun hubRequest(dataId: Long): ByteArray = packet(
-        RideOnUuids.OPCODE_HUB_REQUEST,
+        RideOnSpec.OPCODE_HUB_REQUEST,
         uint32Field(1, dataId),
     )
 
@@ -113,23 +114,23 @@ object RideOnProtoCodec {
             nested += uint32Field(5, it.riderMassKgX100)
             body += bytesField(5, nested).toList()
         }
-        return packet(RideOnUuids.OPCODE_HUB_COMMAND, body.toByteArray())
+        return packet(RideOnSpec.OPCODE_HUB_COMMAND, body.toByteArray())
     }
 
     fun virtualShift(commandType: Long, sequence: Long, gearRatioX10000: Long): ByteArray {
         val payload = uint32Field(7, gearRatioX10000)
         val body = uint32Field(1, commandType) + uint32Field(2, sequence) + bytesField(4, payload)
-        return packet(RideOnUuids.OPCODE_VIRTUAL_SHIFT, body)
+        return packet(RideOnSpec.OPCODE_VIRTUAL_SHIFT, body)
     }
 
     fun virtualShiftResponse(sequence: Long): ByteArray = packet(
-        RideOnUuids.OPCODE_VIRTUAL_SHIFT_RESPONSE,
+        RideOnSpec.OPCODE_VIRTUAL_SHIFT_RESPONSE,
         uint32Field(2, sequence),
     )
 
     /**
-     * Reply to a HubRequest, opcode [RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE] (0x3C) - not
-     * [RideOnUuids.OPCODE_HUB_REQUEST] (0x00) itself, despite the shared "HubRequest" name.
+     * Reply to a HubRequest, opcode [RideOnSpec.OPCODE_HUB_REQUEST_RESPONSE] (0x3C) - not
+     * [RideOnSpec.OPCODE_HUB_REQUEST] (0x00) itself, despite the shared "HubRequest" name.
      * Confirmed against a real Wahoo KICKR Core reply for dataId 520 (gear ratio) in
      * zwiftplay/zaplibrary's zwift-play-kickr-core.csv HCI-snoop export, packet 5838:
      * `3c 08 88 04 12 06 0a 04 40 c0 bb 01` decodes as { 1: dataId(520), 2: Bytes{ 1: Bytes{
@@ -142,17 +143,17 @@ object RideOnProtoCodec {
         val leaf = uint32Field(leafFieldNumber, value)
         val wrapped = bytesField(1, leaf)
         return packet(
-            RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE,
+            RideOnSpec.OPCODE_HUB_REQUEST_RESPONSE,
             uint32Field(1, dataId) + bytesField(2, wrapped),
         )
     }
 
-    /** [hubRequestResponse] for [RideOnUuids.HUB_REQUEST_DATA_ID_GEAR_RATIO] - see its KDoc. */
+    /** [hubRequestResponse] for [RideOnSpec.HUB_REQUEST_DATA_ID_GEAR_RATIO] - see its KDoc. */
     fun hubRequestGearRatio(gearRatioX10000: Long): ByteArray =
-        hubRequestResponse(RideOnUuids.HUB_REQUEST_DATA_ID_GEAR_RATIO, GEAR_RATIO_LEAF_FIELD, gearRatioX10000)
+        hubRequestResponse(RideOnSpec.HUB_REQUEST_DATA_ID_GEAR_RATIO, GEAR_RATIO_LEAF_FIELD, gearRatioX10000)
 
     /**
-     * Status/diagnostic message broadcast, opcode [RideOnUuids.OPCODE_STATUS_MESSAGE] (0x2A).
+     * Status/diagnostic message broadcast, opcode [RideOnSpec.OPCODE_STATUS_MESSAGE] (0x2A).
      * Reverse engineered from qdomyos-zwift's CharacteristicWriteProcessor0003::writeProcess(),
      * which sends two of these - `statusMessage(3, "ATX 04, STX 04")` then
      * `statusMessage(3, "RIDE_ON(2)")` - immediately after accepting the RideOn handshake, both
@@ -164,13 +165,13 @@ object RideOnProtoCodec {
      */
     fun statusMessage(code: Long, text: String): ByteArray {
         val nested = bytesField(4, text.toByteArray(Charsets.US_ASCII) + byteArrayOf(0))
-        return packet(RideOnUuids.OPCODE_STATUS_MESSAGE, uint32Field(1, code) + bytesField(2, nested))
+        return packet(RideOnSpec.OPCODE_STATUS_MESSAGE, uint32Field(1, code) + bytesField(2, nested))
     }
 
     /**
      * Shared field layout for both hub-info replies below - reverse engineered from QZ's
      * `general_info_reply` (dataId=0 HubRequest) and `device_info_reply` (opcode 0x41 request)
-     * hex constants. field1 is the constant [RideOnUuids.HUB_INFO_MARKER]; field2 is 4 opaque
+     * hex constants. field1 is the constant [RideOnSpec.HUB_INFO_MARKER]; field2 is 4 opaque
      * bytes (QZ used `00 04 00 0c` for general info, `05 00 05 01` for device info - meaning
      * unconfirmed); field3 is a device-name string (present but empty in QZ's general-info
      * reply, "KICKR CORE\u0000" in its device-info reply); field6 is a serial-like string
@@ -193,7 +194,7 @@ object RideOnProtoCodec {
         } else {
             deviceName.toByteArray(Charsets.US_ASCII) + byteArrayOf(0)
         }
-        return uint32Field(1, RideOnUuids.HUB_INFO_MARKER) +
+        return uint32Field(1, RideOnSpec.HUB_INFO_MARKER) +
             bytesField(2, opaque) +
             bytesField(3, nameBytes) +
             bytesField(6, serial.toByteArray(Charsets.US_ASCII)) +
@@ -203,7 +204,7 @@ object RideOnProtoCodec {
 
     /**
      * Reply to the dataId=0 "general information" HubRequest, opcode
-     * [RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE] (0x3C). Real Zwift never advances a session past
+     * [RideOnSpec.OPCODE_HUB_REQUEST_RESPONSE] (0x3C). Real Zwift never advances a session past
      * negotiation on FitBridge's previous reply here (a bare RidingData/telemetry frame) even
      * though the RidingData shape and byte content were independently confirmed correct -
      * qdomyos-zwift (QZ), a mature open-source RideOn peripheral real Zwift does accept, replies
@@ -232,12 +233,12 @@ object RideOnProtoCodec {
         dataId: Long = 0L,
     ): ByteArray {
         val inner = hubInfoFields(opaque, deviceName = "", serial = serial, shortField = "", versionMajor, versionMinor)
-        return packet(RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE, uint32Field(1, dataId) + bytesField(2, inner))
+        return packet(RideOnSpec.OPCODE_HUB_REQUEST_RESPONSE, uint32Field(1, dataId) + bytesField(2, inner))
     }
 
     /**
-     * Reply to the opcode [RideOnUuids.OPCODE_DEVICE_INFO_REQUEST] (0x41) device-info request -
-     * also opcode [RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE] (0x3C). FitBridge previously did not
+     * Reply to the opcode [RideOnSpec.OPCODE_DEVICE_INFO_REQUEST] (0x41) device-info request -
+     * also opcode [RideOnSpec.OPCODE_HUB_REQUEST_RESPONSE] (0x3C). FitBridge previously did not
      * reply to this request at all (it only advanced the negotiation state machine). Verified
      * field-for-field against QZ's `device_info_reply` hex constant
      * (`3c080012320a3008800412040500050` + `11a0b4b49434b5220434f524500320f` +
@@ -256,11 +257,11 @@ object RideOnProtoCodec {
     ): ByteArray {
         val inner = hubInfoFields(opaque, deviceName, serial, shortField, versionMajor, versionMinor)
         val wrapped = bytesField(1, inner)
-        return packet(RideOnUuids.OPCODE_HUB_REQUEST_RESPONSE, uint32Field(1, 0) + bytesField(2, wrapped))
+        return packet(RideOnSpec.OPCODE_HUB_REQUEST_RESPONSE, uint32Field(1, 0) + bytesField(2, wrapped))
     }
 
     /**
-     * Zwift Click button-state broadcast, opcode [RideOnUuids.OPCODE_CLICK_BUTTON_STATUS]
+     * Zwift Click button-state broadcast, opcode [RideOnSpec.OPCODE_CLICK_BUTTON_STATUS]
      * (0x37). Reverse engineered from qdomyos-zwift's `zwift_hub.proto`
      * (`ClickKeyPadStatus{ optional PlayButtonStatus Button_Plus = 1; Button_Minus = 2; }`,
      * `enum PlayButtonStatus { ON = 0; OFF = 1; }`) and independently confirmed against
@@ -269,7 +270,7 @@ object RideOnProtoCodec {
      * `0` while held and `1` while released, not a plain boolean.
      */
     fun clickKeyPadStatus(upPressed: Boolean, downPressed: Boolean): ByteArray = packet(
-        RideOnUuids.OPCODE_CLICK_BUTTON_STATUS,
+        RideOnSpec.OPCODE_CLICK_BUTTON_STATUS,
         uint32Field(1, if (upPressed) 0L else 1L) + uint32Field(2, if (downPressed) 0L else 1L),
     )
 
@@ -283,7 +284,7 @@ object RideOnProtoCodec {
         legacySpeedMetric: Long = (speedX100 * RideOnUuids.RIDING_DATA_FIELD5_SPEED_MULTIPLIER).roundToLong(),
         deviceParameter: Long = RideOnUuids.RIDING_DATA_FIELD6_OBSERVED_CONSTANT,
     ): ByteArray = packet(
-        RideOnUuids.OPCODE_RIDING_DATA,
+        RideOnSpec.OPCODE_RIDING_DATA,
         uint32Field(1, powerWatts) +
             uint32Field(2, cadenceRpm) +
             uint32Field(3, speedX100) +
@@ -314,7 +315,7 @@ object RideOnProtoCodec {
 
     private fun packet(opcode: Int, body: ByteArray): ByteArray {
         require(opcode in 0..0xFF)
-        require(body.size + 1 <= RideOnUuids.MAX_PACKET_BYTES)
+        require(body.size + 1 <= RideOnSpec.MAX_PACKET_BYTES)
         return byteArrayOf(opcode.toByte()) + body
     }
 

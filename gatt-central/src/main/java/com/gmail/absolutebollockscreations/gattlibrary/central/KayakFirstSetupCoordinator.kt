@@ -1,5 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
+
 enum class KayakFirstSetupState {
     DISCOVERING,
     SUBSCRIBING,
@@ -84,7 +87,7 @@ internal class KayakFirstSetupCoordinator(
     val sportMode: KayakFirstSportMode = KayakFirstSportMode.CANOEING,
     val handshakeVariant: KayakFirstHandshakeVariant = KayakFirstHandshakeVariant.LEGACY,
     val athleteWeightKg: Int = KayakFirstCommandCodec.NEUTRAL_WEIGHT_KG,
-    val boatWeightKg: Int = KayakFirstCommandCodec.DEFAULT_BOAT_WEIGHT_KG,
+    val boatWeightKg: Int = KayakFirstSpec.DEFAULT_BOAT_WEIGHT_KG,
     private val payloadCapacity: Int = KayakFirstCommandCodec.DEFAULT_PAYLOAD_CAPACITY,
 ) {
     init {

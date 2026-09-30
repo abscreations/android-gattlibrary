@@ -13,11 +13,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
-@GattLibraryInternalApi
-const val KEISER_M_SERIES_CANDIDATE_ID = "vendor.keiser.m"
-const val FLYWHEEL_CANDIDATE_ID = "vendor.flywheel.sports"
-const val KAYAK_FIRST_CANDIDATE_ID = "kayak.first"
 internal const val KAYAK_FIRST_MANUFACTURER_ID = 0xA759
 
 /** The captured value is eight bytes beginning 88 A0; canonical payloads include the company ID. */
@@ -607,23 +605,23 @@ class DeviceMatcherRegistry private constructor(
         fun standard(): DeviceMatcherRegistry = of(
             listOf(
                 sigDefinition(
-                    "sig.ftms", 0x1826, 0x2acd..0x2ad2, KnownBleService.FTMS, 600,
+                    MachineFamilyIds.SIG_FTMS, 0x1826, 0x2acd..0x2ad2, KnownBleService.FTMS, 600,
                     machineRole = true,
                 ),
-                sigDefinition("sig.cps", 0x1818, 0x2a63..0x2a63, KnownBleService.CPS, 500),
+                sigDefinition(MachineFamilyIds.SIG_CPS, 0x1818, 0x2a63..0x2a63, KnownBleService.CPS, 500),
                 wahooKickrDefinition(),
-                rideOnDefinition("vendor.wahoo.rideon.original", WahooUuids.UUID_WAHOO_RIDEON_SERVICE),
-                rideOnDefinition("vendor.wahoo.rideon.core2", WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE),
+                rideOnDefinition(MachineFamilyIds.WAHOO_RIDEON_ORIGINAL, WahooUuids.UUID_WAHOO_RIDEON_SERVICE),
+                rideOnDefinition(MachineFamilyIds.WAHOO_RIDEON_CORE2, WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE),
                 sigDefinition(
-                    "sig.hrm",
+                    MachineFamilyIds.SIG_HRM,
                     0x180d,
                     0x2a37..0x2a37,
                     KnownBleService.HRM,
                     400,
                     listOf(Regex("polar|wahoo|garmin|coospo|tickr|hrm|heart", RegexOption.IGNORE_CASE)),
                 ),
-                sigDefinition("sig.rsc", 0x1814, 0x2a53..0x2a53, KnownBleService.RSC, 300),
-                sigDefinition("sig.csc", 0x1816, 0x2a5b..0x2a5b, KnownBleService.CSC, 200),
+                sigDefinition(MachineFamilyIds.SIG_RSC, 0x1814, 0x2a53..0x2a53, KnownBleService.RSC, 300),
+                sigDefinition(MachineFamilyIds.SIG_CSC, 0x1816, 0x2a5b..0x2a5b, KnownBleService.CSC, 200),
                 concept2Definition(),
                 precorDefinition(),
                 schwinnX70Definition(),
@@ -631,7 +629,7 @@ class DeviceMatcherRegistry private constructor(
                 kayakFirstDefinition(),
                 fecDefinition(),
                 keiserMSeriesDefinition(),
-                sigDefinition("sig.glucose", 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
+                sigDefinition(MachineFamilyIds.SIG_GLUCOSE, 0x1808, 0x2a18..0x2a18, KnownBleService.GLUCOSE, 100),
             ),
         )
 
@@ -670,19 +668,19 @@ class DeviceMatcherRegistry private constructor(
          * name plus company plus payload, so preference only ever breaks a tie.
          */
         private fun keiserMSeriesDefinition() = MatchDefinition(
-            candidateId = KEISER_M_SERIES_CANDIDATE_ID,
+            candidateId = MachineFamilyIds.KEISER_M_SERIES,
             serviceUuid = null,
             knownService = null,
             preference = 150,
             localNamePatterns = listOf(Regex("^M3", RegexOption.IGNORE_CASE)),
-            manufacturerCompanyIds = setOf(KeiserMSeriesMeasurement.COMPANY_ID),
+            manufacturerCompanyIds = setOf(KeiserMSeriesSpec.COMPANY_ID),
             machineRole = true,
             transport = MatchTransport.ADVERTISEMENT_ONLY,
             // The decoder's own predicate, not a second copy of it. A structural rule that could
             // drift from the parser would admit devices the parser then rejects, which reads to a
             // user as a machine that appears in the list and never produces a number.
             manufacturerPayloadRule = ManufacturerPayloadRule { companyId, payload ->
-                companyId == KeiserMSeriesMeasurement.COMPANY_ID &&
+                companyId == KeiserMSeriesSpec.COMPANY_ID &&
                     KeiserMSeriesMeasurement.isKeiserField(payload.copyBytes())
             },
             advertisedActivityType = ActivityType.BIKING,
@@ -706,7 +704,7 @@ class DeviceMatcherRegistry private constructor(
          * fingerprint from the discovered GATT database.
          */
         private fun wahooKickrDefinition() = MatchDefinition(
-            candidateId = "vendor.wahoo.kickr.legacy",
+            candidateId = MachineFamilyIds.WAHOO_KICKR_LEGACY,
             serviceUuid = CanonicalUuid.fromUuid(SigUuids.UUID_CYCLING_POWER_SERVICE),
             knownService = null,
             preference = 125,
@@ -728,7 +726,7 @@ class DeviceMatcherRegistry private constructor(
          * bike; post-connect activation separately validates both endpoints and their properties.
          */
         private fun flywheelDefinition() = MatchDefinition(
-            candidateId = FLYWHEEL_CANDIDATE_ID,
+            candidateId = MachineFamilyIds.FLYWHEEL_SPORTS,
             serviceUuid = CanonicalUuid.fromUuid(FlywheelUuids.UUID_FLYWHEEL_SERVICE),
             preference = 140,
             localNamePatterns = listOf(Regex("^Flywheel 1$", RegexOption.IGNORE_CASE)),
@@ -756,7 +754,7 @@ class DeviceMatcherRegistry private constructor(
          * fields and because the physical identifier must never become persisted identity.
          */
         private fun kayakFirstDefinition() = MatchDefinition(
-            candidateId = KAYAK_FIRST_CANDIDATE_ID,
+            candidateId = MachineFamilyIds.KAYAK_FIRST,
             serviceUuid = CanonicalUuid.fromUuid(KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE),
             preference = 135,
             localNamePatterns = listOf(Regex("^[\\x20-\\x7E]{8}$")),
@@ -823,7 +821,7 @@ class DeviceMatcherRegistry private constructor(
          * which is `concept2PersonaFor`'s job and a different question from identity.
          */
         private fun concept2Definition() = MatchDefinition(
-            candidateId = "vendor.concept2.pm",
+            candidateId = MachineFamilyIds.CONCEPT2_PM,
             serviceUuid = CanonicalUuid.fromUuid(Concept2Uuids.UUID_C2_ERG_SERVICE),
             // **Both, deliberately — this is V1's resolution applied to a second family.**
             //
@@ -893,7 +891,7 @@ class DeviceMatcherRegistry private constructor(
          * and validated per frame, with nothing in between pretending to add certainty.
          */
         private fun precorDefinition() = MatchDefinition(
-            candidateId = "vendor.precor.chrono",
+            candidateId = MachineFamilyIds.PRECOR_CHRONO,
             serviceUuid = CanonicalUuid.fromUuid(PrecorUuids.UUID_PRECOR_SERVICE),
             // User-approved tier-S evidence substitution (2026-08-12): the official Precor
             // Spinning Connect client discovers and consumes FitBridge's Chrono simulator when
@@ -936,7 +934,7 @@ class DeviceMatcherRegistry private constructor(
          * all four would reject both real consoles.
          */
         private fun schwinnX70Definition() = MatchDefinition(
-            candidateId = "vendor.schwinn.x70",
+            candidateId = MachineFamilyIds.SCHWINN_X70,
             serviceUuid = CanonicalUuid.fromUuid(SchwinnX70Uuids.UUID_X70_SERVICE),
             machineRole = true,
             knownService = null,
@@ -960,7 +958,7 @@ class DeviceMatcherRegistry private constructor(
          * [MatchDefinition.advertisedServiceUuids] is left empty like every SIG definition.
          */
         private fun fecDefinition() = MatchDefinition(
-            candidateId = "vendor.fec.ble",
+            candidateId = MachineFamilyIds.FEC_BLE,
             serviceUuid = CanonicalUuid.fromUuid(FecBleUuids.UUID_FEC_SERVICE),
             machineRole = true,
             knownService = null,

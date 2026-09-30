@@ -4,7 +4,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import com.gmail.absolutebollockscreations.gattlibrary.central.BluetoothIds
-import com.gmail.absolutebollockscreations.gattlibrary.central.SCHWINN_X70_INITIALISATION
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
 import com.gmail.absolutebollockscreations.gattlibrary.central.SchwinnX70Measurement
 import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
@@ -320,7 +320,7 @@ internal object SchwinnX70GattProfile {
 internal object SchwinnX70SetupGate {
 
     /** QZ's literal, which FitBridge's own central sends. */
-    val QZ_COMMAND: ByteArray = SCHWINN_X70_INITIALISATION
+    val QZ_COMMAND: ByteArray = SchwinnX70Spec.INITIALISATION
 
     /** TMIW's literal, a second unreconciled sample (V17). */
     val TMIW_COMMAND: ByteArray = byteArrayOf(0x05, 0x03, 0xD9.toByte(), 0x00, 0x1F)

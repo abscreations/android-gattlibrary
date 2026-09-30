@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 class KeiserMSeriesSimulatorEncoderTest {
     private val metricProfile = KeiserMSeriesSimulatorProfile.M3M_METRIC
@@ -73,7 +74,7 @@ class KeiserMSeriesSimulatorEncoderTest {
             )
 
         assertEquals("M3m", plan.localName)
-        assertEquals(KeiserMSeriesMeasurement.COMPANY_ID, plan.manufacturerId)
+        assertEquals(KeiserMSeriesSpec.COMPANY_ID, plan.manufacturerId)
         assertFalse(plan.connectable)
         assertFalse(plan.scannable)
         assertEquals(0x0237, plan.intervalUnits)
