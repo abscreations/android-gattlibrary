@@ -367,6 +367,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/FeC
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/FlywheelSportsEncoder {
+	public static final field FRAME_SIZE I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FlywheelSportsEncoder;
+	public static final field PERIOD_MS J
+	public final fun encode (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)[B
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample {
 	public fun <init> (IIIIILjava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;)V
 	public synthetic fun <init> (IIIIILjava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Integer;Ljava/lang/Double;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -547,6 +554,47 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysics {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysics;
+	public final fun calculate (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;Ljava/lang/Double;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult {
+	public fun <init> (DDDDLjava/lang/Double;)V
+	public final fun component1 ()D
+	public final fun component2 ()D
+	public final fun component3 ()D
+	public final fun component4 ()D
+	public final fun component5 ()Ljava/lang/Double;
+	public final fun copy (DDDDLjava/lang/Double;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult;DDDDLjava/lang/Double;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangePhysicsResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getForceNewtons ()D
+	public final fun getPace500Seconds ()Ljava/lang/Double;
+	public final fun getPowerWatts ()D
+	public final fun getSpeedMetresPerSecond ()D
+	public final fun getStrokeRateSpm ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple {
+	public fun <init> (DDDD)V
+	public final fun component1 ()D
+	public final fun component2 ()D
+	public final fun component3 ()D
+	public final fun component4 ()D
+	public final fun copy (DDDD)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;DDDDILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstOrangeTimingTuple;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTHSeconds ()D
+	public final fun getTMaxSeconds ()D
+	public final fun getTMinSeconds ()D
+	public final fun getTVSeconds ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KayakFirstPanelConfiguration$Companion;
 	public static final field SLOT_COUNT I
@@ -596,6 +644,36 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Kay
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan$Companion;
+	public static final field FAST_INTERVAL_UNITS I
+	public static final field MAX_LEGACY_BYTES I
+	public fun <init> (Ljava/lang/String;I[BZZII)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()I
+	public final fun component3 ()[B
+	public final fun component4 ()Z
+	public final fun component5 ()Z
+	public final fun component6 ()I
+	public final fun component7 ()I
+	public final fun copy (Ljava/lang/String;I[BZZII)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan;Ljava/lang/String;I[BZZIIILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAdvertisingBytes ()I
+	public final fun getConnectable ()Z
+	public final fun getIntervalUnits ()I
+	public final fun getLocalName ()Ljava/lang/String;
+	public final fun getManufacturerId ()I
+	public final fun getManufacturerPayload ()[B
+	public final fun getScannable ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan$Companion {
+	public final fun create (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona$KeiserMSeries;[B)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesAdvertisingPlan;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorDistanceUnit : java/lang/Enum {
 	public static final field KILOMETRES Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorDistanceUnit;
 	public static final field MILES Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorDistanceUnit;
@@ -603,6 +681,16 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Kei
 	public final fun getMetresPerTenth ()D
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorDistanceUnit;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorDistanceUnit;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorEncoder {
+	public static final field DATA_TYPE_REALTIME I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorEncoder;
+	public static final field MANUFACTURER_PAYLOAD_LENGTH I
+	public static final field SAMPLE_PERIOD_MS J
+	public final fun canonicalField ([B)[B
+	public final fun encode (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorProfile;ILjava/lang/Integer;)[B
+	public static synthetic fun encode$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorEncoder;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorProfile;ILjava/lang/Integer;ILjava/lang/Object;)[B
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorProfile : java/lang/Enum {
@@ -621,6 +709,57 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Kei
 	public final fun getSystemId ()I
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorProfile;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorProfile;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario {
+	public static final field COAST_END_MS J
+	public static final field COAST_START_MS J
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Companion;
+	public static final field LOOP_DURATION_MS J
+	public static final field MALFORMED_PERIOD_MS J
+	public static final field REPEAT_END_MS J
+	public static final field REPEAT_START_MS J
+	public static final field STALE_START_MS J
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesSimulatorProfile;)V
+	public final fun next (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Output;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Companion {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event : java/lang/Enum {
+	public static final field CADENCE_DROPOUT Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field COAST Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field DISTANCE_BOUNDARY Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field MALFORMED Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field POWER_DROPOUT Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field REALTIME_BOUNDARY Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field RECOVERY Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field REPEATED_UNCHANGED Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field RIDE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static final field STALE_SILENCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Output {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;[BLcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;JJ)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;
+	public final fun component2 ()[B
+	public final fun component3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public final fun component4 ()J
+	public final fun component5 ()J
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;[BLcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;JJ)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Output;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Output;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;[BLcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;JJILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Output;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEvent ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/KeiserMSeriesValidationScenario$Event;
+	public final fun getLoopElapsedMs ()J
+	public final fun getLoopIndex ()J
+	public final fun getManufacturerPayload ()[B
+	public final fun getSample ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/KickrSimulatorPersona : java/lang/Enum {
@@ -648,6 +787,132 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Lif
 	public final fun getSyntheticName ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/LifeFitnessMachine;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/LifeFitnessMachine;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/LifeFitnessPacketEncoder {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/LifeFitnessPacketEncoder;
+	public final fun encode (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/LifeFitnessMachine;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)[B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/PrecorChronoEncoder {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/PrecorChronoEncoder;
+	public static final field PAIR_PERIOD_MS J
+	public final fun encode (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)[B
+	public final fun encodeNotifications (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)Ljava/util/List;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWire {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWire;
+	public static final field RIDING_DATA_FIELD5_SPEED_MULTIPLIER D
+	public static final field RIDING_DATA_FIELD6_OBSERVED_CONSTANT J
+	public final fun clickKeyPadStatus (ZZ)[B
+	public final fun decode ([B)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult;
+	public final fun hubDeviceInfoReply (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[BJJ)[B
+	public static synthetic fun hubDeviceInfoReply$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWire;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[BJJILjava/lang/Object;)[B
+	public final fun hubGeneralInfoReply (Ljava/lang/String;[BJJJ)[B
+	public static synthetic fun hubGeneralInfoReply$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWire;Ljava/lang/String;[BJJJILjava/lang/Object;)[B
+	public final fun hubRequestGearRatio (J)[B
+	public final fun hubRequestResponse (JIJ)[B
+	public final fun ridingData (JJJJJJ)[B
+	public static synthetic fun ridingData$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWire;JJJJJJILjava/lang/Object;)[B
+	public final fun statusMessage (JLjava/lang/String;)[B
+	public final fun virtualShiftResponse (J)[B
+	public final fun zigZagDecode32 (J)I
+	public final fun zigZagEncode32 (I)J
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Decoded : com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Decoded;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Decoded;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Decoded;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPacket ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Invalid : com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Invalid;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Invalid;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireDecodeResult$Invalid;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReason ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField {
+	public abstract fun getNumber ()I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Bytes : com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField {
+	public fun <init> (I[B)V
+	public final fun component1 ()I
+	public final fun component2 ()[B
+	public final fun copy (I[B)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Bytes;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Bytes;I[BILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Bytes;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getNumber ()I
+	public final fun getValue ()[B
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed32 : com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField {
+	public fun <init> (I[B)V
+	public final fun component1 ()I
+	public final fun component2 ()[B
+	public final fun copy (I[B)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed32;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed32;I[BILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed32;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBytes ()[B
+	public fun getNumber ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed64 : com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField {
+	public fun <init> (I[B)V
+	public final fun component1 ()I
+	public final fun component2 ()[B
+	public final fun copy (I[B)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed64;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed64;I[BILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Fixed64;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBytes ()[B
+	public fun getNumber ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Varint : com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField {
+	public fun <init> (IJ)V
+	public final fun component1 ()I
+	public final fun component2 ()J
+	public final fun copy (IJ)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Varint;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Varint;IJILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWireField$Varint;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getNumber ()I
+	public final fun getValue ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket {
+	public fun <init> (ILjava/util/List;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (ILjava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;ILjava/util/List;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/RideOnWirePacket;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFields ()Ljava/util/List;
+	public final fun getOpcode ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorControlModeLabels {
@@ -847,6 +1112,9 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 	public static final fun descriptorLine (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;)Ljava/lang/String;
 	public static final fun descriptorTitle (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;)Ljava/lang/String;
 	public static final fun ftmsMachineLabel (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Ljava/lang/String;
+}
+
+public abstract interface annotation class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorProbeApi : java/lang/annotation/Annotation {
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection : java/lang/Enum {

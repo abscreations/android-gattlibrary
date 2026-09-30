@@ -5,7 +5,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /** Renders the dynamic part Android supplies to Keiser's manufacturer-data AD structure. */
-internal object KeiserMSeriesSimulatorEncoder {
+@SimulatorProbeApi
+object KeiserMSeriesSimulatorEncoder {
     const val DATA_TYPE_REALTIME = 0x00
     /** Keiser's captured fast interval (`0x0237 * 0.625 ms`), rounded for coroutine scheduling. */
     const val SAMPLE_PERIOD_MS = 354L

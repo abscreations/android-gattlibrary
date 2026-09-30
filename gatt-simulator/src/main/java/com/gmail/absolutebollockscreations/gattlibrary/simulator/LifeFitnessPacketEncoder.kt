@@ -8,7 +8,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
  * unavailable sentinels. The encoders deliberately stay inside the four official-client-accepted
  * persona layouts; unobserved machine types and optional fields are not added speculatively.
  */
-internal object LifeFitnessPacketEncoder {
+@SimulatorProbeApi
+object LifeFitnessPacketEncoder {
     fun encode(machine: LifeFitnessMachine, sample: FtmsMockSample): ByteArray = when (machine) {
         LifeFitnessMachine.TREADMILL -> treadmill(sample)
         LifeFitnessMachine.CROSS_TRAINER -> crossTrainer(sample)

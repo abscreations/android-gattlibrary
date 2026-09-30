@@ -3,7 +3,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import kotlin.math.roundToInt
 
 /** Deterministic five-minute adversarial ride shared by the Android M3i, M3m and M3o personas. */
-internal class KeiserMSeriesValidationScenario(
+@SimulatorProbeApi
+class KeiserMSeriesValidationScenario(
     private val profile: KeiserMSeriesSimulatorProfile,
 ) {
     enum class Event {

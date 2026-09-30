@@ -13,7 +13,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursorFail
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
-internal sealed interface RideOnWireField {
+@SimulatorProbeApi
+sealed interface RideOnWireField {
     val number: Int
     data class Varint(override val number: Int, val value: Long) : RideOnWireField
     data class Fixed64(override val number: Int, val bytes: ByteArray) : RideOnWireField
@@ -21,15 +22,18 @@ internal sealed interface RideOnWireField {
     data class Fixed32(override val number: Int, val bytes: ByteArray) : RideOnWireField
 }
 
-internal data class RideOnWirePacket(val opcode: Int, val fields: List<RideOnWireField>)
+@SimulatorProbeApi
+data class RideOnWirePacket(val opcode: Int, val fields: List<RideOnWireField>)
 
-internal sealed interface RideOnWireDecodeResult {
+@SimulatorProbeApi
+sealed interface RideOnWireDecodeResult {
     data class Decoded(val packet: RideOnWirePacket) : RideOnWireDecodeResult
     data class Invalid(val reason: String) : RideOnWireDecodeResult
 }
 
 /** Small protobuf-v2 wire codec for only the independently authored RideOn schema. */
-internal object RideOnWire {
+@SimulatorProbeApi
+object RideOnWire {
     fun decode(packet: ByteArray): RideOnWireDecodeResult {
         if (packet.isEmpty()) return RideOnWireDecodeResult.Invalid("missing opcode")
         if (packet.size > RideOnSpec.MAX_PACKET_BYTES) {

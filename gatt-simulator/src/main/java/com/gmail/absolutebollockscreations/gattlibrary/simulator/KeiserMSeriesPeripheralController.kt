@@ -23,7 +23,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.advertisedName
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeriesSpec
 
 /** Pure legacy-envelope facts, kept separate from Android objects for focused unit coverage. */
-internal data class KeiserMSeriesAdvertisingPlan(
+@SimulatorProbeApi
+data class KeiserMSeriesAdvertisingPlan(
     val localName: String,
     val manufacturerId: Int,
     val manufacturerPayload: ByteArray,

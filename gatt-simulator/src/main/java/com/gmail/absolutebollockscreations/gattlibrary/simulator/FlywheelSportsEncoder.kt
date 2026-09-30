@@ -3,7 +3,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
 import kotlin.math.roundToInt
 
 /** Encodes the captured 34-octet Flywheel notification shape used by the Phase 12 decoder. */
-internal object FlywheelSportsEncoder {
+@SimulatorProbeApi
+object FlywheelSportsEncoder {
     const val PERIOD_MS = 1_000L
     const val FRAME_SIZE = 34
 

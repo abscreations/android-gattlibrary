@@ -33,6 +33,9 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
     compilerOptions.optIn.add(
         "com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi"
     )
+    compilerOptions.optIn.add(
+        "com.gmail.absolutebollockscreations.gattlibrary.simulator.SimulatorProbeApi"
+    )
 }
 
 dependencies {

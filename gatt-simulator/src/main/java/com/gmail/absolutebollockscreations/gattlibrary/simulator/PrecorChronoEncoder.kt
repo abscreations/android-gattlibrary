@@ -5,7 +5,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
 
 /** Encoder for the fixed 19-byte Precor Spinner Chrono Power measurement fixture. */
-internal object PrecorChronoEncoder {
+@SimulatorProbeApi
+object PrecorChronoEncoder {
     /** One physical Chrono measurement/auxiliary pair is observed approximately every second. */
     const val PAIR_PERIOD_MS = 1_000L
 

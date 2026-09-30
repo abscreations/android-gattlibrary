@@ -10,14 +10,16 @@ import kotlin.math.pow
  * no central type. Central's `KayakFirstOrangePhysics` implements the same equations for decoding;
  * tests compare the two.
  */
-internal data class KayakFirstOrangeTimingTuple(
+@SimulatorProbeApi
+data class KayakFirstOrangeTimingTuple(
     val tMinSeconds: Double,
     val tHSeconds: Double,
     val tMaxSeconds: Double,
     val tVSeconds: Double,
 )
 
-internal data class KayakFirstOrangePhysicsResult(
+@SimulatorProbeApi
+data class KayakFirstOrangePhysicsResult(
     val powerWatts: Double,
     val forceNewtons: Double,
     val speedMetresPerSecond: Double,
@@ -25,7 +27,8 @@ internal data class KayakFirstOrangePhysicsResult(
     val pace500Seconds: Double?,
 )
 
-internal object KayakFirstOrangePhysics {
+@SimulatorProbeApi
+object KayakFirstOrangePhysics {
     fun calculate(
         timing: KayakFirstOrangeTimingTuple,
         athleteWeightKg: Double?,
