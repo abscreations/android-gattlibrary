@@ -40,7 +40,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  * truncates or refuses to start, which is why [advertisingBytes] is computed and asserted rather
  * than assumed.
  */
-internal data class SchwinnX70AdvertisingPlan(
+@SimulatorProbeApi
+data class SchwinnX70AdvertisingPlan(
     val serviceUuid: UUID,
     val localName: String,
     val includeNameInAdvertising: Boolean,
@@ -121,7 +122,8 @@ internal data class SchwinnX70AdvertisingPlan(
 }
 
 /** One characteristic in the served manifest. */
-internal data class SchwinnX70GattCharacteristic(
+@SimulatorProbeApi
+data class SchwinnX70GattCharacteristic(
     val uuid: UUID,
     val properties: Int,
     val notifies: Boolean,
@@ -138,7 +140,8 @@ internal data class SchwinnX70GattCharacteristic(
 }
 
 /** One service in the served manifest. */
-internal data class SchwinnX70GattService(
+@SimulatorProbeApi
+data class SchwinnX70GattService(
     val uuid: UUID,
     val characteristics: List<SchwinnX70GattCharacteristic>,
 )
@@ -161,7 +164,8 @@ internal data class SchwinnX70GattService(
  * No FTMS service, no Heart Rate service, no Battery service. None appears in the captured GATT
  * inventory, and a client that finds `0x180F` on an x70 has learned something false about the family.
  */
-internal object SchwinnX70GattProfile {
+@SimulatorProbeApi
+object SchwinnX70GattProfile {
 
     private const val READ = BluetoothGattCharacteristic.PROPERTY_READ
     private const val WRITE = BluetoothGattCharacteristic.PROPERTY_WRITE
@@ -315,7 +319,8 @@ internal object SchwinnX70GattProfile {
  * and is already tested; synthesising a command would be a third value for a field where two
  * already disagree and nothing can choose between them.
  */
-internal object SchwinnX70SetupGate {
+@SimulatorProbeApi
+object SchwinnX70SetupGate {
 
     /** QZ's literal, which FitBridge's own central sends. */
     val QZ_COMMAND: ByteArray = SchwinnX70Spec.INITIALISATION

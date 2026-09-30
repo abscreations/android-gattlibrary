@@ -25,7 +25,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
  * Transcribed from `docs/evidence/phase-7/2026-08-18-schwinn-x70-qz-debug-log-corpus.md`. These live
  * in main sources because the test fixtures are not on the runtime classpath.
  */
-internal enum class SchwinnX70Template(
+@SimulatorProbeApi
+enum class SchwinnX70Template(
     val supplemental: ByteArray,
     val sibling: ByteArray,
     val main: ByteArray,

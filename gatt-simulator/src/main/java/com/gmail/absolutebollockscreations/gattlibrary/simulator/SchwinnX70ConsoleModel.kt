@@ -30,7 +30,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spe
  * mile (tag `0x3E`).
  * @param supplementalAccumulator elapsed seconds of motion, not of connection (tag `0x3C`).
  */
-internal data class SchwinnX70ConsoleState(
+@SimulatorProbeApi
+data class SchwinnX70ConsoleState(
     val sequence: Int,
     val speedMph: Double,
     val powerWatts: Double,
@@ -69,7 +70,8 @@ internal data class SchwinnX70ConsoleState(
  * describe the same ride — and the same conversion applies to a physical bike, which is the point.
  * That constant carries the evidence and the open question; this class just applies it.
  */
-internal class SchwinnX70ConsoleModel {
+@SimulatorProbeApi
+class SchwinnX70ConsoleModel {
 
     private var sequence = 0
     private var crankRevolutions = 0.0

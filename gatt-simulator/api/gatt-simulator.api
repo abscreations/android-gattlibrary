@@ -1734,6 +1734,192 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Rid
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70AdvertisingPlan {
+	public static final field CAPTURED_MANUFACTURER_ID I
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70AdvertisingPlan$Companion;
+	public static final field MAX_LEGACY_BYTES I
+	public fun <init> (Ljava/util/UUID;Ljava/lang/String;ZZZI[BII)V
+	public final fun component1 ()Ljava/util/UUID;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Z
+	public final fun component6 ()I
+	public final fun component7 ()[B
+	public final fun component8 ()I
+	public final fun component9 ()I
+	public final fun copy (Ljava/util/UUID;Ljava/lang/String;ZZZI[BII)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70AdvertisingPlan;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70AdvertisingPlan;Ljava/util/UUID;Ljava/lang/String;ZZZI[BIIILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70AdvertisingPlan;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAdvertisingBytes ()I
+	public final fun getIncludeNameInAdvertising ()Z
+	public final fun getIncludeNameInScanResponse ()Z
+	public final fun getIncludeTxPowerInScanResponse ()Z
+	public final fun getLocalName ()Ljava/lang/String;
+	public final fun getManufacturerId ()I
+	public final fun getManufacturerPayload ()[B
+	public final fun getScanResponseBytes ()I
+	public final fun getServiceUuid ()Ljava/util/UUID;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70AdvertisingPlan$Companion {
+	public final fun create ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70AdvertisingPlan;
+	public final fun getCAPTURED_MANUFACTURER_PAYLOAD ()[B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleModel {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleModel$Companion;
+	public static final field ENERGY_DIVISOR D
+	public static final field KM_PER_MILE D
+	public static final field METRES_PER_MILE D
+	public static final field MIN_CADENCE_FOR_RESISTANCE D
+	public static final field RESISTANCE_STEP_SECONDS D
+	public static final field SIBLING_DISTANCE_UNITS_PER_MILE D
+	public static final field TICKS_PER_SECOND D
+	public fun <init> ()V
+	public final fun advance (DDDDIDD)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleModel$Companion {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState {
+	public fun <init> (IDDDIIJIIIII)V
+	public final fun component1 ()I
+	public final fun component10 ()I
+	public final fun component11 ()I
+	public final fun component12 ()I
+	public final fun component2 ()D
+	public final fun component3 ()D
+	public final fun component4 ()D
+	public final fun component5 ()I
+	public final fun component6 ()I
+	public final fun component7 ()J
+	public final fun component8 ()I
+	public final fun component9 ()I
+	public final fun copy (IDDDIIJIIIII)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;IDDDIIJIIIIIILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCadenceRpm ()D
+	public final fun getClockTicks ()I
+	public final fun getCrankCounter ()I
+	public final fun getEnergyRaw ()J
+	public final fun getHeartRateBpm ()I
+	public final fun getPowerWatts ()D
+	public final fun getResistance ()I
+	public final fun getSequence ()I
+	public final fun getSiblingAccumulatorA ()I
+	public final fun getSiblingAccumulatorB ()I
+	public final fun getSpeedMph ()D
+	public final fun getSupplementalAccumulator ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70FrameEncoder {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70FrameEncoder$Companion;
+	public fun <init> ()V
+	public final fun completeTick ()V
+	public final fun encodeMain (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;)[B
+	public final fun encodePair (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;)Ljava/util/List;
+	public final fun encodeSibling (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;)[B
+	public final fun encodeSupplemental (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70ConsoleState;)[B
+	public final fun skipTick ()V
+	public final fun streamMarker (I)[B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70FrameEncoder$Companion {
+	public final fun getOBSERVED_MARKERS ()Ljava/util/List;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattCharacteristic {
+	public fun <init> (Ljava/util/UUID;IZ[B)V
+	public synthetic fun <init> (Ljava/util/UUID;IZ[BILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/UUID;
+	public final fun component2 ()I
+	public final fun component3 ()Z
+	public final fun component4 ()[B
+	public final fun copy (Ljava/util/UUID;IZ[B)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattCharacteristic;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattCharacteristic;Ljava/util/UUID;IZ[BILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattCharacteristic;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getNotifies ()Z
+	public final fun getProperties ()I
+	public final fun getReadValue ()[B
+	public final fun getUuid ()Ljava/util/UUID;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattProfile {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattProfile;
+	public final fun buildServices ()Ljava/util/List;
+	public final fun getAUX_STATUS_FRAME ()[B
+	public final fun getMEASUREMENT_CHARACTERISTICS ()Ljava/util/List;
+	public final fun getNOTIFY_CHARACTERISTICS ()Ljava/util/List;
+	public final fun manifest ()Ljava/util/List;
+	public final fun readValues ()Ljava/util/Map;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattService {
+	public fun <init> (Ljava/util/UUID;Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/UUID;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/util/UUID;Ljava/util/List;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattService;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattService;Ljava/util/UUID;Ljava/util/List;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70GattService;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCharacteristics ()Ljava/util/List;
+	public final fun getUuid ()Ljava/util/UUID;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Identity {
+	public static final field FIRMWARE_REVISION Ljava/lang/String;
+	public static final field HARDWARE_REVISION Ljava/lang/String;
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Identity;
+	public static final field MANUFACTURER Ljava/lang/String;
+	public static final field MODEL_NUMBER Ljava/lang/String;
+	public static final field SOFTWARE_REVISION Ljava/lang/String;
+	public final fun getPNP_ID ()[B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Ride {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Ride;
+	public static final field MAIN_PERIOD_MS J
+	public static final field PAIR_PERIOD_MS J
+	public static final field RESISTANCE_CEILING I
+	public static final field RESISTANCE_FLOOR I
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70SetupGate {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70SetupGate;
+	public final fun accepts ([B)Z
+	public final fun getKNOWN_COMMANDS ()Ljava/util/List;
+	public final fun getQZ_COMMAND ()[B
+	public final fun getTMIW_COMMAND ()[B
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template : java/lang/Enum {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template$Companion;
+	public static final field MAIN_270 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template;
+	public static final field PAIRED_170 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getMain ()[B
+	public final fun getMainByte3 ()[I
+	public final fun getSibling ()[B
+	public final fun getSiblingByte1 ()[I
+	public final fun getSupplemental ()[B
+	public final fun getSupplementalByte3 ()[I
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template$Companion {
+	public final fun getDEFAULT ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SchwinnX70Template;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorControlModeLabels {
 	public static final field ANT_DIRECT Ljava/lang/String;
 	public static final field ANT_SIM Ljava/lang/String;

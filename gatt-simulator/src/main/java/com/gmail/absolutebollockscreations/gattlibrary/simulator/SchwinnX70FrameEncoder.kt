@@ -23,7 +23,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
  * synthetic, and no captured session is played back — which is the §8.1 rule, and the reason a
  * capture taken against this simulator is distinguishable from a physical one.
  */
-internal class SchwinnX70FrameEncoder {
+@SimulatorProbeApi
+class SchwinnX70FrameEncoder {
 
     private val template = SchwinnX70Template.DEFAULT
     private var frameIndex = 0

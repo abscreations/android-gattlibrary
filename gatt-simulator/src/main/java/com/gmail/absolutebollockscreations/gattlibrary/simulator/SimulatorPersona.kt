@@ -298,7 +298,8 @@ internal const val SCHWINN_X70_ADVERTISED_NAME = "SCHWINN 170/270"
  * the resistance span is the widest any capture showed (the 170's 1 to 22), so a generated ride
  * can visit the whole legal range rather than one machine's slice of it.
  */
-internal object SchwinnX70Ride {
+@SimulatorProbeApi
+object SchwinnX70Ride {
     /** Median interval between supplemental/sibling pairs, across all captured consoles. */
     const val PAIR_PERIOD_MS = 96L
 
@@ -316,7 +317,8 @@ internal object SchwinnX70Ride {
  * The 170's was never read and the 570 has none at all (Q3), so this is the only captured identity
  * the family has and the persona uses it verbatim.
  */
-internal object SchwinnX70Identity {
+@SimulatorProbeApi
+object SchwinnX70Identity {
     /**
      * **NUL-padded to nineteen octets on the wire**, which the 570u logs show and no earlier record
      * captured. TMIW does a `contains` check and never noticed; a byte-exact simulator has to.
