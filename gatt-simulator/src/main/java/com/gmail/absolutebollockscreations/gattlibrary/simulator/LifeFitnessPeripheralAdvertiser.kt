@@ -547,10 +547,12 @@ internal class LifeFitnessPeripheralAdvertiser(
     private fun currentStage(): LifeFitnessSetupServer.Stage? = clients.values.firstOrNull()?.setup?.stage
 
     companion object {
+        // The three Training Status values are internal so the capture golden test can tie them to
+        // the observed 0E, 0D, 0F sequence (life_fitness_issue_1018_setup_transcript).
         private const val MAX_PENDING_NOTIFICATIONS = 8
-        private val TRAINING_PRE_WORKOUT = byteArrayOf(0x0E, 0x00)
-        private val TRAINING_ACTIVE = byteArrayOf(0x0D, 0x00)
-        private val TRAINING_POST_WORKOUT = byteArrayOf(0x0F, 0x00)
+        internal val TRAINING_PRE_WORKOUT = byteArrayOf(0x0E, 0x00)
+        internal val TRAINING_ACTIVE = byteArrayOf(0x0D, 0x00)
+        internal val TRAINING_POST_WORKOUT = byteArrayOf(0x0F, 0x00)
         private val USER_CHARACTERISTICS = setOf(
             SigUuids.UUID_USER_FIRST_NAME,
             SigUuids.UUID_USER_LAST_NAME,
