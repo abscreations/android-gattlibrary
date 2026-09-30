@@ -421,7 +421,11 @@ class Concept2Pm5MockEngine(
             projectedWorkDistanceMetres = interval?.takeIf { it.goalKind == Concept2WorkoutGoalKind.DISTANCE }
                 ?.goalValue ?: (averageSpeed * 1800.0).roundToInt(),
             splitIntervalSize = workoutProgram?.let { program ->
-                program.splitGoalValue ?: if (program.isInterval || program.isVariableInterval) {
+                program.splitGoalValue?.let { value ->
+                    // Captured from ErgData: a TIME split is held in seconds on the wire
+                    // (3600 for a 1:00:00 split); the program stores centiseconds.
+                    if (program.splitGoalKind == Concept2WorkoutGoalKind.TIME) value / 100 else value
+                } ?: if (program.isInterval || program.isVariableInterval) {
                     interval?.goalValue
                 } else {
                     null
