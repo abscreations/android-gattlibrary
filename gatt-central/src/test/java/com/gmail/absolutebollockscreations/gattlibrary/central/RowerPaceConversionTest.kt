@@ -38,8 +38,6 @@ class RowerPaceConversionTest {
 
         assertEquals(4.0, state.instantPaceMinPerKm.value!!, 0.0)
         assertEquals(4.2, state.averagePaceMinPerKm.value!!, 0.0)
-        assertEquals(4.0 * 1.609344, state.instPace.value!!, 0.0001)
-        assertEquals(4.2 * 1.609344, state.avgPace.value!!, 0.0001)
     }
 
     @Test

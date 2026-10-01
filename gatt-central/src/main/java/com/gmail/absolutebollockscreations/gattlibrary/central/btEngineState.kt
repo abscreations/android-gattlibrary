@@ -609,10 +609,8 @@ class BtEngineState : HrmStateSink {
     // Distance (raw meters + unit-aware display)
     private val _totalDistanceMeters = MutableStateFlow<Int?>(null)
     val totalDistanceMeters: StateFlow<Int?> = _totalDistanceMeters
-    private val _totalDistanceDisplay = MutableStateFlow<Double?>(null)
-    val totalDistanceDisplay: StateFlow<Double?> = _totalDistanceDisplay
 
-    // Speed (kph/mph + unit-aware display)
+    // Speed (kph/mph; unit-aware display is the UI's job)
     private val _speedKph = MutableStateFlow<Double?>(null)
     val speedKph: StateFlow<Double?> = _speedKph
     private val _speedMph = MutableStateFlow<Double?>(null)
@@ -623,19 +621,6 @@ class BtEngineState : HrmStateSink {
     val peakSpeedMph: StateFlow<Double?> = _peakSpeedMph
     private val _avgSpeedKph = MutableStateFlow<Double?>(null)
     val avgSpeedKph: StateFlow<Double?> = _avgSpeedKph
-
-    private val _speedDisplay = MutableStateFlow<Double?>(null)
-    val speedDisplay: StateFlow<Double?> = _speedDisplay
-    private val _avgSpeedDisplay = MutableStateFlow<Double?>(null)
-    val avgSpeedDisplay: StateFlow<Double?> = _avgSpeedDisplay
-    private val _peakSpeedDisplay = MutableStateFlow<Double?>(null)
-    val peakSpeedDisplay: StateFlow<Double?> = _peakSpeedDisplay
-
-    // Pace (min / unit)
-    private val _instPace = MutableStateFlow<Double?>(null)
-    val instPace: StateFlow<Double?> = _instPace
-    private val _avgPace = MutableStateFlow<Double?>(null)
-    val avgPace: StateFlow<Double?> = _avgPace
 
     // Canonical metric pace remains available for unit-independent consumers such as rowing.
     private val _instantPaceMinPerKm = MutableStateFlow<Double?>(null)
@@ -729,7 +714,6 @@ class BtEngineState : HrmStateSink {
         // 3) If requested, also zero provider-side totals (rarely desired)
         if (!keepTotals) {
             _totalDistanceMeters.value = 0
-            _totalDistanceDisplay.value = 0.0
             _elapsedTimeSec.value = 0
             // Reset lap projections too, since totals got zeroed
             _lapAvgSpeedMps.value = null
@@ -1227,10 +1211,6 @@ class BtEngineState : HrmStateSink {
         val old = _units.value
         _units.value = units
         Timber.tag(TAG).i("setUnits %s → %s", old?.toString() ?: "null", units?.toString() ?: "null")
-
-        // Re-emit pace in the newly selected units
-        _instantPaceMinPerKm.value?.let { emitInstantPaceForUnits(it, units) }
-        _averagePaceMinPerKm.value?.let { emitAvgPaceForUnits(it, units) }
     }
 
     fun setActiveSession(active: Boolean) {
@@ -1270,17 +1250,12 @@ class BtEngineState : HrmStateSink {
     fun setStrokeCount(v: Int?) { _strokeCount.value = v }
 
     fun setTotalDistanceMeters(m: Int?) { _totalDistanceMeters.value = m }
-    fun setTotalDistanceDisplay(dist: Double?) { _totalDistanceDisplay.value = dist }
 
     fun setSpeedKph(v: Double?) { _speedKph.value = v }
     fun setSpeedMph(v: Double?) { _speedMph.value = v }
     fun setAvgSpeedKph(v: Double?) { _avgSpeedKph.value = v }
     fun setPeakSpeedKph(v: Double?) { _peakSpeedKph.value = v }
     fun setPeakSpeedMph(v: Double?) { _peakSpeedMph.value = v }
-
-    fun setSpeedDisplay(v: Double?) { _speedDisplay.value = v }
-    fun setAvgSpeedDisplay(v: Double?) { _avgSpeedDisplay.value = v }
-    fun setPeakSpeedDisplay(v: Double?) { _peakSpeedDisplay.value = v }
 
     // ─────────────────────────────────────────────────────────────
     // PACE (now expects **minutes per km**)
@@ -1292,8 +1267,6 @@ class BtEngineState : HrmStateSink {
     fun setInstantPace(minPerKm: Double?) {
         _instantPaceMinPerKm.value = minPerKm
         Timber.tag(TAG).v("setInstantPace(minPerKm=%s)", minPerKm?.toString() ?: "null")
-        val units = _units.value
-        emitInstantPaceForUnits(minPerKm, units)
     }
 
     /**
@@ -1302,37 +1275,6 @@ class BtEngineState : HrmStateSink {
     fun setAvgPace(minPerKm: Double?) {
         _averagePaceMinPerKm.value = minPerKm
         Timber.tag(TAG).v("setAvgPace(minPerKm=%s)", minPerKm?.toString() ?: "null")
-        val units = _units.value
-        emitAvgPaceForUnits(minPerKm, units)
-    }
-
-    private fun emitInstantPaceForUnits(minPerKm: Double?, units: Int?) {
-        if (minPerKm == null) {
-            _instPace.value = null
-            return
-        }
-        // 1 = imperial → min/mi
-        // else → min/km
-        val display = if (units == 1) {
-            // 1 mi = 1.609344 km
-            minPerKm * 1.609344
-        } else {
-            minPerKm
-        }
-        _instPace.value = display
-    }
-
-    private fun emitAvgPaceForUnits(minPerKm: Double?, units: Int?) {
-        if (minPerKm == null) {
-            _avgPace.value = null
-            return
-        }
-        val display = if (units == 1) {
-            minPerKm * 1.609344
-        } else {
-            minPerKm
-        }
-        _avgPace.value = display
     }
 
     fun setInstantPower(w: Int?) { _instantPower.value = w }
@@ -1463,7 +1405,6 @@ class BtEngineState : HrmStateSink {
         speedCount += 1
         val averageKph = speedKphSum / speedCount
         _avgSpeedKph.value = averageKph
-        _avgSpeedDisplay.value = if (_units.value == 1) averageKph / 1.609344 else averageKph
         _speedSeriesKph.value = _speedSeriesKph.value + TimedSample(tsMillis, kph)
         Timber.tag(TAG).v(
             "appendSpeedKphSample kph=%.2f avg=%.2f seriesSize=%d",
@@ -1555,7 +1496,6 @@ class BtEngineState : HrmStateSink {
         speedKphSum = 0.0
         speedCount = 0
         _avgSpeedKph.value = null
-        _avgSpeedDisplay.value = null
 
         cadenceSpmSum = 0.0
         cadenceCount = 0
@@ -1607,9 +1547,7 @@ class BtEngineState : HrmStateSink {
         if (series.isEmpty()) {
             _speedKph.value = null
             _speedMph.value = null
-            _speedDisplay.value = null
             _avgSpeedKph.value = null
-            _avgSpeedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: no distance samples")
             return
         }
@@ -1619,7 +1557,6 @@ class BtEngineState : HrmStateSink {
         if (recent.size < 2) {
             _speedKph.value = null
             _speedMph.value = null
-            _speedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: insufficient samples (recent=%d)", recent.size)
             return
         }
@@ -1631,7 +1568,6 @@ class BtEngineState : HrmStateSink {
         if (dtMs < minSpanMs) {
             _speedKph.value = null
             _speedMph.value = null
-            _speedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: dtMs too small (%d)", dtMs)
             return
         }
@@ -1641,7 +1577,6 @@ class BtEngineState : HrmStateSink {
         if (dm <= 0.0) {
             _speedKph.value = null
             _speedMph.value = null
-            _speedDisplay.value = null
             Timber.tag(TAG).v("updateRowingSpeed: non-positive delta distance dm=%.2f", dm)
             return
         }
@@ -1662,19 +1597,11 @@ class BtEngineState : HrmStateSink {
         // the previous derived value. Guarding on non-null froze the first value.
         _speedKph.value = kph
         _speedMph.value = kph * 0.621371
-        _speedDisplay.value = when (_units.value) {
-            1    -> kph * 0.621371    // mi/h
-            else -> kph               // km/h
-        }
         _speedSeriesKph.value = _speedSeriesKph.value + TimedSample(nowMs, kph)
 
         val peakKph = maxOf(_peakSpeedKph.value ?: 0.0, kph)
         _peakSpeedKph.value = peakKph
         _peakSpeedMph.value = peakKph * 0.621371
-        _peakSpeedDisplay.value = when (_units.value) {
-            1 -> peakKph * 0.621371
-            else -> peakKph
-        }
 
         // Global average speed is distance / elapsed and must refresh continuously.
         val totalDistM = _totalDistanceMeters.value
@@ -1683,10 +1610,6 @@ class BtEngineState : HrmStateSink {
             val avgMps = totalDistM.toDouble() / elapsedSec.toDouble()
             val avgKph = avgMps * 3.6
             _avgSpeedKph.value = avgKph
-            _avgSpeedDisplay.value = when (_units.value) {
-                1    -> avgKph * 0.621371
-                else -> avgKph
-            }
             Timber.tag(TAG).v(
                 "updateRowingSpeed: derived avgKph=%.2f from totalDist=%d elapsedSec=%d",
                 avgKph,
@@ -1814,7 +1737,6 @@ class BtEngineState : HrmStateSink {
         speedKphSum = 0.0
         speedCount = 0
         _avgSpeedKph.value = null
-        _avgSpeedDisplay.value = null
 
         cadenceSpmSum = 0.0
         cadenceCount = 0

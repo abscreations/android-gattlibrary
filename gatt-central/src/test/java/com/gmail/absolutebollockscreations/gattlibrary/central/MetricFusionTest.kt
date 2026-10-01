@@ -152,16 +152,14 @@ class MetricFusionTest {
         )
 
         assertEquals(15.0, state.avgSpeedKph.value!!, 0.0)
-        assertEquals(15.0, state.avgSpeedDisplay.value!!, 0.0)
 
         state.setActiveSession(true)
 
         assertEquals(null, state.avgSpeedKph.value)
-        assertEquals(null, state.avgSpeedDisplay.value)
     }
 
     @Test
-    fun `instant CSC speed average is converted for imperial display units`() {
+    fun `instant CSC speed average stays canonical km per hour when the display units are imperial`() {
         val state = BtEngineState().apply { setUnits(1) }
         val fusion = MetricFusion(state)
 
@@ -185,7 +183,6 @@ class MetricFusionTest {
         )
 
         assertEquals(24.14016, state.avgSpeedKph.value!!, 0.000001)
-        assertEquals(15.0, state.avgSpeedDisplay.value!!, 0.000001)
     }
 
     @Test

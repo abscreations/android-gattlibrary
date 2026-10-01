@@ -18,10 +18,10 @@
  *
  *  - Unit system + display conversions:
  *      • UNIT_METRIC / UNIT_IMPERIAL constants shared by engine/state.
- *      • toDisplaySpeedFromKph() → kph → kph/mph based on current state.units.
  *      • toDisplayDistanceFromMeters() → meters → km/mi based on state.units.
- *      • recomputeAllDisplayUnits() → recomputes all unit-dependent display
- *        fields (totals, lap, avg/peak speed, lap paces) after a unit change.
+ *      • recomputeAllDisplayUnits() → recomputes the unit-dependent lap display
+ *        fields (lap distance, lap speed, lap paces) after a unit change. Total and
+ *        instant speed, distance and pace are canonical here; the UI converts them.
  *
  *  - Lap math & derived metrics:
  *      • recomputeLapDerived() → recomputes lap-avg speed (m/s + display),
@@ -79,23 +79,10 @@ private const val MPS_TO_KPH: Double = 3.6
 private const val MPS_TO_MPH: Double = 2.23694
 private const val M_TO_MI:    Double = 0.000621371
 private const val M_TO_KM:    Double = 0.001
-private const val KPH_TO_MPH: Double = 0.621371
 
 private const val M_PER_KM   = 1000.0
 private const val M_PER_MILE = 1609.344
 private const val ROWING_PACE_DISTANCE_M = 500.0
-
-private fun kphToMph(kph: Double) = kph * KPH_TO_MPH
-
-/** Convert raw kph to unit-aware display speed (kph or mph). */
-internal fun toDisplaySpeedFromKph(engine: BtEngine, kph: Double?): Double? {
-    if (kph == null) return null
-    return when (engine.state.units.value) {
-        UNIT_METRIC   -> kph
-        UNIT_IMPERIAL -> kphToMph(kph)
-        else          -> null
-    }
-}
 
 /** Convert raw meters to unit-aware display distance (km or mi). */
 internal fun toDisplayDistanceFromMeters(engine: BtEngine, meters: Int?): Double? {
@@ -110,16 +97,8 @@ internal fun toDisplayDistanceFromMeters(engine: BtEngine, meters: Int?): Double
 /** Recompute all unit-aware display fields. Call after units change. */
 internal fun recomputeAllDisplayUnits(engine: BtEngine) {
     val s = engine.state
-
-    // Total & lap distance
-    s.setTotalDistanceDisplay(toDisplayDistanceFromMeters(engine, s.totalDistanceMeters.value))
+    // Lap distance
     s.setLapDistanceDisplay(toDisplayDistanceFromMeters(engine, s.lapDistanceMeters.value))
-
-    // Instant/avg/peak speeds
-    s.setSpeedDisplay(toDisplaySpeedFromKph(engine, s.speedKph.value))
-    s.setAvgSpeedDisplay(toDisplaySpeedFromKph(engine, s.avgSpeedKph.value))
-    s.setPeakSpeedDisplay(toDisplaySpeedFromKph(engine, s.peakSpeedKph.value))
-
     // Lap-derived (avg speed display, run pace, row pace)
     if (s.lapDistanceMeters.value != null && s.lapElapsedTimeSec.value != null) {
         recomputeLapDerived(engine)

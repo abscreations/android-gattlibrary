@@ -534,7 +534,6 @@ class MetricFusion(
         resetSessionState(clearMachine = false)
         persona = value
         state.setTotalDistanceMeters(0)
-        state.setTotalDistanceDisplay(0.0)
         state.setExpEnergyTotal(0)
         updateSessionElapsedLocked(0, nowMs)
     }
@@ -1053,11 +1052,9 @@ class MetricFusion(
             MetricKind.SPEED -> {
                 state.setSpeedKph(null)
                 state.setSpeedMph(null)
-                state.setSpeedDisplay(null)
             }
             MetricKind.AVERAGE_SPEED -> {
                 state.setAvgSpeedKph(null)
-                state.setAvgSpeedDisplay(null)
             }
             MetricKind.CADENCE -> state.setInstantCadence(null)
             MetricKind.AVERAGE_CADENCE -> state.setAverageCadence(null)
@@ -1101,17 +1098,14 @@ class MetricFusion(
             MetricKind.SPEED -> {
                 state.appendSpeedKphSample(value, seriesAt)
                 state.setSpeedMph(value / 1.609344)
-                state.setSpeedDisplay(if (state.units.value == 1) value / 1.609344 else value)
                 val peak = maxOf(state.peakSpeedKph.value ?: value, value)
                 state.setPeakSpeedKph(peak)
                 state.setPeakSpeedMph(peak / 1.609344)
-                state.setPeakSpeedDisplay(if (state.units.value == 1) peak / 1.609344 else peak)
                 if (value > 0.0) emitDerivedPace(MetricKind.INSTANT_PACE, 60.0 / value, sample)
             }
 
             MetricKind.AVERAGE_SPEED -> {
                 state.setAvgSpeedKph(value)
-                state.setAvgSpeedDisplay(if (state.units.value == 1) value / 1.609344 else value)
                 if (value > 0.0) emitDerivedPace(MetricKind.AVERAGE_PACE, 60.0 / value, sample)
             }
 
@@ -1126,9 +1120,6 @@ class MetricFusion(
             MetricKind.DISTANCE -> {
                 val meters = value.roundToInt()
                 state.setTotalDistanceMeters(meters)
-                state.setTotalDistanceDisplay(
-                    if (state.units.value == 1) meters * 0.000621371 else meters / 1000.0,
-                )
                 state.appendDistanceMetersSample(meters, seriesAt)
                 updateLapDistance(meters)
                 if (sample.sourceId.gattCharacteristicUuid == FtmsUuids.UUID_ROWING_MACHINE_DATA) {

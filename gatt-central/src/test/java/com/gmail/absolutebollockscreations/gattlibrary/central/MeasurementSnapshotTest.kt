@@ -29,8 +29,10 @@ class MeasurementSnapshotTest {
         s.setInstantPower(210)
         s.setAveragePower(195)
         s.setForceOnBelt(120)
-        s.setHeartRate(151)
+        s.appendHeartRateSample(150)
+        s.appendHeartRateSample(152) // heart rate 152, running average 151
         s.setHeartRateZone(3)
+        s.setAverageHeartRateZone(2)
         s.setTotalDistanceMeters(4321)
         s.setElapsedSeconds(987)
         s.setExpEnergyTotal(321)
@@ -48,7 +50,7 @@ class MeasurementSnapshotTest {
                 speedKph = 21.5, averageSpeedKph = 20.25, paceMinPerKm = 2.75, averagePaceMinPerKm = 2.9,
                 cadence = 88.0, averageCadence = 85.5, strokeRate = 24.0,
                 powerWatts = 210, averagePowerWatts = 195, forceOnBeltNewtons = 120,
-                heartRate = 151, heartRateZone = 3, distanceMeters = 4321, elapsedSeconds = 987,
+                heartRate = 152, heartRateZone = 3, averageHeartRate = 151, averageHeartRateZone = 2, distanceMeters = 4321, elapsedSeconds = 987,
                 energyKcal = 321, energyRateKcalPerHour = 610, resistance = 7.5, inclinationPercent = 3.5,
                 ascentMeters = 12.5, descentMeters = 4.25, floors = 9,
                 strokeCount = 77, strideCount = 1234.0, stepCount = 2345,
@@ -59,15 +61,15 @@ class MeasurementSnapshotTest {
 
     @Test
     fun `pace is canonical minutes per km whatever the display units are`() {
-        // BtEngineState.instPace/avgPace are display-unit paces (min/mi when units == 1). Reading them
-        // made the snapshot, and the bridge pump before it, wrong by a factor of 1.609344 on imperial.
+        // Regression (LIB-34): the snapshot once read display-unit paces (min/mi when units == 1), which made it,
+        // and the bridge pump before it, wrong by a factor of 1.609344 on imperial.
         val metric = BtEngineState().apply { setUnits(0); setInstantPace(4.0); setAvgPace(5.0) }
         val imperial = BtEngineState().apply { setUnits(1); setInstantPace(4.0); setAvgPace(5.0) }
         for (s in listOf(metric, imperial)) {
             assertEquals(4.0, s.toMeasurementSnapshot().paceMinPerKm!!, 1e-9)
             assertEquals(5.0, s.toMeasurementSnapshot().averagePaceMinPerKm!!, 1e-9)
         }
-        // Switching units after the fact re-emits the display pace only; canonical must not move.
+        // Switching units after the fact must not move canonical pace.
         metric.setUnits(1)
         assertEquals(4.0, metric.toMeasurementSnapshot().paceMinPerKm!!, 1e-9)
     }
@@ -133,6 +135,6 @@ class MeasurementSnapshotTest {
     fun `the change list covers every source the snapshot reads`() {
         // 24 engine flows + 3 native-store revisions. Adding a snapshot field without a ping would
         // make the client miss updates, so the count is pinned to force that decision.
-        assertEquals(27, BtEngineState().measurementChanges().size)
+        assertEquals(29, BtEngineState().measurementChanges().size)
     }
 }

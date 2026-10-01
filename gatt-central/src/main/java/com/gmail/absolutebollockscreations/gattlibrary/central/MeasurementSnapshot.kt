@@ -32,6 +32,10 @@ public data class MeasurementSnapshot(
     val heartRate: Int? = null,
     /** Heart-rate zone 0..5 from the configured zones, or null when heart rate is unknown. */
     val heartRateZone: Int? = null,
+    /** Running average of heart-rate samples since the session began, rounded to whole bpm. */
+    val averageHeartRate: Int? = null,
+    /** Zone 0..5 of [averageHeartRate], or null when there is no average. */
+    val averageHeartRateZone: Int? = null,
     val distanceMeters: Int? = null,
     val elapsedSeconds: Int? = null,
     /** Cumulative energy since the session began. */
@@ -96,6 +100,8 @@ public fun BtEngineState.toMeasurementSnapshot(): MeasurementSnapshot = Measurem
     forceOnBeltNewtons = forceOnBelt.value,
     heartRate = heartRate.value,
     heartRateZone = heartRateZone.value,
+    averageHeartRate = averageHeartRate.value,
+    averageHeartRateZone = averageHeartRateZone.value,
     distanceMeters = totalDistanceMeters.value,
     elapsedSeconds = elapsedTimeSec.value,
     energyKcal = expEnergyTotal.value,
@@ -130,7 +136,7 @@ internal fun BtEngineState.measurementChanges(): List<Flow<Unit>> {
         speedKph.ping(), avgSpeedKph.ping(), instantPaceMinPerKm.ping(), averagePaceMinPerKm.ping(),
         instantCadence.ping(), averageCadence.ping(), strokeRate.ping(),
         instantPower.ping(), averagePower.ping(), forceOnBelt.ping(),
-        heartRate.ping(), heartRateZone.ping(),
+        heartRate.ping(), heartRateZone.ping(), averageHeartRate.ping(), averageHeartRateZone.ping(),
         totalDistanceMeters.ping(), elapsedTimeSec.ping(),
         expEnergyTotal.ping(), expEnergyRateKcalPerHour.ping(),
         resistance.ping(), inclination.ping(), elevationGainPos.ping(), elevationGainNeg.ping(),
