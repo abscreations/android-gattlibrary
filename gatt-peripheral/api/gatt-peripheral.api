@@ -23,6 +23,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump$Companion;
 	public static final field DEFAULT_SAMPLE_PERIOD_MS J
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)V
+	public fun <init> (Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)V
 	public fun sampleOnce ()V
 	public fun start (Lkotlinx/coroutines/CoroutineScope;)V
 	public final fun start (Lkotlinx/coroutines/CoroutineScope;J)V
@@ -37,8 +38,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineUpstreamPort : com/gmail/absolutebollockscreations/gattlibrary/server/FtmsUpstreamPort {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;)V
-	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;)V
+	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun connectedCentralAddresses ()Ljava/util/Set;
 	public fun createMetricSampler (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/MetricSampler;
 	public fun getControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink;

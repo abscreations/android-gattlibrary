@@ -79,7 +79,7 @@ class InMemoryUpstream(
                 averagePower = sample.averagePowerWatts,
             )
             sample.speedKph?.let {
-                r = r.copy(speedKph = it, speedMph = it / UpstreamReadings.MILES_TO_KM)
+                r = r.copy(speedKph = it)
             }
             sample.averageSpeedKph?.let { r = r.copy(averageSpeedKph = it) }
             sample.distanceMeters?.let { r = r.copy(totalDistanceMeters = it) }

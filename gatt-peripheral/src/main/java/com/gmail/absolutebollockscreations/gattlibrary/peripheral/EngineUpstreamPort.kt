@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade
+import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
 import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsUpstreamPort
@@ -11,6 +12,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamControlSin
 /** Bridge implementation of [FtmsUpstreamPort] over the central engine (moves off central in L24). */
 class EngineUpstreamPort(
     private val engineState: BtEngineState,
+    /** Live read of the public client's measurements (`client.measurements.value`). */
+    private val measurements: () -> MeasurementSnapshot,
     engineProvider: () -> BtServiceEngineFacade? = { null },
 ) : FtmsUpstreamPort {
 
@@ -24,5 +27,5 @@ class EngineUpstreamPort(
     override fun createMetricSampler(
         store: FtmsMetricStore,
         profileProvider: () -> FtmsMachineProfile?,
-    ): MetricSampler = EngineMetricPump(engineState, store, profileProvider)
+    ): MetricSampler = EngineMetricPump(measurements, store, profileProvider)
 }

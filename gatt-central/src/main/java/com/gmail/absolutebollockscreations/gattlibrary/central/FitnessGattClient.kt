@@ -9,6 +9,13 @@ import kotlinx.coroutines.flow.*
 public class FitnessGattClient internal constructor(
     private val backend: CentralConnectionBackend,
     private val scope: CoroutineScope,
+    /**
+     * Runs the measurement collector. Deliberately not the client's own scope dispatcher, which is the
+     * main thread in production: the peripheral bridge samples [measurements] while the UI may be busy,
+     * and a main-thread hop would delay its data. One serialized slot on the shared default pool gives
+     * the collector a thread it does not have to wait for the UI to release, without a parked thread.
+     */
+    measurementDispatcher: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1),
 ) {
     private val lock = Any()
     private val projection = DiscoveryProjection(Any())
@@ -38,7 +45,7 @@ public class FitnessGattClient internal constructor(
                 backend.state.cccdReady.map { Unit },
             ).collect { synchronized(lock) { if (!closed) refresh() } }
         }
-        scope.launch {
+        scope.launch(measurementDispatcher) {
             // StateFlow drops equal snapshots, so redundant engine pings cost one projection, not a re-emission.
             merge(*backend.state.measurementChanges().toTypedArray()).collect {
                 synchronized(lock) { if (!closed) mutableMeasurements.value = backend.state.toMeasurementSnapshot() }

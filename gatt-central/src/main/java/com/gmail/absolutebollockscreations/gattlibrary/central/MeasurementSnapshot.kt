@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -72,8 +73,15 @@ public data class TreadmillRawPace(
     val averageRaw: Int? = null,
 )
 
-/** Reads the engine's current metric state into a public snapshot. Pure apart from those reads. */
-internal fun BtEngineState.toMeasurementSnapshot(): MeasurementSnapshot = MeasurementSnapshot(
+/**
+ * Reads the engine's current metric state into a public snapshot. Pure apart from those reads.
+ *
+ * Marked internal SPI because it takes [BtEngineState], which leaves the public surface once its
+ * callers migrate. Production code reads [FitnessGattClient.measurements] instead; this exists for
+ * tests that still drive engine state directly, and is deleted with them.
+ */
+@GattLibraryInternalApi
+public fun BtEngineState.toMeasurementSnapshot(): MeasurementSnapshot = MeasurementSnapshot(
     speedKph = speedKph.value,
     averageSpeedKph = avgSpeedKph.value,
     paceMinPerKm = instPace.value,

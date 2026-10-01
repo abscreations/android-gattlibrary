@@ -312,8 +312,26 @@ class FitnessGattClientTest {
         assertEquals(MeasurementSnapshot.EMPTY, client.measurements.value)
     }
 
+    @Test
+    fun `measurements do not wait for the client's own scope dispatcher`() = runTest {
+        // The client scope stands in for the main thread and is never run; only the measurement
+        // dispatcher advances. The snapshot must still follow the engine.
+        val backend = Backend()
+        val stalledMain = StandardTestDispatcher()
+        val client = FitnessGattClient(
+            backend, CoroutineScope(stalledMain + SupervisorJob()),
+            measurementDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        runCurrent()
+        backend.state.setInstantPower(222)
+        runCurrent()
+        assertEquals(222, client.measurements.value.powerWatts)
+        client.close()
+    }
+
     private fun TestScope.client(backend: Backend) = FitnessGattClient(
         backend, CoroutineScope(StandardTestDispatcher(testScheduler) + SupervisorJob()),
+        measurementDispatcher = StandardTestDispatcher(testScheduler),
     )
 
     private fun row(services: Set<BtEngineState.BtServiceType> = setOf(BtEngineState.BtServiceType.FTMS)) =

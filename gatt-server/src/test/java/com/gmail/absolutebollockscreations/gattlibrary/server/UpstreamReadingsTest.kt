@@ -11,18 +11,6 @@ class UpstreamReadingsTest {
     private fun project(r: UpstreamReadings, profile: FtmsMachineProfile?) = r.toSnapshot(profile, updatedAtMs = 7)
 
     @Test
-    fun `speed falls back to mph converted rather than being dropped`() {
-        val s = project(UpstreamReadings(speedMph = 10.0), FtmsMachineProfile.TREADMILL)
-        assertEquals(16.09344, s.speedKph!!, 1e-9)
-    }
-
-    @Test
-    fun `km per hour wins over mph when both are present`() {
-        val s = project(UpstreamReadings(speedKph = 12.0, speedMph = 99.0), FtmsMachineProfile.TREADMILL)
-        assertEquals(12.0, s.speedKph!!, 0.0)
-    }
-
-    @Test
     fun `rower pace comes from speed first then from engine pace`() {
         val fromSpeed = project(UpstreamReadings(speedKph = 12.0, instantPaceMinPerKm = 99.0), FtmsMachineProfile.INDOOR_ROWER)
         assertEquals(150.0, fromSpeed.paceSecondsPer500m!!, 1e-9) // 1800 / 12

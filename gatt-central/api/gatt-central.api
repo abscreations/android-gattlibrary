@@ -3700,6 +3700,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Measu
 	public final fun getEMPTY ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshotKt {
+	public static final fun toMeasurementSnapshot (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MetricEmitter {
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricFusion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceClass;JLjava/lang/Long;)V
 	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricFusion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceClass;JLjava/lang/Long;ILkotlin/jvm/internal/DefaultConstructorMarker;)V

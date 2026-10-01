@@ -2,15 +2,16 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import android.os.SystemClock
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
+import com.gmail.absolutebollockscreations.gattlibrary.central.CycleSensorEvents
+import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
+import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillRawPace
+import com.gmail.absolutebollockscreations.gattlibrary.central.toMeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import com.gmail.absolutebollockscreations.gattlibrary.central.CscNativeEventSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.central.CpsNativeEventSnapshot
-import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillNativePaceSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.server.CpsNativeEventInput
 import com.gmail.absolutebollockscreations.gattlibrary.server.CscNativeEventInput
 import com.gmail.absolutebollockscreations.gattlibrary.server.DEFAULT_METRIC_SAMPLE_PERIOD_MS
@@ -21,7 +22,12 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.TreadmillNativePac
 import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamReadings
 
 /**
- * Samples [BtEngineState] into [FtmsMetricStore].
+ * Samples central's public [MeasurementSnapshot] into [FtmsMetricStore] (L24).
+ *
+ * Production reads `FitnessGattClient.measurements` through [measurements]; nothing here touches
+ * engine state. The engine-state constructor below is transitional, for tests that still drive
+ * `BtEngineState` directly, and is removed with them. One consequence of reading the client: the
+ * snapshot is produced on the client's own collector, so it can lag the engine by one dispatch.
  *
  * This is the seam that replaces the old notifier's direct reads of
  * `engineState.<flow>.value` from inside the encoders. Two things change:
@@ -38,10 +44,17 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamReadings
  * chatty the upstream machine is.
  */
 class EngineMetricPump(
-    private val engineState: BtEngineState,
+    private val measurements: () -> MeasurementSnapshot,
     private val store: FtmsMetricStore,
     private val profileProvider: () -> FtmsMachineProfile?,
 ) : MetricSampler {
+
+    /** Transitional: reads engine state directly. Tests only; production passes the client's snapshot. */
+    constructor(
+        engineState: BtEngineState,
+        store: FtmsMetricStore,
+        profileProvider: () -> FtmsMachineProfile?,
+    ) : this({ engineState.toMeasurementSnapshot() }, store, profileProvider)
 
     private var job: Job? = null
 
@@ -67,35 +80,37 @@ class EngineMetricPump(
         store.update(snapshot(), profileProvider())
     }
 
-    private fun snapshot(): FtmsMetricSnapshot = UpstreamReadings(
-        speedKph = engineState.speedKph.value,
-        speedMph = engineState.speedMph.value,
-        averageSpeedKph = engineState.avgSpeedKph.value,
-        instantPaceMinPerKm = engineState.instPace.value,
-        averagePaceMinPerKm = engineState.avgPace.value,
-        strokeRate = engineState.strokeRate.value,
-        instantCadence = engineState.instantCadence.value,
-        averageCadence = engineState.averageCadence.value,
-        instantPower = engineState.instantPower.value,
-        averagePower = engineState.averagePower.value,
-        forceOnBeltNewtons = engineState.forceOnBelt.value,
-        heartRate = engineState.heartRate.value,
-        totalDistanceMeters = engineState.totalDistanceMeters.value,
-        elapsedSeconds = engineState.elapsedTimeSec.value,
-        caloriesTotal = engineState.expEnergyTotal.value,
-        caloriesPerHour = engineState.expEnergyRateKcalPerHour.value,
-        resistance = engineState.resistance.value,
-        inclinationPercent = engineState.inclination.value,
-        elevationGainPositiveMeters = engineState.elevationGainPos.value,
-        elevationGainNegativeMeters = engineState.elevationGainNeg.value,
-        totalFloors = engineState.totalFloors.value,
-        strokeCount = engineState.strokeCount.value,
-        totalStrides = engineState.totalStrides.value,
-        totalSteps = engineState.totalSteps.value,
-        cscNativeEvents = engineState.cscNativeEventSnapshot()?.toInput(),
-        cpsNativeEvents = engineState.cpsNativeEventSnapshot()?.toInput(),
-        treadmillNativePace = engineState.treadmillNativePaceSnapshot()?.toInput(),
-    ).toSnapshot(profileProvider(), SystemClock.elapsedRealtime())
+    private fun snapshot(): FtmsMetricSnapshot {
+        val m = measurements()
+        return UpstreamReadings(
+            speedKph = m.speedKph,
+            averageSpeedKph = m.averageSpeedKph,
+            instantPaceMinPerKm = m.paceMinPerKm,
+            averagePaceMinPerKm = m.averagePaceMinPerKm,
+            strokeRate = m.strokeRate,
+            instantCadence = m.cadence,
+            averageCadence = m.averageCadence,
+            instantPower = m.powerWatts,
+            averagePower = m.averagePowerWatts,
+            forceOnBeltNewtons = m.forceOnBeltNewtons,
+            heartRate = m.heartRate,
+            totalDistanceMeters = m.distanceMeters,
+            elapsedSeconds = m.elapsedSeconds,
+            caloriesTotal = m.energyKcal,
+            caloriesPerHour = m.energyRateKcalPerHour,
+            resistance = m.resistance,
+            inclinationPercent = m.inclinationPercent,
+            elevationGainPositiveMeters = m.ascentMeters,
+            elevationGainNegativeMeters = m.descentMeters,
+            totalFloors = m.floors,
+            strokeCount = m.strokeCount,
+            totalStrides = m.strideCount,
+            totalSteps = m.stepCount,
+            cscNativeEvents = m.cscEvents?.toCscInput(),
+            cpsNativeEvents = m.cpsEvents?.toCpsInput(),
+            treadmillNativePace = m.treadmillRawPace?.toInput(),
+        ).toSnapshot(profileProvider(), SystemClock.elapsedRealtime())
+    }
 
     companion object {
         /** Shared with every other sampler; the derivation and its rationale live on [DEFAULT_METRIC_SAMPLE_PERIOD_MS]. */
@@ -103,21 +118,21 @@ class EngineMetricPump(
     }
 }
 
-private fun CscNativeEventSnapshot.toInput(): CscNativeEventInput = CscNativeEventInput(
+private fun CycleSensorEvents.toCscInput(): CscNativeEventInput = CscNativeEventInput(
     cumulativeWheelRevolutions = cumulativeWheelRevolutions,
     lastWheelEventTimeTicks = lastWheelEventTimeTicks,
     cumulativeCrankRevolutions = cumulativeCrankRevolutions,
     lastCrankEventTimeTicks = lastCrankEventTimeTicks,
 )
 
-private fun CpsNativeEventSnapshot.toInput(): CpsNativeEventInput = CpsNativeEventInput(
+private fun CycleSensorEvents.toCpsInput(): CpsNativeEventInput = CpsNativeEventInput(
     cumulativeWheelRevolutions = cumulativeWheelRevolutions,
     lastWheelEventTimeTicks = lastWheelEventTimeTicks,
     cumulativeCrankRevolutions = cumulativeCrankRevolutions,
     lastCrankEventTimeTicks = lastCrankEventTimeTicks,
 )
 
-private fun TreadmillNativePaceSnapshot.toInput(): TreadmillNativePaceInput = TreadmillNativePaceInput(
+private fun TreadmillRawPace.toInput(): TreadmillNativePaceInput = TreadmillNativePaceInput(
     instantaneousRaw = instantaneousRaw,
     averageRaw = averageRaw,
 )

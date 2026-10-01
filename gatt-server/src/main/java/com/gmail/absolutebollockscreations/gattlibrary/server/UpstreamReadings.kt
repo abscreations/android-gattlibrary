@@ -31,8 +31,6 @@ const val DEFAULT_METRIC_SAMPLE_PERIOD_MS: Long = DEFAULT_EMISSION_PERIOD_MS / 2
  */
 data class UpstreamReadings(
     val speedKph: Double? = null,
-    /** Fallback when [speedKph] is absent: some machines report mph only. */
-    val speedMph: Double? = null,
     val averageSpeedKph: Double? = null,
     /** Minutes per km, as the engine holds pace. */
     val instantPaceMinPerKm: Double? = null,
@@ -66,11 +64,6 @@ data class UpstreamReadings(
      *   [FtmsMetricSnapshot.updatedAtMs] for what that does and does not measure).
      */
     fun toSnapshot(profile: FtmsMachineProfile?, updatedAtMs: Long): FtmsMetricSnapshot {
-        // The engine publishes speed in whichever unit the machine reported.
-        // Prefer km/h and fall back to converting mph rather than dropping speed,
-        // which is mandatory for the speed-based personas.
-        val speedKph = speedKph ?: speedMph?.let { it * MILES_TO_KM }
-
         // FTMS Rower Data carries pace rather than speed. Prefer canonical native
         // speed so a distance-derived pace cannot disagree with the speed shown by
         // the central UI. Display units never participate in this projection.
@@ -152,8 +145,4 @@ data class UpstreamReadings(
 
     private fun speedKphToSecondsPer500m(speedKph: Double): Double? =
         if (speedKph.isFinite() && speedKph > 0.0) 1_800.0 / speedKph else null
-
-    companion object {
-        const val MILES_TO_KM = 1.609344
-    }
 }
