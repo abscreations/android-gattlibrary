@@ -182,6 +182,36 @@ public class FitnessGattClient internal constructor(
         backend.deselectMachine().failureIfFalse()
     }
 
+    /**
+     * Opens a workout session: persona for fusion, elapsed clock, link recovery for the connected
+     * links, and [sessionActive]. The session is tied to the machine that is connected now, if any.
+     * Nothing happens after [close].
+     */
+    public fun beginSession(activity: ActivityType) {
+        val address = synchronized(lock) {
+            if (closed) return
+            refresh()
+            mutableConnections.value.links.firstOrNull { it.machineConnection }?.address
+        }
+        backend.beginSession(activity, address)
+    }
+
+    /** Ends the workout session and clears its data, including elapsed time and laps. Nothing happens after [close]. */
+    public fun endSession() {
+        if (synchronized(lock) { closed }) return
+        backend.endSession()
+    }
+
+    /**
+     * The app's own Start. For a machine that runs its own session (Kayak First) this starts that
+     * session; otherwise it is the machine's Start/Resume. [CommandResult.Queued] means submitted.
+     * This is distinct from [startOrResume], which relays a downstream client's request.
+     */
+    public fun startRun(token: MachineToken): CommandResult = submit(token, MachineCommand.StartRun)
+
+    /** The app's own Stop; see [startRun]. */
+    public fun stopRun(token: MachineToken): CommandResult = submit(token, MachineCommand.StopRun)
+
     /** Start, or resume after a pause. [CommandResult.Queued] means submitted, not that the machine started. */
     public fun startOrResume(token: MachineToken): CommandResult = submit(token, MachineCommand.StartOrResume)
 
@@ -357,4 +387,10 @@ internal interface CentralConnectionBackend {
      * not (nothing sent), otherwise whether the machine's control path accepted the submission.
      */
     fun submit(expectedKey: Any, command: MachineCommand): Boolean?
+
+    /** Open a workout session for [activity] on the machine at [machineAddress] (null for sensors only). */
+    fun beginSession(activity: ActivityType, machineAddress: String?)
+
+    /** End the workout session and clear its data. */
+    fun endSession()
 }

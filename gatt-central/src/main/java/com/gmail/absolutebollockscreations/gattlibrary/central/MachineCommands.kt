@@ -51,6 +51,10 @@ public sealed interface CommandResult {
 internal sealed interface MachineCommand {
     data object StartOrResume : MachineCommand
     data object StopOrPause : MachineCommand
+
+    /** The app's own Start, as opposed to [StartOrResume], which relays a downstream client's. */
+    data object StartRun : MachineCommand
+    data object StopRun : MachineCommand
     data class TargetSpeedKph(val kph: Float) : MachineCommand
     data class TargetInclinePercent(val percent: Float) : MachineCommand
     data class TargetResistanceLevel(val level: Float) : MachineCommand

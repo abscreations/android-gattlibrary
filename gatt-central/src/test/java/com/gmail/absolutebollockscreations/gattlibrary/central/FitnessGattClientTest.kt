@@ -509,6 +509,41 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `the app's own start and stop are separate commands from the relayed ones`() = runTest {
+        val backend = Backend().apply { machineKey = "link-1" }
+        val client = client(backend)
+        runCurrent()
+        val token = client.machineToken.value!!
+
+        assertEquals(CommandResult.Queued, client.startRun(token))
+        assertEquals(CommandResult.Queued, client.stopRun(token))
+        assertEquals(listOf(MachineCommand.StartRun, MachineCommand.StopRun), backend.submitted)
+
+        backend.machineKey = "link-2"
+        assertEquals(CommandResult.MachineChanged, client.startRun(token))
+        client.close()
+        assertEquals(CommandResult.Rejected(RejectionReason.CLIENT_CLOSED), client.stopRun(token))
+        assertEquals(2, backend.submitted.size)
+    }
+
+    @Test
+    fun `beginning and ending a session reach the backend, and do nothing after close`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+
+        client.beginSession(ActivityType.BIKING)
+        client.endSession()
+        // No machine link is connected, so the session is for sensors only.
+        assertEquals(listOf("begin:BIKING:null", "end"), backend.sessionCalls)
+
+        client.close()
+        client.beginSession(ActivityType.ROWING)
+        client.endSession()
+        assertEquals(2, backend.sessionCalls.size)
+    }
+
+    @Test
     fun `control events reach a collector in order including equal repeats, and end after close`() = runTest {
         val backend = Backend()
         val client = client(backend)
@@ -606,6 +641,11 @@ class FitnessGattClientTest {
             submitted += command
             return acceptCommands
         }
+        val sessionCalls = mutableListOf<String>()
+        override fun beginSession(activity: ActivityType, machineAddress: String?) {
+            sessionCalls += "begin:$activity:$machineAddress"
+        }
+        override fun endSession() { sessionCalls += "end" }
         override fun platformFailure(scan: Boolean) = failure
         override fun startScan(hardwareFilters: Boolean) {
             startCalls++

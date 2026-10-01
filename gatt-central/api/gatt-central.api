@@ -2136,11 +2136,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/FeCPr
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient$Companion;
 	public final fun activateSensorService (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
 	public final fun clearDiscoveredDevices ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun close ()V
 	public final fun connectSensor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun deselectMachine ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun disconnect (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun endSession ()V
 	public final fun getCapabilities ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getConnections ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getControlEvents ()Lkotlinx/coroutines/flow/Flow;
@@ -2158,9 +2160,11 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun setTargetSpeedKph (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun setWheelCircumferenceMm (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun startOrResume (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun startRun (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun startScan (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public static synthetic fun startScan$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun stopOrPause (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun stopRun (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun stopScan ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 }
 
