@@ -79,7 +79,6 @@ class BtEngineState : HrmStateSink {
     }
 
     /** Timestamped sample for graph series. */
-    data class TimedSample(val tMillis: Long, val v: Double)
 
     enum class BtServiceType {
         FTMS,         // Fitness Machine Service (0x1826)
@@ -685,87 +684,59 @@ class BtEngineState : HrmStateSink {
        graphs choose their own visible window (e.g., last 5 minutes vs. full-session zoom).
      */
 
-    /** Optional baseline to avoid UI “jumps” for delta-based charts after a screen swap. */
-    private var distanceBaselineMetersForUi: Int = 0
-    /** Timestamp of the last series clear (for debugging or pacing logic). */
-    private var lastSeriesClearAtMs: Long = 0L
+    private val recorder = HistoryRecorder()
 
     /**
-     * Clear time-series buffers and (optionally) zero certain rolling aggregates while
-     * *preserving* cumulative totals by default. This is the API your UI/ViewModel should call.
-     *
-     * @param keepTotals If true (default), cumulative totals such as totalDistanceMeters are kept.
-     *                   If false, those totals are also zeroed (use with care on provider side).
+     * Every chart series recorded this session, as one immutable snapshot per change (see
+     * [MeasurementHistory]). Stroke rate shares the cadence series.
+     */
+    val history: StateFlow<MeasurementHistory> get() = recorder.history
+
+    /**
+     * Starts fresh accumulation: clears every history series, the running averages (heart rate and its zone,
+     * speed, cadence, power) and the lap speed and pace derived from the series. Keeps cumulative totals,
+     * elapsed time, laps already recorded and the active-session flag. This is the one primitive behind
+     * [BtEngine.clearSessionData], [BtEngine.resetSession] and the start of a new session.
      */
     @Synchronized
-    fun clearTimeSeries(keepTotals: Boolean = true, nowMs: Long = System.currentTimeMillis()) {
-        Timber.tag(TAG).i("clearTimeSeries(keepTotals=%s)", keepTotals)
+    fun clearSessionData() {
+        Timber.tag(TAG).i("clearSessionData()")
+        recorder.clear()
 
-        // 1) Clear time-series + running means (reuse helper)
-        clearAllTimeSeries()
+        hrSum = 0.0
+        hrCount = 0
+        _averageHeartRate.value = null
+        _averageHeartRateZone.value = null
 
-        // 2) Move baselines so delta-based math doesn’t spike after UI transitions
-        val curDist = _totalDistanceMeters.value ?: 0
-        distanceBaselineMetersForUi = curDist
-        lastSeriesClearAtMs = nowMs
+        speedKphSum = 0.0
+        speedCount = 0
+        _avgSpeedKph.value = null
 
-        // 3) If requested, also zero provider-side totals (rarely desired)
-        if (!keepTotals) {
-            _totalDistanceMeters.value = 0
-            _elapsedTimeSec.value = 0
-            // Reset lap projections too, since totals got zeroed
-            _lapAvgSpeedMps.value = null
-        }
+        cadenceSpmSum = 0.0
+        cadenceCount = 0
+        _averageCadence.value = null
+
+        powerSum = 0.0
+        powerCount = 0
+        _averagePower.value = null
+
+        _lapAvgSpeedMps.value = null
+        _lapPaceMinPerKm.value = null
     }
-
-    /**
-     * Helper for UI/encoders that want distance starting at 0 after the last series clear.
-     * Consumers can use this instead of raw totalDistanceMeters to avoid a jump.
-     */
-    fun distanceSinceLastClear(): Int {
-        val cur = _totalDistanceMeters.value ?: 0
-        return (cur - distanceBaselineMetersForUi).coerceAtLeast(0)
-    }
-
-    private val _hrSeries = MutableStateFlow<List<TimedSample>>(emptyList())
-    val hrSeries: StateFlow<List<TimedSample>> = _hrSeries
-
-    private val _speedSeriesKph = MutableStateFlow<List<TimedSample>>(emptyList())
-    val speedSeriesKph: StateFlow<List<TimedSample>> = _speedSeriesKph
-
-    private val _cadenceSeriesSpm = MutableStateFlow<List<TimedSample>>(emptyList())
-    val cadenceSeriesSpm: StateFlow<List<TimedSample>> = _cadenceSeriesSpm
-
-    private val _powerSeriesW = MutableStateFlow<List<TimedSample>>(emptyList())
-    val powerSeriesW: StateFlow<List<TimedSample>> = _powerSeriesW
-
-    private val _inclineSeriesPercent = MutableStateFlow<List<TimedSample>>(emptyList())
-    val inclineSeriesPercent: StateFlow<List<TimedSample>> = _inclineSeriesPercent
-
-    private val _resistanceSeries = MutableStateFlow<List<TimedSample>>(emptyList())
-    val resistanceSeries: StateFlow<List<TimedSample>> = _resistanceSeries
-
-    private val _forceOnBeltSeries = MutableStateFlow<List<TimedSample>>(emptyList())
-    val forceOnBeltSeries: StateFlow<List<TimedSample>> = _forceOnBeltSeries
-
-    private val _elevationNetSeries = MutableStateFlow<List<TimedSample>>(emptyList())
-    val elevationNetSeries: StateFlow<List<TimedSample>> = _elevationNetSeries
-
-    // Stroke-rate series (SPM). Alias of cadenceSeriesSpm.
-    val strokeRateSeriesSpm: StateFlow<List<TimedSample>> get() = _cadenceSeriesSpm
 
     /** Append a belt-force sample (N). */
     fun appendForceOnBeltSample(n: Int, tsMillis: Long = System.currentTimeMillis()) {
         _forceOnBelt.value = n
-        _forceOnBeltSeries.value = _forceOnBeltSeries.value + TimedSample(tsMillis, n.toDouble())
-        Timber.tag(TAG).v(
-            "appendForceOnBeltSample N=%d seriesSize=%d",
-            n,
-            _forceOnBeltSeries.value.size
-        )
+        val size = recorder.append(MetricSeriesKind.FORCE_ON_BELT_NEWTONS, tsMillis, n.toDouble())
+        Timber.tag(TAG).v("appendForceOnBeltSample N=%d seriesSize=%d", n, size)
     }
 
-    /** Update cumulative elevation gains and append their signed net change. */
+    /**
+     * Updates the cumulative elevation gains and, when the net height they imply (ascent minus descent) changed,
+     * appends it to the [MetricSeriesKind.ELEVATION_NET_METERS] series. This is the single place the net is
+     * computed, so every path that moves either gain feeds the chart.
+     */
+    @Synchronized
     fun setElevationGains(
         positiveMeters: Double?,
         negativeMeters: Double?,
@@ -773,9 +744,10 @@ class BtEngineState : HrmStateSink {
     ) {
         _elevationGainPos.value = positiveMeters
         _elevationGainNeg.value = negativeMeters
-        netElevationChangeMeters(positiveMeters, negativeMeters)?.let { net ->
-            _elevationNetSeries.value =
-                _elevationNetSeries.value + TimedSample(tsMillis, net)
+        val net = netElevationChangeMeters(positiveMeters, negativeMeters) ?: return
+        val last = recorder.history.value.series(MetricSeriesKind.ELEVATION_NET_METERS).last()
+        if (last == null || last.value != net) {
+            recorder.append(MetricSeriesKind.ELEVATION_NET_METERS, tsMillis, net)
         }
     }
 
@@ -1208,7 +1180,7 @@ class BtEngineState : HrmStateSink {
 
         if (active && !was) {
             Timber.tag(TAG).i("New active session started → reset averages, series and FTMS status/targets")
-            resetAveragesAndSeries()
+            clearSessionData()
             // Reset FTMS status-related state when a new session starts
             _lastFtmsStatusCode.value = null
             _safetyKeyEngaged.value = false
@@ -1279,8 +1251,10 @@ class BtEngineState : HrmStateSink {
 
     fun setInclination(v: Double?) { _inclination.value = v }
     fun setRampAngle(v: Double?) { _rampAngle.value = v }
-    fun setElevationGainPos(v: Double?) { _elevationGainPos.value = v }
-    fun setElevationGainNeg(v: Double?) { _elevationGainNeg.value = v }
+    fun setElevationGainPos(v: Double?, tsMillis: Long = System.currentTimeMillis()) =
+        setElevationGains(v, _elevationGainNeg.value, tsMillis)
+    fun setElevationGainNeg(v: Double?, tsMillis: Long = System.currentTimeMillis()) =
+        setElevationGains(_elevationGainPos.value, v, tsMillis)
 
     fun setForceOnBelt(n: Int?) { _forceOnBelt.value = n }
 
@@ -1351,7 +1325,7 @@ class BtEngineState : HrmStateSink {
 
     /* ───────────────────────────── time-series helpers (append) ─────────────────────────────
        NOTE: We no longer trim by a rolling time window here. All samples for a session are kept
-       until cleared (e.g. on new session start or explicit clearTimeSeries/clearAllTimeSeries).
+       until cleared (a new session start, or [clearSessionData]).
        Graphs decide what portion of the series to display.
      */
 
@@ -1366,8 +1340,8 @@ class BtEngineState : HrmStateSink {
      * contact for a few seconds.
      */
     fun appendHeartRateSeriesPoint(value: Double, tsMillis: Long = System.currentTimeMillis()) {
-        _hrSeries.value = _hrSeries.value + TimedSample(tsMillis, value)
-        Timber.tag(TAG).v("appendHeartRateSeriesPoint value=%.0f seriesSize=%d", value, _hrSeries.value.size)
+        val size = recorder.append(MetricSeriesKind.HEART_RATE, tsMillis, value)
+        Timber.tag(TAG).v("appendHeartRateSeriesPoint value=%.0f seriesSize=%d", value, size)
     }
 
     fun appendHeartRateSample(bpm: Int, tsMillis: Long = System.currentTimeMillis()) {
@@ -1375,12 +1349,12 @@ class BtEngineState : HrmStateSink {
         hrSum += bpm
         hrCount += 1
         _averageHeartRate.value = (hrSum / hrCount).roundToInt()
-        _hrSeries.value = _hrSeries.value + TimedSample(tsMillis, bpm.toDouble())
+        val size = recorder.append(MetricSeriesKind.HEART_RATE, tsMillis, bpm.toDouble())
         Timber.tag(TAG).v(
             "appendHeartRateSample bpm=%d avg=%s seriesSize=%d",
             bpm,
             _averageHeartRate.value?.toString() ?: "null",
-            _hrSeries.value.size
+            size
         )
     }
 
@@ -1391,12 +1365,12 @@ class BtEngineState : HrmStateSink {
         speedCount += 1
         val averageKph = speedKphSum / speedCount
         _avgSpeedKph.value = averageKph
-        _speedSeriesKph.value = _speedSeriesKph.value + TimedSample(tsMillis, kph)
+        val size = recorder.append(MetricSeriesKind.SPEED_KPH, tsMillis, kph)
         Timber.tag(TAG).v(
             "appendSpeedKphSample kph=%.2f avg=%.2f seriesSize=%d",
             kph,
             _avgSpeedKph.value ?: 0.0,
-            _speedSeriesKph.value.size
+            size
         )
     }
 
@@ -1406,12 +1380,12 @@ class BtEngineState : HrmStateSink {
         cadenceSpmSum += spm
         cadenceCount += 1
         _averageCadence.value = cadenceSpmSum / cadenceCount
-        _cadenceSeriesSpm.value = _cadenceSeriesSpm.value + TimedSample(tsMillis, spm)
+        val size = recorder.append(MetricSeriesKind.CADENCE_PER_MIN, tsMillis, spm)
         Timber.tag(TAG).v(
             "appendCadenceSpmSample spm=%.1f avg=%.1f seriesSize=%d",
             spm,
             _averageCadence.value ?: 0.0,
-            _cadenceSeriesSpm.value.size
+            size
         )
     }
 
@@ -1428,70 +1402,27 @@ class BtEngineState : HrmStateSink {
         powerSum += watts
         powerCount += 1
         _averagePower.value = (powerSum / powerCount).roundToInt()
-        _powerSeriesW.value = _powerSeriesW.value + TimedSample(tsMillis, watts.toDouble())
+        val size = recorder.append(MetricSeriesKind.POWER_WATTS, tsMillis, watts.toDouble())
         Timber.tag(TAG).v(
             "appendPowerSample watts=%d avg=%s seriesSize=%d",
             watts,
             _averagePower.value?.toString() ?: "null",
-            _powerSeriesW.value.size
+            size
         )
     }
 
     /** Append an incline sample (percent grade). */
     fun appendInclinePercentSample(percent: Double, tsMillis: Long = System.currentTimeMillis()) {
         _inclination.value = percent
-        _inclineSeriesPercent.value = _inclineSeriesPercent.value + TimedSample(tsMillis, percent)
-        Timber.tag(TAG).v(
-            "appendInclinePercentSample percent=%.2f seriesSize=%d",
-            percent,
-            _inclineSeriesPercent.value.size
-        )
+        val size = recorder.append(MetricSeriesKind.INCLINE_PERCENT, tsMillis, percent)
+        Timber.tag(TAG).v("appendInclinePercentSample percent=%.2f seriesSize=%d", percent, size)
     }
 
     /** Append a resistance sample (device-specific level as Double). */
     fun appendResistanceSample(level: Double, tsMillis: Long = System.currentTimeMillis()) {
         _resistance.value = level
-        _resistanceSeries.value = _resistanceSeries.value + TimedSample(tsMillis, level)
-        Timber.tag(TAG).v(
-            "appendResistanceSample level=%.2f seriesSize=%d",
-            level,
-            _resistanceSeries.value.size
-        )
-    }
-
-    /** Clear all time-series (e.g., on new session start). */
-    fun clearAllSeries() {
-        Timber.tag(TAG).i("clearAllSeries()")
-        _hrSeries.value = emptyList()
-        _speedSeriesKph.value = emptyList()
-        _cadenceSeriesSpm.value = emptyList()
-        _powerSeriesW.value = emptyList()
-        _inclineSeriesPercent.value = emptyList()
-        _resistanceSeries.value = emptyList()
-        _forceOnBeltSeries.value = emptyList()
-        _elevationNetSeries.value = emptyList()
-    }
-
-    private fun resetAveragesAndSeries() {
-        Timber.tag(TAG).d("resetAveragesAndSeries()")
-        hrSum = 0.0
-        hrCount = 0
-        _averageHeartRate.value = null
-        _averageHeartRateZone.value = null
-
-        speedKphSum = 0.0
-        speedCount = 0
-        _avgSpeedKph.value = null
-
-        cadenceSpmSum = 0.0
-        cadenceCount = 0
-        _averageCadence.value = null
-
-        powerSum = 0.0
-        powerCount = 0
-        _averagePower.value = null
-
-        clearAllSeries()
+        val size = recorder.append(MetricSeriesKind.RESISTANCE, tsMillis, level)
+        Timber.tag(TAG).v("appendResistanceSample level=%.2f seriesSize=%d", level, size)
     }
 
     /* ───────────────────────────── error routing ───────────────────────────── */
@@ -1509,28 +1440,22 @@ class BtEngineState : HrmStateSink {
     // ─────────────────────────────────────────────────────────────
     // ADD: distance series for rower-derived speed
     // ─────────────────────────────────────────────────────────────
-    private val _distanceSeriesM = MutableStateFlow<List<TimedSample>>(emptyList())
-    val distanceSeriesM: StateFlow<List<TimedSample>> = _distanceSeriesM
-
     fun appendDistanceMetersSample(meters: Int, tsMillis: Long = System.currentTimeMillis()) {
-        val now = tsMillis
-        val curr = _distanceSeriesM.value
-        _distanceSeriesM.value = curr + TimedSample(now, meters.toDouble())
-        Timber.tag(TAG).v(
-            "appendDistanceMetersSample meters=%d seriesSize=%d",
-            meters,
-            _distanceSeriesM.value.size
-        )
+        val size = recorder.append(MetricSeriesKind.DISTANCE_METERS, tsMillis, meters.toDouble())
+        Timber.tag(TAG).v("appendDistanceMetersSample meters=%d seriesSize=%d", meters, size)
     }
+
+    /** The distance points inside the 5 s window ending at [nowMs]; O(log n), copies nothing. */
+    private fun distanceWindow(nowMs: Long): HistorySeries =
+        recorder.history.value.series(MetricSeriesKind.DISTANCE_METERS)
+            .since(nowMs - 5_000L)
+            .upTo(nowMs)
 
     fun updateRowingSpeed(nowMs: Long = System.currentTimeMillis()) {
         // 3–5s window
-        val maxAgeMs = 5_000L
         val minSpanMs = 2_000L
-        val windowStart = nowMs - maxAgeMs
 
-        val series = _distanceSeriesM.value
-        if (series.isEmpty()) {
+        if (recorder.history.value.series(MetricSeriesKind.DISTANCE_METERS).isEmpty()) {
             _speedKph.value = null
             _speedMph.value = null
             _avgSpeedKph.value = null
@@ -1539,7 +1464,7 @@ class BtEngineState : HrmStateSink {
         }
 
         // keep only last 5s *for the computation* (series itself is full-session)
-        val recent = series.filter { it.tMillis >= windowStart && it.tMillis <= nowMs }
+        val recent = distanceWindow(nowMs)
         if (recent.size < 2) {
             _speedKph.value = null
             _speedMph.value = null
@@ -1547,9 +1472,9 @@ class BtEngineState : HrmStateSink {
             return
         }
 
-        val newest = recent.last()
-        // pick the oldest sample that's at least 2s older than newest; else use the earliest in the window
-        val oldest = recent.firstOrNull { newest.tMillis - it.tMillis >= minSpanMs } ?: recent.first()
+        // The window is time-ordered, so the earliest in-window point is also the oldest one.
+        val newest = recent[recent.size - 1]
+        val oldest = recent[0]
         val dtMs = (newest.tMillis - oldest.tMillis).coerceAtLeast(0L)
         if (dtMs < minSpanMs) {
             _speedKph.value = null
@@ -1559,7 +1484,7 @@ class BtEngineState : HrmStateSink {
         }
 
         // compute delta distance (m)
-        val dm = newest.v - oldest.v
+        val dm = newest.value - oldest.value
         if (dm <= 0.0) {
             _speedKph.value = null
             _speedMph.value = null
@@ -1583,7 +1508,7 @@ class BtEngineState : HrmStateSink {
         // the previous derived value. Guarding on non-null froze the first value.
         _speedKph.value = kph
         _speedMph.value = kph * 0.621371
-        _speedSeriesKph.value = _speedSeriesKph.value + TimedSample(nowMs, kph)
+        recorder.append(MetricSeriesKind.SPEED_KPH, nowMs, kph)
 
         val peakKph = maxOf(_peakSpeedKph.value ?: 0.0, kph)
         _peakSpeedKph.value = peakKph
@@ -1617,26 +1542,23 @@ class BtEngineState : HrmStateSink {
         }
 
         // 3–5s window on top of total distance → project to lap
-        val maxAgeMs = 5_000L
         val minSpanMs = 2_000L
-        val windowStart = nowMs - maxAgeMs
 
-        val series = _distanceSeriesM.value
-        if (series.isEmpty()) {
+        if (recorder.history.value.series(MetricSeriesKind.DISTANCE_METERS).isEmpty()) {
             _lapAvgSpeedMps.value = null
             Timber.tag(TAG).v("updateLapRowingSpeed: no distance samples")
             return
         }
 
-        val recent = series.filter { it.tMillis >= windowStart && it.tMillis <= nowMs }
+        val recent = distanceWindow(nowMs)
         if (recent.size < 2) {
             _lapAvgSpeedMps.value = null
             Timber.tag(TAG).v("updateLapRowingSpeed: insufficient samples (recent=%d)", recent.size)
             return
         }
 
-        val newest = recent.last()
-        val oldest = recent.firstOrNull { newest.tMillis - it.tMillis >= minSpanMs } ?: recent.first()
+        val newest = recent[recent.size - 1]
+        val oldest = recent[0]
         val dtMs = (newest.tMillis - oldest.tMillis).coerceAtLeast(0L)
         if (dtMs < minSpanMs) {
             _lapAvgSpeedMps.value = null
@@ -1645,8 +1567,8 @@ class BtEngineState : HrmStateSink {
         }
 
         // project to lap
-        val newestLapM = (newest.v - lapStart).coerceAtLeast(0.0)
-        val oldestLapM = (oldest.v - lapStart).coerceAtLeast(0.0)
+        val newestLapM = (newest.value - lapStart).coerceAtLeast(0.0)
+        val oldestLapM = (oldest.value - lapStart).coerceAtLeast(0.0)
         val dmLap = newestLapM - oldestLapM
         if (dmLap <= 0.0) {
             _lapAvgSpeedMps.value = null
@@ -1687,40 +1609,6 @@ class BtEngineState : HrmStateSink {
                 )
             }
         }
-    }
-
-    fun clearAllTimeSeries() {
-        Timber.tag(TAG).i("clearAllTimeSeries()")
-        // 1) clear series
-        _hrSeries.value = emptyList()
-        _speedSeriesKph.value = emptyList()
-        _cadenceSeriesSpm.value = emptyList()
-        _powerSeriesW.value = emptyList()
-        _inclineSeriesPercent.value = emptyList()
-        _resistanceSeries.value = emptyList()
-        _distanceSeriesM.value = emptyList()
-        _forceOnBeltSeries.value = emptyList()
-        _elevationNetSeries.value = emptyList()
-
-        // 2) reset running/rolling accumulators that feed the public averages
-        hrSum = 0.0
-        hrCount = 0
-        _averageHeartRate.value = null
-
-        speedKphSum = 0.0
-        speedCount = 0
-        _avgSpeedKph.value = null
-
-        cadenceSpmSum = 0.0
-        cadenceCount = 0
-        _averageCadence.value = null
-
-        powerSum = 0.0
-        powerCount = 0
-        _averagePower.value = null
-
-        // 3) clear lap projections derived from series
-        _lapAvgSpeedMps.value = null
     }
 
     /* ───────────────────────────── HrmStateSink implementation ───────────────────────────── */

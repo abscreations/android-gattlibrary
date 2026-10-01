@@ -13,8 +13,8 @@ class ForceOnBeltSeriesTest {
         state.appendForceOnBeltSample(57, tsMillis = 2_000L)
 
         assertEquals(57, state.forceOnBelt.value)
-        assertEquals(2, state.forceOnBeltSeries.value.size)
-        assertEquals(42.0, state.forceOnBeltSeries.value.first().v, 0.0)
-        assertEquals(57.0, state.forceOnBeltSeries.value.last().v, 0.0)
+        assertEquals(2, state.series(MetricSeriesKind.FORCE_ON_BELT_NEWTONS).size)
+        assertEquals(42.0, state.series(MetricSeriesKind.FORCE_ON_BELT_NEWTONS)[0].value, 0.0)
+        assertEquals(57.0, state.series(MetricSeriesKind.FORCE_ON_BELT_NEWTONS).last()!!.value, 0.0)
     }
 }

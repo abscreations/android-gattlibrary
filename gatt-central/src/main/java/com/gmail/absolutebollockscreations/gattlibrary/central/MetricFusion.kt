@@ -1149,8 +1149,8 @@ class MetricFusion(
             MetricKind.METABOLIC_EQUIVALENT -> state.setMetabolicEquivalent(value)
             MetricKind.INCLINATION -> state.appendInclinePercentSample(value, seriesAt)
             MetricKind.RAMP_ANGLE -> state.setRampAngle(value)
-            MetricKind.ELEVATION_GAIN_POSITIVE -> state.setElevationGainPos(value)
-            MetricKind.ELEVATION_GAIN_NEGATIVE -> state.setElevationGainNeg(value)
+            MetricKind.ELEVATION_GAIN_POSITIVE -> state.setElevationGainPos(value, seriesAt)
+            MetricKind.ELEVATION_GAIN_NEGATIVE -> state.setElevationGainNeg(value, seriesAt)
             MetricKind.FORCE_ON_BELT -> state.appendForceOnBeltSample(value.roundToInt(), seriesAt)
             MetricKind.TOTAL_FLOORS -> state.setTotalFloors(value.roundToInt())
             MetricKind.TOTAL_STEPS -> {

@@ -109,10 +109,10 @@ class MetricFusionTest {
         assertEquals(84.0, state.instantCadence.value!!, 0.0)
         assertEquals(211, state.instantPower.value)
         assertEquals(432, state.totalDistanceMeters.value)
-        assertEquals(1_785_000_000_000L, state.speedSeriesKph.value.single().tMillis)
-        assertEquals(1_785_000_000_000L, state.cadenceSeriesSpm.value.single().tMillis)
-        assertEquals(1_785_000_000_000L, state.powerSeriesW.value.single().tMillis)
-        assertEquals(1_785_000_000_000L, state.distanceSeriesM.value.single().tMillis)
+        assertEquals(1_785_000_000_000L, state.series(MetricSeriesKind.SPEED_KPH).single().tMillis)
+        assertEquals(1_785_000_000_000L, state.series(MetricSeriesKind.CADENCE_PER_MIN).single().tMillis)
+        assertEquals(1_785_000_000_000L, state.series(MetricSeriesKind.POWER_WATTS).single().tMillis)
+        assertEquals(1_785_000_000_000L, state.series(MetricSeriesKind.DISTANCE_METERS).single().tMillis)
         assertEquals(103L, fusion.latestSample(MetricKind.DISTANCE)?.arrivalMs)
     }
 
@@ -213,7 +213,7 @@ class MetricFusionTest {
         assertEquals(147, state.externalHeartRate.value)
         assertEquals(BtEngineState.HrSource.EXTERNAL_HRM, state.heartRateSource.value)
         assertEquals(200L, state.lastExternalAt)
-        assertEquals(1_785_000_000_000L, state.hrSeries.value.single().tMillis)
+        assertEquals(1_785_000_000_000L, state.series(MetricSeriesKind.HEART_RATE).single().tMillis)
         assertEquals(55, state.expEnergyTotal.value)
         assertEquals(700, state.expEnergyRateKcalPerHour.value)
         assertEquals(4.25, state.instantPaceMinPerKm.value!!, 0.0)
@@ -238,6 +238,6 @@ class MetricFusionTest {
 
         assertEquals(FusionSubmission.REJECTED_STALE, result)
         assertEquals(250, state.instantPower.value)
-        assertEquals(1, state.powerSeriesW.value.size)
+        assertEquals(1, state.series(MetricSeriesKind.POWER_WATTS).size)
     }
 }

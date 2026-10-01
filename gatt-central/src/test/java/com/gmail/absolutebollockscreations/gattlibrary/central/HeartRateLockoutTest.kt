@@ -65,7 +65,7 @@ class HeartRateLockoutTest {
 
     private fun Harness.hr(): Int? = state.heartRate.value
 
-    private fun Harness.series(): List<Double> = state.hrSeries.value.map { it.v }
+    private fun Harness.series(): List<Double> = state.series(MetricSeriesKind.HEART_RATE).values()
 
     @Test
     fun `a machine cannot take heart rate from a connected strap`() {

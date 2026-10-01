@@ -136,10 +136,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public fun buildSupportedPowerRange ()[B
 	public fun buildSupportedResistanceRange ()[B
 	public fun buildSupportedSpeedRange ()[B
-	public final fun clearAllTimeSeriesAndState ()V
 	public final fun clearDiscovered ()V
-	public final fun clearTimeSeries (Z)V
-	public static synthetic fun clearTimeSeries$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;ZILjava/lang/Object;)V
+	public final fun clearSessionData ()V
 	public final fun connectFtms (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Z)Z
 	public final fun connectFtms (Ljava/lang/String;Z)Z
 	public static synthetic fun connectFtms$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;ZILjava/lang/Object;)Z
@@ -153,7 +151,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun disconnectFtms ()V
 	public final fun disconnectHrm ()V
 	public final fun dismissLifeFitnessProfilePrompt ()V
-	public final fun distanceSinceLastClear ()I
 	public final fun doLap ()V
 	public final fun endRecoverySession ()V
 	public final fun ensureBluetoothEnabled (Landroid/app/Activity;)V
@@ -186,6 +183,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun readSupportedSpeedRange ()V
 	public final fun release ()V
 	public final fun requestControl ()Z
+	public final fun resetSession ()V
 	public final fun selectMachine (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineSelectionOutcome;
 	public final fun setCscCalibration (II)V
 	public final fun setElapsedFromWorkout (I)V
@@ -294,14 +292,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public static synthetic fun appendSpeedKphSample$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;DJILjava/lang/Object;)V
 	public final fun appendStrokeRateSample (DJ)V
 	public static synthetic fun appendStrokeRateSample$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;DJILjava/lang/Object;)V
-	public final fun clearAllSeries ()V
-	public final fun clearAllTimeSeries ()V
-	public final fun clearTimeSeries (ZJ)V
-	public static synthetic fun clearTimeSeries$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;ZJILjava/lang/Object;)V
+	public final fun clearSessionData ()V
 	public final fun cpsNativeEventSnapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsNativeEventSnapshot;
 	public final fun cscNativeEventSnapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventSnapshot;
 	public final fun currentMachineServiceUuids ()Ljava/util/Set;
-	public final fun distanceSinceLastClear ()I
 	public final fun getActiveAdvertisementMachine ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getActiveSession ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getAverageCadence ()Lkotlinx/coroutines/flow/StateFlow;
@@ -311,25 +305,21 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getAveragePower ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getAvgSpeedKph ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getBodySensorLocation ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getCadenceSeriesSpm ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getCccdReady ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getConnectedDevices ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getControlPointChar ()Landroid/bluetooth/BluetoothGattCharacteristic;
 	public final fun getCscNativeEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventStore;
 	public final fun getDiscoveredDevices ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getDistanceSeriesM ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getElapsedTimeSec ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getElevationGainNeg ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getElevationGainPos ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getElevationNetSeries ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getEnergyExpended ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getExpEnergyRateKcalPerHour ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getExpEnergyTotal ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getExternalHeartRate ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getFeaturesRead ()Z
 	public final fun getForceOnBelt ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getForceOnBeltSeries ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getFtmsCapabilities ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;
 	public final fun getGatt ()Landroid/bluetooth/BluetoothGatt;
 	public final fun getGattHrm ()Landroid/bluetooth/BluetoothGatt;
@@ -337,8 +327,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getHeartRate ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHeartRateSource ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHeartRateZone ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getHistory ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHrMaxFromApp ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getHrSeries ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHrZoneModeFromApp ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHrmBodyLocChar ()Landroid/bluetooth/BluetoothGattCharacteristic;
 	public final fun getHrmConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
@@ -349,7 +339,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getInclineMax ()F
 	public final fun getInclineMin ()F
 	public final fun getInclineRangeKnown ()Z
-	public final fun getInclineSeriesPercent ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInstantCadence ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInstantPaceMinPerKm ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInstantPower ()Lkotlinx/coroutines/flow/StateFlow;
@@ -386,7 +375,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getPowerMax ()F
 	public final fun getPowerMin ()F
 	public final fun getPowerRangeKnown ()Z
-	public final fun getPowerSeriesW ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getRampAngle ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getResistance ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getResistanceIncr ()F
@@ -394,7 +382,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getResistanceMax ()F
 	public final fun getResistanceMin ()F
 	public final fun getResistanceRangeKnown ()Z
-	public final fun getResistanceSeries ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getRestingHrFromApp ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getRrIntervalsMs ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getSafetyKeyEngaged ()Lkotlinx/coroutines/flow/StateFlow;
@@ -405,10 +392,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getSpeedMin ()F
 	public final fun getSpeedMph ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getSpeedRangeKnown ()Z
-	public final fun getSpeedSeriesKph ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getStrokeCount ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getStrokeRate ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getStrokeRateSeriesSpm ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getSupportsInclination ()Z
 	public final fun getSupportsIndoorBikeSimulation ()Z
 	public final fun getSupportsPaceMeasurement ()Z
@@ -442,8 +427,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun setConnectionState (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionContext;I)V
 	public final fun setControlPointChar (Landroid/bluetooth/BluetoothGattCharacteristic;)V
 	public final fun setElapsedSeconds (Ljava/lang/Integer;)V
-	public final fun setElevationGainNeg (Ljava/lang/Double;)V
-	public final fun setElevationGainPos (Ljava/lang/Double;)V
+	public final fun setElevationGainNeg (Ljava/lang/Double;J)V
+	public static synthetic fun setElevationGainNeg$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Ljava/lang/Double;JILjava/lang/Object;)V
+	public final fun setElevationGainPos (Ljava/lang/Double;J)V
+	public static synthetic fun setElevationGainPos$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Ljava/lang/Double;JILjava/lang/Object;)V
 	public final fun setElevationGains (Ljava/lang/Double;Ljava/lang/Double;J)V
 	public static synthetic fun setElevationGains$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Ljava/lang/Double;Ljava/lang/Double;JILjava/lang/Object;)V
 	public final fun setExpEnergyRateKcalPerHour (Ljava/lang/Integer;)V
@@ -815,19 +802,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getInc ()I
 	public final fun getMax ()I
 	public final fun getMin ()I
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$TimedSample {
-	public fun <init> (JD)V
-	public final fun component1 ()J
-	public final fun component2 ()D
-	public final fun copy (JD)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$TimedSample;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$TimedSample;JDILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$TimedSample;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getTMillis ()J
-	public final fun getV ()D
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -2362,6 +2336,20 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Hardw
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/HistorySeries {
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun get (I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/TimedValue;
+	public final fun getSize ()I
+	public fun hashCode ()I
+	public final fun isEmpty ()Z
+	public final fun last ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/TimedValue;
+	public final fun since (J)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HistorySeries;
+	public final fun timeAt (I)J
+	public final fun toList ()Ljava/util/List;
+	public fun toString ()Ljava/lang/String;
+	public final fun valueAt (I)D
+}
+
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstCommand {
 }
 
@@ -3613,6 +3601,15 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Match
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory$Companion;
+	public final fun series (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HistorySeries;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory$Companion {
+	public final fun getEMPTY ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementSnapshot$Companion;
 	public fun <init> ()V
@@ -3905,6 +3902,21 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesClock$Companion {
 	public final fun getSYSTEM ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesClock;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind : java/lang/Enum {
+	public static final field CADENCE_PER_MIN Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field DISTANCE_METERS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field ELEVATION_NET_METERS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field FORCE_ON_BELT_NEWTONS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field HEART_RATE Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field INCLINE_PERCENT Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field POWER_WATTS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field RESISTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static final field SPEED_KPH Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MetricSourceClass : java/lang/Enum {
@@ -4683,6 +4695,19 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Stack
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/StackEntry$WriteMode;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/StackEntry$WriteMode;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/TimedValue {
+	public fun <init> (JD)V
+	public final fun component1 ()J
+	public final fun component2 ()D
+	public final fun copy (JD)Lcom/gmail/absolutebollockscreations/gattlibrary/central/TimedValue;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/TimedValue;JDILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/TimedValue;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTMillis ()J
+	public final fun getValue ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot {

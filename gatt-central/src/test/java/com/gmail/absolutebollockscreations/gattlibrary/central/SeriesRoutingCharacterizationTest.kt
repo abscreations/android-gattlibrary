@@ -7,12 +7,12 @@ import java.util.UUID
 
 /**
  * Pins how metrics reach the chart-history series today (LIB-42, step 1 of unit 4d), before the series move
- * into `MeasurementHistory`. Written against the old per-series `StateFlow<List<TimedSample>>` API; step 3
- * migrates the reads to the new API and the same assertions must still hold.
+ * into `MeasurementHistory`. Written against the old per-series `StateFlow<List<TimedSample>>` API; LIB-44 (step 3)
+ * migrated the reads to `MeasurementHistory` and the same assertions still hold.
  *
- * Deliberately not pinned, because the history work changes it on purpose: what a session start leaves in the
- * distance series, what clearing the averages does to the average heart-rate zone, and elevation (never fed in
- * production today; it gets its own tests when fusion feeds it).
+ * Deliberately not pinned here, because the history work changed it on purpose: what a session start leaves in the
+ * distance series, what clearing the averages does to the average heart-rate zone, and elevation. Those have
+ * their own tests in `SessionDataClearTest` and `ElevationSeriesTest`.
  */
 class SeriesRoutingCharacterizationTest {
     private val connection = ConnectionId("AA:BB:CC:DD:EE:01", 7L)
@@ -39,7 +39,6 @@ class SeriesRoutingCharacterizationTest {
         seriesNowMs += 1_000L
     }
 
-    private fun List<BtEngineState.TimedSample>.pairs() = map { it.tMillis to it.v }
 
     @Test fun `each fused metric lands in its own series with the series clock timestamp`() {
         val t0 = seriesNowMs
@@ -51,21 +50,20 @@ class SeriesRoutingCharacterizationTest {
         submit(MetricKind.FORCE_ON_BELT, 42.0)
         submit(MetricKind.DISTANCE, 432.0)
 
-        assertEquals(listOf(t0 to 12.5), state.speedSeriesKph.value.pairs())
-        assertEquals(listOf(t0 + 1_000 to 84.0), state.cadenceSeriesSpm.value.pairs())
-        assertEquals(listOf(t0 + 2_000 to 211.0), state.powerSeriesW.value.pairs())
-        assertEquals(listOf(t0 + 3_000 to 8.5), state.resistanceSeries.value.pairs())
-        assertEquals(listOf(t0 + 4_000 to 3.5), state.inclineSeriesPercent.value.pairs())
-        assertEquals(listOf(t0 + 5_000 to 42.0), state.forceOnBeltSeries.value.pairs())
-        assertEquals(listOf(t0 + 6_000 to 432.0), state.distanceSeriesM.value.pairs())
+        assertEquals(listOf(t0 to 12.5), state.series(MetricSeriesKind.SPEED_KPH).pairs())
+        assertEquals(listOf(t0 + 1_000 to 84.0), state.series(MetricSeriesKind.CADENCE_PER_MIN).pairs())
+        assertEquals(listOf(t0 + 2_000 to 211.0), state.series(MetricSeriesKind.POWER_WATTS).pairs())
+        assertEquals(listOf(t0 + 3_000 to 8.5), state.series(MetricSeriesKind.RESISTANCE).pairs())
+        assertEquals(listOf(t0 + 4_000 to 3.5), state.series(MetricSeriesKind.INCLINE_PERCENT).pairs())
+        assertEquals(listOf(t0 + 5_000 to 42.0), state.series(MetricSeriesKind.FORCE_ON_BELT_NEWTONS).pairs())
+        assertEquals(listOf(t0 + 6_000 to 432.0), state.series(MetricSeriesKind.DISTANCE_METERS).pairs())
     }
 
-    @Test fun `stroke rate and cadence share one series and the alias exposes it`() {
+    @Test fun `stroke rate and cadence share one series`() {
         state.appendStrokeRateSample(24.0, tsMillis = 1_000)
         state.appendCadenceSpmSample(60.0, tsMillis = 2_000)
 
-        assertEquals(listOf(1_000L to 24.0, 2_000L to 60.0), state.cadenceSeriesSpm.value.pairs())
-        assertEquals(state.cadenceSeriesSpm.value, state.strokeRateSeriesSpm.value)
+        assertEquals(listOf(1_000L to 24.0, 2_000L to 60.0), state.series(MetricSeriesKind.CADENCE_PER_MIN).pairs())
     }
 
     @Test fun `heart rate samples and the dropout marker share the heart rate series`() {
@@ -73,7 +71,7 @@ class SeriesRoutingCharacterizationTest {
         state.appendHeartRateSeriesPoint(0.0, tsMillis = 2_000) // dropout marker: a point, not a reading
         state.appendHeartRateSample(142, tsMillis = 3_000)
 
-        assertEquals(listOf(1_000L to 140.0, 2_000L to 0.0, 3_000L to 142.0), state.hrSeries.value.pairs())
+        assertEquals(listOf(1_000L to 140.0, 2_000L to 0.0, 3_000L to 142.0), state.series(MetricSeriesKind.HEART_RATE).pairs())
         // The marker touches neither the readout nor the average.
         assertEquals(142, state.heartRate.value)
         assertEquals(141, state.averageHeartRate.value)
@@ -81,11 +79,11 @@ class SeriesRoutingCharacterizationTest {
 
     @Test fun `series keep arrival order and are never trimmed`() {
         repeat(5_000) { state.appendPowerSample(100 + it % 7, tsMillis = 1_000L + it) }
-        val series = state.powerSeriesW.value
+        val series = state.series(MetricSeriesKind.POWER_WATTS)
         assertEquals(5_000, series.size)
-        assertEquals(1_000L, series.first().tMillis)
-        assertEquals(5_999L, series.last().tMillis)
-        assertTrue(series.zipWithNext().all { (a, b) -> a.tMillis < b.tMillis })
+        assertEquals(1_000L, series[0].tMillis)
+        assertEquals(5_999L, series.last()!!.tMillis)
+        assertTrue((1 until series.size).all { series.timeAt(it - 1) < series.timeAt(it) })
     }
 
     @Test fun `running averages do not depend on the series lists`() {
@@ -97,7 +95,7 @@ class SeriesRoutingCharacterizationTest {
         assertEquals(70.0, state.averageCadence.value!!, 0.0)
     }
 
-    @Test fun `clearing time series empties every series and the averages but keeps totals`() {
+    @Test fun `clearing session data empties every series and the averages but keeps totals`() {
         state.setTotalDistanceMeters(432)
         state.setElapsedSeconds(90)
         state.appendHeartRateSample(140, tsMillis = 1)
@@ -110,17 +108,17 @@ class SeriesRoutingCharacterizationTest {
         state.appendDistanceMetersSample(432, tsMillis = 1)
         state.setElevationGains(10.0, 2.0, tsMillis = 1)
 
-        state.clearTimeSeries(keepTotals = true)
+        state.clearSessionData()
 
-        assertTrue(state.hrSeries.value.isEmpty())
-        assertTrue(state.speedSeriesKph.value.isEmpty())
-        assertTrue(state.cadenceSeriesSpm.value.isEmpty())
-        assertTrue(state.powerSeriesW.value.isEmpty())
-        assertTrue(state.inclineSeriesPercent.value.isEmpty())
-        assertTrue(state.resistanceSeries.value.isEmpty())
-        assertTrue(state.forceOnBeltSeries.value.isEmpty())
-        assertTrue(state.distanceSeriesM.value.isEmpty())
-        assertTrue(state.elevationNetSeries.value.isEmpty())
+        assertTrue(state.series(MetricSeriesKind.HEART_RATE).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.SPEED_KPH).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.CADENCE_PER_MIN).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.POWER_WATTS).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.INCLINE_PERCENT).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.RESISTANCE).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.FORCE_ON_BELT_NEWTONS).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.DISTANCE_METERS).isEmpty())
+        assertTrue(state.series(MetricSeriesKind.ELEVATION_NET_METERS).isEmpty())
         assertEquals(null, state.averageHeartRate.value)
         assertEquals(null, state.avgSpeedKph.value)
         assertEquals(null, state.averageCadence.value)

@@ -740,13 +740,15 @@ class BtEngine internal constructor(
 
     internal fun elapsedRealtimeMs(): Long = android.os.SystemClock.elapsedRealtime()
 
-    /** Public entry point for UI/service to clear short-term series and reset baselines. */
-    fun clearTimeSeries(keepTotals: Boolean = true) {
-        state.clearTimeSeries(keepTotals)
+    /**
+     * Starts fresh accumulation for the next run: clears every history series, the running averages (including
+     * the average heart-rate zone) and the lap speed and pace derived from the series. Keeps cumulative totals,
+     * elapsed time, laps already recorded and whether a session is active. A session going active does this
+     * itself, so call it to discard accumulated data without ending the session.
+     */
+    fun clearSessionData() {
+        state.clearSessionData()
     }
-
-    /** Convenience passthrough if callers prefer a zero-based distance after clear. */
-    fun distanceSinceLastClear(): Int = state.distanceSinceLastClear()
 
     /* ───────────────────────────── permission helpers ───────────────────────────── */
 
@@ -2245,15 +2247,16 @@ class BtEngine internal constructor(
         state.setLapCadenceSpm(null)
     }
 
-    // Manual reset hook — call from VM when RunMode closes
-    fun clearAllTimeSeriesAndState() {
+    /**
+     * Ends the session and resets everything it accumulated: stops the elapsed clock, clears the CSC session
+     * and the fusion session, clears the session data (see [clearSessionData]), zeroes elapsed time and the lap
+     * values, and marks the session inactive. Call it when the run screen closes.
+     */
+    fun resetSession() {
         stopSessionElapsedClock()
         clearCscSession()
         metricFusion.endSession()
-        runCatching { state.clearAllTimeSeries() }
-            .onFailure {
-                Timber.tag(BtEngineState.TAG).w(it, "clearAllTimeSeries() not available on BtEngineState")
-            }
+        state.clearSessionData()
 
         state.setElapsedSeconds(0)
         state.setLapElapsedTimeSec(0)

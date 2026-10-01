@@ -85,6 +85,17 @@ public class HistorySeries internal constructor(
         return HistorySeries(times, values, lo, to)
     }
 
+    /** The view of points whose timestamp is at or before [tMillis]. O(log n); internal helper for windows. */
+    internal fun upTo(tMillis: Long): HistorySeries {
+        var lo = from
+        var hi = to
+        while (lo < hi) {
+            val mid = (lo + hi) ushr 1
+            if (times[mid] <= tMillis) lo = mid + 1 else hi = mid
+        }
+        return HistorySeries(times, values, from, lo)
+    }
+
     /** Copies the view into a list. O(n); prefer indexed access for large series. */
     public fun toList(): List<TimedValue> = List(size) { get(it) }
 
@@ -138,9 +149,10 @@ internal class HistoryRecorder {
     private val _history = MutableStateFlow(MeasurementHistory(published))
     val history: StateFlow<MeasurementHistory> = _history
 
-    fun append(kind: MetricSeriesKind, tMillis: Long, value: Double) {
+    /** Appends one point and returns the series length after it. */
+    fun append(kind: MetricSeriesKind, tMillis: Long, value: Double): Int {
         val k = kind.ordinal
-        synchronized(lock) {
+        return synchronized(lock) {
             val n = sizes[k]
             if (n == times[k].size) {
                 times[k] = times[k].copyOf(n * 2)
@@ -150,6 +162,7 @@ internal class HistoryRecorder {
             values[k][n] = value
             sizes[k] = n + 1
             publishLocked(k)
+            n + 1
         }
     }
 

@@ -182,4 +182,19 @@ class MeasurementHistoryTest {
         assertNull(failure.get(), failure.get())
         assertEquals(total, series().size)
     }
+
+    @Test
+    fun `upTo is an upper bound on the timestamp`() {
+        for (t in listOf(10L, 20L, 20L, 30L, 40L)) recorder.append(hr, t, t.toDouble())
+        val s = series()
+        assertTrue(s.upTo(9).isEmpty())
+        assertEquals(1, s.upTo(10).size)
+        assertEquals(3, s.upTo(20).size)
+        assertEquals(3, s.upTo(29).size)
+        assertEquals(5, s.upTo(40).size)
+        assertEquals(5, s.upTo(1_000).size)
+        // a window: since and upTo compose
+        assertEquals(listOf(20L, 20L, 30L), s.since(15).upTo(35).toList().map { it.tMillis })
+    }
 }
+

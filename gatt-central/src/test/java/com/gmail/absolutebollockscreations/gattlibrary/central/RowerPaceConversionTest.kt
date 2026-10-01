@@ -58,7 +58,7 @@ class RowerPaceConversionTest {
 
         assertEquals(15.84, state.speedKph.value!!, 0.0001)
         assertEquals(15.84, state.avgSpeedKph.value!!, 0.0001)
-        assertEquals(2, state.speedSeriesKph.value.size)
+        assertEquals(2, state.series(MetricSeriesKind.SPEED_KPH).size)
     }
 
     @Test
@@ -71,9 +71,9 @@ class RowerPaceConversionTest {
         assertEquals(26.0, state.strokeRate.value!!, 0.0)
         assertEquals(26.0, state.peakStrokeRate.value!!, 0.0)
         assertEquals(25.0, state.averageCadence.value!!, 0.0)
-        assertEquals(2, state.strokeRateSeriesSpm.value.size)
-        assertEquals(24.0, state.strokeRateSeriesSpm.value.first().v, 0.0)
-        assertEquals(26.0, state.strokeRateSeriesSpm.value.last().v, 0.0)
+        assertEquals(2, state.series(MetricSeriesKind.CADENCE_PER_MIN).size)
+        assertEquals(24.0, state.series(MetricSeriesKind.CADENCE_PER_MIN)[0].value, 0.0)
+        assertEquals(26.0, state.series(MetricSeriesKind.CADENCE_PER_MIN).last()!!.value, 0.0)
     }
 
     @Test

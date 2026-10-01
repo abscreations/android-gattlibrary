@@ -183,26 +183,23 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *            only distance is available.
  *
  *  - **Time-series & rolling averages**
- *      • `BtEngineState` maintains a bounded window (min 5 minutes) of
- *        `TimedSample(tMillis, v)` for:
- *          - `hrSeries`
- *          - `speedSeriesKph`
- *          - `cadenceSeriesSpm`
- *          - `powerSeriesW`
- *          - `inclineSeriesPercent`
- *          - `resistanceSeries`
- *          - `distanceSeriesM` (rower helper)
+ *      • `BtEngineState.history` is a `StateFlow<MeasurementHistory>`: nine keyed
+ *        series (`MetricSeriesKind`: heart rate, speed, cadence, power, incline,
+ *        resistance, force on belt, net elevation, distance), full-session,
+ *        append-only, each a read-only `HistorySeries` view. Stroke rate shares
+ *        the cadence series.
  *      • The `append*Sample(...)` helpers:
- *          - Append a new sample.
- *          - Trim older samples to the current `seriesWindowMinutes`.
+ *          - Append a new sample to its series.
  *          - Maintain running means:
  *              · `averageHeartRate`
  *              · `avgSpeedKph`
  *              · `averageCadence`
  *              · `averagePower`
- *      • `setSeriesWindowMinutes(...)` lets callers adjust the window size
- *        (with a minimum enforced), and `clearAllTimeSeries()` wipes both data
- *        and accumulators (used on session reset).
+ *      • `setElevationGains(...)` appends ascent minus descent to the net
+ *        elevation series when it changes.
+ *      • `BtEngineState.clearSessionData()` wipes the series, the running
+ *        accumulators and the lap speed and pace; `BtEngine.clearSessionData()`
+ *        and `BtEngine.resetSession()` are the public entry points.
  *
  *  - **Error routing**
  *      • All GATT-level failures call `BtEngineState.setGattErrorFor(gatt, msg)`:

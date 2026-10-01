@@ -53,7 +53,7 @@ class MetricFusionPolicyTest {
             fusion.submit(sample(MetricKind.AVERAGE_POWER, 227.0, at, ftms, MetricSourceClass.FTMS))
             fusion.submit(sample(MetricKind.POWER, 146.0, at + 1, ftms, MetricSourceClass.FTMS))
             assertEquals(146, state.instantPower.value)
-            assertEquals(146.0, state.powerSeriesW.value.last().v, 0.0)
+            assertEquals(146.0, state.series(MetricSeriesKind.POWER_WATTS).last()!!.value, 0.0)
             fusion.submit(sample(MetricKind.AVERAGE_POWER, 227.0, at + 2, ftms, MetricSourceClass.FTMS))
             assertEquals(227, state.averagePower.value)
         }
@@ -158,7 +158,7 @@ class MetricFusionPolicyTest {
         // the parse. The machine's heart-rate field is submitted last, still
         // carrying the packet's own 10_000 stamp.
         fusion.submit(sample(MetricKind.HEART_RATE, 58.0, 10_014, hrm, MetricSourceClass.HRM))
-        val seriesBefore = state.hrSeries.value.size
+        val seriesBefore = state.series(MetricSeriesKind.HEART_RATE).size
         fusion.submit(sample(MetricKind.HEART_RATE, 148.0, 10_000, ftms, MetricSourceClass.FTMS))
 
         assertEquals(
@@ -171,7 +171,7 @@ class MetricFusionPolicyTest {
         assertEquals(
             "no dropout may be projected into the graph",
             seriesBefore,
-            state.hrSeries.value.size,
+            state.series(MetricSeriesKind.HEART_RATE).size,
         )
     }
 
@@ -195,7 +195,7 @@ class MetricFusionPolicyTest {
         assertEquals(
             "a real dropout is still marked with an explicit zero",
             0.0,
-            state.hrSeries.value.last().v,
+            state.series(MetricSeriesKind.HEART_RATE).last()!!.value,
             1e-9,
         )
     }
@@ -225,11 +225,11 @@ class MetricFusionPolicyTest {
         assertEquals(58, state.heartRate.value)
         assertNull(
             "the machine's heart rate must never reach the graph",
-            state.hrSeries.value.firstOrNull { it.v > 100.0 },
+            state.series(MetricSeriesKind.HEART_RATE).firstOrNull { it.value > 100.0 },
         )
         assertNull(
             "and neither may a spurious dropout",
-            state.hrSeries.value.firstOrNull { it.v == 0.0 },
+            state.series(MetricSeriesKind.HEART_RATE).firstOrNull { it.value == 0.0 },
         )
     }
 
@@ -260,7 +260,7 @@ class MetricFusionPolicyTest {
         assertNull(state.heartRate.value)
         assertNull(
             "and its number must not reach the graph",
-            state.hrSeries.value.firstOrNull { it.v > 100.0 },
+            state.series(MetricSeriesKind.HEART_RATE).firstOrNull { it.value > 100.0 },
         )
 
         // The strap reclaims it on its next packet, as it did in the log.

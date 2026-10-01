@@ -217,7 +217,7 @@ class PlausibilityBoundsTest {
 
         assertEquals(FusionSubmission.REJECTED_IMPLAUSIBLE, outcome)
         assertNull("no source may be selected from a rejected sample", fusion.selectedSource(MetricKind.SPEED))
-        assertTrue("and nothing may reach the series", state.speedSeriesKph.value.isEmpty())
+        assertTrue("and nothing may reach the series", state.series(MetricSeriesKind.SPEED_KPH).isEmpty())
     }
 
     @Test
