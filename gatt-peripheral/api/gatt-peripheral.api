@@ -1,3 +1,8 @@
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/AdvertisingTarget {
+	public abstract fun startFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;)Z
+	public abstract fun stop ()V
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/DeviceTargetCapabilitiesKt {
 	public static final fun fromDeviceCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;
 }
