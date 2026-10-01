@@ -56,6 +56,15 @@ public class FitnessGattClient internal constructor(
      */
     public val controlEvents: Flow<ControlEvent> =
         backend.state.controlEvents.takeWhile { synchronized(lock) { !closed } }
+    private val tokenOwner = Any()
+    private val mutableMachineToken = MutableStateFlow(backend.currentMachineKey()?.let { MachineToken(tokenOwner, it) })
+
+    /**
+     * The machine commands are addressed to, or null while none is connected or selected. It changes
+     * whenever the machine does, including a reconnect to the same address, so a command prepared
+     * for the old machine is refused instead of reaching the new one.
+     */
+    public val machineToken: StateFlow<MachineToken?> = mutableMachineToken.asStateFlow()
     private val mutableSessionActive = MutableStateFlow(backend.state.activeSession.value)
 
     /** Whether a workout session is active. Read-only for now; session control arrives with typed commands. */
@@ -173,6 +182,58 @@ public class FitnessGattClient internal constructor(
         backend.deselectMachine().failureIfFalse()
     }
 
+    /** Start, or resume after a pause. [CommandResult.Queued] means submitted, not that the machine started. */
+    public fun startOrResume(token: MachineToken): CommandResult = submit(token, MachineCommand.StartOrResume)
+
+    /** Stop or pause; the machine's control path has a single operation for both. */
+    public fun stopOrPause(token: MachineToken): CommandResult = submit(token, MachineCommand.StopOrPause)
+
+    /** Target speed in km/h. */
+    public fun setTargetSpeedKph(token: MachineToken, kph: Float): CommandResult =
+        submit(token, MachineCommand.TargetSpeedKph(kph))
+
+    /** Target incline in percent. */
+    public fun setTargetInclinePercent(token: MachineToken, percent: Float): CommandResult =
+        submit(token, MachineCommand.TargetInclinePercent(percent))
+
+    /** Target resistance in the machine's own level units, as [DeviceCapabilities.resistanceRange] reports them. */
+    public fun setTargetResistanceLevel(token: MachineToken, level: Float): CommandResult =
+        submit(token, MachineCommand.TargetResistanceLevel(level))
+
+    /** Target power in watts. */
+    public fun setTargetPowerWatts(token: MachineToken, watts: Int): CommandResult =
+        submit(token, MachineCommand.TargetPowerWatts(watts))
+
+    /** Wheel circumference in millimetres, for machines that take it. */
+    public fun setWheelCircumferenceMm(token: MachineToken, millimetres: Float): CommandResult =
+        submit(token, MachineCommand.WheelCircumferenceMm(millimetres))
+
+    /** Indoor-bike simulation: wind in m/s, grade in percent, and the two unitless coefficients. */
+    public fun setIndoorBikeSimulation(
+        token: MachineToken,
+        windSpeedMps: Float,
+        gradePercent: Float,
+        rollingResistanceCoefficient: Float,
+        windResistanceCoefficient: Float,
+    ): CommandResult = submit(
+        token,
+        MachineCommand.IndoorBikeSimulation(
+            windSpeedMps, gradePercent, rollingResistanceCoefficient, windResistanceCoefficient,
+        ),
+    )
+
+    /**
+     * Not under the client lock: the engine call can take a moment and must not stall discovery or
+     * snapshot publication. The check against the current machine and the dispatch happen together
+     * in the backend, so a command is never sent to a machine other than the one its token names.
+     */
+    private fun submit(token: MachineToken, command: MachineCommand): CommandResult {
+        if (synchronized(lock) { closed }) return CommandResult.Rejected(RejectionReason.CLIENT_CLOSED)
+        if (token.owner !== tokenOwner) return CommandResult.MachineChanged
+        val accepted = backend.submit(token.key, command) ?: return CommandResult.MachineChanged
+        return if (accepted) CommandResult.Queued else CommandResult.Rejected(RejectionReason.NOT_ACCEPTED)
+    }
+
     public fun close(): Unit = synchronized(lock) {
         if (closed) return@synchronized
         closed = true
@@ -186,6 +247,7 @@ public class FitnessGattClient internal constructor(
             mutableCapabilities.value = DeviceCapabilities.NONE
             mutableSessionActive.value = false
             mutableInferredActivity.value = null
+            mutableMachineToken.value = null
             mutableConnections.value = ConnectionSnapshot(emptyList(), null, ConnectionStatus.DISCONNECTED, MachineProbeState.IDLE, false)
         }
     }
@@ -208,8 +270,15 @@ public class FitnessGattClient internal constructor(
     }
 
     private fun refresh() {
+        updateMachineToken()
         if (!sameReferences(discoveryInputs, currentDiscoveryInputs())) mutableDiscovery.value = discoverySnapshot()
         if (!sameReferences(connectionInputs, currentConnectionInputs())) mutableConnections.value = connectionSnapshot()
+    }
+
+    private fun updateMachineToken() {
+        val key = backend.currentMachineKey()
+        if (key == mutableMachineToken.value?.key) return
+        mutableMachineToken.value = key?.let { MachineToken(tokenOwner, it) }
     }
 
     private fun currentDiscoveryInputs(): List<Any?> = listOf(
@@ -279,4 +348,13 @@ internal interface CentralConnectionBackend {
     fun disconnect(key: String): Boolean
     fun deselectMachine(): Boolean
     fun close()
+
+    /** Identity of the machine commands would reach right now, or null if none is connected or selected. */
+    fun currentMachineKey(): Any?
+
+    /**
+     * Send [command] to the machine only if [expectedKey] still names it. Returns null when it does
+     * not (nothing sent), otherwise whether the machine's control path accepted the submission.
+     */
+    fun submit(expectedKey: Any, command: MachineCommand): Boolean?
 }

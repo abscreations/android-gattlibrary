@@ -418,6 +418,97 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `the machine token follows the machine and is equal while it is the same machine`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        assertNull(client.machineToken.value)
+
+        backend.machineKey = "link-1"
+        client.stopScan() // any operation refreshes the published snapshots
+        val first = client.machineToken.value!!
+        client.stopScan()
+        assertEquals(first, client.machineToken.value)
+
+        backend.machineKey = "link-2" // a reconnect is a different machine
+        client.stopScan()
+        assertTrue(first != client.machineToken.value)
+
+        backend.machineKey = null
+        client.stopScan()
+        assertNull(client.machineToken.value)
+        client.close()
+    }
+
+    @Test
+    fun `every command reaches the machine with its arguments and reports queued or rejected`() = runTest {
+        val backend = Backend().apply { machineKey = "link-1" }
+        val client = client(backend)
+        runCurrent()
+        val token = client.machineToken.value!!
+
+        val results = listOf(
+            client.startOrResume(token),
+            client.stopOrPause(token),
+            client.setTargetSpeedKph(token, 8.5f),
+            client.setTargetInclinePercent(token, 2.5f),
+            client.setTargetResistanceLevel(token, 12f),
+            client.setTargetPowerWatts(token, 180),
+            client.setWheelCircumferenceMm(token, 2_105f),
+            client.setIndoorBikeSimulation(token, 1f, 3f, 0.004f, 0.51f),
+        )
+        assertTrue(results.all { it == CommandResult.Queued })
+        assertEquals(
+            listOf(
+                MachineCommand.StartOrResume,
+                MachineCommand.StopOrPause,
+                MachineCommand.TargetSpeedKph(8.5f),
+                MachineCommand.TargetInclinePercent(2.5f),
+                MachineCommand.TargetResistanceLevel(12f),
+                MachineCommand.TargetPowerWatts(180),
+                MachineCommand.WheelCircumferenceMm(2_105f),
+                MachineCommand.IndoorBikeSimulation(1f, 3f, 0.004f, 0.51f),
+            ),
+            backend.submitted,
+        )
+
+        backend.acceptCommands = false
+        assertEquals(CommandResult.Rejected(RejectionReason.NOT_ACCEPTED), client.startOrResume(token))
+        client.close()
+    }
+
+    @Test
+    fun `a command for a machine that has gone is refused and nothing is sent`() = runTest {
+        val backend = Backend().apply { machineKey = "link-1" }
+        val client = client(backend)
+        runCurrent()
+        val stale = client.machineToken.value!!
+
+        backend.machineKey = "link-2"
+        assertEquals(CommandResult.MachineChanged, client.setTargetPowerWatts(stale, 200))
+        assertEquals(emptyList<MachineCommand>(), backend.submitted)
+
+        val otherClient = client(Backend().apply { machineKey = "link-1" })
+        runCurrent()
+        assertEquals(CommandResult.MachineChanged, client.startOrResume(otherClient.machineToken.value!!))
+        client.close()
+        otherClient.close()
+    }
+
+    @Test
+    fun `commands after close are rejected and the token clears`() = runTest {
+        val backend = Backend().apply { machineKey = "link-1" }
+        val client = client(backend)
+        runCurrent()
+        val token = client.machineToken.value!!
+
+        client.close()
+        assertNull(client.machineToken.value)
+        assertEquals(CommandResult.Rejected(RejectionReason.CLIENT_CLOSED), client.startOrResume(token))
+        assertEquals(emptyList<MachineCommand>(), backend.submitted)
+    }
+
+    @Test
     fun `control events reach a collector in order including equal repeats, and end after close`() = runTest {
         val backend = Backend()
         val client = client(backend)
@@ -506,6 +597,15 @@ class FitnessGattClientTest {
         var disconnectCalls = 0
         var activatedConnection: ConnectionId? = null
         var assignment: SensorAssignment? = null
+        var machineKey: Any? = null
+        var acceptCommands = true
+        val submitted = mutableListOf<MachineCommand>()
+        override fun currentMachineKey(): Any? = machineKey
+        override fun submit(expectedKey: Any, command: MachineCommand): Boolean? {
+            if (machineKey != expectedKey) return null
+            submitted += command
+            return acceptCommands
+        }
         override fun platformFailure(scan: Boolean) = failure
         override fun startScan(hardwareFilters: Boolean) {
             startCalls++

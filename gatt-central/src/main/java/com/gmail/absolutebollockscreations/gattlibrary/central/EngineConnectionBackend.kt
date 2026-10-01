@@ -34,6 +34,25 @@ internal class EngineConnectionBackend(private val engine: BtEngine) : CentralCo
         return disconnected
     }
     override fun close() { engine.closeClient() }
+    override fun currentMachineKey(): Any? = engine.currentMachineKey()
+    override fun submit(expectedKey: Any, command: MachineCommand): Boolean? {
+        if (engine.currentMachineKey() != expectedKey) return null
+        return when (command) {
+            MachineCommand.StartOrResume -> engine.startOrResume()
+            MachineCommand.StopOrPause -> engine.stopOrPause()
+            is MachineCommand.TargetSpeedKph -> engine.setTargetSpeedKph(command.kph)
+            is MachineCommand.TargetInclinePercent -> engine.setTargetInclinationPercent(command.percent)
+            is MachineCommand.TargetResistanceLevel -> engine.setTargetResistance(command.level)
+            is MachineCommand.TargetPowerWatts -> engine.setTargetPowerWatts(command.watts)
+            is MachineCommand.WheelCircumferenceMm -> engine.setWheelCircumferenceMm(command.millimetres)
+            is MachineCommand.IndoorBikeSimulation -> engine.setIndoorBikeSimulation(
+                command.windSpeedMps,
+                command.gradePercent,
+                command.rollingResistanceCoefficient,
+                command.windResistanceCoefficient,
+            )
+        }
+    }
 }
 
 private fun SensorAssignment.engineRoles(): Set<BtEngineState.CscRole>? =

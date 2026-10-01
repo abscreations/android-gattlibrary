@@ -945,6 +945,34 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Colli
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/CollisionRisk;
 }
 
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/CommandResult {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$MachineChanged : com/gmail/absolutebollockscreations/gattlibrary/central/CommandResult {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$MachineChanged;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$Queued : com/gmail/absolutebollockscreations/gattlibrary/central/CommandResult {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$Queued;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$Rejected : com/gmail/absolutebollockscreations/gattlibrary/central/CommandResult {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$Rejected;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$Rejected;Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult$Rejected;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReason ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/Concept2Measurement {
 	public static final field HEART_RATE_INVALID I
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/Concept2Measurement;
@@ -2151,11 +2179,20 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun getDiscovery ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHistory ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInferredActivity ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getMachineToken ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMeasurements ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getSessionActive ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun setIndoorBikeSimulation (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;FFFF)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun setTargetInclinePercent (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun setTargetPowerWatts (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun setTargetResistanceLevel (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun setTargetSpeedKph (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun setWheelCircumferenceMm (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun startOrResume (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun startScan (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public static synthetic fun startScan$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun stopOrPause (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun stopScan ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 }
 
@@ -3576,6 +3613,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Machi
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineSelectionOutcome;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineToken {
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule {
 	public abstract fun matches (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayload;)Z
 }
@@ -4330,6 +4373,14 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Ranke
 	public final fun getTransport ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason : java/lang/Enum {
+	public static final field CLIENT_CLOSED Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;
+	public static final field NOT_ACCEPTED Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/RejectionReason;
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/RideOnControlTarget {

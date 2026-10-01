@@ -1243,6 +1243,15 @@ class BtEngine internal constructor(
         resetMachineSessionState()
     }
 
+    /**
+     * Identity of the machine a command would reach right now: the connected machine link's
+     * connection id (a reconnect is a new id), or the selected advertisement-only machine's origin
+     * (a reselection is a new origin), or null with neither.
+     */
+    internal fun currentMachineKey(): Any? =
+        (if (isFtmsConnected) state.connectionRegistry.current(LegacyConnectionRole.FTMS)?.connectionId else null)
+            ?: keiserSource.originId()
+
     /** Terminal client shutdown also cancels jobs; legacy release remains reusable during migration. */
     internal fun closeClient() {
         try {
