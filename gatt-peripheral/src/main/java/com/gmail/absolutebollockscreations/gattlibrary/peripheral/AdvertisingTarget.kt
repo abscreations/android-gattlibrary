@@ -17,5 +17,5 @@ public interface AdvertisingTarget {
     public fun startFtms(profile: FtmsMachineProfile, capabilities: DeviceCapabilities): Boolean
 
     /** Stop advertising. Safe to call when nothing is advertising. */
-    public fun stop()
+    public fun stopAdvertising()
 }

@@ -40,7 +40,7 @@ class ProviderAdvertisingCoordinatorTest {
             return r ?: throw IllegalStateException("sink threw")
         }
 
-        override fun stop() {
+        override fun stopAdvertising() {
             events += "stop"
             if (stopThrows) throw IllegalStateException("stop threw")
         }

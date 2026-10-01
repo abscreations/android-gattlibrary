@@ -1,6 +1,6 @@
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/AdvertisingTarget {
 	public abstract fun startFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;)Z
-	public abstract fun stop ()V
+	public abstract fun stopAdvertising ()V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/DeviceTargetCapabilitiesKt {
@@ -53,5 +53,15 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 	public fun createMetricSampler (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/MetricSampler;
 	public fun getControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink;
 	public fun supportsPaceMeasurement ()Z
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising$Companion;
+	public final fun close ()V
+	public final fun overrideActivity (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising$Companion {
+	public final fun create (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lkotlin/jvm/functions/Function0;Lkotlinx/coroutines/CoroutineScope;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising;
 }
 

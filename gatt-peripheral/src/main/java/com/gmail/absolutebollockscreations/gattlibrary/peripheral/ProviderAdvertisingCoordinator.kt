@@ -63,7 +63,7 @@ internal class ProviderAdvertisingCoordinator(
         val current = sink() ?: return
         try {
             Timber.tag(TAG).i("Stopping local advertising: %s", reason)
-            current.stop()
+            current.stopAdvertising()
         } catch (t: Throwable) {
             Timber.tag(TAG).w(t, "stopProviderAdvertising failed: %s", reason)
         }
