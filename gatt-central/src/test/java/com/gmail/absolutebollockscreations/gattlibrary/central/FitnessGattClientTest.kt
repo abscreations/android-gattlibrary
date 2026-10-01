@@ -329,6 +329,77 @@ class FitnessGattClientTest {
         client.close()
     }
 
+    @Test
+    fun `history follows engine appends one value per change and shares unchanged series`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        assertTrue(client.history.value.series(MetricSeriesKind.POWER_WATTS).isEmpty())
+
+        backend.state.appendPowerSample(180, tsMillis = 1_000L)
+        runCurrent()
+        val afterPower = client.history.value
+        assertEquals(listOf(1_000L to 180.0), afterPower.series(MetricSeriesKind.POWER_WATTS).pairsOf())
+
+        backend.state.appendHeartRateSample(140, tsMillis = 2_000L)
+        runCurrent()
+        val afterHr = client.history.value
+        assertEquals(listOf(2_000L to 140.0), afterHr.series(MetricSeriesKind.HEART_RATE).pairsOf())
+        // Appending heart rate leaves the power series equal, so a power chart does not redraw.
+        assertEquals(afterPower.series(MetricSeriesKind.POWER_WATTS), afterHr.series(MetricSeriesKind.POWER_WATTS))
+        // A view taken earlier is unchanged by later appends.
+        assertEquals(1, afterPower.series(MetricSeriesKind.POWER_WATTS).size)
+        assertTrue(afterPower.series(MetricSeriesKind.HEART_RATE).isEmpty())
+        client.close()
+    }
+
+    @Test
+    fun `clearing session data empties the client history and keeps the old view readable`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        backend.state.appendPowerSample(180, tsMillis = 1_000L)
+        runCurrent()
+        val before = client.history.value.series(MetricSeriesKind.POWER_WATTS)
+
+        backend.state.clearSessionData()
+        runCurrent()
+
+        assertTrue(client.history.value.series(MetricSeriesKind.POWER_WATTS).isEmpty())
+        assertEquals(1, before.size)
+        client.close()
+    }
+
+    @Test
+    fun `closing the client empties its history and stops following the engine`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        backend.state.appendPowerSample(150, tsMillis = 1_000L)
+        runCurrent()
+        assertEquals(1, client.history.value.series(MetricSeriesKind.POWER_WATTS).size)
+        client.close()
+        assertTrue(client.history.value.series(MetricSeriesKind.POWER_WATTS).isEmpty())
+        backend.state.appendPowerSample(160, tsMillis = 2_000L)
+        runCurrent()
+        assertTrue(client.history.value.series(MetricSeriesKind.POWER_WATTS).isEmpty())
+    }
+
+    @Test
+    fun `history does not wait for the client's own scope dispatcher`() = runTest {
+        val backend = Backend()
+        val stalledMain = StandardTestDispatcher()
+        val client = FitnessGattClient(
+            backend, CoroutineScope(stalledMain + SupervisorJob()),
+            measurementDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        runCurrent()
+        backend.state.appendPowerSample(222, tsMillis = 1_000L)
+        runCurrent()
+        assertEquals(1, client.history.value.series(MetricSeriesKind.POWER_WATTS).size)
+        client.close()
+    }
+
+    private fun HistorySeries.pairsOf() = List(size) { timeAt(it) to valueAt(it) }
+
     private fun TestScope.client(backend: Backend) = FitnessGattClient(
         backend, CoroutineScope(StandardTestDispatcher(testScheduler) + SupervisorJob()),
         measurementDispatcher = StandardTestDispatcher(testScheduler),

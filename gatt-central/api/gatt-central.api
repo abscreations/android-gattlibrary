@@ -2026,6 +2026,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun disconnect (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun getConnections ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getDiscovery ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getHistory ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMeasurements ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun startScan (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;

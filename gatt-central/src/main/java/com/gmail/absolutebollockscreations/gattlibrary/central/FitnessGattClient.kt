@@ -34,6 +34,14 @@ public class FitnessGattClient internal constructor(
 
     /** Fused metrics of the connected machine in canonical units; fields are null while absent (unit 4a). */
     public val measurements: StateFlow<MeasurementSnapshot> = mutableMeasurements.asStateFlow()
+    private val mutableHistory = MutableStateFlow(backend.state.history.value)
+
+    /**
+     * Every chart series recorded this session, one immutable [MeasurementHistory] per change. Views are
+     * O(1) to take and never change afterwards; collect it for graphs and read the series you need. A
+     * session start or reset replaces it with an empty history, and closing the client empties it.
+     */
+    public val history: StateFlow<MeasurementHistory> = mutableHistory.asStateFlow()
 
     init {
         scope.launch {
@@ -49,6 +57,12 @@ public class FitnessGattClient internal constructor(
             // StateFlow drops equal snapshots, so redundant engine pings cost one projection, not a re-emission.
             merge(*backend.state.measurementChanges().toTypedArray()).collect {
                 synchronized(lock) { if (!closed) mutableMeasurements.value = backend.state.toMeasurementSnapshot() }
+            }
+        }
+        scope.launch(measurementDispatcher) {
+            // The recorder already publishes one immutable history per change, so this only forwards it.
+            backend.state.history.collect { latest ->
+                synchronized(lock) { if (!closed) mutableHistory.value = latest }
             }
         }
     }
@@ -127,6 +141,7 @@ public class FitnessGattClient internal constructor(
             scope.cancel()
             mutableDiscovery.value = DiscoverySnapshot(false, false, emptyList(), null)
             mutableMeasurements.value = MeasurementSnapshot.EMPTY
+            mutableHistory.value = MeasurementHistory.EMPTY
             mutableConnections.value = ConnectionSnapshot(emptyList(), null, ConnectionStatus.DISCONNECTED, MachineProbeState.IDLE, false)
         }
     }
