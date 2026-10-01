@@ -231,6 +231,10 @@ public class FitnessGattClient internal constructor(
     public fun ensureBluetoothEnabled(activity: android.app.Activity): Unit =
         whenOpen { backend.config.ensureBluetoothEnabled(activity) }
 
+    /** The identity of the machine now (see [MachineIdentity]), or null when there is none. Null after [close]. */
+    public fun machineIdentity(): MachineIdentity? =
+        if (synchronized(lock) { closed }) null else backend.machineIdentity()
+
     /** Requests control of the machine. [CommandResult.Queued] means submitted, not that control was granted. */
     public fun requestControl(token: MachineToken): CommandResult = submit(token, MachineCommand.RequestControl)
 
@@ -447,6 +451,9 @@ internal interface CentralConnectionBackend {
 
     /** Settings and setup state the app pushes to or reads from the engine. */
     val config: CentralConfigBackend
+
+    /** Identity of the machine now, or null when there is no machine link and no advertisement-only machine. */
+    fun machineIdentity(): MachineIdentity?
 
     /** Open a workout session for [activity] on the machine at [machineAddress] (null for sensors only). */
     fun beginSession(activity: ActivityType, machineAddress: String?)

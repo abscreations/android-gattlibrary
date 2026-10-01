@@ -47,8 +47,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineUpstreamPort : com/gmail/absolutebollockscreations/gattlibrary/server/FtmsUpstreamPort {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;)V
-	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun connectedCentralAddresses ()Ljava/util/Set;
 	public fun createMetricSampler (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/MetricSampler;
 	public fun getControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink;
@@ -69,8 +69,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink {
+	public abstract fun connectedAddresses ()Ljava/util/Set;
 	public abstract fun getMachineConnected ()Z
 	public abstract fun getMachineToken ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;
+	public abstract fun machineIdentity ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineIdentity;
 	public abstract fun setIndoorBikeSimulation (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;FFFF)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public abstract fun setTargetInclinePercent (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public abstract fun setTargetPowerWatts (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;

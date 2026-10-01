@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import java.util.Locale
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
@@ -59,6 +60,35 @@ internal class EngineConnectionBackend(private val engine: BtEngine) : CentralCo
             engine.setKayakFirstDisplayConfiguration(configuration)
         override fun clearSessionData() = engine.clearSessionData()
         override fun ensureBluetoothEnabled(activity: Activity) = engine.ensureBluetoothEnabled(activity)
+    }
+
+    override fun machineIdentity(): MachineIdentity? {
+        val advertised = engine.state.activeAdvertisementMachine.value
+        val device = engine.state.gatt?.device
+        if (advertised == null && device == null) return null
+        val address = device?.let { runCatching { it.address }.getOrNull() }
+        val normalized = address?.trim()?.uppercase(Locale.US)
+        val scanName = normalized?.let { wanted ->
+            engine.state.discoveredDevices.value.values.firstOrNull {
+                it.address.trim().uppercase(Locale.US) == wanted
+            }?.name?.takeIf { it.isNotBlank() }
+        }
+        val platformName = device?.let {
+            try {
+                @Suppress("MissingPermission")
+                it.name?.takeIf { name -> name.isNotBlank() }
+            } catch (_: SecurityException) {
+                null
+            }
+        }
+        return MachineIdentity(
+            gattAddress = address,
+            advertisementLabel = advertised?.let { "${it.model} #${it.systemId}" },
+            scanName = scanName,
+            platformName = platformName,
+            serviceUuids = engine.state.currentMachineServiceUuids(),
+            advertisementCandidateId = advertised?.candidateId,
+        )
     }
 
     override fun beginSession(activity: ActivityType, machineAddress: String?) {

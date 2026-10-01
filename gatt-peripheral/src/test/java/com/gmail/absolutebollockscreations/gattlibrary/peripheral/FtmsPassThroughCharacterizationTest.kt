@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.ControlEvent
 import com.gmail.absolutebollockscreations.gattlibrary.central.CommandResult
+import com.gmail.absolutebollockscreations.gattlibrary.central.MachineIdentity
 import com.gmail.absolutebollockscreations.gattlibrary.central.RejectionReason
 import com.gmail.absolutebollockscreations.gattlibrary.central.applyFitnessMachineStatus
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,8 @@ class FtmsPassThroughCharacterizationTest {
 
         override val machineToken: UpstreamMachineRef = machine
         override val machineConnected: Boolean = true
+        override fun machineIdentity(): MachineIdentity? = null
+        override fun connectedAddresses(): Set<String> = emptySet()
 
         override fun startOrResume(token: UpstreamMachineRef): CommandResult { startCalls++; return startResult }
         override fun stopOrPause(token: UpstreamMachineRef): CommandResult { stopCalls++; return stopResult }

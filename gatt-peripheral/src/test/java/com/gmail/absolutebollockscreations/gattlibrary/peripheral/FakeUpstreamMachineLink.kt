@@ -33,6 +33,11 @@ internal class FakeUpstreamMachineLink : UpstreamMachineLink {
 
     fun refuse() { result = CommandResult.Rejected(RejectionReason.NOT_ACCEPTED) }
 
+    var identity: com.gmail.absolutebollockscreations.gattlibrary.central.MachineIdentity? = null
+    var addresses: Set<String> = emptySet()
+    override fun machineIdentity() = identity
+    override fun connectedAddresses() = addresses
+
     override fun startOrResume(token: UpstreamMachineRef) = record(token, "start")
     override fun stopOrPause(token: UpstreamMachineRef) = record(token, "stop")
     override fun setTargetSpeedKph(token: UpstreamMachineRef, kph: Float) = record(token, "speed=$kph")

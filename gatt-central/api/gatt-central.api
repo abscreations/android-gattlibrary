@@ -2157,6 +2157,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun getMachineToken ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMeasurements ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getSessionActive ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun machineIdentity ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineIdentity;
 	public final fun requestControl (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun setCscCalibration (II)V
@@ -3563,6 +3564,15 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Machi
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineIdentity {
+	public final fun getAdvertisementCandidateId ()Ljava/lang/String;
+	public final fun getAdvertisementLabel ()Ljava/lang/String;
+	public final fun getGattAddress ()Ljava/lang/String;
+	public final fun getPlatformName ()Ljava/lang/String;
+	public final fun getScanName ()Ljava/lang/String;
+	public final fun getServiceUuids ()Ljava/util/Set;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MachineKind : java/lang/Enum {

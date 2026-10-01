@@ -1,9 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.CommandResult
 import com.gmail.absolutebollockscreations.gattlibrary.central.RejectionReason
 import com.gmail.absolutebollockscreations.gattlibrary.central.DeviceCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.central.MachineIdentity
 import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.server.FtmsMetricStore
@@ -13,7 +13,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamControlSin
 
 /** Bridge implementation of [FtmsUpstreamPort] over the central engine (moves off central in L24). */
 class EngineUpstreamPort(
-    private val engineState: BtEngineState,
     /** Live read of the public client's measurements (`client.measurements.value`). */
     private val measurements: () -> MeasurementSnapshot,
     /** Live read of the public client capabilities (`client.capabilities.value`). */
@@ -27,8 +26,9 @@ class EngineUpstreamPort(
 
     override val controlSink: UpstreamControlSink = ClientFtmsControlSink(machine ?: NoUpstreamMachine)
 
-    override fun connectedCentralAddresses(): Set<String> =
-        engineState.connectedDevices.value.mapTo(mutableSetOf()) { it.address.lowercase() }
+    private val link: UpstreamMachineLink = machine ?: NoUpstreamMachine
+
+    override fun connectedCentralAddresses(): Set<String> = link.connectedAddresses()
 
     override fun supportsPaceMeasurement(): Boolean = capabilities().supportsPaceMeasurement
 
@@ -42,6 +42,8 @@ class EngineUpstreamPort(
 internal object NoUpstreamMachine : UpstreamMachineLink {
     private val refused = CommandResult.Rejected(RejectionReason.NOT_ACCEPTED)
     override val machineToken: UpstreamMachineRef? = null
+    override fun machineIdentity(): MachineIdentity? = null
+    override fun connectedAddresses(): Set<String> = emptySet()
     override val machineConnected: Boolean = false
     override fun startOrResume(token: UpstreamMachineRef) = refused
     override fun stopOrPause(token: UpstreamMachineRef) = refused

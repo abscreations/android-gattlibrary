@@ -592,6 +592,21 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `the machine identity is read live from the backend and is null after close`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        assertNull(client.machineIdentity())
+
+        val identity = MachineIdentity("AA:BB", null, "Bike", null, emptySet(), null)
+        backend.identity = identity
+        assertSame(identity, client.machineIdentity())
+
+        client.close()
+        assertNull(client.machineIdentity())
+    }
+
+    @Test
     fun `control events reach a collector in order including equal repeats, and end after close`() = runTest {
         val backend = Backend()
         val client = client(backend)
@@ -690,6 +705,8 @@ class FitnessGattClientTest {
             return acceptCommands
         }
         val sessionCalls = mutableListOf<String>()
+        var identity: MachineIdentity? = null
+        override fun machineIdentity() = identity
         val configCalls = mutableListOf<String>()
         val lifeFitnessPrompt = MutableStateFlow(emptyList<LifeFitnessProfileField>())
         override val config = object : CentralConfigBackend {

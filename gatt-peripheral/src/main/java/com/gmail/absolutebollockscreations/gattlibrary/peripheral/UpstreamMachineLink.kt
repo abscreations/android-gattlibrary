@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 import com.gmail.absolutebollockscreations.gattlibrary.central.CommandResult
 import com.gmail.absolutebollockscreations.gattlibrary.central.ConnectionStatus
 import com.gmail.absolutebollockscreations.gattlibrary.central.FitnessGattClient
+import com.gmail.absolutebollockscreations.gattlibrary.central.MachineIdentity
 import com.gmail.absolutebollockscreations.gattlibrary.central.MachineToken
 
 /**
@@ -28,6 +29,12 @@ public interface UpstreamMachineLink {
     /** True only while the machine's control link is up (an advertisement-only machine is not). */
     public val machineConnected: Boolean
 
+    /** The machine now, for naming the bridge and choosing its measurement set; null when there is none. */
+    public fun machineIdentity(): MachineIdentity?
+
+    /** Addresses of every connected central-role link, lower-cased: machine and sensors. */
+    public fun connectedAddresses(): Set<String>
+
     public fun startOrResume(token: UpstreamMachineRef): CommandResult
     public fun stopOrPause(token: UpstreamMachineRef): CommandResult
     public fun setTargetSpeedKph(token: UpstreamMachineRef, kph: Float): CommandResult
@@ -50,6 +57,10 @@ public fun FitnessGattClient.asUpstreamMachineLink(): UpstreamMachineLink {
         override val machineToken: UpstreamMachineRef? get() = client.machineToken.value?.let(::UpstreamMachineRef)
         override val machineConnected: Boolean
             get() = client.connections.value.machineStatus == ConnectionStatus.CONNECTED
+
+        override fun machineIdentity() = client.machineIdentity()
+        override fun connectedAddresses(): Set<String> =
+            client.connections.value.links.mapTo(mutableSetOf()) { it.address.lowercase() }
 
         override fun startOrResume(token: UpstreamMachineRef) = client.startOrResume(token.native())
         override fun stopOrPause(token: UpstreamMachineRef) = client.stopOrPause(token.native())
