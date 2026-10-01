@@ -1576,6 +1576,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Devic
 	public final fun getNONE ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilitiesKt {
+	public static final fun toDeviceCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;Z)Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle {
 }
 

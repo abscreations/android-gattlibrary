@@ -1,3 +1,7 @@
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/DeviceTargetCapabilitiesKt {
+	public static final fun fromDeviceCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineFtmsControlSink : com/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink {
 	public fun <init> (Lkotlin/jvm/functions/Function0;)V
 	public fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;)V
@@ -38,8 +42,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineUpstreamPort : com/gmail/absolutebollockscreations/gattlibrary/server/FtmsUpstreamPort {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;)V
-	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;)V
+	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun connectedCentralAddresses ()Ljava/util/Set;
 	public fun createMetricSampler (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/MetricSampler;
 	public fun getControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink;

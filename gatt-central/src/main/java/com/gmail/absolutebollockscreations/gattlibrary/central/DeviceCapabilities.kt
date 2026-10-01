@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState.FtmsCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 /** An inclusive range a machine accepts for one target, with the smallest step it honours. */
 public data class ControlRange(val min: Float, val max: Float, val step: Float)
@@ -51,8 +52,14 @@ private fun range(known: Boolean, min: Float?, max: Float?, step: Float?, rawPer
     return ControlRange(min / rawPerUnit, max / rawPerUnit, (step ?: 0f) / rawPerUnit)
 }
 
-/** Canonical view of a raw-unit snapshot. [paceMeasurement] is carried by engine state, not the snapshot. */
-internal fun FtmsCapabilities.toDeviceCapabilities(paceMeasurement: Boolean): DeviceCapabilities =
+/**
+ * Canonical view of a raw-unit snapshot. [paceMeasurement] is carried by engine state, not the snapshot.
+ *
+ * Transitional: public only so the bridge tests can compare the raw and canonical paths while
+ * the peripheral still consumes the raw snapshot. It leaves with the raw snapshot (plan step 6).
+ */
+@GattLibraryInternalApi
+public fun FtmsCapabilities.toDeviceCapabilities(paceMeasurement: Boolean): DeviceCapabilities =
     DeviceCapabilities(
         featuresRead = featuresRead,
         supportsSpeedTarget = supportsSpeed,

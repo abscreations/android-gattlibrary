@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import android.bluetooth.BluetoothProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
+import com.gmail.absolutebollockscreations.gattlibrary.central.DeviceCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.central.LegacyConnectionRole
 import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
 import org.junit.Assert.assertEquals
@@ -14,13 +15,13 @@ class EngineUpstreamPortCharacterizationTest {
 
     @Test
     fun `no central connections means no addresses`() {
-        assertTrue(EngineUpstreamPort(BtEngineState(), { MeasurementSnapshot.EMPTY }).connectedCentralAddresses().isEmpty())
+        assertTrue(EngineUpstreamPort(BtEngineState(), { MeasurementSnapshot.EMPTY }, { DeviceCapabilities.NONE }).connectedCentralAddresses().isEmpty())
     }
 
     @Test
     fun `connected central addresses are reported lower-cased and read live`() {
         val state = BtEngineState()
-        val port = EngineUpstreamPort(state, { MeasurementSnapshot.EMPTY })
+        val port = EngineUpstreamPort(state, { MeasurementSnapshot.EMPTY }, { DeviceCapabilities.NONE })
 
         val ctx = state.openConnectionContext(
             role = LegacyConnectionRole.HRM,
@@ -33,17 +34,17 @@ class EngineUpstreamPortCharacterizationTest {
     }
 
     @Test
-    fun `pace support is read from the engine each call`() {
-        val state = BtEngineState()
-        val port = EngineUpstreamPort(state, { MeasurementSnapshot.EMPTY })
+    fun `pace support is read from the published capabilities each call`() {
+        var published = DeviceCapabilities.NONE
+        val port = EngineUpstreamPort(BtEngineState(), { MeasurementSnapshot.EMPTY }, { published })
         assertFalse(port.supportsPaceMeasurement())
-        state.supportsPaceMeasurement = true
+        published = DeviceCapabilities(supportsPaceMeasurement = true)
         assertTrue(port.supportsPaceMeasurement())
     }
 
     @Test
     fun `the control sink is bound to the engine provider and is inert without one`() {
-        val port = EngineUpstreamPort(BtEngineState(), { MeasurementSnapshot.EMPTY })
+        val port = EngineUpstreamPort(BtEngineState(), { MeasurementSnapshot.EMPTY }, { DeviceCapabilities.NONE })
         assertFalse(port.controlSink.canControl)
         assertTrue(port.controlSink.requestControl())
         assertFalse(port.controlSink.setTargetSpeedKph(10.0))
