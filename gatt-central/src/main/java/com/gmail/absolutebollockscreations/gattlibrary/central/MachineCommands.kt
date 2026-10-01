@@ -63,3 +63,11 @@ internal sealed interface MachineCommand {
         val windResistanceCoefficient: Float,
     ) : MachineCommand
 }
+
+/**
+ * A machine that runs its own session (Kayak First) has no remote start or stop, so those two
+ * commands are accepted without being sent. Targets are never terminated locally: they go to the
+ * machine's control path, which refuses what the machine cannot do.
+ */
+internal fun MachineCommand.terminatesLocallyOn(machineRunsOwnSession: Boolean): Boolean =
+    machineRunsOwnSession && (this === MachineCommand.StartOrResume || this === MachineCommand.StopOrPause)

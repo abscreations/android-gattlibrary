@@ -1,5 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
+import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
+import com.gmail.absolutebollockscreations.gattlibrary.central.DeviceCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.simulator.FtmsMockControlProfile
 
@@ -238,7 +241,7 @@ class FtmsControlPointTest {
 
     @Test
     fun `engine pass through declares asynchronous status and strict range validation`() {
-        val passThrough = EngineFtmsControlSink { null }
+        val passThrough = EngineUpstreamPort(BtEngineState(), { MeasurementSnapshot.EMPTY }, { DeviceCapabilities.NONE }).controlSink
         assertTrue(passThrough.reportsTargetChangesAsynchronously)
         assertTrue(!passThrough.clampsTargetsToAdvertisedRange)
 

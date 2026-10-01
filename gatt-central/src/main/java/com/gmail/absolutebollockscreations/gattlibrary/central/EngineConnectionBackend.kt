@@ -37,6 +37,7 @@ internal class EngineConnectionBackend(private val engine: BtEngine) : CentralCo
     override fun currentMachineKey(): Any? = engine.currentMachineKey()
     override fun submit(expectedKey: Any, command: MachineCommand): Boolean? {
         if (engine.currentMachineKey() != expectedKey) return null
+        if (command.terminatesLocallyOn(engine.hasSelectedKayakFirstAdapter())) return true
         return when (command) {
             MachineCommand.StartOrResume -> engine.startOrResume()
             MachineCommand.StopOrPause -> engine.stopOrPause()

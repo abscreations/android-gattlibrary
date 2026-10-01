@@ -3,12 +3,8 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 	public abstract fun stopAdvertising ()V
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/DeviceTargetCapabilitiesKt {
-	public static final fun fromDeviceCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineFtmsControlSink : com/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink {
-	public fun <init> (Lkotlin/jvm/functions/Function0;)V
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/ClientFtmsControlSink : com/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;)V
 	public fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;)V
 	public fun endSession ()V
 	public fun getCanControl ()Z
@@ -26,6 +22,10 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 	public fun setWheelCircumferenceMm (D)Z
 	public fun startOrResume ()Z
 	public fun stopOrPause (Z)Z
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/DeviceTargetCapabilitiesKt {
+	public static final fun fromDeviceCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump : com/gmail/absolutebollockscreations/gattlibrary/server/MetricSampler {
@@ -47,8 +47,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineUpstreamPort : com/gmail/absolutebollockscreations/gattlibrary/server/FtmsUpstreamPort {
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;)V
-	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;)V
+	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun connectedCentralAddresses ()Ljava/util/Set;
 	public fun createMetricSampler (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/MetricSampler;
 	public fun getControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/server/UpstreamControlSink;
@@ -66,5 +66,28 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/Ft
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising$Companion {
 	public final fun create (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lkotlin/jvm/functions/Function0;Lkotlinx/coroutines/CoroutineScope;Z)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising;
 	public static synthetic fun create$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lkotlin/jvm/functions/Function0;Lkotlinx/coroutines/CoroutineScope;ZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising;
+}
+
+public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink {
+	public abstract fun getMachineConnected ()Z
+	public abstract fun getMachineToken ()Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;
+	public abstract fun setIndoorBikeSimulation (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;FFFF)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public abstract fun setTargetInclinePercent (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public abstract fun setTargetPowerWatts (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public abstract fun setTargetResistanceLevel (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public abstract fun setTargetSpeedKph (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public abstract fun setWheelCircumferenceMm (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public abstract fun startOrResume (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public abstract fun stopOrPause (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLinkKt {
+	public static final fun asUpstreamMachineLink (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineLink;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/UpstreamMachineRef {
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 

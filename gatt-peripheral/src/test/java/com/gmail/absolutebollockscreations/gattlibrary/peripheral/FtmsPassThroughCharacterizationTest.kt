@@ -2,7 +2,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.ControlEvent
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade
+import com.gmail.absolutebollockscreations.gattlibrary.central.CommandResult
+import com.gmail.absolutebollockscreations.gattlibrary.central.RejectionReason
 import com.gmail.absolutebollockscreations.gattlibrary.central.applyFitnessMachineStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -21,48 +22,45 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 
 class FtmsPassThroughCharacterizationTest {
 
-    private class RecordingEngineFacade : BtServiceEngineFacade {
-        override val isFtmsConnected: Boolean = true
-        override val engineState = BtEngineState()
-        override var handlesDownstreamSessionTransitionsLocally: Boolean = false
+    /**
+     * A connected machine whose session transitions answer [startResult] / [stopResult]. Kayak First
+     * accepts Start/Stop inside the central client, so to the sink it is a machine that answers Queued.
+     */
+    private class RecordingLink(
+        private val startResult: CommandResult = CommandResult.Rejected(RejectionReason.NOT_ACCEPTED),
+        private val stopResult: CommandResult = CommandResult.Rejected(RejectionReason.NOT_ACCEPTED),
+    ) : UpstreamMachineLink {
+        private val machine = UpstreamMachineRef("machine")
         var requestedSpeedKph: Float? = null
         var startCalls = 0
         var stopCalls = 0
 
-        override fun buildSupportedSpeedRange() = ByteArray(0)
-        override fun buildSupportedInclineRange() = ByteArray(0)
-        override fun buildSupportedResistanceRange() = ByteArray(0)
-        override fun buildSupportedHeartRateRange() = ByteArray(0)
-        override fun buildSupportedPowerRange() = ByteArray(0)
-        override fun startOrResume(): Boolean {
-            startCalls++
-            return false
-        }
-        override fun stopOrPause(): Boolean {
-            stopCalls++
-            return false
-        }
-        override fun setTargetSpeedKph(kph: Float): Boolean {
+        override val machineToken: UpstreamMachineRef = machine
+        override val machineConnected: Boolean = true
+
+        override fun startOrResume(token: UpstreamMachineRef): CommandResult { startCalls++; return startResult }
+        override fun stopOrPause(token: UpstreamMachineRef): CommandResult { stopCalls++; return stopResult }
+        override fun setTargetSpeedKph(token: UpstreamMachineRef, kph: Float): CommandResult {
             requestedSpeedKph = kph
-            return true
+            return CommandResult.Queued
         }
-        override fun setTargetInclinationPercent(percent: Float) = true
-        override fun setTargetResistance(level: Float) = true
-        override fun setTargetPowerWatts(watts: Int) = true
+        override fun setTargetInclinePercent(token: UpstreamMachineRef, percent: Float) = CommandResult.Queued
+        override fun setTargetResistanceLevel(token: UpstreamMachineRef, level: Float) = CommandResult.Queued
+        override fun setTargetPowerWatts(token: UpstreamMachineRef, watts: Int) = CommandResult.Queued
+        override fun setWheelCircumferenceMm(token: UpstreamMachineRef, millimetres: Float) = CommandResult.Queued
         override fun setIndoorBikeSimulation(
+            token: UpstreamMachineRef,
             windSpeedMps: Float,
             gradePercent: Float,
             rollingResistanceCoefficient: Float,
             windResistanceCoefficient: Float,
-        ) = true
+        ) = CommandResult.Queued
     }
 
     @Test
-    fun `measurement-only Kayak First session transitions terminate locally without opening targets`() {
-        val upstream = RecordingEngineFacade().apply {
-            handlesDownstreamSessionTransitionsLocally = true
-        }
-        val sink = EngineFtmsControlSink { upstream }
+    fun `measurement-only Kayak First session transitions succeed without opening targets`() {
+        val upstream = RecordingLink(startResult = CommandResult.Queued, stopResult = CommandResult.Queued)
+        val sink = ClientFtmsControlSink(upstream).apply { beginSession(TargetCapabilities.NONE) }
         val handler = FtmsControlPointHandler(sink)
         val session = FtmsProcedureSession()
 
@@ -78,8 +76,6 @@ class FtmsPassThroughCharacterizationTest {
             FtmsSpec.Result.SUCCESS,
             handler.handle(byteArrayOf(FtmsSpec.Opcode.STOP_PAUSE, 0x01), session).response[2],
         )
-        assertEquals(0, upstream.startCalls)
-        assertEquals(0, upstream.stopCalls)
         assertFalse(sink.targetCapabilities.any)
         assertEquals(
             FtmsSpec.Result.OPCODE_NOT_SUPPORTED,
@@ -93,9 +89,10 @@ class FtmsPassThroughCharacterizationTest {
 
     @Test
     fun `connected pass-through still propagates upstream session failure`() {
-        val upstream = RecordingEngineFacade()
+        val upstream = RecordingLink()
         val session = FtmsProcedureSession().apply { hasControl = true }
-        val outcome = FtmsControlPointHandler(EngineFtmsControlSink { upstream })
+        val sink = ClientFtmsControlSink(upstream).apply { beginSession(TargetCapabilities.NONE) }
+        val outcome = FtmsControlPointHandler(sink)
             .handle(byteArrayOf(FtmsSpec.Opcode.START_RESUME), session)
 
         assertEquals(FtmsSpec.Result.OPERATION_FAILED, outcome.response[2])
@@ -126,8 +123,9 @@ class FtmsPassThroughCharacterizationTest {
 
     @Test
     fun `downstream target writes upstream and status waits for upstream 2ADA`() {
-        val upstream = RecordingEngineFacade()
-        val passThrough = EngineFtmsControlSink { upstream }.apply {
+        val upstream = RecordingLink()
+        val engineState = BtEngineState()
+        val passThrough = ClientFtmsControlSink(upstream).apply {
             beginSession(
                 TargetCapabilities(
                     speed = true,
@@ -151,15 +149,15 @@ class FtmsPassThroughCharacterizationTest {
         assertEquals(12.34f, upstream.requestedSpeedKph!!, 0.001f)
         assertNull("pass-through must not publish optimistic status", outcome.status)
 
-        val downstreamStatus = RecordingStatusSink(upstream.engineState)
+        val downstreamStatus = RecordingStatusSink(engineState)
         assertNull(downstreamStatus.targetSpeedKph)
 
         applyFitnessMachineStatus(
-            upstream.engineState,
+            engineState,
             byteArrayOf(FtmsSpec.Status.TARGET_SPEED_CHANGED, 0xD2.toByte(), 0x04),
         )
 
-        assertEquals(12.34f, upstream.engineState.targetSpeedKmh.value!!, 0.001f)
+        assertEquals(12.34f, engineState.targetSpeedKmh.value!!, 0.001f)
         assertEquals(12.34f, downstreamStatus.targetSpeedKph!!, 0.001f)
     }
 
