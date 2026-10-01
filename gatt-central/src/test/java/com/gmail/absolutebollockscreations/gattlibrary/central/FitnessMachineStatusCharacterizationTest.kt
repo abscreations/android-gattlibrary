@@ -1,26 +1,37 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
-import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pins what a Fitness Machine Status (0x2ADA) does to engine state and to the control sink today (LIB-47, step 1
- * of unit 4b), before the sink becomes the public `controlEvents` stream. The status callbacks are momentary
- * mirrors for downstream FTMS clients, so the cases that matter most are the ones a state flow would get wrong:
- * equal repeats still call the sink, and engine state is updated before the sink is called.
- *
- * `FitnessMachineStatusEventTest` (step 3) must keep the same assertions against the event stream.
+ * What a Fitness Machine Status (0x2ADA) does to engine state and to the `controlEvents` stream. Written in LIB-47
+ * (step 1 of unit 4b) against the old sink callbacks, and moved to the event stream in step 3 with every
+ * expectation unchanged. The events are momentary mirrors for downstream FTMS clients, so the cases that matter
+ * most are the ones a state flow would get wrong: equal repeats still emit, and engine state is updated before the
+ * event is emitted. The collector is unconfined, so it records the state visible at the moment of emission.
  */
 class FitnessMachineStatusCharacterizationTest {
     private val state = BtEngineState()
-    private val sink = RecordingSink(state)
+    private val sink = RecordingCollector(state)
+    private val scope = CoroutineScope(Dispatchers.Unconfined)
 
-    private fun apply(vararg bytes: Int, to: BtServiceControlSink? = sink) =
-        applyFitnessMachineStatus(state, to, ByteArray(bytes.size) { bytes[it].toByte() })
+    init {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) { state.controlEvents.collect { sink.record(it) } }
+    }
+
+    @After fun stopCollecting() = scope.cancel()
+
+    private fun apply(vararg bytes: Int) =
+        applyFitnessMachineStatus(state, ByteArray(bytes.size) { bytes[it].toByte() })
 
     private fun status(code: Byte, vararg payload: Int): IntArray =
         intArrayOf(code.toInt() and 0xFF, *payload)
@@ -151,28 +162,47 @@ class FitnessMachineStatusCharacterizationTest {
         assertTrue(sink.events.isEmpty())
     }
 
-    @Test fun `without a sink the state is still updated`() {
-        apply(*status(FtmsSpec.Status.TARGET_POWER_CHANGED, 0xC8, 0x00), to = null)
-        apply(*status(FtmsSpec.Status.STOPPED_BY_SAFETY_KEY), to = null)
+    @Test fun `without a collector the state is still updated and nothing is replayed to a late one`() {
+        val lonely = BtEngineState()
+        applyFitnessMachineStatus(lonely, byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED, 0xC8.toByte(), 0x00))
+        applyFitnessMachineStatus(lonely, byteArrayOf(FtmsSpec.Status.STOPPED_BY_SAFETY_KEY))
+        assertEquals(200, lonely.targetPowerWatts.value)
+        assertTrue(lonely.safetyKeyEngaged.value)
 
-        assertEquals(200, state.targetPowerWatts.value)
-        assertTrue(state.safetyKeyEngaged.value)
+        val late = RecordingCollector(lonely)
+        val lateScope = CoroutineScope(Dispatchers.Unconfined)
+        lateScope.launch(start = CoroutineStart.UNDISPATCHED) { lonely.controlEvents.collect { late.record(it) } }
+        assertTrue(late.events.isEmpty())
+        lateScope.cancel()
     }
 
-    /** Records each callback with the engine state visible at that moment. */
-    private class RecordingSink(private val state: BtEngineState) : BtServiceControlSink {
+    @Test fun `a burst larger than the buffer drops the oldest events and never blocks the engine`() {
+        val slow = BtEngineState()
+        val seen = mutableListOf<ControlEvent>()
+        // No collector is running, so every emission goes to a buffer with nobody to read it.
+        repeat(1_000) { slow.emitControlEvent(ControlEvent.TargetPowerWatts(it)) }
+        val scope2 = CoroutineScope(Dispatchers.Unconfined)
+        scope2.launch(start = CoroutineStart.UNDISPATCHED) { slow.controlEvents.collect { seen += it } }
+        slow.emitControlEvent(ControlEvent.TargetPowerWatts(1_000))
+        assertEquals(listOf<ControlEvent>(ControlEvent.TargetPowerWatts(1_000)), seen)
+        scope2.cancel()
+    }
+
+    /** Records each event with the engine state visible at that moment. */
+    private class RecordingCollector(private val state: BtEngineState) {
         val events = mutableListOf<String>()
 
-        override fun startAdvertisingFtms(ftmsType: FtmsMachineProfile, capabilities: BtEngineState.FtmsCapabilities) = true
-        override fun startAdvertisingCscCps() = Unit
-        override fun stopAdvertising() = Unit
-        override fun setNotifyIntervalMs(intervalMs: Long) = Unit
-        override fun onControlPermissionLost() { events += "controlLost haveControl=${state.haveControlFlow.value}" }
-        override fun onSafetyKeyPulled() { events += "safetyKey engaged=${state.safetyKeyEngaged.value}" }
-        override fun onTargetSpeedChangedKmh(kmh: Float) { events += "speed $kmh state=${state.targetSpeedKmh.value}" }
-        override fun onTargetInclineChangedPercent(percent: Float) { events += "incline $percent state=${state.targetInclinePercent.value}" }
-        override fun onTargetResistanceLevelChanged(level: Float) { events += "resistance $level state=${state.targetResistanceLevel.value}" }
-        override fun onTargetPowerChangedWatts(watts: Int) { events += "power $watts state=${state.targetPowerWatts.value}" }
-        override fun onTargetHeartRateChangedBpm(bpm: Int) { events += "hr $bpm state=${state.targetHeartRateBpm.value}" }
+        fun record(event: ControlEvent) {
+            events += when (event) {
+                ControlEvent.ControlPermissionLost -> "controlLost haveControl=${state.haveControlFlow.value}"
+                ControlEvent.SafetyKeyPulled -> "safetyKey engaged=${state.safetyKeyEngaged.value}"
+                is ControlEvent.TargetSpeedKph -> "speed ${event.kph} state=${state.targetSpeedKmh.value}"
+                is ControlEvent.TargetInclinePercent -> "incline ${event.percent} state=${state.targetInclinePercent.value}"
+                is ControlEvent.TargetResistanceLevel -> "resistance ${event.level} state=${state.targetResistanceLevel.value}"
+                is ControlEvent.TargetPowerWatts -> "power ${event.watts} state=${state.targetPowerWatts.value}"
+                is ControlEvent.TargetHeartRateBpm -> "hr ${event.bpm} state=${state.targetHeartRateBpm.value}"
+                is ControlEvent.WheelCircumferenceMm -> "wheel ${event.millimetres}"
+            }
+        }
     }
 }

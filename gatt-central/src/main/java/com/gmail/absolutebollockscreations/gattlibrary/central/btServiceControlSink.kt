@@ -137,90 +137,8 @@ interface BtServiceControlSink {
      */
     fun setNotifyIntervalMs(intervalMs: Long)
 
-    // ─────────────────────────────────────────────────────────────
-    // FTMS status / control events (engine → service)
-    // ─────────────────────────────────────────────────────────────
-
-    /**
-     * Called when the upstream FTMS device indicates that control is no longer
-     * permitted (e.g. via CP result code or Fitness Machine Status 0xFF).
-     *
-     * Typical implementation on the service side:
-     *  • Emit an FTMS Fitness Machine Status notification with
-     *    [FtmsSpec.Status.CONTROL_PERMISSION_LOST] to all connected clients.
-     *  • Optionally clear any local notion of “have control”.
-     */
-    fun onControlPermissionLost()
-
-    /**
-     * Called when the upstream FTMS device reports that the safety key / tether
-     * has been pulled, or an emergency stop has occurred.
-     *
-     * Typical implementation on the service side:
-     *  • Emit an FTMS Fitness Machine Status notification with
-     *    [FtmsSpec.Status.STOPPED_BY_SAFETY_KEY].*
-     *  • Optionally stop any simulated motion / timers.
-     */
-    fun onSafetyKeyPulled()
-
-    /**
-     * Called when the upstream FTMS device reports that the target speed has
-     * changed (via Fitness Machine Status 0x05).
-     *
-     * @param kmh New target speed in km/h (already decoded from 0.01 km/h units).
-     *
-     * Typical implementation:
-     *  • Emit STATUS_TARGET_SPEED_CHANGED with the encoded UInt16 parameter.
-     *  • Update any local mirror of target speed if maintained.
-     */
-    fun onTargetSpeedChangedKmh(kmh: Float)
-
-    /**
-     * Called when the upstream FTMS device reports that the target incline has
-     * changed (via Fitness Machine Status 0x06).
-     *
-     * @param percent New target incline in percent grade (already decoded from 0.1 % units).
-     *
-     * Typical implementation:
-     *  • Emit STATUS_TARGET_INCLINE_CHANGED with the encoded SInt16 parameter.
-     */
-    fun onTargetInclineChangedPercent(percent: Float)
-
-    /**
-     * Called when the upstream FTMS device reports that the target resistance
-     * level has changed (via Fitness Machine Status 0x07).
-     *
-     * @param level New target resistance, unitless, in 0.1 resolution (already scaled).
-     *
-     * Typical implementation:
-     *  • Emit STATUS_TARGET_RESISTANCE_LEVEL_CHANGED with the encoded UINT8 parameter.
-     */
-    fun onTargetResistanceLevelChanged(level: Float)
-
-    /**
-     * Called when the upstream FTMS device reports that the target power has
-     * changed (via Fitness Machine Status 0x08).
-     *
-     * @param watts New target power in watts.
-     *
-     * Typical implementation:
-     *  • Emit STATUS_TARGET_POWER_CHANGED with the encoded SInt16 parameter.
-     */
-    fun onTargetPowerChangedWatts(watts: Int)
-
-    /** Accepted FTMS 0x12 / KICKR 0x48 value, in millimetres. */
-    fun onWheelCircumferenceChangedMm(millimetres: Double) {}
-
-    /**
-     * Called when the upstream FTMS device reports that the target heart rate
-     * has changed (via Fitness Machine Status 0x09).
-     *
-     * @param bpm New target heart rate in beats per minute.
-     *
-     * Typical implementation:
-     *  • Emit STATUS_TARGET_HEART_RATE_CHANGED with the encoded UINT8 parameter.
-     */
-    fun onTargetHeartRateChangedBpm(bpm: Int)
+    // Machine status and control events no longer travel through this interface: they are
+    // published as [ControlEvent] on `FitnessGattClient.controlEvents`.
 }
 
 /**
@@ -267,46 +185,6 @@ internal class LoggingBtServiceControlSink(
     override fun setNotifyIntervalMs(intervalMs: Long) {
         Timber.tag(tag).d("setNotifyIntervalMs(intervalMs=%d)", intervalMs)
         delegate.setNotifyIntervalMs(intervalMs)
-    }
-
-    override fun onControlPermissionLost() {
-        Timber.tag(tag).d("onControlPermissionLost()")
-        delegate.onControlPermissionLost()
-    }
-
-    override fun onSafetyKeyPulled() {
-        Timber.tag(tag).d("onSafetyKeyPulled()")
-        delegate.onSafetyKeyPulled()
-    }
-
-    override fun onTargetSpeedChangedKmh(kmh: Float) {
-        Timber.tag(tag).d("onTargetSpeedChangedKmh(kmh=%.2f)", kmh)
-        delegate.onTargetSpeedChangedKmh(kmh)
-    }
-
-    override fun onTargetInclineChangedPercent(percent: Float) {
-        Timber.tag(tag).d("onTargetInclineChangedPercent(percent=%.2f)", percent)
-        delegate.onTargetInclineChangedPercent(percent)
-    }
-
-    override fun onTargetResistanceLevelChanged(level: Float) {
-        Timber.tag(tag).d("onTargetResistanceLevelChanged(level=%.2f)", level)
-        delegate.onTargetResistanceLevelChanged(level)
-    }
-
-    override fun onTargetPowerChangedWatts(watts: Int) {
-        Timber.tag(tag).d("onTargetPowerChangedWatts(watts=%d)", watts)
-        delegate.onTargetPowerChangedWatts(watts)
-    }
-
-    override fun onWheelCircumferenceChangedMm(millimetres: Double) {
-        Timber.tag(tag).d("onWheelCircumferenceChangedMm(millimetres=%.1f)", millimetres)
-        delegate.onWheelCircumferenceChangedMm(millimetres)
-    }
-
-    override fun onTargetHeartRateChangedBpm(bpm: Int) {
-        Timber.tag(tag).d("onTargetHeartRateChangedBpm(bpm=%d)", bpm)
-        delegate.onTargetHeartRateChangedBpm(bpm)
     }
 }
 

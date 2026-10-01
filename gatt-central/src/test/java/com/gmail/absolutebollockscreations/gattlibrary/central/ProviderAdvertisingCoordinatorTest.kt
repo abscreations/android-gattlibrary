@@ -50,13 +50,6 @@ class ProviderAdvertisingCoordinatorTest {
         }
 
         override fun setNotifyIntervalMs(intervalMs: Long) = Unit
-        override fun onControlPermissionLost() = Unit
-        override fun onSafetyKeyPulled() = Unit
-        override fun onTargetSpeedChangedKmh(kmh: Float) = Unit
-        override fun onTargetInclineChangedPercent(percent: Float) = Unit
-        override fun onTargetResistanceLevelChanged(level: Float) = Unit
-        override fun onTargetPowerChangedWatts(watts: Int) = Unit
-        override fun onTargetHeartRateChangedBpm(bpm: Int) = Unit
     }
 
     /** Mutable inputs the coordinator reads, standing in for the engine. */

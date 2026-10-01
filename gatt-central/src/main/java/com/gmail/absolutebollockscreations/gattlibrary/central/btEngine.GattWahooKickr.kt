@@ -143,7 +143,7 @@ internal class WahooKickrProtocolHandler : BtEngineGattCore.ProtocolHandler {
                         engine.state.connectionRegistry.contextFor(context.connectionId) === context
                     ) {
                         engine.acceptWheelCircumference(command.millimetres)
-                        engine.serviceControlSink?.onWheelCircumferenceChangedMm(command.millimetres)
+                        engine.state.emitControlEvent(ControlEvent.WheelCircumferenceMm(command.millimetres))
                     }
                 },
                 onUnrecognizedResponse = { response ->

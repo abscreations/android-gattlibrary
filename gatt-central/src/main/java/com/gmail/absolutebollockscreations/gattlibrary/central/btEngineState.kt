@@ -37,7 +37,10 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanResult
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.util.UUID
@@ -75,6 +78,9 @@ class BtEngineState : HrmStateSink {
     /* ───────────────────────────── types & constants ───────────────────────────── */
 
     companion object {
+        /** Control events held for a slow collector before the oldest are dropped. */
+        private const val CONTROL_EVENT_BUFFER = 64
+
         internal const val TAG = "BtEngine"
     }
 
@@ -444,6 +450,22 @@ class BtEngineState : HrmStateSink {
 
     internal val connectionRegistry = ConnectionRegistry().also {
         it.changeListener = { refreshDeviceCapabilities() }
+    }
+
+    /* ───────────────────────────── control events (unit 4b) ───────────────────────────── */
+
+    private val _controlEvents = MutableSharedFlow<ControlEvent>(
+        replay = 0,
+        extraBufferCapacity = CONTROL_EVENT_BUFFER,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** See [ControlEvent]. No replay; a collector that falls far behind loses the oldest events. */
+    val controlEvents: SharedFlow<ControlEvent> = _controlEvents
+
+    /** Never suspends and never fails: with `DROP_OLDEST` a full buffer discards its oldest event. */
+    internal fun emitControlEvent(event: ControlEvent) {
+        _controlEvents.tryEmit(event)
     }
 
     /* ───────────────────────────── public capabilities (unit 4b) ───────────────────────────── */

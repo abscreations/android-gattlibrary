@@ -1,10 +1,13 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceControlSink
+import com.gmail.absolutebollockscreations.gattlibrary.central.ControlEvent
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtServiceEngineFacade
-import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.applyFitnessMachineStatus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -99,30 +102,26 @@ class FtmsPassThroughCharacterizationTest {
         assertEquals(1, upstream.startCalls)
     }
 
-    private class RecordingStatusSink : BtServiceControlSink {
+    /** Records the control events the engine publishes for a status, standing in for the downstream mirror. */
+    private class RecordingStatusSink(state: BtEngineState) {
         var targetSpeedKph: Float? = null
         var targetInclinePercent: Float? = null
         var inclineCallbacks = 0
 
-        override fun startAdvertisingFtms(
-            ftmsType: FtmsMachineProfile,
-            capabilities: BtEngineState.FtmsCapabilities,
-        ) = true
-        override fun startAdvertisingCscCps() = Unit
-        override fun stopAdvertising() = Unit
-        override fun setNotifyIntervalMs(intervalMs: Long) = Unit
-        override fun onControlPermissionLost() = Unit
-        override fun onSafetyKeyPulled() = Unit
-        override fun onTargetSpeedChangedKmh(kmh: Float) {
-            targetSpeedKph = kmh
+        init {
+            CoroutineScope(Dispatchers.Unconfined).launch(start = CoroutineStart.UNDISPATCHED) {
+                state.controlEvents.collect { event ->
+                    when (event) {
+                        is ControlEvent.TargetSpeedKph -> targetSpeedKph = event.kph
+                        is ControlEvent.TargetInclinePercent -> {
+                            targetInclinePercent = event.percent
+                            inclineCallbacks++
+                        }
+                        else -> Unit
+                    }
+                }
+            }
         }
-        override fun onTargetInclineChangedPercent(percent: Float) {
-            targetInclinePercent = percent
-            inclineCallbacks++
-        }
-        override fun onTargetResistanceLevelChanged(level: Float) = Unit
-        override fun onTargetPowerChangedWatts(watts: Int) = Unit
-        override fun onTargetHeartRateChangedBpm(bpm: Int) = Unit
     }
 
     @Test
@@ -152,12 +151,11 @@ class FtmsPassThroughCharacterizationTest {
         assertEquals(12.34f, upstream.requestedSpeedKph!!, 0.001f)
         assertNull("pass-through must not publish optimistic status", outcome.status)
 
-        val downstreamStatus = RecordingStatusSink()
+        val downstreamStatus = RecordingStatusSink(upstream.engineState)
         assertNull(downstreamStatus.targetSpeedKph)
 
         applyFitnessMachineStatus(
             upstream.engineState,
-            downstreamStatus,
             byteArrayOf(FtmsSpec.Status.TARGET_SPEED_CHANGED, 0xD2.toByte(), 0x04),
         )
 
@@ -168,12 +166,11 @@ class FtmsPassThroughCharacterizationTest {
     @Test
     fun `target incline status decodes sint16 percent including a decline`() {
         val state = BtEngineState()
-        val sink = RecordingStatusSink()
+        val sink = RecordingStatusSink(state)
 
         // -5.0 % grade = -50 = 0xFFCE little-endian. Read unsigned this reported 6553.5 %.
         applyFitnessMachineStatus(
             state,
-            sink,
             byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0xCE.toByte(), 0xFF.toByte()),
         )
 
@@ -183,7 +180,6 @@ class FtmsPassThroughCharacterizationTest {
         // +10.0 % grade = 100 = 0x0064.
         applyFitnessMachineStatus(
             state,
-            sink,
             byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0x64, 0x00),
         )
 
@@ -194,11 +190,10 @@ class FtmsPassThroughCharacterizationTest {
     @Test
     fun `truncated target incline status is rejected rather than reported as zero`() {
         val state = BtEngineState()
-        val sink = RecordingStatusSink()
+        val sink = RecordingStatusSink(state)
 
         applyFitnessMachineStatus(
             state,
-            sink,
             byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0xCE.toByte()),
         )
 

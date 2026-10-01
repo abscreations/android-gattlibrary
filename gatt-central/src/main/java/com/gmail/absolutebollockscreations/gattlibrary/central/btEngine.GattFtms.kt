@@ -12,7 +12,7 @@
 //     • Parses FTMS Control Point indications (0x2AD9) and Fitness Machine Status (0x2ADA).
 //     • Delegates FTMS data frame parsing to BtEngineFtmsParsers for each machine type.
 //     • Updates [BtEngineState] with features, ranges, machine type, status, and targets.
-//     • Notifies the provider-side BtService layer via BtEngine.serviceControlSink when
+//     • Publishes ControlEvent on BtEngineState.controlEvents, which the provider-side BtService layer mirrors, when
 //       control is lost, safety key triggers, or target parameters change.
 // -------------------------------------------------------------------------------------------------
 // SERVICE / CHARACTERISTIC HANDLING
@@ -51,7 +51,7 @@
 //         - Logs result codes (SUCCESS, INVALID_PARAMETER, etc.).
 //         - Updates haveControl accordingly.
 //         - On control-not-permitted/unsupported/failure, calls onControlLost(...)
-//           which clears control and surfaces an error, then notifies the serviceControlSink.
+//           which clears control and surfaces an error, then emits ControlEvent.ControlPermissionLost.
 // -------------------------------------------------------------------------------------------------
 // FITNESS MACHINE STATUS (0x2ADA)
 //   handleFitnessMachineStatus(...):
@@ -62,13 +62,13 @@
 //               → update isRunning flag.
 //         - FtmsSpec.Status.STOPPED_BY_SAFETY_KEY:
 //               → set safetyKeyEngaged=true, isRunning=false, and call
-//                 serviceControlSink?.onSafetyKeyPulled().
+//                 state.emitControlEvent(ControlEvent.SafetyKeyPulled).
 //         - FtmsSpec.Status.CONTROL_PERMISSION_LOST:
-//               → clear control and call serviceControlSink?.onControlPermissionLost().
+//               → clear control and emit ControlEvent.ControlPermissionLost.
 //         - STATUS_TARGET_*_CHANGED (speed, incline, resistance, power, heart rate):
 //               → decode raw fields using FTMS_*_SCALE constants,
 //                 update target* flows in BtEngineState,
-//                 forward the change to serviceControlSink (e.g. onTargetSpeedChangedKmh()).
+//                 publish the change as a ControlEvent (e.g. ControlEvent.TargetSpeedKph).
 //     • Any unhandled status opcode is logged verbosely and ignored.
 // -------------------------------------------------------------------------------------------------
 // CAPABILITIES & RANGES
@@ -87,7 +87,7 @@
 //   • All writes/reads are enqueued via BtEngine.pushWrite / pushRead to honor the
 //     serialized GATT queue managed by BtEngine.
 //   • The handler is mostly stateless; dynamic behavior lives inside BtEngineState or
-//     higher-level components (BtEngine, serviceControlSink).
+//     higher-level components (BtEngine, controlEvents).
 //   • All public-facing behavior (control ownership, safety key, targets, machine type)
 //     is exposed via BtEngineState flows or BtServiceControlSink callbacks for the app/UI
 //     and provider-side GATT service to observe.
@@ -543,7 +543,7 @@ class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         engine.state.setHaveControl(false)
         gatt?.let { engine.state.setGattErrorFor(it, reason) }
         // Tell local provider-side stack that control was lost so it can mirror a status.
-        engine.serviceControlSink?.onControlPermissionLost()
+        engine.state.emitControlEvent(ControlEvent.ControlPermissionLost)
         Timber.tag(BtEngineState.TAG).w("Control lost: %s", reason)
     }
 
@@ -554,7 +554,7 @@ class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         engine: BtEngine,
         value: ByteArray
     ) {
-        applyFitnessMachineStatus(engine.state, engine.serviceControlSink, value)
+        applyFitnessMachineStatus(engine.state, value)
     }
 
     // ───────────────────────── helpers ─────────────────────────
@@ -733,7 +733,6 @@ internal fun correlateControlPointResponse(value: ByteArray): CpResponseOutcome 
 @GattLibraryInternalApi
 fun applyFitnessMachineStatus(
     state: BtEngineState,
-    serviceControlSink: BtServiceControlSink?,
     value: ByteArray,
 ) {
     if (value.isEmpty()) {
@@ -780,19 +779,19 @@ fun applyFitnessMachineStatus(
             Timber.tag(BtEngineState.TAG).w("FTMS Status: STOPPED_BY_SAFETY_KEY")
             state.setSafetyKeyEngaged(true)
             state.setIsRunning(false)
-            serviceControlSink?.onSafetyKeyPulled()
+            state.emitControlEvent(ControlEvent.SafetyKeyPulled)
         }
 
         FtmsSpec.Status.CONTROL_PERMISSION_LOST -> {
             Timber.tag(BtEngineState.TAG).w("FTMS Status: CONTROL_PERMISSION_LOST")
             state.setHaveControl(false)
-            serviceControlSink?.onControlPermissionLost()
+            state.emitControlEvent(ControlEvent.ControlPermissionLost)
         }
 
         FtmsSpec.Status.TARGET_SPEED_CHANGED -> {
             val kmh = u16LE(1) / FtmsSpec.SPEED_SCALE
             state.setTargetSpeedKmh(kmh)
-            serviceControlSink?.onTargetSpeedChangedKmh(kmh)
+            state.emitControlEvent(ControlEvent.TargetSpeedKph(kmh))
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_SPEED_CHANGED → %.2f km/h", kmh)
         }
@@ -810,7 +809,7 @@ fun applyFitnessMachineStatus(
             }
             val percent = raw / FtmsSpec.INCLINE_SCALE
             state.setTargetInclinePercent(percent)
-            serviceControlSink?.onTargetInclineChangedPercent(percent)
+            state.emitControlEvent(ControlEvent.TargetInclinePercent(percent))
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_INCLINE_CHANGED → %.1f %%", percent)
         }
@@ -825,7 +824,7 @@ fun applyFitnessMachineStatus(
                 return
             }
             state.setTargetResistanceLevel(level)
-            serviceControlSink?.onTargetResistanceLevelChanged(level)
+            state.emitControlEvent(ControlEvent.TargetResistanceLevel(level))
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_RESISTANCE_CHANGED → %.1f", level)
         }
@@ -833,7 +832,7 @@ fun applyFitnessMachineStatus(
         FtmsSpec.Status.TARGET_POWER_CHANGED -> {
             val watts = (u16LE(1) / FtmsSpec.POWER_SCALE).toInt()
             state.setTargetPowerWatts(watts)
-            serviceControlSink?.onTargetPowerChangedWatts(watts)
+            state.emitControlEvent(ControlEvent.TargetPowerWatts(watts))
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_POWER_CHANGED → %d W", watts)
         }
@@ -841,7 +840,7 @@ fun applyFitnessMachineStatus(
         FtmsSpec.Status.TARGET_HEART_RATE_CHANGED -> {
             val bpm = if (value.size > 1) value[1].toInt() and 0xFF else 0
             state.setTargetHeartRateBpm(if (bpm == 0) null else bpm)
-            serviceControlSink?.onTargetHeartRateChangedBpm(bpm)
+            state.emitControlEvent(ControlEvent.TargetHeartRateBpm(bpm))
             Timber.tag(BtEngineState.TAG)
                 .i("FTMS Status: TARGET_HEART_RATE_CHANGED → %d bpm", bpm)
         }

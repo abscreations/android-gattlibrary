@@ -49,6 +49,12 @@ public class FitnessGattClient internal constructor(
      * connected. See [DeviceCapabilities] for what it includes and leaves out.
      */
     public val capabilities: StateFlow<DeviceCapabilities> = mutableCapabilities.asStateFlow()
+    /**
+     * What the machine reports about its own control state, as it happens (see [ControlEvent]). Nothing
+     * is replayed to a late collector. The flow ends for a collector once this client is closed.
+     */
+    public val controlEvents: Flow<ControlEvent> =
+        backend.state.controlEvents.takeWhile { synchronized(lock) { !closed } }
     private val mutableSessionActive = MutableStateFlow(backend.state.activeSession.value)
 
     /** Whether a workout session is active. Read-only for now; session control arrives with typed commands. */

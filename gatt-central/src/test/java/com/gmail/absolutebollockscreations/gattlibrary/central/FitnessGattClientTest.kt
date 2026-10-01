@@ -396,6 +396,40 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `control events reach a collector in order including equal repeats, and end after close`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        val seen = mutableListOf<ControlEvent>()
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            client.controlEvents.collect { seen += it }
+        }
+
+        backend.state.emitControlEvent(ControlEvent.TargetPowerWatts(100))
+        backend.state.emitControlEvent(ControlEvent.TargetPowerWatts(100))
+        backend.state.emitControlEvent(ControlEvent.SafetyKeyPulled)
+        assertEquals(
+            listOf(ControlEvent.TargetPowerWatts(100), ControlEvent.TargetPowerWatts(100), ControlEvent.SafetyKeyPulled),
+            seen,
+        )
+
+        client.close()
+        backend.state.emitControlEvent(ControlEvent.ControlPermissionLost)
+        assertEquals(3, seen.size)
+        assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun `a collector that starts late is not replayed earlier control events`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        backend.state.emitControlEvent(ControlEvent.SafetyKeyPulled)
+        val seen = mutableListOf<ControlEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { client.controlEvents.collect { seen += it } }
+        assertTrue(seen.isEmpty())
+        client.close()
+    }
+
+    @Test
     fun `closing the client empties its history and stops following the engine`() = runTest {
         val backend = Backend()
         val client = client(backend)
