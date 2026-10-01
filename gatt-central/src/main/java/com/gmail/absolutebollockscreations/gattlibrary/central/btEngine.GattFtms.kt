@@ -89,8 +89,8 @@
 //   • The handler is mostly stateless; dynamic behavior lives inside BtEngineState or
 //     higher-level components (BtEngine, controlEvents).
 //   • All public-facing behavior (control ownership, safety key, targets, machine type)
-//     is exposed via BtEngineState flows or BtServiceControlSink callbacks for the app/UI
-//     and provider-side GATT service to observe.
+//     is exposed via BtEngineState flows and the client's controlEvents for the app/UI
+//     and the provider-side GATT service to observe.
 // =================================================================================================
 
 package com.gmail.absolutebollockscreations.gattlibrary.central
@@ -250,7 +250,7 @@ class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    private fun maybeStartProviderAdvertisingIfReady(
+    private fun publishInferredActivityIfReady(
         engine: BtEngine,
         gatt: BluetoothGatt
     ) {
@@ -268,7 +268,7 @@ class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         // At this point FEATURES (0x2ACC) has been parsed and supports* flags are set.
         // The claimed Supported-* Range reads are usually still queued; the provider loop
         // waits for them (up to 5 s) before advertising (LIB-9e, ProviderAdvertisingReadiness).
-        engine.maybeStartProviderAdvertisingAfterFeatures(activity)
+        engine.state.setInferredActivity(activity)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -468,7 +468,7 @@ class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
                 }
 
                 // NEW: features + machine type are known → kick provider advertising.
-                maybeStartProviderAdvertisingIfReady(engine, gatt)
+                publishInferredActivityIfReady(engine, gatt)
             }
             UUID_SUPPORTED_SPEED_RANGE       -> BtEngineCapabilities.parseSupportedSpeedRange(engine, value)
             UUID_SUPPORTED_INCLINATION_RANGE -> BtEngineCapabilities.parseSupportedInclinationRange(engine, value)

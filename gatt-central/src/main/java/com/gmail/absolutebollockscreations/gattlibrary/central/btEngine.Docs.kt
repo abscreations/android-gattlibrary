@@ -45,9 +45,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *      • High-level “session” toggles (activeSession / isRunning)
  *      • Unit changes, elapsed time, laps
  *      • Heart-rate & calorie bindings
- *  - Optionally mirrors control state to a **local provider service** (btService)
- *    via [BtServiceControlSink] so that the app can both **consume** and **provide**
- *    FTMS/CSC/CPS on the same device.
+ *  - Publishes the machine's classification, capabilities and control events so a
+ *    **local provider service** (the peripheral bridge) can both mirror them and
+ *    advertise a matching virtual device. The engine itself holds no provider reference.
  *
  * OWNED OBJECTS
  *  - state        : [BtEngineState]
@@ -64,11 +64,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *  - gattRouter   : BtEngineGattCore
  *      Factory for per-connection BluetoothGattCallbacks that fan out to protocol
  *      handlers (FTMS, HRM).
- *
- *  - serviceControlSink : BtServiceControlSink?
- *      Optional bridge that lets the engine tell the local provider what the
- *      **current target state** is (targets, control, status) and what the
- *      **authoritative metrics** are, when we are also acting as an FTMS source.
  *
  * INTERNAL GUARDS & INTENT
  *  - startLock / isStarted (volatile):
@@ -190,13 +185,10 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *      lastGattError (FTMS) vs lastHrmError (HRM), and performs a best-effort
  *      disconnect/cleanup of the offending GATT.
  *
- * BT → SERVICE BRIDGE (optional)
- *  - When a [BtServiceControlSink] is attached, BtEngine mirrors:
- *      • Current control state and targets (speed/incline/resistance/power).
- *      • Selected metrics such as canonical heart rate, pace, and energy.
- *      • FTMS status events (machine reset, control permission lost, etc.).
- *    This allows the local btService to expose a **virtual FTMS/CSC/CPS device**
- *    that tracks the engine’s current state.
+ * BT → SERVICE BRIDGE
+ *  - The engine no longer calls a provider. The peripheral bridge reads what the engine
+ *    publishes (inferred activity, capabilities, measurements, control events) from the
+ *    public client and drives the local virtual FTMS device from that.
  *
  *
  * ───────────────────────────────────────────────────────────────────────────────
@@ -411,34 +403,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *
  *
  * ───────────────────────────────────────────────────────────────────────────────
- * MODULE: BtServiceControlSink (btServiceControlSink.kt)
- * ───────────────────────────────────────────────────────────────────────────────
- *
- * PURPOSE
- *  - Tiny interface that BtEngine can call when a local provider service
- *    (btService) is running on the same device.
- *  - This lets the engine **mirror** its current FTMS state to the provider so
- *    that external apps connecting to the local FTMS/CSC/CPS server see a
- *    consistent picture.
- *
- * RESPONSIBILITIES
- *  - Mirror session/target/control state from engine → service:
- *      • start/stop of active sessions.
- *      • current FTMS machine persona (treadmill, bike, rower, etc.).
- *      • current targets (speed, incline, resistance, power).
- *      • control ownership and Fitness Machine Status events.
- *
- *  - Mirror key metrics that should be visible on the provider side:
- *      • canonical heart rate & heart-rate zone.
- *      • pace (running / rowing).
- *      • total energy.
- *
- *  - Provide a narrow, stable contract between the **app-level engine** and the
- *    **system-level provider service**, without tying either side to the other’s
- *    internals.
- *
- *
- * ───────────────────────────────────────────────────────────────────────────────
  * MODULE: BtEngineCapabilities (btEngineCapabilities.kt) — FTMS features & ranges
  * ───────────────────────────────────────────────────────────────────────────────
  *
@@ -610,7 +574,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
 *          - MACHINE_RESET
 *          - CONTROL_PERMISSION_LOST
 *          - USER_STARTED/STOPPED
-*      • When BtServiceControlSink is attached, mirrors status out to btService.
+*      • Each status is also published as a ControlEvent for the peripheral bridge.
 *
 * READS
 *  - onCharacteristicRead:

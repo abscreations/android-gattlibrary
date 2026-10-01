@@ -232,7 +232,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
             FeCCapabilities.publish(engine.state, controlAvailable, page)
             snap.equipmentType?.let { equipmentType ->
                 FeCMetricMapper.activityTypeFor(equipmentType)?.let {
-                    engine.maybeStartProviderAdvertisingAfterFeatures(it)
+                    engine.state.setInferredActivity(it)
                 }
             }
         }
@@ -299,7 +299,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
             )
         }
         deviceClassificationPublished = true
-        engine.maybeStartProviderAdvertisingAfterFeatures(activityType)
+        engine.state.setInferredActivity(activityType)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -340,7 +340,7 @@ internal class FeCOverBleProtocolHandler : BtEngineGattCore.ProtocolHandler {
             )
             session?.snapshot?.equipmentType?.let { equipmentType ->
                 FeCMetricMapper.activityTypeFor(equipmentType)?.let {
-                    engine.maybeStartProviderAdvertisingAfterFeatures(it)
+                    engine.state.setInferredActivity(it)
                 }
             }
         }

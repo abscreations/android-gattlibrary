@@ -21,32 +21,15 @@
 //       populate BtEngineState.
 //   • Bind app-supplied HR configuration (max HR, resting HR, zone mode) and kick HR zone
 //       recomputation via MetricFusion.
-//   • Optionally talk to a provider-side btService layer via BtServiceControlSink so that events
-//       from a *remote* FTMS can be mirrored back out over local GATT services (FTMS / CSC / CPS).
+//   • Publish what the machine is (BtEngineState.inferredActivity) and what it can do (the
+//       capability snapshot). The peripheral bridge (gatt-peripheral FtmsBridgeAdvertising) decides
+//       from those when, and as what, to advertise, and mirrors machine events from `controlEvents`.
 //
-//   Provider-side advertising integration (FitBridge virtual device):
-//   • All local advertising (FTMS and CSC/CPS) is gated by [ENABLE_BTSERVICE_FTMS]. When this
-//     flag is false, BtEngine will *never* call into BtServiceControlSink to start advertising.
-//   • FTMS advertising is only started once per upstream FTMS session, and only *after* the
-//     full FTMS capabilities snapshot has been populated (features + Supported-* ranges).
-//     - In practice this means we:
-//         • attempt to read FEATURES (0x2ACC) as early as possible;
-//         • attempt Supported-* ranges based on the FEATURES bitmap;
-//         • allow normal FTMS control (REQUEST_CONTROL / START / STOP / targets) to proceed
-//           even if FEATURES / ranges are slow or partially unavailable;
-//         • only start provider advertising once we have a “reasonable” snapshot to expose.
-//   • BtEngine runs a small retry loop that keeps attempting to start advertising while the
-//     upstream FTMS link remains connected:
-//       - It first enforces a readiness check via [ProviderAdvertisingReadiness]: FEATURES parsed,
-//         and every claimed Supported-* Range read, or 5 s spent waiting for them (LIB-9e).
-//       - It then calls [BtServiceControlSink.startAdvertisingFtms(...)] and expects a Boolean
-//         return value: `true` = advertising actually started, `false` = btService not ready yet
-//         (e.g. capabilities still converging or platform constraints).
-//       - The loop retries when `startAdvertisingFtms` returns `false` or throws, with a small
-//         backoff, until either advertising succeeds or the FTMS link drops.
-//   • If both [ENABLE_BTSERVICE_FTMS] and [ENABLE_BTSERVICE_CSCCPS] are true, BtEngine will
-//     also request CSC+CPS advertising via BtServiceControlSink.startAdvertisingCscCps() when
-//     FTMS advertising is started.
+//   Provider-side advertising (FitBridge virtual device):
+//   • The engine does not advertise and holds no reference to a provider layer.
+//   • The bridge starts advertising only once the capability snapshot is reasonable (FEATURES plus
+//     every claimed Supported-* range, or 5 s spent waiting for them) and the machine link is up.
+//   • FEATURES and range reads, and normal FTMS control, proceed regardless of advertising.
 //
 //   2ACC (FEATURES) READ SEMANTICS
 //   • A failed FEATURES (0x2ACC) read is treated as *non-fatal* at the engine layer:
@@ -73,7 +56,6 @@
 //
 //   Typical usage:
 //     val engine = BtEngine.create(context)
-//     engine.attachServiceControlSink(btServiceManager)   // optional: mirror to local GATT
 //     engine.start(address, activityType)
 // -------------------------------------------------------------------------------------------------
 // NOTES
@@ -135,9 +117,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamilyIds
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
-
-internal const val ENABLE_BTSERVICE_FTMS = true     // When enabled, support advertising virtual devices matching the connected device properties
-internal const val ENABLE_BTSERVICE_CSCCPS = false  // When enabled (and ENABLE_BTSERVICE_FTMS is also true), emulate fake CSC and CPS device characteristics
 
 /**
  * Settled capabilities for a session supplied only by sensors.
@@ -322,15 +301,6 @@ class BtEngine internal constructor(
     private val linkRecovery = InSessionLinkRecovery()
     private val recoveryJobs = mutableMapOf<String, Job>()
 
-    // Optional sink into the provider-side btService layer.
-    // Implemented by something like BtServiceManager in the service module.
-    @Volatile
-    var serviceControlSink: BtServiceControlSink? = null
-
-    fun attachServiceControlSink(sink: BtServiceControlSink?) {
-        serviceControlSink = sink
-    }
-
     // BtServiceEngineFacade implementation ─────────────────────────────────────────────
 
     override val isFtmsConnected: Boolean
@@ -366,71 +336,14 @@ class BtEngine internal constructor(
     // When true, we've already scheduled an early bonding attempt for the current FTMS connection.
     @Volatile internal var earlyBondScheduled: Boolean = false
 
-    /** Clear provider-side advertising state whenever our upstream FTMS link ("session") ends. */
-    private fun resetProviderAdvertisingState() {
-        providerAdvertising.reset()
+    /**
+     * Clear per-machine-session state whenever the upstream link ("session") ends or starts over.
+     * Clearing the inferred activity is what tells the peripheral bridge to start afresh.
+     */
+    private fun resetMachineSessionState() {
         state.setInferredActivity(null)
         featureReadRetryScheduled = false
         earlyBondScheduled = false
-    }
-
-    /** Whether an upstream fitness machine is currently supplying this session. */
-    private fun hasUpstreamMachine(): Boolean =
-        connectionState.value == android.bluetooth.BluetoothProfile.STATE_CONNECTED
-
-    /**
-     * Entry point to be called when we have inferred a provider persona (FtmsMachineProfile)
-     * from upstream FEATURES / data. This does **not** start advertising immediately; instead it
-     * records the desired profile and kicks off a small retry loop that will:
-     *
-     *  - Wait until FTMS capabilities are minimally populated (FEATURES + key ranges).
-     *  - Only attempt advertising while the upstream FTMS link remains connected.
-     *  - Call startAdvertisingFtms() and:
-     *      • treat `true` as success → mark [advertisingStarted] / [advertisedProfile] and exit.
-     *      • treat `false` as “btService not ready yet” → log and retry after a small backoff.
-     *      • catch and log any thrown exceptions, then retry with backoff.
-     *
-     * Connection and control are **not** blocked on this: REQUEST_CONTROL, START/STOP, and target
-     * setters can proceed even if FEATURES / Supported-* ranges are still converging or partially
-     * unavailable. We only gate *provider advertising* on the capabilities snapshot.
-     */
-    fun maybeStartProviderAdvertisingAfterFeatures(profile: FtmsMachineProfile?) {
-        providerAdvertising.request(profile)
-    }
-
-    /** Convenience overload if the caller only has an ActivityType (e.g., inferred from data chars). */
-    fun maybeStartProviderAdvertisingAfterFeatures(activity: ActivityType?) {
-        // Published before the loop starts so a collector of the client's inferred activity sees
-        // the persona no later than the advertising request does.
-        if (activity != null && activity != ActivityType.HEARTRATE) state.setInferredActivity(activity)
-        maybeStartProviderAdvertisingAfterFeatures(activity?.toFtmsProfile())
-    }
-
-    /** Map ActivityType (consumer) → FtmsMachineProfile (provider persona). */
-    private fun ActivityType.toFtmsProfile(): FtmsMachineProfile? = when (this) {
-        ActivityType.TREADMILL    -> FtmsMachineProfile.TREADMILL
-        ActivityType.ELLIPTICAL   -> FtmsMachineProfile.ELLIPTICAL
-        ActivityType.ROWING       -> FtmsMachineProfile.INDOOR_ROWER
-        ActivityType.BIKING       -> FtmsMachineProfile.INDOOR_BIKE
-        ActivityType.STAIRCLIMBER -> FtmsMachineProfile.STAIR_CLIMBER
-        ActivityType.STAIRSTEPPER -> FtmsMachineProfile.STAIR_STEPPER
-        ActivityType.HEARTRATE    -> null // HR-only, no FTMS persona
-    }
-
-    /** Apply a user-selected session mode to the downstream FTMS persona. */
-    @RequiresPermission(
-        allOf = [Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT]
-    )
-    fun overrideProviderActivityForSession(activity: ActivityType) {
-        val profile = activity.toFtmsProfile()
-        if (profile == null) {
-            Timber.tag(BtEngineState.TAG).i(
-                "Session mode override is HRM-only; no FTMS persona override applied"
-            )
-            return
-        }
-
-        providerAdvertising.overridePersona(profile)
     }
 
     // Public flows (read-only)
@@ -451,14 +364,6 @@ class BtEngine internal constructor(
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
-
-    internal val providerAdvertising = ProviderAdvertisingCoordinator(
-        scope = scope,
-        sink = { serviceControlSink },
-        hasUpstreamMachine = ::hasUpstreamMachine,
-        sessionActive = { state.activeSession.value },
-        machineCapabilities = ::providerMachineCapabilities,
-    )
 
     /**
      * §0.7a liveness tick.
@@ -878,7 +783,7 @@ class BtEngine internal constructor(
         // gives up its scan lease, so the stopScan() below can actually stop the radio.
         keiserSource.end(KeiserEndReason.DESELECTED, elapsedRealtimeMs())
         stopScan()
-        if (!recoveryAttempt) resetProviderAdvertisingState()
+        if (!recoveryAttempt) resetMachineSessionState()
 
         // Opt-in only. See the bonding-policy note on connectFtms: bonding
         // proactively raced service discovery and killed the link. Android
@@ -970,8 +875,7 @@ class BtEngine internal constructor(
             state.resetFtmsControl()
             featureReadRetryScheduled = false
             earlyBondScheduled = false
-            stopProviderAdvertising("disconnectFtms() without BLUETOOTH_CONNECT")
-            resetProviderAdvertisingState()
+            resetMachineSessionState()
             return
         }
         guardConnectPerm(op = "disconnectFtms()", default = Unit) {
@@ -990,8 +894,7 @@ class BtEngine internal constructor(
             state.resetFtmsControl()
             featureReadRetryScheduled = false
             earlyBondScheduled = false
-            stopProviderAdvertising("disconnectFtms() explicit FTMS disconnect")
-            resetProviderAdvertisingState()
+            resetMachineSessionState()
         }
     }
 
@@ -1157,8 +1060,7 @@ class BtEngine internal constructor(
                 state.resetFtmsControl()
                 featureReadRetryScheduled = false
                 earlyBondScheduled = false
-                stopProviderAdvertising("explicit device disconnect")
-                resetProviderAdvertisingState()
+                resetMachineSessionState()
             }
             true
         }
@@ -1338,8 +1240,7 @@ class BtEngine internal constructor(
         state.connectedDevices.value.map { it.connectionKey }.forEach { connectionKey ->
             runCatching { disconnectDevice(connectionKey) }
         }
-        stopProviderAdvertising("release")
-        resetProviderAdvertisingState()
+        resetMachineSessionState()
     }
 
     /** Terminal client shutdown also cancels jobs; legacy release remains reusable during migration. */
@@ -2189,9 +2090,6 @@ internal fun BtEngine.machineContext(operation: String): ConnectionContext? =
 
 /* ───────────────────────────── provider-side advertising helpers ───────────────────────────── */
 
-/** Centralized helper to stop local/provider-side advertising (FTMS/CSC/CPS). */
-private fun BtEngine.stopProviderAdvertising(reason: String) = providerAdvertising.stop(reason)
-
 /* ───────────────────────────── setGattErrorFor helper ───────────────────────────── */
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -2215,7 +2113,6 @@ internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
         if (role == LegacyConnectionRole.FTMS) {
             featureReadRetryScheduled = false
             earlyBondScheduled = false
-            stopProviderAdvertising("FTMS GATT error / remote disconnect (no BLUETOOTH_CONNECT)")
         }
         return
     }
@@ -2231,7 +2128,6 @@ internal fun BtEngine.setGattErrorFor(gatt: BluetoothGatt, msg: String) {
     if (role == LegacyConnectionRole.FTMS) {
         featureReadRetryScheduled = false
         earlyBondScheduled = false
-        stopProviderAdvertising("FTMS GATT error / remote disconnect")
     }
 }
 

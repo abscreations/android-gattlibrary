@@ -539,7 +539,7 @@ internal class KayakFirstProtocolHandler(
             context.address,
             com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING.ordinal,
         )
-        engine.maybeStartProviderAdvertisingAfterFeatures(FtmsMachineProfile.INDOOR_ROWER)
+        engine.state.setInferredActivity(com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -649,7 +649,7 @@ internal class KayakFirstProtocolHandler(
                         context.address,
                         com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING.ordinal,
                     )
-                    engine.maybeStartProviderAdvertisingAfterFeatures(
+                    engine.state.setInferredActivity(
                         com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING,
                     )
                     val nowMs = MonotonicMetricClock.SYSTEM.nowMs()

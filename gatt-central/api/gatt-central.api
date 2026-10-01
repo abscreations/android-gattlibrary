@@ -126,7 +126,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine$Companion;
 	public final fun activateServiceOn (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/util/Set;)Z
 	public static synthetic fun activateServiceOn$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/util/Set;ILjava/lang/Object;)Z
-	public final fun attachServiceControlSink (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;)V
 	public final fun beginRecoverySession ()V
 	public final fun bindHrMax (Lkotlinx/coroutines/flow/StateFlow;)V
 	public final fun bindHrZoneMode (Lkotlinx/coroutines/flow/StateFlow;)V
@@ -166,16 +165,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getHrmConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLifeFitnessProfilePrompt ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getServiceControlSink ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;
 	public final fun getState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;
 	public final fun hasSelectedKayakFirstAdapter ()Z
 	public fun isFtmsConnected ()Z
 	public final fun isScanning ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun markSessionStarted (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Ljava/lang/String;)V
 	public final fun markSessionStopped ()V
-	public final fun maybeStartProviderAdvertisingAfterFeatures (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
-	public final fun maybeStartProviderAdvertisingAfterFeatures (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)V
-	public final fun overrideProviderActivityForSession (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
 	public final fun promptPairing (Ljava/lang/String;)V
 	public final fun readSupportedInclinationRange ()V
 	public final fun readSupportedPowerRange ()V
@@ -196,7 +191,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun setLifeFitnessProfileFromApp (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessProfile;I)V
 	public final fun setRestingHrFromApp (Ljava/lang/Integer;)V
 	public final fun setRunning (Z)V
-	public final fun setServiceControlSink (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink;)V
 	public fun setTargetInclinationPercent (F)Z
 	public fun setTargetPowerWatts (I)Z
 	public fun setTargetResistance (F)Z
@@ -825,13 +819,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_scanKt {
 	public static final fun retainFreshScanEntries (Ljava/util/Map;JJLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)Ljava/util/Map;
 	public static synthetic fun retainFreshScanEntries$default (Ljava/util/Map;JJLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Ljava/util/Map;
-}
-
-public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceControlSink {
-	public abstract fun setNotifyIntervalMs (J)V
-	public abstract fun startAdvertisingCscCps ()V
-	public abstract fun startAdvertisingFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Z
-	public abstract fun stopAdvertising ()V
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade {
