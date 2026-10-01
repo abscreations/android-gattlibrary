@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
+import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.CycleSensorEvents
 import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillRawPace
@@ -102,6 +103,16 @@ class EngineMetricPumpSnapshotSourceTest {
             sample(FtmsMachineProfile.TREADMILL, full).snapshot.treadmillNativePace,
         )
         assertNull(sample(FtmsMachineProfile.INDOOR_BIKE, full).snapshot.treadmillNativePace)
+    }
+
+    @Test
+    fun `rower pace from engine pace is unaffected by imperial display units`() {
+        // Regression: the pump used to read the display-unit pace flow as if it were min/km, so with
+        // imperial units a rower with no speed reported pace 1.609344 times too slow.
+        val state = BtEngineState().apply { setUnits(1); setInstantPace(2.0) } // 2.0 min/km
+        val store = FtmsMetricStore()
+        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_ROWER }.sampleOnce()
+        assertEquals(60.0, store.snapshot.paceSecondsPer500m!!, 1e-9) // 2 min/km = 60 s per 500 m
     }
 
     @Test

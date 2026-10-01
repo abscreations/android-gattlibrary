@@ -17,6 +17,8 @@ class MeasurementSnapshotTest {
     fun `every field is read from its own engine flow`() {
         // Distinct values per field, so a crossed or swapped mapping fails here.
         val s = BtEngineState()
+        // Imperial display units must not leak into the canonical fields (see the pace test below).
+        s.setUnits(1)
         s.setSpeedKph(21.5)
         s.setAvgSpeedKph(20.25)
         s.setInstantPace(2.75)
@@ -53,6 +55,21 @@ class MeasurementSnapshotTest {
             ),
             s.toMeasurementSnapshot(),
         )
+    }
+
+    @Test
+    fun `pace is canonical minutes per km whatever the display units are`() {
+        // BtEngineState.instPace/avgPace are display-unit paces (min/mi when units == 1). Reading them
+        // made the snapshot, and the bridge pump before it, wrong by a factor of 1.609344 on imperial.
+        val metric = BtEngineState().apply { setUnits(0); setInstantPace(4.0); setAvgPace(5.0) }
+        val imperial = BtEngineState().apply { setUnits(1); setInstantPace(4.0); setAvgPace(5.0) }
+        for (s in listOf(metric, imperial)) {
+            assertEquals(4.0, s.toMeasurementSnapshot().paceMinPerKm!!, 1e-9)
+            assertEquals(5.0, s.toMeasurementSnapshot().averagePaceMinPerKm!!, 1e-9)
+        }
+        // Switching units after the fact re-emits the display pace only; canonical must not move.
+        metric.setUnits(1)
+        assertEquals(4.0, metric.toMeasurementSnapshot().paceMinPerKm!!, 1e-9)
     }
 
     @Test

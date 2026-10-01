@@ -84,8 +84,10 @@ public data class TreadmillRawPace(
 public fun BtEngineState.toMeasurementSnapshot(): MeasurementSnapshot = MeasurementSnapshot(
     speedKph = speedKph.value,
     averageSpeedKph = avgSpeedKph.value,
-    paceMinPerKm = instPace.value,
-    averagePaceMinPerKm = avgPace.value,
+    // The canonical min/km flows, NOT instPace/avgPace: those are display-unit paces (min/mi when the
+    // UI is set to imperial) and would make this field depend on a presentation setting.
+    paceMinPerKm = instantPaceMinPerKm.value,
+    averagePaceMinPerKm = averagePaceMinPerKm.value,
     cadence = instantCadence.value,
     averageCadence = averageCadence.value,
     strokeRate = strokeRate.value,
@@ -125,7 +127,7 @@ public fun BtEngineState.toMeasurementSnapshot(): MeasurementSnapshot = Measurem
 internal fun BtEngineState.measurementChanges(): List<Flow<Unit>> {
     fun <T> Flow<T>.ping(): Flow<Unit> = map { }
     return listOf(
-        speedKph.ping(), avgSpeedKph.ping(), instPace.ping(), avgPace.ping(),
+        speedKph.ping(), avgSpeedKph.ping(), instantPaceMinPerKm.ping(), averagePaceMinPerKm.ping(),
         instantCadence.ping(), averageCadence.ping(), strokeRate.ping(),
         instantPower.ping(), averagePower.ping(), forceOnBelt.ping(),
         heartRate.ping(), heartRateZone.ping(),
