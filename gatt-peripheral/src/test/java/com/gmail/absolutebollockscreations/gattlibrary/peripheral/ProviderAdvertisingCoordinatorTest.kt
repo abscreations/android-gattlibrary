@@ -23,7 +23,12 @@ import org.junit.Test
 class ProviderAdvertisingCoordinatorTest {
 
     private class FakeSink : AdvertisingTarget {
-        data class Attempt(val atMs: Long, val profile: FtmsMachineProfile, val caps: DeviceCapabilities)
+        data class Attempt(
+            val atMs: Long,
+            val profile: FtmsMachineProfile,
+            val caps: DeviceCapabilities,
+            val nativeSensors: Boolean,
+        )
 
         val attempts = mutableListOf<Attempt>()
         val events = mutableListOf<String>()
@@ -33,8 +38,12 @@ class ProviderAdvertisingCoordinatorTest {
         var results: List<Boolean?> = listOf(true)
         var stopThrows = false
 
-        override fun startFtms(profile: FtmsMachineProfile, capabilities: DeviceCapabilities): Boolean {
-            attempts += Attempt(now(), profile, capabilities)
+        override fun startFtms(
+            profile: FtmsMachineProfile,
+            capabilities: DeviceCapabilities,
+            nativeCyclingSensors: Boolean,
+        ): Boolean {
+            attempts += Attempt(now(), profile, capabilities, nativeCyclingSensors)
             events += "start $profile"
             val r = results[minOf(attempts.size - 1, results.size - 1)]
             return r ?: throw IllegalStateException("sink threw")
@@ -52,6 +61,7 @@ class ProviderAdvertisingCoordinatorTest {
         var machine = true
         var session = false
         var caps = DeviceCapabilities.NONE
+        var nativeSensors = false
     }
 
     private val treadmillFeaturesOnly = DeviceCapabilities(
@@ -75,6 +85,7 @@ class ProviderAdvertisingCoordinatorTest {
             sessionActive = { inputs.session },
             machineCapabilities = { inputs.caps },
             nowMs = { testScheduler.currentTime },
+            nativeCyclingSensors = { inputs.nativeSensors },
         )
     }
 
@@ -327,5 +338,45 @@ class ProviderAdvertisingCoordinatorTest {
             inputs.sink!!.events,
         )
         assertEquals(FtmsMachineProfile.INDOOR_BIKE, c.advertisedProfile)
+    }
+
+    @Test
+    fun `the native cycling sensor setting is read at each attempt`() = runTest {
+        val inputs = Inputs().apply { caps = treadmillWithRanges; sink!!.results = listOf(false, true) }
+        val c = coordinator(inputs)
+        c.request(FtmsMachineProfile.INDOOR_BIKE)
+        runCurrent()
+        inputs.nativeSensors = true
+        advanceTimeBy(2_000); runCurrent()
+        assertEquals(listOf(false, true), inputs.sink!!.attempts.map { it.nativeSensors })
+    }
+
+    @Test
+    fun `restartIfAdvertising restarts only the persona on the air`() = runTest {
+        val inputs = Inputs().apply { caps = treadmillWithRanges }
+        val c = coordinator(inputs)
+        c.request(FtmsMachineProfile.INDOOR_BIKE)
+        runCurrent()
+
+        c.restartIfAdvertising(FtmsMachineProfile.TREADMILL) // not the persona on the air
+        runCurrent()
+        assertEquals(listOf("start INDOOR_BIKE"), inputs.sink!!.events)
+
+        inputs.nativeSensors = true
+        c.restartIfAdvertising(FtmsMachineProfile.INDOOR_BIKE)
+        runCurrent()
+        assertEquals(listOf("start INDOOR_BIKE", "stop", "start INDOOR_BIKE"), inputs.sink!!.events)
+        assertEquals(listOf(false, true), inputs.sink!!.attempts.map { it.nativeSensors })
+    }
+
+    @Test
+    fun `restartIfAdvertising does nothing before advertising has started`() = runTest {
+        val inputs = Inputs() // features unread: the loop is still waiting
+        val c = coordinator(inputs)
+        c.request(FtmsMachineProfile.INDOOR_BIKE)
+        runCurrent()
+        c.restartIfAdvertising(FtmsMachineProfile.INDOOR_BIKE)
+        runCurrent()
+        assertEquals(emptyList<String>(), inputs.sink!!.events)
     }
 }

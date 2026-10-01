@@ -10,11 +10,17 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
 public interface AdvertisingTarget {
     /**
      * Start (or reconfigure) the bridge as [profile] with the controls [capabilities] describes.
+     * With [nativeCyclingSensors] the bridge also publishes native Cycling Speed and Cadence and
+     * Cycling Power services alongside FTMS; only the indoor-bike persona honours it.
      * Returns true only once the platform has confirmed the advertisement is on the air; false means
      * "not ready yet" and the caller retries after a backoff. May block briefly; never call it from
      * the main thread.
      */
-    public fun startFtms(profile: FtmsMachineProfile, capabilities: DeviceCapabilities): Boolean
+    public fun startFtms(
+        profile: FtmsMachineProfile,
+        capabilities: DeviceCapabilities,
+        nativeCyclingSensors: Boolean,
+    ): Boolean
 
     /** Stop advertising. Safe to call when nothing is advertising. */
     public fun stopAdvertising()

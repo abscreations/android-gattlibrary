@@ -22,8 +22,12 @@ class FtmsBridgeAdvertisingTest {
 
     private class FakeTarget : AdvertisingTarget {
         val events = mutableListOf<String>()
-        override fun startFtms(profile: FtmsMachineProfile, capabilities: DeviceCapabilities): Boolean {
-            events += "start $profile"
+        override fun startFtms(
+            profile: FtmsMachineProfile,
+            capabilities: DeviceCapabilities,
+            nativeCyclingSensors: Boolean,
+        ): Boolean {
+            events += if (nativeCyclingSensors) "start $profile +sensors" else "start $profile"
             return true
         }
         override fun stopAdvertising() { events += "stop" }
@@ -37,7 +41,7 @@ class FtmsBridgeAdvertisingTest {
         val caps = MutableStateFlow(DeviceCapabilities(featuresRead = true))
     }
 
-    private fun TestScope.bridge(inputs: Inputs) = FtmsBridgeAdvertising(
+    private fun TestScope.bridge(inputs: Inputs, nativeCyclingSensors: Boolean = false) = FtmsBridgeAdvertising(
         scope = backgroundScope,
         target = { inputs.target },
         inferredActivity = inputs.inferred,
@@ -46,6 +50,7 @@ class FtmsBridgeAdvertisingTest {
         sessionActive = { inputs.session.value },
         machineCapabilities = { inputs.caps.value },
         nowMs = { testScheduler.currentTime },
+        nativeCyclingSensors = nativeCyclingSensors,
     )
 
     @Test
@@ -189,5 +194,65 @@ class FtmsBridgeAdvertisingTest {
         inputs.connected.value = false
         runCurrent()
         assertEquals(listOf("start TREADMILL", "stop", "stop"), inputs.target.events)
+    }
+
+    @Test
+    fun `native cycling sensors are off by default and on from the start when requested`() = runTest {
+        val off = Inputs()
+        val offBridge = bridge(off)
+        off.inferred.value = ActivityType.BIKING
+        runCurrent()
+        assertEquals(false, offBridge.nativeCyclingSensors)
+        assertEquals(listOf("start INDOOR_BIKE"), off.target.events)
+
+        val on = Inputs()
+        val onBridge = bridge(on, nativeCyclingSensors = true)
+        on.inferred.value = ActivityType.BIKING
+        runCurrent()
+        assertEquals(true, onBridge.nativeCyclingSensors)
+        assertEquals(listOf("start INDOOR_BIKE +sensors"), on.target.events)
+    }
+
+    @Test
+    fun `enabling native cycling sensors while biking restarts advertising with them`() = runTest {
+        val inputs = Inputs()
+        val bridge = bridge(inputs)
+        inputs.inferred.value = ActivityType.BIKING
+        runCurrent()
+
+        bridge.setNativeCyclingSensors(true)
+        runCurrent()
+        bridge.setNativeCyclingSensors(true) // unchanged: no restart
+        runCurrent()
+        assertEquals(listOf("start INDOOR_BIKE", "stop", "start INDOOR_BIKE +sensors"), inputs.target.events)
+
+        bridge.setNativeCyclingSensors(false)
+        runCurrent()
+        assertEquals(
+            listOf("start INDOOR_BIKE", "stop", "start INDOOR_BIKE +sensors", "stop", "start INDOOR_BIKE"),
+            inputs.target.events,
+        )
+    }
+
+    @Test
+    fun `changing the setting for another persona does not restart advertising`() = runTest {
+        val inputs = Inputs()
+        val bridge = bridge(inputs)
+        inputs.inferred.value = ActivityType.TREADMILL
+        runCurrent()
+
+        bridge.setNativeCyclingSensors(true)
+        runCurrent()
+        assertEquals(listOf("start TREADMILL"), inputs.target.events)
+    }
+
+    @Test
+    fun `a bike persona chosen by override uses the setting too`() = runTest {
+        val inputs = Inputs().apply { connected.value = false; session.value = true }
+        val bridge = bridge(inputs)
+        bridge.setNativeCyclingSensors(true)
+        bridge.overrideActivity(ActivityType.BIKING)
+        runCurrent()
+        assertEquals(listOf("start INDOOR_BIKE +sensors"), inputs.target.events)
     }
 }

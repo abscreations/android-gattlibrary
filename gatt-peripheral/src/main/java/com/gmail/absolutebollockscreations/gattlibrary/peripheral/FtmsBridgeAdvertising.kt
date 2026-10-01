@@ -30,7 +30,7 @@ import timber.log.Timber
  *  - The machine link leaving CONNECTED stops advertising. It does not reset: after a GATT error or a
  *    remote drop the old engine also stopped without resetting, so a recovered link does not restart
  *    advertising by itself. That is preserved here and is a known gap, not a decision.
- *  - The inferred activity returning to null (a new machine connection, an explicit disconnect or a
+ *  - The inferred activity returning to null after having been set (a new machine connection, an explicit disconnect or a
  *    release) resets, so the next classification starts advertising afresh.
  *  - [close] stops advertising and ends everything.
  *
@@ -46,7 +46,9 @@ public class FtmsBridgeAdvertising internal constructor(
     sessionActive: () -> Boolean,
     machineCapabilities: () -> DeviceCapabilities,
     nowMs: () -> Long = { System.nanoTime() / 1_000_000L },
+    nativeCyclingSensors: Boolean = false,
 ) {
+    @Volatile private var nativeSensors: Boolean = nativeCyclingSensors
     private val job = SupervisorJob(scope.coroutineContext[Job])
     private val ownScope = CoroutineScope(scope.coroutineContext + job)
     private val coordinator = ProviderAdvertisingCoordinator(
@@ -56,12 +58,21 @@ public class FtmsBridgeAdvertising internal constructor(
         sessionActive = sessionActive,
         machineCapabilities = machineCapabilities,
         nowMs = nowMs,
+        nativeCyclingSensors = { nativeSensors },
     )
 
     init {
         ownScope.launch {
+            var classified = false
             inferredActivity.collect { activity ->
-                if (activity == null) coordinator.reset() else coordinator.request(activity.toFtmsProfile())
+                if (activity != null) {
+                    coordinator.request(activity.toFtmsProfile())
+                } else if (classified) {
+                    // Only a classification going away resets. The initial "nothing yet" must not,
+                    // or it would wipe a persona the app chose before this collector first ran.
+                    coordinator.reset()
+                }
+                classified = activity != null
             }
         }
         ownScope.launch {
@@ -87,6 +98,21 @@ public class FtmsBridgeAdvertising internal constructor(
         coordinator.overridePersona(profile)
     }
 
+    /** Whether native CSC and Cycling Power services are published alongside FTMS for the bike persona. */
+    public val nativeCyclingSensors: Boolean get() = nativeSensors
+
+    /**
+     * Publish native Cycling Speed and Cadence plus Cycling Power services alongside FTMS while the
+     * advertised persona is the indoor bike; other personas ignore it. Off by default. Changing it
+     * while the bike persona is on the air restarts advertising, because the services are part of the
+     * GATT database, which drops any downstream client that is connected.
+     */
+    public fun setNativeCyclingSensors(enabled: Boolean) {
+        if (nativeSensors == enabled) return
+        nativeSensors = enabled
+        coordinator.restartIfAdvertising(FtmsMachineProfile.INDOOR_BIKE)
+    }
+
     /** Stop advertising and stop reacting to the client. Safe to call more than once. */
     public fun close() {
         coordinator.stop("closed")
@@ -101,6 +127,7 @@ public class FtmsBridgeAdvertising internal constructor(
             client: FitnessGattClient,
             target: () -> AdvertisingTarget?,
             scope: CoroutineScope,
+            nativeCyclingSensors: Boolean = false,
         ): FtmsBridgeAdvertising = FtmsBridgeAdvertising(
             scope = CoroutineScope(scope.coroutineContext + Dispatchers.Default),
             target = target,
@@ -109,6 +136,7 @@ public class FtmsBridgeAdvertising internal constructor(
             hasUpstreamMachine = { client.connections.value.machineStatus == ConnectionStatus.CONNECTED },
             sessionActive = { client.sessionActive.value },
             machineCapabilities = { client.capabilities.value },
+            nativeCyclingSensors = nativeCyclingSensors,
         )
     }
 }

@@ -1,5 +1,5 @@
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/peripheral/AdvertisingTarget {
-	public abstract fun startFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;)Z
+	public abstract fun startFtms (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;Z)Z
 	public abstract fun stopAdvertising ()V
 }
 
@@ -58,10 +58,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising$Companion;
 	public final fun close ()V
+	public final fun getNativeCyclingSensors ()Z
 	public final fun overrideActivity (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
+	public final fun setNativeCyclingSensors (Z)V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising$Companion {
-	public final fun create (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lkotlin/jvm/functions/Function0;Lkotlinx/coroutines/CoroutineScope;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising;
+	public final fun create (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lkotlin/jvm/functions/Function0;Lkotlinx/coroutines/CoroutineScope;Z)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising;
+	public static synthetic fun create$default (Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lkotlin/jvm/functions/Function0;Lkotlinx/coroutines/CoroutineScope;ZILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/FtmsBridgeAdvertising;
 }
 

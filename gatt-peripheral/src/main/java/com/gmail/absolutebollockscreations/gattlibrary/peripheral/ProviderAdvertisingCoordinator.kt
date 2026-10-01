@@ -41,6 +41,7 @@ internal class ProviderAdvertisingCoordinator(
     private val sessionActive: () -> Boolean,
     private val machineCapabilities: () -> DeviceCapabilities,
     private val nowMs: () -> Long = { System.nanoTime() / 1_000_000L },
+    private val nativeCyclingSensors: () -> Boolean = { false },
 ) {
     @Volatile var advertisingStarted: Boolean = false
         private set
@@ -131,16 +132,30 @@ internal class ProviderAdvertisingCoordinator(
         if (advertisingStarted && advertisedProfile == profile) return
 
         if (advertisingStarted) {
-            scope.launch {
-                stop("session mode override to $profile")
-                advertisingStarted = false
-                advertisedProfile = null
-                while (loopRunning) delay(25)
-                request(profile)
-            }
+            restartAdvertising(profile, "session mode override to $profile")
         } else {
             // An active retry loop reads the wanted persona on each attempt; this call is
             // otherwise responsible for starting a new loop.
+            request(profile)
+        }
+    }
+
+    /**
+     * Advertise [profile] again from scratch if it is the persona on the air, for a setting that
+     * only takes effect when the GATT database is rebuilt. Does nothing for another persona or when
+     * nothing is advertising: a running loop reads the setting on each attempt.
+     */
+    fun restartIfAdvertising(profile: FtmsMachineProfile) {
+        if (!advertisingStarted || advertisedProfile != profile) return
+        restartAdvertising(profile, "advertising setting changed for $profile")
+    }
+
+    private fun restartAdvertising(profile: FtmsMachineProfile, reason: String) {
+        scope.launch {
+            stop(reason)
+            advertisingStarted = false
+            advertisedProfile = null
+            while (loopRunning) delay(25)
             request(profile)
         }
     }
@@ -226,7 +241,7 @@ internal class ProviderAdvertisingCoordinator(
 
                 val success: Boolean = try {
                     // false means "not ready yet"
-                    currentSink.startFtms(currentProfile, capabilities)
+                    currentSink.startFtms(currentProfile, capabilities, nativeCyclingSensors())
                 } catch (t: Throwable) {
                     Timber.tag(TAG).w(
                         t,
