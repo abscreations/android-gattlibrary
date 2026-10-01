@@ -51,10 +51,10 @@
  * LAP & DERIVED METRICS
  *  - Maintains lap baselines in [BtEngineState] (start distance, elapsed, strokes, steps).
  *  - Continuously updates per-lap:
- *      • lapDistanceMeters + lapDistanceDisplay.
+ *      • lapDistanceMeters.
  *      • lapElapsedTimeSec.
- *      • lapAvgSpeedMps + lapAvgSpeedDisplay (km/h or mi/h).
- *      • lapRunPaceMinPerUnit (min/km or min/mi).
+ *      • lapAvgSpeedMps.
+ *      • lapPaceMinPerKm (min/km).
  *      • lapRowPaceMinPer500m (rowing-specific).
  *      • lapStrokeCount, lapSteps, lapCadenceSpm (including incremental averaging).
  *

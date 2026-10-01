@@ -2226,11 +2226,6 @@ class BtEngine internal constructor(
 
     /* ───────────────────────────── Units / elapsed / laps / HR bindings ───────────────────────────── */
 
-    fun setUnits(value: Int?) {
-        state.setUnits(value)
-        recomputeAllDisplayUnits(this)
-    }
-
     fun setElapsedFromWorkout(totalSec: Int) {
         metricFusion.updateSessionElapsed(totalSec)
     }
@@ -2242,10 +2237,8 @@ class BtEngine internal constructor(
         state.lapAvgCadenceCount = 0
         state.setLapElapsedTimeSec(0)
         state.setLapDistanceMeters(0)
-        state.setLapDistanceDisplay(0.0)
         state.setLapAvgSpeedMps(null)
-        state.setLapAvgSpeedDisplay(null)
-        state.setLapRunPaceMinPerUnit(null)
+        state.setLapPaceMinPerKm(null)
         state.setLapRowPaceMinPer500m(null)
         state.setLapStrokeCount(0)
         state.setLapSteps(0)
@@ -2265,11 +2258,9 @@ class BtEngine internal constructor(
         state.setElapsedSeconds(0)
         state.setLapElapsedTimeSec(0)
         state.setLapDistanceMeters(0)
-        state.setLapDistanceDisplay(0.0)
 
         state.setLapAvgSpeedMps(null)
-        state.setLapAvgSpeedDisplay(null)
-        state.setLapRunPaceMinPerUnit(null)
+        state.setLapPaceMinPerKm(null)
         state.setLapRowPaceMinPer500m(null)
         state.setLapStrokeCount(0)
         state.setLapSteps(0)

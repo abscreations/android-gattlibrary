@@ -203,7 +203,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public fun setTargetPowerWatts (I)Z
 	public fun setTargetResistance (F)Z
 	public fun setTargetSpeedKph (F)Z
-	public final fun setUnits (Ljava/lang/Integer;)V
 	public fun setWheelCircumferenceMm (F)Z
 	public final fun start (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;ZLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
@@ -357,15 +356,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapAvgCadenceCount ()I
 	public final fun getLapAvgCadenceTotal ()D
-	public final fun getLapAvgSpeedDisplay ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapAvgSpeedMps ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapCadenceSpm ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapCount ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getLapDistanceDisplay ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapDistanceMeters ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapElapsedTimeSec ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getLapPaceMinPerKm ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapRowPaceMinPer500m ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getLapRunPaceMinPerUnit ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapStartDistanceMeters ()I
 	public final fun getLapStartElapsedSec ()I
 	public final fun getLapStartSteps ()I
@@ -428,7 +425,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getTotalFloors ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getTotalSteps ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getTotalStrides ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getUnits ()Lkotlinx/coroutines/flow/StateFlow;
 	public fun hrmRrCount ()I
 	public final fun isRunning ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun isScanning ()Lkotlinx/coroutines/flow/StateFlow;
@@ -483,15 +479,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun setIsRunning (Ljava/lang/Boolean;)V
 	public final fun setLapAvgCadenceCount (I)V
 	public final fun setLapAvgCadenceTotal (D)V
-	public final fun setLapAvgSpeedDisplay (Ljava/lang/Double;)V
 	public final fun setLapAvgSpeedMps (Ljava/lang/Double;)V
 	public final fun setLapCadenceSpm (Ljava/lang/Double;)V
 	public final fun setLapCount (I)V
-	public final fun setLapDistanceDisplay (Ljava/lang/Double;)V
 	public final fun setLapDistanceMeters (Ljava/lang/Integer;)V
 	public final fun setLapElapsedTimeSec (Ljava/lang/Integer;)V
+	public final fun setLapPaceMinPerKm (Ljava/lang/Double;)V
 	public final fun setLapRowPaceMinPer500m (Ljava/lang/Double;)V
-	public final fun setLapRunPaceMinPerUnit (Ljava/lang/Double;)V
 	public final fun setLapStartDistanceMeters (I)V
 	public final fun setLapStartElapsedSec (I)V
 	public final fun setLapStartSteps (I)V
@@ -543,7 +537,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun setTotalFloors (Ljava/lang/Integer;)V
 	public final fun setTotalSteps (Ljava/lang/Integer;)V
 	public final fun setTotalStrides (Ljava/lang/Double;)V
-	public final fun setUnits (Ljava/lang/Integer;)V
 	public final fun treadmillNativePaceSnapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/TreadmillNativePaceSnapshot;
 	public final fun updateDeviceMachineFeatureByAddress (Ljava/lang/String;I)V
 	public final fun updateLapRowingSpeed (J)V

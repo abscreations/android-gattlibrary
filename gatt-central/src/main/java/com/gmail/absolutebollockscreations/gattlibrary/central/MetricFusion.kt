@@ -1253,9 +1253,6 @@ class MetricFusion(
     private fun updateLapDistance(totalMeters: Int) {
         val lapMeters = (totalMeters - state.lapStartDistanceMeters).coerceAtLeast(0)
         state.setLapDistanceMeters(lapMeters)
-        state.setLapDistanceDisplay(
-            if (state.units.value == 1) lapMeters * 0.000621371 else lapMeters / 1000.0,
-        )
         recomputeLapDerived()
     }
 
@@ -1284,19 +1281,14 @@ class MetricFusion(
         val seconds = state.lapElapsedTimeSec.value ?: return
         if (seconds <= 0) {
             state.setLapAvgSpeedMps(null)
-            state.setLapAvgSpeedDisplay(null)
-            state.setLapRunPaceMinPerUnit(null)
+            state.setLapPaceMinPerKm(null)
             state.setLapRowPaceMinPer500m(null)
             return
         }
         val metersPerSecond = distance.toDouble() / seconds.toDouble()
         state.setLapAvgSpeedMps(metersPerSecond)
-        state.setLapAvgSpeedDisplay(
-            if (state.units.value == 1) metersPerSecond * 2.23694 else metersPerSecond * 3.6,
-        )
-        val displayDistanceMeters = if (state.units.value == 1) 1_609.344 else 1_000.0
-        state.setLapRunPaceMinPerUnit(
-            if (metersPerSecond > 0.0) displayDistanceMeters / metersPerSecond / 60.0 else null,
+        state.setLapPaceMinPerKm(
+            if (metersPerSecond > 0.0) 1_000.0 / metersPerSecond / 60.0 else null,
         )
         state.setLapRowPaceMinPer500m(
             if (metersPerSecond > 0.0) 500.0 / metersPerSecond / 60.0 else null,

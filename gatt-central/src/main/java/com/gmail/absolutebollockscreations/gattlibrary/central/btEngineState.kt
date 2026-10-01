@@ -583,8 +583,6 @@ class BtEngineState : HrmStateSink {
 
     /* ───────────────────────────── units / session flags ───────────────────────────── */
 
-    private val _units: MutableStateFlow<Int?> = MutableStateFlow(null)
-    val units: StateFlow<Int?> = _units
 
     private val _activeSession: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val activeSession: StateFlow<Boolean> = _activeSession
@@ -717,7 +715,6 @@ class BtEngineState : HrmStateSink {
             _elapsedTimeSec.value = 0
             // Reset lap projections too, since totals got zeroed
             _lapAvgSpeedMps.value = null
-            _lapAvgSpeedDisplay.value = null
         }
     }
 
@@ -796,15 +793,12 @@ class BtEngineState : HrmStateSink {
     val lapElapsedTimeSec: StateFlow<Int?> = _lapElapsedTimeSec
     private val _lapDistanceMeters = MutableStateFlow<Int?>(null)
     val lapDistanceMeters: StateFlow<Int?> = _lapDistanceMeters
-    private val _lapDistanceDisplay = MutableStateFlow<Double?>(null) // km or mi
-    val lapDistanceDisplay: StateFlow<Double?> = _lapDistanceDisplay
 
     private val _lapAvgSpeedMps = MutableStateFlow<Double?>(null)
     val lapAvgSpeedMps: StateFlow<Double?> = _lapAvgSpeedMps
-    private val _lapAvgSpeedDisplay = MutableStateFlow<Double?>(null)
-    val lapAvgSpeedDisplay: StateFlow<Double?> = _lapAvgSpeedDisplay
-    private val _lapRunPaceMinPerUnit = MutableStateFlow<Double?>(null)
-    val lapRunPaceMinPerUnit: StateFlow<Double?> = _lapRunPaceMinPerUnit
+    /** Lap pace in minutes per kilometre (canonical); display units are the UI's job. */
+    private val _lapPaceMinPerKm = MutableStateFlow<Double?>(null)
+    val lapPaceMinPerKm: StateFlow<Double?> = _lapPaceMinPerKm
     private val _lapRowPaceMinPer500m = MutableStateFlow<Double?>(null)
     val lapRowPaceMinPer500m: StateFlow<Double?> = _lapRowPaceMinPer500m
 
@@ -1206,13 +1200,7 @@ class BtEngineState : HrmStateSink {
         )
     }
 
-    // Session & units (starting a new session clears time-series + averages)
-    fun setUnits(units: Int?) {
-        val old = _units.value
-        _units.value = units
-        Timber.tag(TAG).i("setUnits %s → %s", old?.toString() ?: "null", units?.toString() ?: "null")
-    }
-
+    // Session (starting a new session clears time-series + averages)
     fun setActiveSession(active: Boolean) {
         val was = _activeSession.value
         _activeSession.value = active
@@ -1310,11 +1298,9 @@ class BtEngineState : HrmStateSink {
 
     fun setLapElapsedTimeSec(v: Int?) { _lapElapsedTimeSec.value = v }
     fun setLapDistanceMeters(v: Int?) { _lapDistanceMeters.value = v }
-    fun setLapDistanceDisplay(v: Double?) { _lapDistanceDisplay.value = v }
 
     fun setLapAvgSpeedMps(v: Double?) { _lapAvgSpeedMps.value = v }
-    fun setLapAvgSpeedDisplay(v: Double?) { _lapAvgSpeedDisplay.value = v }
-    fun setLapRunPaceMinPerUnit(v: Double?) { _lapRunPaceMinPerUnit.value = v }
+    fun setLapPaceMinPerKm(v: Double?) { _lapPaceMinPerKm.value = v }
     fun setLapRowPaceMinPer500m(v: Double?) { _lapRowPaceMinPer500m.value = v }
 
     fun setLapStrokeCount(v: Int?) { _lapStrokeCount.value = v }
@@ -1626,7 +1612,6 @@ class BtEngineState : HrmStateSink {
         // If lap hasn't really started, clear and bail
         if (lapElapsed == null || lapElapsed <= 0) {
             _lapAvgSpeedMps.value = null
-            _lapAvgSpeedDisplay.value = null
             Timber.tag(TAG).v("updateLapRowingSpeed: lap not started (lapElapsed=%s)", lapElapsed?.toString() ?: "null")
             return
         }
@@ -1639,7 +1624,6 @@ class BtEngineState : HrmStateSink {
         val series = _distanceSeriesM.value
         if (series.isEmpty()) {
             _lapAvgSpeedMps.value = null
-            _lapAvgSpeedDisplay.value = null
             Timber.tag(TAG).v("updateLapRowingSpeed: no distance samples")
             return
         }
@@ -1647,7 +1631,6 @@ class BtEngineState : HrmStateSink {
         val recent = series.filter { it.tMillis >= windowStart && it.tMillis <= nowMs }
         if (recent.size < 2) {
             _lapAvgSpeedMps.value = null
-            _lapAvgSpeedDisplay.value = null
             Timber.tag(TAG).v("updateLapRowingSpeed: insufficient samples (recent=%d)", recent.size)
             return
         }
@@ -1657,7 +1640,6 @@ class BtEngineState : HrmStateSink {
         val dtMs = (newest.tMillis - oldest.tMillis).coerceAtLeast(0L)
         if (dtMs < minSpanMs) {
             _lapAvgSpeedMps.value = null
-            _lapAvgSpeedDisplay.value = null
             Timber.tag(TAG).v("updateLapRowingSpeed: dtMs too small (%d)", dtMs)
             return
         }
@@ -1668,7 +1650,6 @@ class BtEngineState : HrmStateSink {
         val dmLap = newestLapM - oldestLapM
         if (dmLap <= 0.0) {
             _lapAvgSpeedMps.value = null
-            _lapAvgSpeedDisplay.value = null
             Timber.tag(TAG).v("updateLapRowingSpeed: non-positive dmLap=%.2f", dmLap)
             return
         }
@@ -1679,12 +1660,8 @@ class BtEngineState : HrmStateSink {
         // 3–5s “instant” lap speed
         _lapAvgSpeedMps.value = lapMps
 
-        // display (km/h or mi/h)
+        // km/h, for the log line only
         val lapKph = lapMps * 3.6
-        _lapAvgSpeedDisplay.value = when (_units.value) {
-            1    -> lapKph * 0.621371
-            else -> lapKph
-        }
 
         Timber.tag(TAG).v(
             "updateLapRowingSpeed: lapMps=%.2f lapKph=%.2f lapStart=%d lapElapsed=%d",
@@ -1696,16 +1673,12 @@ class BtEngineState : HrmStateSink {
 
         // keep existing full-lap deriveds (distance / lapElapsed) if present;
         // but if they are null, seed them from current lap totals
-        if (_lapRunPaceMinPerUnit.value == null) {
+        if (_lapPaceMinPerKm.value == null) {
             val lapDistM = _lapDistanceMeters.value
             if (lapDistM != null && lapElapsed > 0) {
                 val mpsFull = lapDistM.toDouble() / lapElapsed.toDouble()
                 val kmhFull = mpsFull * 3.6
                 _lapAvgSpeedMps.value = mpsFull
-                _lapAvgSpeedDisplay.value = when (_units.value) {
-                    1    -> kmhFull * 0.621371
-                    else -> kmhFull
-                }
                 Timber.tag(TAG).v(
                     "updateLapRowingSpeed: seeded full-lap avg from lapDist=%d lapElapsed=%d → kph=%.2f",
                     lapDistM,
@@ -1748,7 +1721,6 @@ class BtEngineState : HrmStateSink {
 
         // 3) clear lap projections derived from series
         _lapAvgSpeedMps.value = null
-        _lapAvgSpeedDisplay.value = null
     }
 
     /* ───────────────────────────── HrmStateSink implementation ───────────────────────────── */

@@ -67,12 +67,10 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *
  *  - **Session / units / authoritative elapsed time**
  *      • The engine and parsers keep session context in:
- *          - `units` (metric vs imperial)
  *          - `activeSession`
  *          - `isRunning`
  *          - `elapsedTimeSec`
- *      • `BtEngine.setUnits(...)` sets `units` and triggers pace re-emission
- *        in the correct unit (min/km vs min/mi).
+ *      • Display units are not engine state; the UI converts canonical values.
  *      • `BtEngine.markSessionStarted()/markSessionStopped()` and
  *        `BtEngineState.setActiveSession(...)`:
  *          - Clear averages and time-series.
@@ -162,7 +160,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *          - `updateLapRowingSpeed()` projects that same distance window into
  *            the current lap using lap anchors to produce:
  *              · `lapAvgSpeedMps`
- *              · `lapAvgSpeedDisplay`
  *              · Seed values for lap-pace when full lap totals exist.
  *
  *  - **Lap state & helpers**
@@ -177,9 +174,9 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *      • Derived lap metrics:
  *          - Updated by Utils and FTMS parsers using anchor+total patterns:
  *              · `lapElapsedTimeSec`
- *              · `lapDistanceMeters / lapDistanceDisplay`
- *              · `lapAvgSpeedMps / lapAvgSpeedDisplay`
- *              · `lapRunPaceMinPerUnit / lapRowPaceMinPer500m`
+ *              · `lapDistanceMeters`
+ *              · `lapAvgSpeedMps`
+ *              · `lapPaceMinPerKm / lapRowPaceMinPer500m`
  *              · `lapStrokeCount / lapSteps / lapCadenceSpm`
  *          - `lapCount` increments on each `BtEngine.doLap()`.
  *          - `updateLapRowingSpeed()` provides a rowing-specific lap view when

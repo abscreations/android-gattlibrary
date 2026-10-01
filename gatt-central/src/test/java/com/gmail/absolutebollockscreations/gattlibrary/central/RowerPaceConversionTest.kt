@@ -29,12 +29,10 @@ class RowerPaceConversionTest {
     }
 
     @Test
-    fun `canonical pace remains metric when display units change`() {
+    fun `engine pace is stored as canonical minutes per km`() {
         val state = BtEngineState()
         state.setInstantPace(4.0)
         state.setAvgPace(4.2)
-
-        state.setUnits(1)
 
         assertEquals(4.0, state.instantPaceMinPerKm.value!!, 0.0)
         assertEquals(4.2, state.averagePaceMinPerKm.value!!, 0.0)

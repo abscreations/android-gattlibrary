@@ -166,7 +166,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *    Parsing is delegated to BtEngineCapabilities.
  *
  * UNITS / ELAPSED / LAPS
- *  - setUnits(...)
  *  - setElapsedFromWorkout(...)
  *  - doLap()
  *
@@ -280,11 +279,10 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *        and is set via setElapsedSeconds() from FtmsParsers.
  *
  * METRIC STREAMS (observable)
- *  - Speed: speedKph, speedMph, speedDisplay, avgSpeedKph, avgSpeedDisplay,
- *           peakSpeedKph, peakSpeedMph, peakSpeedDisplay
- *  - Pace:  instantPace (min/km), instantPaceDisplay (min/km or min/mi),
- *           avgPace, lapRunPaceMinPerUnit, lapRowPaceMinPer500m
- *  - Distance: totalDistanceMeters, totalDistanceDisplay
+ *  - Speed: speedKph, speedMph, avgSpeedKph, peakSpeedKph, peakSpeedMph
+ *  - Pace:  instantPaceMinPerKm, averagePaceMinPerKm,
+ *           lapPaceMinPerKm, lapRowPaceMinPer500m
+ *  - Distance: totalDistanceMeters
  *  - Power: instantPower, averagePower, peakPower
  *  - Cadence / strokes / steps: strokeRate, peakStrokeRate, strokeCount,
  *           instantCadence, averageCadence, totalStrides, totalFloors,
@@ -304,9 +302,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  *  - Public lap flows:
  *      • lapCount
  *      • lapElapsedTimeSec
- *      • lapDistanceMeters, lapDistanceDisplay
- *      • lapAvgSpeedMps, lapAvgSpeedDisplay
- *      • lapRunPaceMinPerUnit, lapRowPaceMinPer500m
+ *      • lapDistanceMeters
+ *      • lapAvgSpeedMps
+ *      • lapPaceMinPerKm, lapRowPaceMinPer500m
  *      • lapStrokeCount, lapSteps, lapCadenceSpm
  *
  *  - Internal accumulators:
@@ -890,22 +888,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
 *  - nowMs(): Long
 *  - ByteArray.toHex(): String
 *
-*  - toDisplaySpeedFromKph(engine, kph: Double?): Double?
-*  - toDisplayDistanceFromMeters(engine, meters: Int?): Double?
-*  - recomputeAllDisplayUnits(engine)
-*
-*  - recomputeLapDerived(engine)
-*  - updateLapDistanceFromTotal(engine, totalMeters)
-*  - updateLapElapsedFromTotal(engine, totalElapsedSec)
-*  - updateLapStepsFromTotal(engine, totalStepsNow)
-*  - updateLapStrokesFromTotal(engine, totalStrokesNow)
-*  - updateUnifiedLapCadenceFromInstant(engine, inst)
-*
-* CONSTANTS
-*  - UNIT_METRIC / UNIT_IMPERIAL
-*  - MPS_TO_KPH, MPS_TO_MPH
-*  - M_TO_KM, M_TO_MI
-*  - M_PER_KM, M_PER_MILE, ROWING_PACE_DISTANCE_M
+*  (Unit conversion and lap math left this file: central is canonical, the UI converts,
+*   and MetricFusion derives lap values.)
 *
 *
 * ───────────────────────────────────────────────────────────────────────────────

@@ -106,10 +106,10 @@ class EngineMetricPumpSnapshotSourceTest {
     }
 
     @Test
-    fun `rower pace from engine pace is unaffected by imperial display units`() {
-        // Regression: the pump used to read the display-unit pace flow as if it were min/km, so with
+    fun `rower pace from engine pace is canonical minutes per km`() {
+        // History (LIB-34): the pump once read the display-unit pace flow as if it were min/km, so with
         // imperial units a rower with no speed reported pace 1.609344 times too slow.
-        val state = BtEngineState().apply { setUnits(1); setInstantPace(2.0) } // 2.0 min/km
+        val state = BtEngineState().apply { setInstantPace(2.0) } // 2.0 min/km
         val store = FtmsMetricStore()
         EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_ROWER }.sampleOnce()
         assertEquals(60.0, store.snapshot.paceSecondsPer500m!!, 1e-9) // 2 min/km = 60 s per 500 m

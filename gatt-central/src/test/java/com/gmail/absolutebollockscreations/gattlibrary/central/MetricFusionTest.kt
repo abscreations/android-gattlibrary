@@ -128,8 +128,8 @@ class MetricFusionTest {
     }
 
     @Test
-    fun `instant CSC speed samples publish simple average in metric display units`() {
-        val state = BtEngineState().apply { setUnits(0) }
+    fun `instant CSC speed samples publish a simple average in km per hour`() {
+        val state = BtEngineState()
         val fusion = MetricFusion(state)
 
         fusion.submit(
@@ -159,8 +159,8 @@ class MetricFusionTest {
     }
 
     @Test
-    fun `instant CSC speed average stays canonical km per hour when the display units are imperial`() {
-        val state = BtEngineState().apply { setUnits(1) }
+    fun `instant CSC speed average is the mean of the samples whatever their magnitude`() {
+        val state = BtEngineState()
         val fusion = MetricFusion(state)
 
         fusion.submit(
