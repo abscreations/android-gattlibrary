@@ -97,11 +97,19 @@ internal object BtEngineCapabilities {
     private const val TARGET_SIMULATION_BIT = 1 shl FtmsSpec.TargetFeature.INDOOR_BIKE_SIMULATION
     private const val TARGET_SPIN_DOWN_BIT = 1 shl FtmsSpec.TargetFeature.SPIN_DOWN_CONTROL
 
-    @SuppressLint("MissingPermission")
-    fun parseFitnessMachineFeatures(engine: BtEngine, value: ByteArray) {
+    /** Which control targets 0x2ACC claimed; used to decide which range reads to issue. */
+    class FeatureFlags(
+        val supportsSpeed: Boolean,
+        val supportsInclination: Boolean,
+        val supportsResistance: Boolean,
+        val supportsPower: Boolean,
+    )
+
+    /** State-only half of [parseFitnessMachineFeatures]. Returns null when the payload is too short. */
+    fun applyFitnessMachineFeatures(state: BtEngineState, value: ByteArray): FeatureFlags? {
         if (value.size < 5) {
             Timber.tag(BtEngineState.TAG).w("Features (0x2ACC) too short len=%d", value.size)
-            return
+            return null
         }
 
         val controlFlags = value[4].toInt() and 0xFF
@@ -124,17 +132,17 @@ internal object BtEngineCapabilities {
         val supportsSpinDown = (targetFlags and TARGET_SPIN_DOWN_BIT) != 0
 
         // Legacy flags on state (engine-side logic / UI)
-        engine.state.supportsSpeed       = supportsSpeed
-        engine.state.supportsInclination = supportsInclination
-        engine.state.supportsResistance  = supportsResistance
-        engine.state.supportsPower       = supportsPower
-        engine.state.supportsPaceMeasurement = supportsPaceMeasurement
-        engine.state.supportsIndoorBikeSimulation = supportsSimulation
-        engine.state.supportsSpinDown    = supportsSpinDown
-        engine.state.featuresRead        = true
+        state.supportsSpeed       = supportsSpeed
+        state.supportsInclination = supportsInclination
+        state.supportsResistance  = supportsResistance
+        state.supportsPower       = supportsPower
+        state.supportsPaceMeasurement = supportsPaceMeasurement
+        state.supportsIndoorBikeSimulation = supportsSimulation
+        state.supportsSpinDown    = supportsSpinDown
+        state.featuresRead        = true
 
         // New canonical capabilities snapshot for provider-side btService
-        engine.state.mergeFtmsCapabilities(
+        state.mergeFtmsCapabilities(
             BtEngineState.FtmsCapabilities(
                 featuresRead        = true,
                 supportsSpeed       = supportsSpeed,
@@ -152,16 +160,23 @@ internal object BtEngineCapabilities {
             supportsResistance,
             supportsPower
         )
+        return FeatureFlags(supportsSpeed, supportsInclination, supportsResistance, supportsPower)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun parseFitnessMachineFeatures(engine: BtEngine, value: ByteArray) {
+        val flags = applyFitnessMachineFeatures(engine.state, value) ?: return
 
         // Opportunistically fetch ranges for any supported targets.
         // Use a standard permission check so Lint can verify it.
-        if (supportsResistance)  tryReadRange(engine) { engine.readSupportedResistanceRange() }
-        if (supportsInclination) tryReadRange(engine) { engine.readSupportedInclinationRange() }
-        if (supportsSpeed)       tryReadRange(engine) { engine.readSupportedSpeedRange() }
-        if (supportsPower)       tryReadRange(engine) { engine.readSupportedPowerRange() }
+        if (flags.supportsResistance)  tryReadRange(engine) { engine.readSupportedResistanceRange() }
+        if (flags.supportsInclination) tryReadRange(engine) { engine.readSupportedInclinationRange() }
+        if (flags.supportsSpeed)       tryReadRange(engine) { engine.readSupportedSpeedRange() }
+        if (flags.supportsPower)       tryReadRange(engine) { engine.readSupportedPowerRange() }
     }
 
-    fun parseSupportedSpeedRange(engine: BtEngine, value: ByteArray) {
+    /** State-only half of [parseSupportedSpeedRange], separable so it can be tested without an engine. */
+    fun applySupportedSpeedRange(state: BtEngineState, value: ByteArray) {
         if (value.size < 6) {
             Timber.tag(BtEngineState.TAG).w("SpeedRange (0x2AD4) too short len=%d", value.size)
             return
@@ -178,22 +193,22 @@ internal object BtEngineCapabilities {
             rawMax = t
         }
 
-        // Legacy human-readable units on engine.state (for existing UI/math).
+        // Legacy human-readable units on state (for existing UI/math).
         // Historically this code treated /100f as "km/h"; we preserve that behavior.
         val minVal = rawMin / 100f
         val maxVal = rawMax / 100f
         val incRaw = rawInc / 100f
 
-        engine.state.speedMin = minVal
-        engine.state.speedMax = maxVal
-        engine.state.speedIncr = normalizeStep(incRaw)
-        engine.state.speedRangeKnown = true
+        state.speedMin = minVal
+        state.speedMax = maxVal
+        state.speedIncr = normalizeStep(incRaw)
+        state.speedRangeKnown = true
 
         // Register spec-unit snapshot for btService adapter.
-        engine.state.mergeFtmsCapabilities(
+        state.mergeFtmsCapabilities(
             BtEngineState.FtmsCapabilities(
                 featuresRead    = true,
-                supportsSpeed   = engine.state.supportsSpeed,
+                supportsSpeed   = state.supportsSpeed,
                 speedMin        = rawMin.toFloat(),                      // spec: 0.01 m/s units
                 speedMax        = rawMax.toFloat(),
                 speedIncr       = normalizeStep(rawInc.toFloat()),
@@ -204,16 +219,20 @@ internal object BtEngineCapabilities {
         Timber.tag(BtEngineState.TAG).d(
             "Speed range: min=%.2f (legacy units) max=%.2f inc=%.2f " +
                     "[spec raw min=%d max=%d inc=%d]",
-            engine.state.speedMin,
-            engine.state.speedMax,
-            engine.state.speedIncr,
+            state.speedMin,
+            state.speedMax,
+            state.speedIncr,
             rawMin,
             rawMax,
             rawInc
         )
     }
 
-    fun parseSupportedInclinationRange(engine: BtEngine, value: ByteArray) {
+    fun parseSupportedSpeedRange(engine: BtEngine, value: ByteArray) =
+        applySupportedSpeedRange(engine.state, value)
+
+    /** State-only half of [parseSupportedInclinationRange], separable so it can be tested without an engine. */
+    fun applySupportedInclinationRange(state: BtEngineState, value: ByteArray) {
         if (value.size < 6) {
             Timber.tag(BtEngineState.TAG).w("InclineRange (0x2AD5) too short len=%d", value.size)
             return
@@ -230,21 +249,21 @@ internal object BtEngineCapabilities {
             rawMax = t
         }
 
-        // Percent grade on engine.state (for existing UI/math)
+        // Percent grade on state (for existing UI/math)
         val minVal = rawMin / 10f
         val maxVal = rawMax / 10f
         val incRaw = rawInc / 10f
 
-        engine.state.inclineMin = minVal
-        engine.state.inclineMax = maxVal
-        engine.state.inclineIncr = normalizeStep(incRaw)
-        engine.state.inclineRangeKnown = true
+        state.inclineMin = minVal
+        state.inclineMax = maxVal
+        state.inclineIncr = normalizeStep(incRaw)
+        state.inclineRangeKnown = true
 
         // Register spec-unit snapshot for btService adapter.
-        engine.state.mergeFtmsCapabilities(
+        state.mergeFtmsCapabilities(
             BtEngineState.FtmsCapabilities(
                 featuresRead       = true,
-                supportsInclination = engine.state.supportsInclination,
+                supportsInclination = state.supportsInclination,
                 inclineMin         = rawMin.toFloat(),                   // spec: 0.1 percent units
                 inclineMax         = rawMax.toFloat(),
                 inclineIncr        = normalizeStep(rawInc.toFloat()),
@@ -255,16 +274,20 @@ internal object BtEngineCapabilities {
         Timber.tag(BtEngineState.TAG).d(
             "Incline range: min=%.1f%% max=%.1f%% inc=%.1f%% " +
                     "[spec raw min=%d max=%d inc=%d]",
-            engine.state.inclineMin,
-            engine.state.inclineMax,
-            engine.state.inclineIncr,
+            state.inclineMin,
+            state.inclineMax,
+            state.inclineIncr,
             rawMin,
             rawMax,
             rawInc
         )
     }
 
-    fun parseSupportedResistanceRange(engine: BtEngine, value: ByteArray) {
+    fun parseSupportedInclinationRange(engine: BtEngine, value: ByteArray) =
+        applySupportedInclinationRange(engine.state, value)
+
+    /** State-only half of [parseSupportedResistanceRange], separable so it can be tested without an engine. */
+    fun applySupportedResistanceRange(state: BtEngineState, value: ByteArray) {
         if (value.size < 6) {
             Timber.tag(BtEngineState.TAG).w("ResistanceRange (0x2AD6) too short len=%d", value.size)
             return
@@ -281,21 +304,21 @@ internal object BtEngineCapabilities {
             rawMax = t
         }
 
-        // Legacy on engine.state: float “levels” with 0.1 resolution
+        // Legacy on state: float “levels” with 0.1 resolution
         val minVal = rawMin / 10f
         val maxVal = rawMax / 10f
         val incRaw = rawInc / 10f
 
-        engine.state.resistanceMin = minVal
-        engine.state.resistanceMax = maxVal
-        engine.state.resistanceIncr = normalizeStep(incRaw)
-        engine.state.resistanceRangeKnown = true
+        state.resistanceMin = minVal
+        state.resistanceMax = maxVal
+        state.resistanceIncr = normalizeStep(incRaw)
+        state.resistanceRangeKnown = true
 
         // Register spec-unit snapshot for btService adapter.
-        engine.state.mergeFtmsCapabilities(
+        state.mergeFtmsCapabilities(
             BtEngineState.FtmsCapabilities(
                 featuresRead           = true,
-                supportsResistance     = engine.state.supportsResistance,
+                supportsResistance     = state.supportsResistance,
                 resistanceMin          = rawMin.toFloat(),               // spec: 0.1 “level” units
                 resistanceMax          = rawMax.toFloat(),
                 resistanceIncr         = normalizeStep(rawInc.toFloat()),
@@ -306,16 +329,20 @@ internal object BtEngineCapabilities {
         Timber.tag(BtEngineState.TAG).d(
             "Resistance range: min=%.1f max=%.1f inc=%.1f " +
                     "[spec raw min=%d max=%d inc=%d]",
-            engine.state.resistanceMin,
-            engine.state.resistanceMax,
-            engine.state.resistanceIncr,
+            state.resistanceMin,
+            state.resistanceMax,
+            state.resistanceIncr,
             rawMin,
             rawMax,
             rawInc
         )
     }
 
-    fun parseSupportedPowerRange(engine: BtEngine, value: ByteArray) {
+    fun parseSupportedResistanceRange(engine: BtEngine, value: ByteArray) =
+        applySupportedResistanceRange(engine.state, value)
+
+    /** State-only half of [parseSupportedPowerRange], separable so it can be tested without an engine. */
+    fun applySupportedPowerRange(state: BtEngineState, value: ByteArray) {
         if (value.size < 6) {
             Timber.tag(BtEngineState.TAG).w("PowerRange (0x2AD8) too short len=%d", value.size)
             return
@@ -336,16 +363,16 @@ internal object BtEngineCapabilities {
         val maxVal = rawMax.toFloat()
         val incRaw = rawInc.toFloat()
 
-        engine.state.powerMin = minVal
-        engine.state.powerMax = maxVal
-        engine.state.powerIncr = normalizeStep(incRaw)
-        engine.state.powerRangeKnown = true
+        state.powerMin = minVal
+        state.powerMax = maxVal
+        state.powerIncr = normalizeStep(incRaw)
+        state.powerRangeKnown = true
 
         // Register spec-unit snapshot for btService adapter.
-        engine.state.mergeFtmsCapabilities(
+        state.mergeFtmsCapabilities(
             BtEngineState.FtmsCapabilities(
                 featuresRead      = true,
-                supportsPower     = engine.state.supportsPower,
+                supportsPower     = state.supportsPower,
                 powerMin          = rawMin.toFloat(),                    // spec: watts
                 powerMax          = rawMax.toFloat(),
                 powerIncr         = normalizeStep(rawInc.toFloat()),
@@ -356,14 +383,17 @@ internal object BtEngineCapabilities {
         Timber.tag(BtEngineState.TAG).d(
             "Power range: min=%.0f W max=%.0f W inc=%.0f W " +
                     "[spec raw min=%d max=%d inc=%d]",
-            engine.state.powerMin,
-            engine.state.powerMax,
-            engine.state.powerIncr,
+            state.powerMin,
+            state.powerMax,
+            state.powerIncr,
             rawMin,
             rawMax,
             rawInc
         )
     }
+
+    fun parseSupportedPowerRange(engine: BtEngine, value: ByteArray) =
+        applySupportedPowerRange(engine.state, value)
 
     // ─────────────────────────────────────────────────────────────
     // Permission-safe wrapper for range reads (Lint-friendly)
