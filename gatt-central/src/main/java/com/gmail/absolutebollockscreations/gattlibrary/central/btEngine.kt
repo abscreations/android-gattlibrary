@@ -360,23 +360,15 @@ class BtEngine internal constructor(
 
 
     // ───────────────────────── Provider advertising state (moved here from FtmsProtocolHandler) ─────────────────────────
-    @Volatile private var advertisingStarted: Boolean = false
-    @Volatile private var advertisedProfile: FtmsMachineProfile? = null
-    @Volatile private var providerAdvertProfile: FtmsMachineProfile? = null
-    @Volatile private var providerAdvertLoopRunning: Boolean = false
-
     // When true, we've already scheduled a retry of the FEATURES (0x2ACC) read after gaining control.
     @Volatile internal var featureReadRetryScheduled: Boolean = false
 
     // When true, we've already scheduled an early bonding attempt for the current FTMS connection.
     @Volatile internal var earlyBondScheduled: Boolean = false
 
-    /** Call to clear provider-side advertising state whenever our upstream FTMS link (“session”) ends. */
+    /** Clear provider-side advertising state whenever our upstream FTMS link ("session") ends. */
     private fun resetProviderAdvertisingState() {
-        advertisingStarted = false
-        advertisedProfile = null
-        providerAdvertProfile = null
-        providerAdvertLoopRunning = false
+        providerAdvertising.reset()
         featureReadRetryScheduled = false
         earlyBondScheduled = false
     }
@@ -402,186 +394,7 @@ class BtEngine internal constructor(
      * unavailable. We only gate *provider advertising* on the capabilities snapshot.
      */
     fun maybeStartProviderAdvertisingAfterFeatures(profile: FtmsMachineProfile?) {
-        // Global gate: if FTMS provider is disabled, we never start ANY local advertising
-        if (!ENABLE_BTSERVICE_FTMS) {
-            Timber.tag(BtEngineState.TAG).d(
-                "Provider advertising skipped: ENABLE_BTSERVICE_FTMS=false (no FTMS/CSC/CPS advertising)"
-            )
-            return
-        }
-
-        if (profile == null) {
-            Timber.tag(BtEngineState.TAG).w(
-                "Provider advertising skipped: profile=null (no inferred machine)"
-            )
-            return
-        }
-
-        providerAdvertProfile = profile
-
-        val sink = serviceControlSink ?: run {
-            Timber.tag(BtEngineState.TAG).d("Provider advertising skipped: no serviceControlSink")
-            return
-        }
-
-        if (advertisingStarted) {
-            Timber.tag(BtEngineState.TAG).d(
-                "Provider advertising already started for %s",
-                advertisedProfile
-            )
-            return
-        }
-
-        // Launch a single retry loop per FTMS session.
-        if (providerAdvertLoopRunning) {
-            Timber.tag(BtEngineState.TAG).d(
-                "Provider advertising retry loop already running; updated profile=%s",
-                profile
-            )
-            return
-        }
-
-        providerAdvertLoopRunning = true
-        Timber.tag(BtEngineState.TAG).d(
-            "Provider advertising retry loop starting for profile=%s (sink=%s)",
-            profile,
-            sink.javaClass.simpleName
-        )
-
-        scope.launch {
-            var attempt = 0
-            // Monotonic start of the wait for claimed Supported-* Ranges (LIB-9e); null until the
-            // first check that finds one missing.
-            var rangeWaitStartedAtMs: Long? = null
-            try {
-                while (ENABLE_BTSERVICE_FTMS && !advertisingStarted) {
-                    val currentSink = serviceControlSink ?: run {
-                        Timber.tag(BtEngineState.TAG).w(
-                            "Provider advertising retry: serviceControlSink lost; aborting loop"
-                        )
-                        break
-                    }
-
-                    val currentProfile = providerAdvertProfile ?: run {
-                        Timber.tag(BtEngineState.TAG).w(
-                            "Provider advertising retry: profile=null; waiting for profile"
-                        )
-                        delay(1_000)
-                        continue
-                    }
-
-                    // A sensor-only session has no upstream machine by definition, so neither
-                    // the link check nor the capability wait below can ever be satisfied - both
-                    // interrogate a machine that is not there. Before Phase 1 that was
-                    // harmless, because every session had a machine. An RSC-only session is
-                    // the first that does not, and it must still advertise downstream.
-                    val sensorOnly = !hasUpstreamMachine() && state.activeSession.value
-                    if (!sensorOnly && !hasUpstreamMachine()) {
-                        Timber.tag(BtEngineState.TAG).d(
-                            "Provider advertising retry: upstream FTMS not connected and no active " +
-                                "sensor-only session; stopping loop"
-                        )
-                        break
-                    }
-
-                    val capabilities = if (sensorOnly) {
-                        sensorOnlyProviderCapabilities()
-                    } else {
-                        providerMachineCapabilities()
-                    }
-                    val nowMs = System.nanoTime() / 1_000_000L
-                    val rangeWaitMs = rangeWaitStartedAtMs?.let { nowMs - it } ?: 0L
-                    when (val readiness = ProviderAdvertisingReadiness.decide(capabilities, rangeWaitMs)) {
-                        ProviderAdvertisingReadiness.Decision.WaitForFeatures -> {
-                            Timber.tag(BtEngineState.TAG).d(
-                                "Provider advertising retry: FEATURES not read yet (caps=%s); waiting",
-                                capabilities
-                            )
-                            delay(1_000)
-                            continue
-                        }
-                        is ProviderAdvertisingReadiness.Decision.WaitForRanges -> {
-                            if (rangeWaitStartedAtMs == null) rangeWaitStartedAtMs = nowMs
-                            Timber.tag(BtEngineState.TAG).d(
-                                "Provider advertising retry: waiting for Supported ranges %s (%d ms)",
-                                readiness.missing,
-                                rangeWaitMs
-                            )
-                            delay(ProviderAdvertisingReadiness.RANGE_POLL_MS)
-                            continue
-                        }
-                        is ProviderAdvertisingReadiness.Decision.ReadyWithoutRanges ->
-                            Timber.tag(BtEngineState.TAG).w(
-                                "Provider advertising: Supported ranges %s not read after %d ms; " +
-                                    "bridging without those controls",
-                                readiness.missing,
-                                rangeWaitMs
-                            )
-                        ProviderAdvertisingReadiness.Decision.Ready -> Unit
-                    }
-
-                    attempt++
-                    Timber.tag(BtEngineState.TAG).i(
-                        "Provider advertising retry attempt #%d: requesting local FTMS advertising " +
-                                "(profile=%s, capabilities=%s)",
-                        attempt,
-                        currentProfile,
-                        capabilities
-                    )
-
-                    val success: Boolean = try {
-                        // expect Boolean from btService; false means “not ready yet”
-                        currentSink.startAdvertisingFtms(currentProfile, capabilities)
-                    } catch (t: Throwable) {
-                        Timber.tag(BtEngineState.TAG).w(
-                            t,
-                            "Provider advertising retry attempt #%d threw; will retry",
-                            attempt
-                        )
-                        false
-                    }
-
-                    if (success) {
-                        advertisedProfile = currentProfile
-                        advertisingStarted = true
-                        Timber.tag(BtEngineState.TAG).i(
-                            "Provider advertising: FTMS advertising started successfully on attempt #%d",
-                            attempt
-                        )
-
-                        // If CSC/CPS mirroring is enabled alongside FTMS, also start CSC+CPS advertising.
-                        if (ENABLE_BTSERVICE_FTMS && ENABLE_BTSERVICE_CSCCPS) {
-                            Timber.tag(BtEngineState.TAG).i(
-                                "ENABLE_BTSERVICE_CSCCPS=true → also starting local CSC+CPS advertising"
-                            )
-                            runCatching { currentSink.startAdvertisingCscCps() }
-                                .onFailure {
-                                    Timber.tag(BtEngineState.TAG).w(
-                                        it,
-                                        "Failed to start CSC+CPS advertising alongside FTMS"
-                                    )
-                                }
-                        }
-                        break
-                    } else {
-                        Timber.tag(BtEngineState.TAG).d(
-                            "Provider advertising retry attempt #%d: startAdvertisingFtms returned false; " +
-                                    "btService not ready yet (capabilities may still be converging). Retrying…",
-                            attempt
-                        )
-                        // Simple backoff to avoid hammering the stack if btService refuses.
-                        delay(2_000)
-                    }
-                }
-            } finally {
-                providerAdvertLoopRunning = false
-                Timber.tag(BtEngineState.TAG).d(
-                    "Provider advertising retry loop finished (advertisingStarted=%s, connected=%s)",
-                    advertisingStarted,
-                    connectionState.value == android.bluetooth.BluetoothProfile.STATE_CONNECTED
-                )
-            }
-        }
+        providerAdvertising.request(profile)
     }
 
     /** Convenience overload if the caller only has an ActivityType (e.g., inferred from data chars). */
@@ -613,32 +426,7 @@ class BtEngine internal constructor(
             return
         }
 
-        providerAdvertProfile = profile
-        if (!hasUpstreamMachine() && !state.activeSession.value) {
-            // No machine and no session yet: record the persona and wait. A sensor-only
-            // session starting will come back through here.
-            Timber.tag(BtEngineState.TAG).i(
-                "Session mode override=%s recorded without an upstream FTMS connection " +
-                    "or an active session",
-                profile,
-            )
-            return
-        }
-        if (advertisingStarted && advertisedProfile == profile) return
-
-        if (advertisingStarted) {
-            scope.launch {
-                stopProviderAdvertising("session mode override to $profile")
-                advertisingStarted = false
-                advertisedProfile = null
-                while (providerAdvertLoopRunning) delay(25)
-                maybeStartProviderAdvertisingAfterFeatures(profile)
-            }
-        } else {
-            // An active retry loop reads providerAdvertProfile on each attempt; this call is
-            // otherwise responsible for starting a new loop.
-            maybeStartProviderAdvertisingAfterFeatures(profile)
-        }
+        providerAdvertising.overridePersona(profile)
     }
 
     // Public flows (read-only)
@@ -659,6 +447,14 @@ class BtEngine internal constructor(
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
+
+    internal val providerAdvertising = ProviderAdvertisingCoordinator(
+        scope = scope,
+        sink = { serviceControlSink },
+        hasUpstreamMachine = ::hasUpstreamMachine,
+        sessionActive = { state.activeSession.value },
+        machineCapabilities = ::providerMachineCapabilities,
+    )
 
     /**
      * §0.7a liveness tick.
@@ -2410,15 +2206,7 @@ internal fun BtEngine.machineContext(operation: String): ConnectionContext? =
 /* ───────────────────────────── provider-side advertising helpers ───────────────────────────── */
 
 /** Centralized helper to stop local/provider-side advertising (FTMS/CSC/CPS). */
-private fun BtEngine.stopProviderAdvertising(reason: String) {
-    val sink = serviceControlSink ?: return
-    try {
-        Timber.tag(BtEngineState.TAG).i("Stopping local advertising: %s", reason)
-        sink.stopAdvertising()
-    } catch (t: Throwable) {
-        Timber.tag(BtEngineState.TAG).w(t, "stopProviderAdvertising failed: %s", reason)
-    }
-}
+private fun BtEngine.stopProviderAdvertising(reason: String) = providerAdvertising.stop(reason)
 
 /* ───────────────────────────── setGattErrorFor helper ───────────────────────────── */
 
