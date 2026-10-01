@@ -49,7 +49,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
  *          - `*Min / *Max / *Incr` and `*RangeKnown` for speed, incline,
  *            resistance, and power.
  *      • These fields drive **Control Point snapping** and **btService range
- *        synthesis** (via `BtServiceSupportedRangesAdapter`).
+ *        synthesis** (via the capability snapshot).
  *
  *  - **Fitness Machine Status & targets (0x2ADA)**
  *      • `FtmsProtocolHandler` decodes Fitness Machine Status indications and

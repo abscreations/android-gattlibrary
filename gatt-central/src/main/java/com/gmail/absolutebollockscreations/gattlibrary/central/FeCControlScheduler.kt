@@ -50,11 +50,11 @@ internal sealed interface FeCControlTarget {
     /**
      * Pages 50 + 51, sent back-to-back as one logical update — mirrors
      * [FtmsMachineControlEndpoint]'s single `0x11` opcode as closely as two separate FE-C pages
-     * can. Field names and units match [BtServiceEngineFacade.setIndoorBikeSimulation] exactly
+     * can. Field names and units match [BtEngine.setIndoorBikeSimulation] exactly
      * so a caller does not need a second unit-conversion table for FE-C.
      *
      * [gradePercent] is the only field every caller of this target actually has: a full
-     * [BtServiceEngineFacade.setIndoorBikeSimulation] call supplies all four, but an
+     * [BtEngine.setIndoorBikeSimulation] call supplies all four, but an
      * inclination-only write ([FeCBleMachineControlEndpoint.setTargetInclinationPercent]) has
      * only a grade. The other three are nullable for exactly that case - `null` maps to page
      * 50/51's own spec-defined "use the device's default" sentinel (`0xFF`) at the encoder

@@ -857,43 +857,6 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
 *
 *
 * ───────────────────────────────────────────────────────────────────────────────
-* MODULE: BtServiceSupportedRangesAdapter (btServiceSupportedRangeAdapter.kt)
-* ───────────────────────────────────────────────────────────────────────────────
-*
-* PURPOSE
-*  - Helper used on the **provider** (btService) side to synthesize values for
-*    the FTMS Supported-* Range characteristics **from a BtEngineState**.
-*  - Allows the local service to expose realistic min/max/step ranges that match
-*    the app’s understanding of the underlying hardware when acting as a bridge.
-*
-* BEHAVIOR
-*  - buildSpeedRange(state)
-*      • Returns 3×UInt16 (LE) in 0.01 km/h units.
-*      • Uses state.speedMin/Max/Incr when known and supportsSpeed==true.
-*      • Falls back to a small, generic increment when unknown.
-*
-*  - buildInclineRange(state)
-*      • Returns 3×SInt16 (LE) in 0.1% (grade) units.
-*
-*  - buildResistanceRange(state)
-*      • Returns 3×SInt16 (LE), unitless, resolution 1.
-*
-*  - buildHeartRateRange(state)
-*      • Returns 3×UInt8 (bpm). Engine doesn’t currently track HR range per
-*        machine; we expose a generic 0..220 bpm, step 1.
-*
-*  - buildPowerRange(state)
-*      • Returns 3×SInt16 (LE), watts.
-*
-*  - All helpers clamp to the correct numeric ranges and pack into little-endian
-*    byte arrays using small shared helpers.
-*
-* NOTES
-*  - This adapter is intentionally **one-way** (engine → service). Parsing of
-*    ranges on the engine side remains in BtEngineCapabilities.
-*
-*
-* ───────────────────────────────────────────────────────────────────────────────
 * MAINTENANCE NOTES
 * ───────────────────────────────────────────────────────────────────────────────
 *

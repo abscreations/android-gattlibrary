@@ -158,7 +158,7 @@ class BtEngine internal constructor(
     /** Host-app configuration (LIB-2/S2); replaces direct reads of the app's BuildConfig. */
     internal val bleConfig: BleConfig,
     private val handlerSet: HandlerSet,
-) : BtServiceEngineFacade {
+) {
 
     companion object {
         fun create(
@@ -301,33 +301,9 @@ class BtEngine internal constructor(
     private val linkRecovery = InSessionLinkRecovery()
     private val recoveryJobs = mutableMapOf<String, Job>()
 
-    // BtServiceEngineFacade implementation ─────────────────────────────────────────────
-
-    override val isFtmsConnected: Boolean
+    /** True while the machine's FTMS-role link is connected. */
+    internal val isFtmsConnected: Boolean
         get() = connectionState.value == android.bluetooth.BluetoothProfile.STATE_CONNECTED
-
-    override val engineState: BtEngineState
-        get() = state
-
-    override val handlesDownstreamSessionTransitionsLocally: Boolean
-        get() = hasSelectedKayakFirstAdapter()
-
-    override fun buildSupportedSpeedRange(): ByteArray =
-        BtServiceSupportedRangesAdapter.buildSpeedRange(state)
-
-    override fun buildSupportedInclineRange(): ByteArray =
-        BtServiceSupportedRangesAdapter.buildInclineRange(state)
-
-    override fun buildSupportedResistanceRange(): ByteArray =
-        BtServiceSupportedRangesAdapter.buildResistanceRange(state)
-
-    override fun buildSupportedHeartRateRange(): ByteArray =
-        BtServiceSupportedRangesAdapter.buildHeartRateRange(state)
-
-    override fun buildSupportedPowerRange(): ByteArray =
-        BtServiceSupportedRangesAdapter.buildPowerRange(state)
-
-
 
     // ───────────────────────── Provider advertising state (moved here from FtmsProtocolHandler) ─────────────────────────
     // When true, we've already scheduled a retry of the FEATURES (0x2ACC) read after gaining control.
@@ -1624,7 +1600,7 @@ class BtEngine internal constructor(
      * can still be driven, while retaining good behaviour for fully spec-compliant FTMS devices.
      */
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun startOrResume(): Boolean = guardConnectPerm(op = "startOrResume()", default = false) {
+    fun startOrResume(): Boolean = guardConnectPerm(op = "startOrResume()", default = false) {
         val endpoint = controlEndpoint()
         if (endpoint is FeCBleMachineControlEndpoint) {
             return@guardConnectPerm endpoint.startOrResume()
@@ -1703,7 +1679,7 @@ class BtEngine internal constructor(
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun stopOrPause(): Boolean = guardConnectPerm(op = "stopOrPause()", default = false) {
+    fun stopOrPause(): Boolean = guardConnectPerm(op = "stopOrPause()", default = false) {
         val endpoint = controlEndpoint()
         if (endpoint is FeCBleMachineControlEndpoint) {
             return@guardConnectPerm endpoint.stopOrPause()
@@ -1727,36 +1703,36 @@ class BtEngine internal constructor(
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun setTargetSpeedKph(kph: Float): Boolean =
+    fun setTargetSpeedKph(kph: Float): Boolean =
         guardConnectPerm(op = "setTargetSpeedKmh()", default = false) {
             controlEndpoint().setTargetSpeedKph(kph)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun setTargetInclinationPercent(percent: Float): Boolean =
+    fun setTargetInclinationPercent(percent: Float): Boolean =
         guardConnectPerm(op = "setTargetInclinationPercent()", default = false) {
             controlEndpoint().setTargetInclinationPercent(percent)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun setTargetResistance(level: Float): Boolean =
+    fun setTargetResistance(level: Float): Boolean =
         guardConnectPerm(op = "setTargetResistance()", default = false) {
             controlEndpoint().setTargetResistance(level)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun setTargetPowerWatts(watts: Int): Boolean =
+    fun setTargetPowerWatts(watts: Int): Boolean =
         guardConnectPerm(op = "setTargetPowerWatts()", default = false) {
             controlEndpoint().setTargetPowerWatts(watts)
         }
 
-    override fun setWheelCircumferenceMm(millimetres: Float): Boolean =
+    fun setWheelCircumferenceMm(millimetres: Float): Boolean =
         guardConnectPerm(op = "setWheelCircumferenceMm()", default = false) {
             controlEndpoint().setWheelCircumferenceMm(millimetres)
         }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    override fun setIndoorBikeSimulation(
+    fun setIndoorBikeSimulation(
         windSpeedMps: Float,
         gradePercent: Float,
         rollingResistanceCoefficient: Float,

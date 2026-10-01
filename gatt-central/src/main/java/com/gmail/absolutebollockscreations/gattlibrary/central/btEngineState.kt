@@ -397,7 +397,7 @@ class BtEngineState : HrmStateSink {
      *
      * When building provider-side Supported-* Range characteristics, prefer the richer
      * [ftmsCapabilities] snapshot if it is non-null; otherwise, these can be used as a
-     * fallback by converting to spec units in BtServiceSupportedRangesAdapter.
+     * fallback by converting to spec units.
      */
     var speedMin = 0f
     var speedMax = 0f

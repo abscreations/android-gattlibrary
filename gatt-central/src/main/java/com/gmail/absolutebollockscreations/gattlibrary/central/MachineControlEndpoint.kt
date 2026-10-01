@@ -9,9 +9,8 @@ import timber.log.Timber
  * Protocol-neutral machine control surface, per Unit 9.7 of
  * `docs/fe-c-ble_central_implementation.md`.
  *
- * [BtServiceEngineFacade] is the "upstream FTMS bridge for btService" — the seam
- * `btService`'s own FTMS-peripheral-server code uses to fire control commands upstream to
- * whatever real machine [BtEngine] is connected to as a central. Before this unit every one of
+ * [BtEngine]'s control methods are the seam the central client's typed commands use to fire
+ * control commands at whatever real machine [BtEngine] is connected to. Before this unit every one of
  * its control methods hardcoded [BtEngineControlPoint], i.e. FTMS only, even though the same
  * connection slot (`LegacyConnectionRole.FTMS` — a generic "the machine connection" name, not
  * an FTMS-only one; see `ConnectionContext.kt`) already carries Concept2, Precor, Schwinn x70
@@ -19,9 +18,9 @@ import timber.log.Timber
  *
  * This interface is the seam that lets [BtEngine] pick an implementation per connection —
  * [FtmsMachineControlEndpoint] for a standard FTMS link, [FeCBleMachineControlEndpoint] for an
- * FE-C over BLE link — without [BtServiceEngineFacade]'s own public methods (or `btService`,
- * which only ever sees that facade) needing to know which protocol is live. Method names and
- * units mirror [BtServiceEngineFacade] deliberately, since that facade is the only caller.
+ * FE-C over BLE link — without [BtEngine]'s own public methods (or the client above them) needing to know which
+ * protocol is live. Method names and units mirror [BtEngine]'s deliberately, since it is the
+ * only caller.
  *
  * ## Units are FTMS's, not FE-C's, and that is a documented ambiguity, not an equivalence
  *

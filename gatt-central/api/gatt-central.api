@@ -122,7 +122,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Bluet
 	public final fun getRSC_SERVICE_PARCEL ()Landroid/os/ParcelUuid;
 }
 
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine : com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade {
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine$Companion;
 	public final fun activateServiceOn (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/util/Set;)Z
 	public static synthetic fun activateServiceOn$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/util/Set;ILjava/lang/Object;)Z
@@ -130,11 +130,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun bindHrMax (Lkotlinx/coroutines/flow/StateFlow;)V
 	public final fun bindHrZoneMode (Lkotlinx/coroutines/flow/StateFlow;)V
 	public final fun bindRestingHr (Lkotlinx/coroutines/flow/StateFlow;)V
-	public fun buildSupportedHeartRateRange ()[B
-	public fun buildSupportedInclineRange ()[B
-	public fun buildSupportedPowerRange ()[B
-	public fun buildSupportedResistanceRange ()[B
-	public fun buildSupportedSpeedRange ()[B
 	public final fun clearDiscovered ()V
 	public final fun clearSessionData ()V
 	public final fun connectFtms (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Z)Z
@@ -159,15 +154,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getDiscoveredDevices ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getDiscoveryClient ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;
-	public fun getEngineState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;
-	public fun getHandlesDownstreamSessionTransitionsLocally ()Z
 	public final fun getHaveControlFlow ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHrmConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLifeFitnessProfilePrompt ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;
 	public final fun hasSelectedKayakFirstAdapter ()Z
-	public fun isFtmsConnected ()Z
 	public final fun isScanning ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun markSessionStarted (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Ljava/lang/String;)V
 	public final fun markSessionStopped ()V
@@ -184,27 +176,27 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun setElapsedFromWorkout (I)V
 	public final fun setHrMaxFromApp (Ljava/lang/Integer;)V
 	public final fun setHrZoneModeFromApp (Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;)V
-	public fun setIndoorBikeSimulation (FFFF)Z
+	public final fun setIndoorBikeSimulation (FFFF)Z
 	public final fun setKayakFirstDisplayConfiguration (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;)V
 	public final fun setKayakFirstHandshakeVariant (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;)V
 	public final fun setKayakFirstSportMode (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSportMode;)V
 	public final fun setLifeFitnessProfileFromApp (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessProfile;I)V
 	public final fun setRestingHrFromApp (Ljava/lang/Integer;)V
 	public final fun setRunning (Z)V
-	public fun setTargetInclinationPercent (F)Z
-	public fun setTargetPowerWatts (I)Z
-	public fun setTargetResistance (F)Z
-	public fun setTargetSpeedKph (F)Z
-	public fun setWheelCircumferenceMm (F)Z
+	public final fun setTargetInclinationPercent (F)Z
+	public final fun setTargetPowerWatts (I)Z
+	public final fun setTargetResistance (F)Z
+	public final fun setTargetSpeedKph (F)Z
+	public final fun setWheelCircumferenceMm (F)Z
 	public final fun start (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;ZLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun startLocalKayakFirstSession ()Z
-	public fun startOrResume ()Z
+	public final fun startOrResume ()Z
 	public final fun startScan (ZLkotlin/jvm/functions/Function3;)V
 	public static synthetic fun startScan$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngine;ZLkotlin/jvm/functions/Function3;ILjava/lang/Object;)V
 	public final fun stop ()V
 	public final fun stopLocalKayakFirstSession ()Z
-	public fun stopOrPause ()Z
+	public final fun stopOrPause ()Z
 	public final fun stopScan ()V
 }
 
@@ -819,30 +811,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEngine_scanKt {
 	public static final fun retainFreshScanEntries (Ljava/util/Map;JJLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)Ljava/util/Map;
 	public static synthetic fun retainFreshScanEntries$default (Ljava/util/Map;JJLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Ljava/util/Map;
-}
-
-public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade {
-	public abstract fun buildSupportedHeartRateRange ()[B
-	public abstract fun buildSupportedInclineRange ()[B
-	public abstract fun buildSupportedPowerRange ()[B
-	public abstract fun buildSupportedResistanceRange ()[B
-	public abstract fun buildSupportedSpeedRange ()[B
-	public abstract fun getEngineState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;
-	public fun getHandlesDownstreamSessionTransitionsLocally ()Z
-	public abstract fun isFtmsConnected ()Z
-	public abstract fun setIndoorBikeSimulation (FFFF)Z
-	public abstract fun setTargetInclinationPercent (F)Z
-	public abstract fun setTargetPowerWatts (I)Z
-	public abstract fun setTargetResistance (F)Z
-	public abstract fun setTargetSpeedKph (F)Z
-	public fun setWheelCircumferenceMm (F)Z
-	public abstract fun startOrResume ()Z
-	public abstract fun stopOrPause ()Z
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade$DefaultImpls {
-	public static fun getHandlesDownstreamSessionTransitionsLocally (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade;)Z
-	public static fun setWheelCircumferenceMm (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtServiceEngineFacade;F)Z
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/CanonicalUuid {
