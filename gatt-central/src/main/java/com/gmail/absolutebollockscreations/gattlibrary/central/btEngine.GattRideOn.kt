@@ -132,6 +132,7 @@ internal class RideOnProtocolHandler : BtEngineGattCore.ProtocolHandler {
             onInitializationFailed = {
                 engine.state.adapterLiveness.setupFailed(context, "RideOn initialization failed")
             },
+            onControlStateChanged = { engine.state.refreshDeviceCapabilities() },
         )
         bindQualifiedSession(session)
         if (!transport.enableNotifications(RideOnSpec.ASYNC_TX) ||

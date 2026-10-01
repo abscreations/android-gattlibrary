@@ -310,6 +310,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getControlPointChar ()Landroid/bluetooth/BluetoothGattCharacteristic;
 	public final fun getCscNativeEvents ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/CscNativeEventStore;
+	public final fun getDeviceCapabilities ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getDiscoveredDevices ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getElapsedTimeSec ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getElevationGainNeg ()Lkotlinx/coroutines/flow/StateFlow;
@@ -1123,6 +1124,21 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Conne
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/ControlRange {
+	public fun <init> (FFF)V
+	public final fun component1 ()F
+	public final fun component2 ()F
+	public final fun component3 ()F
+	public final fun copy (FFF)Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;FFFILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMax ()F
+	public final fun getMin ()F
+	public final fun getStep ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/CpsDerivationState {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/CpsDerivationState$Companion;
 	public fun <init> ()V
@@ -1518,6 +1534,46 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Cycle
 	public final fun getLastWheelEventTimeTicks ()Ljava/lang/Integer;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities {
+	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities$Companion;
+	public fun <init> ()V
+	public fun <init> (ZZZZZZZZLcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;)V
+	public synthetic fun <init> (ZZZZZZZZLcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component10 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun component11 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun component12 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Z
+	public final fun component6 ()Z
+	public final fun component7 ()Z
+	public final fun component8 ()Z
+	public final fun component9 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun copy (ZZZZZZZZLcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;ZZZZZZZZLcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFeaturesRead ()Z
+	public final fun getInclineRangePercent ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun getPowerRangeWatts ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun getResistanceRange ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun getSpeedRangeKph ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ControlRange;
+	public final fun getSupportsInclineTarget ()Z
+	public final fun getSupportsIndoorBikeSimulation ()Z
+	public final fun getSupportsPaceMeasurement ()Z
+	public final fun getSupportsPowerTarget ()Z
+	public final fun getSupportsResistanceTarget ()Z
+	public final fun getSupportsSpeedTarget ()Z
+	public final fun getSupportsWheelCircumference ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities$Companion {
+	public final fun getNONE ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceCapabilities;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle {
@@ -2024,10 +2080,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun connectSensor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun deselectMachine ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun disconnect (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun getCapabilities ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getConnections ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getDiscovery ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHistory ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMeasurements ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getSessionActive ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun startScan (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public static synthetic fun startScan$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ScanOptions;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;

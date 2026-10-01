@@ -50,6 +50,37 @@ class AdapterLivenessCoordinator(
 
     private val lock = Any()
 
+    /**
+     * Told when the adapter selected for any link may have changed, which is an input to the
+     * public capabilities. Invoked outside [lock].
+     */
+    @Volatile internal var selectionListener: (() -> Unit)? = null
+
+    private val lastNotifiedSelection = HashMap<ConnectionId, String?>()
+
+    private fun notifyIfSelectionChanged() {
+        val changed = synchronized(lock) {
+            var differs = lastNotifiedSelection.size != policies.size
+            if (!differs) {
+                for ((id, policy) in policies) {
+                    if (!lastNotifiedSelection.containsKey(id) ||
+                        lastNotifiedSelection[id] != policy.snapshot().selected?.adapterId
+                    ) {
+                        differs = true
+                        break
+                    }
+                }
+            }
+            if (differs) {
+                lastNotifiedSelection.clear()
+                for ((id, policy) in policies) lastNotifiedSelection[id] = policy.snapshot().selected?.adapterId
+            }
+            differs
+        }
+        if (changed) selectionListener?.invoke()
+    }
+
+
     /** One policy per live machine link, keyed by connection id. */
     private val policies = LinkedHashMap<ConnectionId, MachineAdapterPolicy>()
 
@@ -66,6 +97,11 @@ class AdapterLivenessCoordinator(
      * liveness timer would be measuring the wrong thing.
      */
     fun onSubscriptionsComplete(context: ConnectionContext, nowMs: Long) {
+        onSubscriptionsCompleteImpl(context, nowMs)
+        notifyIfSelectionChanged()
+    }
+
+    private fun onSubscriptionsCompleteImpl(context: ConnectionContext, nowMs: Long) {
         if (!context.machineConnection) return
         val candidates = candidatesFor(context)
         if (candidates.isEmpty()) return
@@ -91,6 +127,11 @@ class AdapterLivenessCoordinator(
      * whether the machine adapter is working.
      */
     fun onSample(sample: MetricSample) {
+        onSampleImpl(sample)
+        notifyIfSelectionChanged()
+    }
+
+    private fun onSampleImpl(sample: MetricSample) {
         val connectionId = (sample.originId as? MetricOriginId.Gatt)?.connectionId ?: return
         val policy = synchronized(lock) { policies[connectionId] } ?: return
         val selectedAdapter = policy.snapshot().selected?.adapterId
@@ -113,6 +154,11 @@ class AdapterLivenessCoordinator(
 
     /** Periodic evaluation. Cheap and allocation-free when nothing has expired. */
     fun tick(nowMs: Long) {
+        tickImpl(nowMs)
+        notifyIfSelectionChanged()
+    }
+
+    private fun tickImpl(nowMs: Long) {
         val snapshots = synchronized(lock) {
             policies.map { (id, policy) -> id to policy.checkLiveness(nowMs) }
         }
@@ -128,7 +174,10 @@ class AdapterLivenessCoordinator(
         }
     }
 
-    fun pollingMissesExceeded(connectionId: ConnectionId, consecutiveMisses: Int): Boolean {
+    fun pollingMissesExceeded(connectionId: ConnectionId, consecutiveMisses: Int): Boolean =
+        pollingMissesExceededImpl(connectionId, consecutiveMisses).also { notifyIfSelectionChanged() }
+
+    private fun pollingMissesExceededImpl(connectionId: ConnectionId, consecutiveMisses: Int): Boolean {
         require(consecutiveMisses > 0)
         val accepted = synchronized(lock) {
             policies[connectionId]?.connectedNoData(
@@ -156,7 +205,10 @@ class AdapterLivenessCoordinator(
      * the connection has moved on. Silence rather than a throw: a stale callback is a fact of
      * BLE, not an error.
      */
-    fun setupSucceeded(connectionId: ConnectionId): Boolean = synchronized(lock) {
+    fun setupSucceeded(connectionId: ConnectionId): Boolean =
+        setupSucceededImpl(connectionId).also { notifyIfSelectionChanged() }
+
+    private fun setupSucceededImpl(connectionId: ConnectionId): Boolean = synchronized(lock) {
         val accepted = policies[connectionId]?.setupSucceeded(connectionId) ?: false
         if (accepted) {
             Timber.tag(TAG).i("setup succeeded for link generation %d", connectionId.linkGeneration)
@@ -168,7 +220,10 @@ class AdapterLivenessCoordinator(
      * Link-aware setup completion. It creates the policy when setup finishes before the final
      * CCCD and replays subscription completion when descriptors finished first.
      */
-    fun setupSucceeded(context: ConnectionContext, nowMs: Long): Boolean {
+    fun setupSucceeded(context: ConnectionContext, nowMs: Long): Boolean =
+        setupSucceededImpl(context, nowMs).also { notifyIfSelectionChanged() }
+
+    private fun setupSucceededImpl(context: ConnectionContext, nowMs: Long): Boolean {
         if (!context.machineConnection) return false
         val candidates = candidatesFor(context)
         if (candidates.isEmpty()) return false
@@ -196,7 +251,10 @@ class AdapterLivenessCoordinator(
      * [reason] reaches logs and the connection UI, so it must name the step and never the value
      * — see `LifeFitnessSetup.Op`, whose labels exist for this.
      */
-    fun setupFailed(connectionId: ConnectionId, reason: String): Boolean = synchronized(lock) {
+    fun setupFailed(connectionId: ConnectionId, reason: String): Boolean =
+        setupFailedImpl(connectionId, reason).also { notifyIfSelectionChanged() }
+
+    private fun setupFailedImpl(connectionId: ConnectionId, reason: String): Boolean = synchronized(lock) {
         val accepted = policies[connectionId]?.setupFailed(connectionId, reason) ?: false
         if (accepted) {
             Timber.tag(TAG).w(
@@ -209,7 +267,10 @@ class AdapterLivenessCoordinator(
     }
 
     /** Ensure a setup failure is retained even when it precedes subscription completion. */
-    fun setupFailed(context: ConnectionContext, reason: String): Boolean {
+    fun setupFailed(context: ConnectionContext, reason: String): Boolean =
+        setupFailedImpl(context, reason).also { notifyIfSelectionChanged() }
+
+    private fun setupFailedImpl(context: ConnectionContext, reason: String): Boolean {
         if (!context.machineConnection) return false
         val candidates = candidatesFor(context)
         if (candidates.isEmpty()) return false
@@ -230,6 +291,11 @@ class AdapterLivenessCoordinator(
     }
 
     fun forget(connectionId: ConnectionId) {
+        forgetImpl(connectionId)
+        notifyIfSelectionChanged()
+    }
+
+    private fun forgetImpl(connectionId: ConnectionId) {
         synchronized(lock) {
             policies.remove(connectionId)
             reportedTerminal.remove(connectionId)
@@ -237,6 +303,11 @@ class AdapterLivenessCoordinator(
     }
 
     fun clear() {
+        clearImpl()
+        notifyIfSelectionChanged()
+    }
+
+    private fun clearImpl() {
         synchronized(lock) {
             policies.clear()
             reportedTerminal.clear()

@@ -370,6 +370,32 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `capabilities and session state follow the engine and reset on close`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        assertEquals(DeviceCapabilities.NONE, client.capabilities.value)
+        assertFalse(client.sessionActive.value)
+
+        backend.state.connectionRegistry.open(LegacyConnectionRole.FTMS, "AA:01", null, BluetoothProfile.STATE_CONNECTED)
+        BtEngineCapabilities.applyFitnessMachineFeatures(
+            backend.state,
+            byteArrayOf(0x20, 0, 0, 0, 0x08, 0, 0, 0), // pace; power target
+        )
+        BtEngineCapabilities.applySupportedPowerRange(backend.state, byteArrayOf(0, 0, 0xD0.toByte(), 0x07, 1, 0))
+        backend.state.setActiveSession(true)
+        runCurrent()
+        val caps = client.capabilities.value
+        assertTrue(caps.featuresRead && caps.supportsPowerTarget && caps.supportsPaceMeasurement)
+        assertEquals(ControlRange(0f, 2_000f, 1f), caps.powerRangeWatts)
+        assertTrue(client.sessionActive.value)
+
+        client.close()
+        assertEquals(DeviceCapabilities.NONE, client.capabilities.value)
+        assertFalse(client.sessionActive.value)
+    }
+
+    @Test
     fun `closing the client empties its history and stops following the engine`() = runTest {
         val backend = Backend()
         val client = client(backend)

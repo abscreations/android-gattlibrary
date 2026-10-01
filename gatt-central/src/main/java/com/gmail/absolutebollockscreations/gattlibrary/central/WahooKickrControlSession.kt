@@ -61,6 +61,8 @@ internal class WahooKickrControlSession(
     private val onUnrecognizedResponse: (WahooKickrResponse) -> Unit = {},
     private val onControlGranted: () -> Unit = {},
     private val onInitializationFailed: () -> Unit = {},
+    /** Fired whenever [controlGranted] changes, so published capabilities can follow it. */
+    private val onControlStateChanged: () -> Unit = {},
 ) {
     private data class Waiter(
         val opcode: Int,
@@ -108,10 +110,12 @@ internal class WahooKickrControlSession(
             } ?: false
             if (!unlocked || closed.get()) {
                 controlGranted = false
+                onControlStateChanged()
                 if (!closed.get()) onInitializationFailed()
                 return@launch
             }
             controlGranted = true
+            onControlStateChanged()
             onControlGranted()
             startConsumer()
         }
@@ -150,6 +154,7 @@ internal class WahooKickrControlSession(
     fun close() {
         if (!closed.compareAndSet(false, true)) return
         controlGranted = false
+        onControlStateChanged()
         mode = WahooKickrControlMode.NONE
         simulationTuple = null
         lastWindSpeedMps = null

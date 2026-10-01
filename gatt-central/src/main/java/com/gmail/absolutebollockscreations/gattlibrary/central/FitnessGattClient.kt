@@ -42,6 +42,17 @@ public class FitnessGattClient internal constructor(
      * session start or reset replaces it with an empty history, and closing the client empties it.
      */
     public val history: StateFlow<MeasurementHistory> = mutableHistory.asStateFlow()
+    private val mutableCapabilities = MutableStateFlow(backend.state.deviceCapabilities.value)
+
+    /**
+     * What the connected machine can be asked to do, in canonical units; empty while no machine is
+     * connected. See [DeviceCapabilities] for what it includes and leaves out.
+     */
+    public val capabilities: StateFlow<DeviceCapabilities> = mutableCapabilities.asStateFlow()
+    private val mutableSessionActive = MutableStateFlow(backend.state.activeSession.value)
+
+    /** Whether a workout session is active. Read-only for now; session control arrives with typed commands. */
+    public val sessionActive: StateFlow<Boolean> = mutableSessionActive.asStateFlow()
 
     init {
         scope.launch {
@@ -63,6 +74,16 @@ public class FitnessGattClient internal constructor(
             // The recorder already publishes one immutable history per change, so this only forwards it.
             backend.state.history.collect { latest ->
                 synchronized(lock) { if (!closed) mutableHistory.value = latest }
+            }
+        }
+        scope.launch(measurementDispatcher) {
+            backend.state.deviceCapabilities.collect { latest ->
+                synchronized(lock) { if (!closed) mutableCapabilities.value = latest }
+            }
+        }
+        scope.launch(measurementDispatcher) {
+            backend.state.activeSession.collect { latest ->
+                synchronized(lock) { if (!closed) mutableSessionActive.value = latest }
             }
         }
     }
@@ -142,6 +163,8 @@ public class FitnessGattClient internal constructor(
             mutableDiscovery.value = DiscoverySnapshot(false, false, emptyList(), null)
             mutableMeasurements.value = MeasurementSnapshot.EMPTY
             mutableHistory.value = MeasurementHistory.EMPTY
+            mutableCapabilities.value = DeviceCapabilities.NONE
+            mutableSessionActive.value = false
             mutableConnections.value = ConnectionSnapshot(emptyList(), null, ConnectionStatus.DISCONNECTED, MachineProbeState.IDLE, false)
         }
     }

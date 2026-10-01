@@ -308,6 +308,7 @@ class BtEngineState : HrmStateSink {
             powerIncr             = update.powerIncr             ?: old.powerIncr,
             powerRangeKnown       = update.powerRangeKnown       || old.powerRangeKnown,
         )
+        refreshDeviceCapabilities()
     }
 
     fun resetFtmsCapabilities() {
@@ -329,6 +330,7 @@ class BtEngineState : HrmStateSink {
         powerMin = 0f; powerMax = 0f; powerIncr = 0f; powerRangeKnown = false
 
         ftmsCapabilities = FtmsCapabilities()
+        refreshDeviceCapabilities()
     }
 
     // ⬆️ END OF NEW FTMS CAPABILITIES BLOCK
@@ -440,7 +442,71 @@ class BtEngineState : HrmStateSink {
 
     /* ───────────────────────────── connections & characteristics ───────────────────────────── */
 
-    internal val connectionRegistry = ConnectionRegistry()
+    internal val connectionRegistry = ConnectionRegistry().also {
+        it.changeListener = { refreshDeviceCapabilities() }
+    }
+
+    /* ───────────────────────────── public capabilities (unit 4b) ───────────────────────────── */
+
+    private val _deviceCapabilities = MutableStateFlow(DeviceCapabilities.NONE)
+
+    /** See [DeviceCapabilities]. Republished by [refreshDeviceCapabilities] at every input change. */
+    val deviceCapabilities: StateFlow<DeviceCapabilities> = _deviceCapabilities
+
+    private val capabilitySequence = java.util.concurrent.atomic.AtomicLong()
+    private val capabilityPublishLock = Any()
+    private var lastPublishedCapabilitySequence = 0L
+
+    /**
+     * Recompute [deviceCapabilities] from its inputs and publish it if it changed.
+     *
+     * The answer is not a plain field. It depends on the merged snapshot, the pace flag, the
+     * machine connection, the adapter selected for it, and (Wahoo KICKR, RideOn) whether the
+     * adapter has been granted control, and only the first two are observable. So every place that
+     * changes any of those calls this, and it is deliberately cheap and idempotent: calling it too
+     * often costs an allocation, calling it too rarely leaves the flow stale.
+     *
+     * A later call always wins over an earlier one, even when the earlier one finishes computing
+     * last: each call takes a sequence number before it reads, and a result is published only if
+     * its number is newer than the last published. The publish lock is a leaf, so a caller that
+     * holds the connection registry's lock cannot deadlock against one that holds the adapter's.
+     */
+    internal fun refreshDeviceCapabilities() {
+        val sequence = capabilitySequence.incrementAndGet()
+        val computed = providerMachineCapabilities().toDeviceCapabilities(supportsPaceMeasurement)
+        synchronized(capabilityPublishLock) {
+            if (sequence > lastPublishedCapabilitySequence) {
+                lastPublishedCapabilitySequence = sequence
+                _deviceCapabilities.value = computed
+            }
+        }
+    }
+
+    /**
+     * The capability snapshot the downstream bridge advertises: adapter-aware, and empty while
+     * there is no machine link or an adapter that needs control has not been granted it.
+     */
+    internal fun providerMachineCapabilities(): FtmsCapabilities {
+        val context = connectionRegistry.current(LegacyConnectionRole.FTMS) ?: return FtmsCapabilities()
+        val selected = adapterLiveness.selectedAdapterId(context.connectionId)
+        if (selected == AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID) {
+            return flywheelProviderCapabilities()
+        }
+        if (selected == AdapterLivenessCoordinator.KAYAK_FIRST_ADAPTER_ID) {
+            return kayakFirstProviderCapabilities()
+        }
+        if (selected == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID) {
+            val unlocked = context.handlers.filterIsInstance<RideOnProtocolHandler>()
+                .firstOrNull()?.controlSession?.controlGranted == true
+            return if (unlocked) rideOnProviderCapabilities() else FtmsCapabilities()
+        }
+        if (selected != AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID) {
+            return ftmsCapabilities
+        }
+        val unlocked = context.handlers.filterIsInstance<WahooKickrProtocolHandler>()
+            .firstOrNull()?.controlSession?.controlGranted == true
+        return if (unlocked) wahooKickrProviderCapabilities() else FtmsCapabilities()
+    }
 
     /**
      * §0.7a liveness supervision. Lives here because the three things that feed
@@ -448,7 +514,9 @@ class BtEngineState : HrmStateSink {
      * in fusion, and the periodic tick in the engine loop — and this is the one
      * object all three already hold.
      */
-    internal val adapterLiveness = AdapterLivenessCoordinator()
+    internal val adapterLiveness = AdapterLivenessCoordinator().also {
+        it.selectionListener = { refreshDeviceCapabilities() }
+    }
     val connectedDevices: StateFlow<List<ConnectedDeviceLink>> =
         connectionRegistry.connectedDevices
 

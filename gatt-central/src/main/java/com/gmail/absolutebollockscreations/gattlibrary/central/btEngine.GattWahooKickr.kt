@@ -174,6 +174,7 @@ internal class WahooKickrProtocolHandler : BtEngineGattCore.ProtocolHandler {
                         )
                     }
                 },
+                onControlStateChanged = { engine.state.refreshDeviceCapabilities() },
             ),
         )
         // Use the transport so CCCD queuing stays on this ConnectionContext's shared GATT queue.

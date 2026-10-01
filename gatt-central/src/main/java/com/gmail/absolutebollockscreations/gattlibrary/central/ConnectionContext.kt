@@ -281,6 +281,13 @@ internal fun BluetoothGatt.safeAddress(): String = runCatching {
  * [ConnectionContext] identity; roles only select the legacy UI projections.
  */
 internal class ConnectionRegistry {
+    /**
+     * Called after every change to the set of links or to a link's handlers, services or state.
+     * It runs under the registry lock, so a listener must not take a lock that is ever held while
+     * the registry is called.
+     */
+    @Volatile var changeListener: (() -> Unit)? = null
+
     private val lock = Any()
     private val contexts = linkedMapOf<ConnectionId, ConnectionContext>()
     private val roleOwners = mutableMapOf<LegacyConnectionRole, ConnectionId>()
@@ -566,6 +573,11 @@ internal class ConnectionRegistry {
     }
 
     private fun publishConnectedDevices() {
+        publishConnectedDevicesList()
+        changeListener?.invoke()
+    }
+
+    private fun publishConnectedDevicesList() {
         _connectedDevices.value = contexts.values.map { context ->
             val handlerServices = context.handlers
                 .flatMapTo(linkedSetOf()) { handler ->

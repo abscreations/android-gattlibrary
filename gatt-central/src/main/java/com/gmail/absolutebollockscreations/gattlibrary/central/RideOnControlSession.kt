@@ -48,6 +48,8 @@ internal class RideOnControlSession(
     private val onRidingData: (RideOnTelemetry) -> Unit = {},
     private val onControlGranted: () -> Unit = {},
     private val onInitializationFailed: () -> Unit = {},
+    /** Fired whenever [controlGranted] changes, so published capabilities can follow it. */
+    private val onControlStateChanged: () -> Unit = {},
     initialShiftSequence: Long = 0,
 ) {
     private val supervisor = SupervisorJob()
@@ -92,6 +94,7 @@ internal class RideOnControlSession(
                 return@launch
             }
             controlGranted = true
+            onControlStateChanged()
             onControlGranted()
             startTargetConsumer()
         }
@@ -125,6 +128,7 @@ internal class RideOnControlSession(
     fun close() {
         if (!closed.compareAndSet(false, true)) return
         controlGranted = false
+        onControlStateChanged()
         negotiationWaiter.getAndSet(null)?.cancel()
         pendingTarget.set(null)
         pendingGear.set(null)
@@ -212,6 +216,7 @@ internal class RideOnControlSession(
 
     private fun failInitialization() {
         controlGranted = false
+        onControlStateChanged()
         if (!closed.get()) onInitializationFailed()
     }
 

@@ -1625,28 +1625,8 @@ class BtEngine internal constructor(
         }
     }
 
-    internal fun providerMachineCapabilities(): BtEngineState.FtmsCapabilities {
-        val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS)
-            ?: return BtEngineState.FtmsCapabilities()
-        val selected = state.adapterLiveness.selectedAdapterId(context.connectionId)
-        if (selected == AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID) {
-            return flywheelProviderCapabilities()
-        }
-        if (selected == AdapterLivenessCoordinator.KAYAK_FIRST_ADAPTER_ID) {
-            return kayakFirstProviderCapabilities()
-        }
-        if (selected == AdapterLivenessCoordinator.RIDEON_ADAPTER_ID) {
-            val unlocked = context.handlers.filterIsInstance<RideOnProtocolHandler>()
-                .firstOrNull()?.controlSession?.controlGranted == true
-            return if (unlocked) rideOnProviderCapabilities() else BtEngineState.FtmsCapabilities()
-        }
-        if (selected != AdapterLivenessCoordinator.WAHOO_KICKR_ADAPTER_ID) {
-            return state.ftmsCapabilities
-        }
-        val unlocked = context.handlers.filterIsInstance<WahooKickrProtocolHandler>()
-            .firstOrNull()?.controlSession?.controlGranted == true
-        return if (unlocked) wahooKickrProviderCapabilities() else BtEngineState.FtmsCapabilities()
-    }
+    internal fun providerMachineCapabilities(): BtEngineState.FtmsCapabilities =
+        state.providerMachineCapabilities()
 
     fun hasSelectedKayakFirstAdapter(): Boolean {
         val context = state.connectionRegistry.current(LegacyConnectionRole.FTMS) ?: return false
