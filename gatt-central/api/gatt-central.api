@@ -2138,22 +2138,34 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun activateSensorService (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
 	public final fun clearDiscoveredDevices ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun clearSessionData ()V
 	public final fun close ()V
 	public final fun connectSensor (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun deselectMachine ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun disconnect (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun dismissLifeFitnessProfilePrompt ()V
 	public final fun endSession ()V
+	public final fun ensureBluetoothEnabled (Landroid/app/Activity;)V
 	public final fun getCapabilities ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getConnections ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getControlEvents ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getDiscovery ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHistory ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInferredActivity ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getLifeFitnessProfilePrompt ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMachineToken ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMeasurements ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getSessionActive ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun requestControl (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
+	public final fun setCscCalibration (II)V
+	public final fun setHeartRateProfile (Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;)V
 	public final fun setIndoorBikeSimulation (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;FFFF)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun setKayakFirstDisplayConfiguration (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstDisplayConfiguration;)V
+	public final fun setKayakFirstHandshakeVariant (Lcom/gmail/absolutebollockscreations/gattlibrary/core/vendor/KayakFirstHandshakeVariant;)V
+	public final fun setKayakFirstSportMode (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSportMode;)V
+	public final fun setLifeFitnessProfile (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LifeFitnessProfile;I)V
 	public final fun setTargetInclinePercent (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun setTargetPowerWatts (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
 	public final fun setTargetResistanceLevel (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;F)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;

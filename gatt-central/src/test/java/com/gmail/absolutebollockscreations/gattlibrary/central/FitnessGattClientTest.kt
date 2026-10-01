@@ -2,9 +2,12 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.bluetooth.BluetoothProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
+import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
@@ -544,6 +547,51 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `settings reach the engine with their arguments, and do nothing after close`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+
+        client.setHeartRateProfile(180, 55, HrZoneMode.HeartRateReserve)
+        client.setCscCalibration(2105, 700)
+        client.setKayakFirstSportMode(KayakFirstSportMode.CANOEING)
+        client.setKayakFirstHandshakeVariant(KayakFirstHandshakeVariant.BULL)
+        client.dismissLifeFitnessProfilePrompt()
+        client.clearSessionData()
+        assertEquals(
+            listOf(
+                "hr:180:55:HeartRateReserve", "csc:2105:700", "kf-sport:CANOEING", "kf-variant:BULL",
+                "lf-dismiss", "clear",
+            ),
+            backend.configCalls,
+        )
+
+        client.close()
+        client.setCscCalibration(1, 2)
+        client.clearSessionData()
+        assertEquals(6, backend.configCalls.size)
+    }
+
+    @Test
+    fun `setup state flows are the engine's, and request control is a machine command`() = runTest {
+        val backend = Backend().apply { machineKey = "link-1" }
+        val client = client(backend)
+        runCurrent()
+
+        assertEquals(emptyList<LifeFitnessProfileField>(), client.lifeFitnessProfilePrompt.value)
+        backend.lifeFitnessPrompt.value = listOf(LifeFitnessProfileField.entries.first())
+        assertEquals(1, client.lifeFitnessProfilePrompt.value.size)
+        assertNull(client.kayakFirstSetupProgress.value)
+
+        val token = client.machineToken.value!!
+        assertEquals(CommandResult.Queued, client.requestControl(token))
+        assertEquals(listOf<MachineCommand>(MachineCommand.RequestControl), backend.submitted)
+        backend.machineKey = "link-2"
+        assertEquals(CommandResult.MachineChanged, client.requestControl(token))
+        client.close()
+    }
+
+    @Test
     fun `control events reach a collector in order including equal repeats, and end after close`() = runTest {
         val backend = Backend()
         val client = client(backend)
@@ -642,6 +690,25 @@ class FitnessGattClientTest {
             return acceptCommands
         }
         val sessionCalls = mutableListOf<String>()
+        val configCalls = mutableListOf<String>()
+        val lifeFitnessPrompt = MutableStateFlow(emptyList<LifeFitnessProfileField>())
+        override val config = object : CentralConfigBackend {
+            override val lifeFitnessProfilePrompt: StateFlow<List<LifeFitnessProfileField>> get() = lifeFitnessPrompt
+            override val kayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgress?>(null)
+            override fun setHeartRateProfile(maxHr: Int?, restingHr: Int?, zoneMode: HrZoneMode) {
+                configCalls += "hr:$maxHr:$restingHr:$zoneMode"
+            }
+            override fun setCscCalibration(wheelCircumferenceMm: Int, ellipticalStrideLengthMm: Int) {
+                configCalls += "csc:$wheelCircumferenceMm:$ellipticalStrideLengthMm"
+            }
+            override fun setLifeFitnessProfile(profile: LifeFitnessProfile, ageYears: Int) { configCalls += "lf:$ageYears" }
+            override fun dismissLifeFitnessProfilePrompt() { configCalls += "lf-dismiss" }
+            override fun setKayakFirstSportMode(mode: KayakFirstSportMode) { configCalls += "kf-sport:$mode" }
+            override fun setKayakFirstHandshakeVariant(variant: KayakFirstHandshakeVariant) { configCalls += "kf-variant:$variant" }
+            override fun setKayakFirstDisplayConfiguration(configuration: KayakFirstDisplayConfiguration) { configCalls += "kf-display" }
+            override fun clearSessionData() { configCalls += "clear" }
+            override fun ensureBluetoothEnabled(activity: android.app.Activity) { configCalls += "bt-enable" }
+        }
         override fun beginSession(activity: ActivityType, machineAddress: String?) {
             sessionCalls += "begin:$activity:$machineAddress"
         }

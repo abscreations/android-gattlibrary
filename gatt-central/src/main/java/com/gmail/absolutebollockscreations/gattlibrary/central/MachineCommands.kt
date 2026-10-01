@@ -53,6 +53,7 @@ internal sealed interface MachineCommand {
     data object StopOrPause : MachineCommand
 
     /** The app's own Start, as opposed to [StartOrResume], which relays a downstream client's. */
+    data object RequestControl : MachineCommand
     data object StartRun : MachineCommand
     data object StopRun : MachineCommand
     data class TargetSpeedKph(val kph: Float) : MachineCommand

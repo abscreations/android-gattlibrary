@@ -1,6 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 
 @SuppressLint("MissingPermission")
@@ -36,6 +39,28 @@ internal class EngineConnectionBackend(private val engine: BtEngine) : CentralCo
     }
     override fun close() { engine.closeClient() }
     override fun currentMachineKey(): Any? = engine.currentMachineKey()
+    override val config: CentralConfigBackend = object : CentralConfigBackend {
+        override val lifeFitnessProfilePrompt get() = engine.lifeFitnessProfilePrompt
+        override val kayakFirstSetupProgress get() = engine.kayakFirstSetupProgress
+        override fun setHeartRateProfile(maxHr: Int?, restingHr: Int?, zoneMode: HrZoneMode) {
+            engine.setHrMaxFromApp(maxHr)
+            engine.setRestingHrFromApp(restingHr)
+            engine.setHrZoneModeFromApp(zoneMode)
+        }
+        override fun setCscCalibration(wheelCircumferenceMm: Int, ellipticalStrideLengthMm: Int) =
+            engine.setCscCalibration(wheelCircumferenceMm, ellipticalStrideLengthMm)
+        override fun setLifeFitnessProfile(profile: LifeFitnessProfile, ageYears: Int) =
+            engine.setLifeFitnessProfileFromApp(profile, ageYears)
+        override fun dismissLifeFitnessProfilePrompt() = engine.dismissLifeFitnessProfilePrompt()
+        override fun setKayakFirstSportMode(mode: KayakFirstSportMode) = engine.setKayakFirstSportMode(mode)
+        override fun setKayakFirstHandshakeVariant(variant: KayakFirstHandshakeVariant) =
+            engine.setKayakFirstHandshakeVariant(variant)
+        override fun setKayakFirstDisplayConfiguration(configuration: KayakFirstDisplayConfiguration) =
+            engine.setKayakFirstDisplayConfiguration(configuration)
+        override fun clearSessionData() = engine.clearSessionData()
+        override fun ensureBluetoothEnabled(activity: Activity) = engine.ensureBluetoothEnabled(activity)
+    }
+
     override fun beginSession(activity: ActivityType, machineAddress: String?) {
         engine.beginRecoverySession()
         engine.markSessionStarted(activity, machineAddress)
@@ -51,6 +76,7 @@ internal class EngineConnectionBackend(private val engine: BtEngine) : CentralCo
         return when (command) {
             MachineCommand.StartOrResume -> engine.startOrResume()
             MachineCommand.StopOrPause -> engine.stopOrPause()
+            MachineCommand.RequestControl -> engine.requestControl()
             // The app's own Start/Stop: a machine that runs its own session starts that session
             // here, where a relayed Start/Stop is accepted without being sent (see terminatesLocallyOn).
             MachineCommand.StartRun ->

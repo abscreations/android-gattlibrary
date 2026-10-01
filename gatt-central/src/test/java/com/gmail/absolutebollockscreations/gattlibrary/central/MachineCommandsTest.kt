@@ -6,6 +6,7 @@ import org.junit.Test
 
 class MachineCommandsTest {
     private val sessionTransitions = listOf(MachineCommand.StartOrResume, MachineCommand.StopOrPause)
+    private val appOwn = listOf(MachineCommand.RequestControl, MachineCommand.StartRun, MachineCommand.StopRun)
     private val targets = listOf(
         MachineCommand.TargetSpeedKph(5f),
         MachineCommand.TargetInclinePercent(1f),
@@ -22,7 +23,7 @@ class MachineCommandsTest {
 
     @Test
     fun `targets are never terminated locally`() {
-        assertTrue(targets.none { it.terminatesLocallyOn(machineRunsOwnSession = true) })
+        assertTrue((targets + appOwn).none { it.terminatesLocallyOn(machineRunsOwnSession = true) })
     }
 
     @Test

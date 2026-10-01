@@ -3,6 +3,8 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import android.content.Context
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleConfig
+import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
+import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
@@ -180,6 +182,61 @@ public class FitnessGattClient internal constructor(
 
     public fun deselectMachine(): OperationResult = operation(checkPlatform = false) {
         backend.deselectMachine().failureIfFalse()
+    }
+
+    /**
+     * Profile fields a connected Life Fitness machine asked for and did not get. Empty means no
+     * prompt is owed. The values are field identities, never the values behind them. Not cleared
+     * on [close]; it belongs to the engine the client wraps.
+     */
+    public val lifeFitnessProfilePrompt: StateFlow<List<LifeFitnessProfileField>> get() = backend.config.lifeFitnessProfilePrompt
+
+    /** Progress of the Kayak First setup handshake, or null when none is running. */
+    public val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> get() = backend.config.kayakFirstSetupProgress
+
+    /** Heart-rate zone inputs, applied together so zones are recalculated from one consistent set. */
+    public fun setHeartRateProfile(maxHr: Int?, restingHr: Int?, zoneMode: HrZoneMode): Unit =
+        whenOpen { backend.config.setHeartRateProfile(maxHr, restingHr, zoneMode) }
+
+    /** CSC wheel circumference and elliptical stride length, in millimetres, for the next session. */
+    public fun setCscCalibration(wheelCircumferenceMm: Int, ellipticalStrideLengthMm: Int): Unit =
+        whenOpen { backend.config.setCscCalibration(wheelCircumferenceMm, ellipticalStrideLengthMm) }
+
+    /** Life Fitness handshake profile from the settings screen. */
+    public fun setLifeFitnessProfile(profile: LifeFitnessProfile, ageYears: Int): Unit =
+        whenOpen { backend.config.setLifeFitnessProfile(profile, ageYears) }
+
+    /** Dismiss the Life Fitness profile prompt. The connection is unaffected. */
+    public fun dismissLifeFitnessProfilePrompt(): Unit = whenOpen { backend.config.dismissLifeFitnessProfilePrompt() }
+
+    /** Set before selecting a Kayak First machine; applies to the next link generation. */
+    public fun setKayakFirstSportMode(mode: KayakFirstSportMode): Unit =
+        whenOpen { backend.config.setKayakFirstSportMode(mode) }
+
+    /** Set before selecting a Kayak First machine; applies to the next link generation. */
+    public fun setKayakFirstHandshakeVariant(variant: KayakFirstHandshakeVariant): Unit =
+        whenOpen { backend.config.setKayakFirstHandshakeVariant(variant) }
+
+    /** Set before selecting a Kayak First machine; applies to the next link generation. */
+    public fun setKayakFirstDisplayConfiguration(configuration: KayakFirstDisplayConfiguration): Unit =
+        whenOpen { backend.config.setKayakFirstDisplayConfiguration(configuration) }
+
+    /**
+     * Discards accumulated history and running averages ahead of a new run. Keeps totals, elapsed
+     * time, laps already recorded and whether a session is active.
+     */
+    public fun clearSessionData(): Unit = whenOpen { backend.config.clearSessionData() }
+
+    /** Asks the user to turn Bluetooth on if it is off. Needs the Bluetooth connect permission on API 31+. */
+    public fun ensureBluetoothEnabled(activity: android.app.Activity): Unit =
+        whenOpen { backend.config.ensureBluetoothEnabled(activity) }
+
+    /** Requests control of the machine. [CommandResult.Queued] means submitted, not that control was granted. */
+    public fun requestControl(token: MachineToken): CommandResult = submit(token, MachineCommand.RequestControl)
+
+    private inline fun whenOpen(action: () -> Unit) {
+        if (synchronized(lock) { closed }) return
+        action()
     }
 
     /**
@@ -388,9 +445,27 @@ internal interface CentralConnectionBackend {
      */
     fun submit(expectedKey: Any, command: MachineCommand): Boolean?
 
+    /** Settings and setup state the app pushes to or reads from the engine. */
+    val config: CentralConfigBackend
+
     /** Open a workout session for [activity] on the machine at [machineAddress] (null for sensors only). */
     fun beginSession(activity: ActivityType, machineAddress: String?)
 
     /** End the workout session and clear its data. */
     fun endSession()
+}
+
+/** Settings the app sets on the engine, and the setup state it reads back. Test seam, like the backend. */
+internal interface CentralConfigBackend {
+    val lifeFitnessProfilePrompt: StateFlow<List<LifeFitnessProfileField>>
+    val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?>
+    fun setHeartRateProfile(maxHr: Int?, restingHr: Int?, zoneMode: HrZoneMode)
+    fun setCscCalibration(wheelCircumferenceMm: Int, ellipticalStrideLengthMm: Int)
+    fun setLifeFitnessProfile(profile: LifeFitnessProfile, ageYears: Int)
+    fun dismissLifeFitnessProfilePrompt()
+    fun setKayakFirstSportMode(mode: KayakFirstSportMode)
+    fun setKayakFirstHandshakeVariant(variant: KayakFirstHandshakeVariant)
+    fun setKayakFirstDisplayConfiguration(configuration: KayakFirstDisplayConfiguration)
+    fun clearSessionData()
+    fun ensureBluetoothEnabled(activity: android.app.Activity)
 }
