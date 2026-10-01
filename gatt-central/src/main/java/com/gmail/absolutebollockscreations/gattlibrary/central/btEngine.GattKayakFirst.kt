@@ -650,7 +650,7 @@ internal class KayakFirstProtocolHandler(
                         com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING.ordinal,
                     )
                     engine.maybeStartProviderAdvertisingAfterFeatures(
-                        FtmsMachineProfile.INDOOR_ROWER,
+                        com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType.ROWING,
                     )
                     val nowMs = MonotonicMetricClock.SYSTEM.nowMs()
                     runtime = KayakFirstRuntimeCoordinator(context.connectionId)

@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.content.Context
+import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleConfig
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -59,6 +60,14 @@ public class FitnessGattClient internal constructor(
 
     /** Whether a workout session is active. Read-only for now; session control arrives with typed commands. */
     public val sessionActive: StateFlow<Boolean> = mutableSessionActive.asStateFlow()
+    private val mutableInferredActivity = MutableStateFlow(backend.state.inferredActivity.value)
+
+    /**
+     * The activity the connected machine was classified as, which is the default persona for a
+     * downstream bridge (a ski machine classifies as rowing, for example); null while no machine is
+     * classified. Never [ActivityType.HEARTRATE].
+     */
+    public val inferredActivity: StateFlow<ActivityType?> = mutableInferredActivity.asStateFlow()
 
     init {
         scope.launch {
@@ -90,6 +99,11 @@ public class FitnessGattClient internal constructor(
         scope.launch(measurementDispatcher) {
             backend.state.activeSession.collect { latest ->
                 synchronized(lock) { if (!closed) mutableSessionActive.value = latest }
+            }
+        }
+        scope.launch(measurementDispatcher) {
+            backend.state.inferredActivity.collect { latest ->
+                synchronized(lock) { if (!closed) mutableInferredActivity.value = latest }
             }
         }
     }
@@ -171,6 +185,7 @@ public class FitnessGattClient internal constructor(
             mutableHistory.value = MeasurementHistory.EMPTY
             mutableCapabilities.value = DeviceCapabilities.NONE
             mutableSessionActive.value = false
+            mutableInferredActivity.value = null
             mutableConnections.value = ConnectionSnapshot(emptyList(), null, ConnectionStatus.DISCONNECTED, MachineProbeState.IDLE, false)
         }
     }

@@ -369,6 +369,7 @@ class BtEngine internal constructor(
     /** Clear provider-side advertising state whenever our upstream FTMS link ("session") ends. */
     private fun resetProviderAdvertisingState() {
         providerAdvertising.reset()
+        state.setInferredActivity(null)
         featureReadRetryScheduled = false
         earlyBondScheduled = false
     }
@@ -399,6 +400,9 @@ class BtEngine internal constructor(
 
     /** Convenience overload if the caller only has an ActivityType (e.g., inferred from data chars). */
     fun maybeStartProviderAdvertisingAfterFeatures(activity: ActivityType?) {
+        // Published before the loop starts so a collector of the client's inferred activity sees
+        // the persona no later than the advertising request does.
+        if (activity != null && activity != ActivityType.HEARTRATE) state.setInferredActivity(activity)
         maybeStartProviderAdvertisingAfterFeatures(activity?.toFtmsProfile())
     }
 

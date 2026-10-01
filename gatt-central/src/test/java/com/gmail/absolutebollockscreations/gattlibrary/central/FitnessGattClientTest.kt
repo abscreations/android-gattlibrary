@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.bluetooth.BluetoothProfile
+import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -393,6 +394,27 @@ class FitnessGattClientTest {
         client.close()
         assertEquals(DeviceCapabilities.NONE, client.capabilities.value)
         assertFalse(client.sessionActive.value)
+    }
+
+    @Test
+    fun `inferred activity follows the engine and resets on close`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        assertNull(client.inferredActivity.value)
+
+        backend.state.setInferredActivity(ActivityType.ROWING)
+        runCurrent()
+        assertEquals(ActivityType.ROWING, client.inferredActivity.value)
+
+        backend.state.setInferredActivity(null)
+        runCurrent()
+        assertNull(client.inferredActivity.value)
+
+        backend.state.setInferredActivity(ActivityType.TREADMILL)
+        runCurrent()
+        client.close()
+        assertNull(client.inferredActivity.value)
     }
 
     @Test

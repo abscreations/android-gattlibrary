@@ -35,6 +35,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanResult
+import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import kotlinx.coroutines.channels.BufferOverflow
@@ -675,6 +676,19 @@ class BtEngineState : HrmStateSink {
 
     private val _activeSession: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val activeSession: StateFlow<Boolean> = _activeSession
+
+    private val _inferredActivity: MutableStateFlow<ActivityType?> = MutableStateFlow(null)
+
+    /**
+     * The activity the connected machine was classified as (FTMS machine feature, FE-C equipment
+     * type, Kayak First = rowing), which is the closest-match default for the downstream persona.
+     * Null until a machine is classified and after the machine session ends. HRM-only never appears.
+     */
+    val inferredActivity: StateFlow<ActivityType?> = _inferredActivity
+
+    fun setInferredActivity(activity: ActivityType?) {
+        _inferredActivity.value = activity
+    }
 
     private val _isRunning: MutableStateFlow<Boolean?> = MutableStateFlow(null)
     val isRunning: StateFlow<Boolean?> = _isRunning
