@@ -96,4 +96,38 @@ class SensorAdmissionTest {
         assertEquals(1, SensorAdmission.activeConnectionCount(links, DeviceService.CSC))
         assertEquals(1, SensorAdmission.activeConnectionCount(links, DeviceService.HeartRate))
     }
+
+    @Test
+    fun `single-instance sensors allow the same device idempotently and reject another`() {
+        listOf(DeviceService.HeartRate, DeviceService.RSC, DeviceService.Power).forEach { service ->
+            val active = listOf(link("AA:01", service))
+            assertTrue(service.name, SensorAdmission.canAssignService("aa:01", service, active))
+            assertFalse(service.name, SensorAdmission.canAssignService("AA:02", service, active))
+        }
+    }
+
+    @Test
+    fun `csc admits only complementary classified roles`() {
+        val speedOnly = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_SENSOR)!!
+        val cadenceOnly = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_CADENCE_SENSOR)!!
+        val combined = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR)!!
+        val active = listOf(link("AA:01", DeviceService.CSC, capability = speedOnly))
+
+        assertTrue(SensorAdmission.canAssignService("AA:02", DeviceService.CSC, active, cadenceOnly))
+        assertFalse(SensorAdmission.canAssignService("AA:02", DeviceService.CSC, active, speedOnly))
+        assertTrue(SensorAdmission.canAssignService("AA:02", DeviceService.CSC, active, combined))
+    }
+
+    @Test
+    fun `an assigned combined or unresolved csc blocks a second while the same device stays idempotent`() {
+        val combined = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR)!!
+        val cadenceOnly = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_CADENCE_SENSOR)
+        listOf(combined, null).forEach { capability ->
+            val active = listOf(
+                link("AA:01", DeviceService.CSC, capability = capability, assigned = capability?.roles.orEmpty()),
+            )
+            assertFalse(SensorAdmission.canAssignService("AA:02", DeviceService.CSC, active, cadenceOnly))
+            assertTrue(SensorAdmission.canAssignService("aa:01", DeviceService.CSC, active, null))
+        }
+    }
 }
