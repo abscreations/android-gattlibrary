@@ -607,6 +607,28 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `the strap heart rate is the engine's external reading and is separate from the fused value`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        runCurrent()
+        assertNull(client.externalHeartRate.value)
+        assertEquals(0L, client.externalHeartRateUpdatedAtMs)
+
+        backend.state.setExternalHeartRate(131)
+        backend.state.updateLastExternalAt(5_000L)
+        assertEquals(131, client.externalHeartRate.value)
+        assertEquals(5_000L, client.externalHeartRateUpdatedAtMs)
+
+        backend.state.setHeartRate(99)
+        runCurrent()
+        assertEquals(131, client.externalHeartRate.value)
+
+        backend.state.setExternalHeartRate(null)
+        assertNull(client.externalHeartRate.value)
+        client.close()
+    }
+
+    @Test
     fun `control events reach a collector in order including equal repeats, and end after close`() = runTest {
         val backend = Backend()
         val client = client(backend)

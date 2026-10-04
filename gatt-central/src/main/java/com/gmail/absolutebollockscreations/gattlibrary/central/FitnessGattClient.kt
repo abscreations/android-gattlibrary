@@ -74,6 +74,18 @@ public class FitnessGattClient internal constructor(
     private val mutableInferredActivity = MutableStateFlow(backend.state.inferredActivity.value)
 
     /**
+     * The attached heart-rate strap's own reading, or null when none has reported.
+     *
+     * Deliberately not [MeasurementSnapshot.heartRate], which is the fused value and may come from
+     * the machine or a local generator. This is populated only from a source classified as a
+     * heart-rate monitor, so a consumer can tell a strap from the machine's own figure.
+     */
+    public val externalHeartRate: StateFlow<Int?> get() = backend.state.externalHeartRate
+
+    /** Wall-clock milliseconds at which [externalHeartRate] last updated; zero means never. */
+    public val externalHeartRateUpdatedAtMs: Long get() = backend.state.lastExternalAt
+
+    /**
      * The activity the connected machine was classified as, which is the default persona for a
      * downstream bridge (a ski machine classifies as rowing, for example); null while no machine is
      * classified. Never [ActivityType.HEARTRATE].

@@ -2150,6 +2150,8 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun getConnections ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getControlEvents ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getDiscovery ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getExternalHeartRate ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getExternalHeartRateUpdatedAtMs ()J
 	public final fun getHistory ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInferredActivity ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
