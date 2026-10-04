@@ -4787,6 +4787,17 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Schwi
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorAdmission {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAdmission;
+	public final fun activeConnectionCount (Ljava/lang/Iterable;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;)I
+	public final fun canAssignRole (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/lang/Iterable;)Z
+	public final fun canAssignService (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;Ljava/lang/Iterable;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;)Z
+	public static synthetic fun canAssignService$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAdmission;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;Ljava/lang/Iterable;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;ILjava/lang/Object;)Z
+	public final fun connectionLimit (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;)I
+	public final fun occupiedRoles (Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;)Ljava/util/Set;
+	public final fun roleCapabilityFromAppearance (Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment {
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;Ljava/util/Set;)V
 	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceService;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -4809,12 +4820,61 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Senso
 	public static final fun sensorConnectionLimit (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;)I
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorLink {
+	public fun <init> (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;)V
+	public synthetic fun <init> (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun component4 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;
+	public final fun component5 ()Ljava/util/Set;
+	public final fun copy (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorLink;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorLink;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorLink;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getActiveServices ()Ljava/util/Set;
+	public final fun getAddress ()Ljava/lang/String;
+	public final fun getAssignedRoles ()Ljava/util/Set;
+	public final fun getCapability ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;
+	public final fun getStatus ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionStatus;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorRole : java/lang/Enum {
 	public static final field CADENCE Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
 	public static final field SPEED Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRole;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleAssignment {
+	public fun <init> (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;)V
+	public synthetic fun <init> (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun copy (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleAssignment;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleAssignment;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleAssignment;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAddress ()Ljava/lang/String;
+	public final fun getAssignedRoles ()Ljava/util/Set;
+	public final fun getCapability ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability {
+	public fun <init> (Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;)V
+	public final fun component1 ()Ljava/util/Set;
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;
+	public final fun copy (Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleCapability;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEvidence ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence;
+	public final fun getRoles ()Ljava/util/Set;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorRoleEvidence : java/lang/Enum {
