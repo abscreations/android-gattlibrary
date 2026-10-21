@@ -3,15 +3,15 @@ package com.gmail.absolutebollockscreations.gattlibrary.server
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * What a synthetic-data generator (the FTMS simulator) needs from the host's machine engine, and
- * where it puts its samples. Defined here so the simulator depends on this contract rather than on
- * central's `BtEngineState` (L22, LIB-19k); the host bridge (`EngineSimulatedUpstreamHost` in
- * the debug app, over central's debug-only `SyntheticUpstream`, LIB-27) implements it over the real engine state.
+ * What a synthetic-data generator (the FTMS simulator) needs from its host, and where it puts its
+ * samples. Defined here so the simulator depends on this contract and never on central (L22).
  *
  * Read side: whether a real machine is attached or connecting (the simulator must not fight it), and
  * the live external heart-rate strap, which overrides the generated value. Write side: begin and end
- * a simulated session and publish one coherent sample, mirroring what the FTMS parsers do for a real
- * machine - a metric a persona does not produce stays untouched.
+ * a simulated session and publish one coherent sample - a metric a persona does not produce stays
+ * untouched. [InMemoryUpstream] implements the write side over process memory with no central
+ * behind it; the FitBridge debug app pairs it with the real machine and strap state read from the
+ * public client (`ClientSimulatedUpstreamHost`, LIB-68). Simulated samples never enter central.
  */
 interface SimulatedUpstreamHost {
     /** True when a real machine link exists; the simulator refuses to start beside it. */
