@@ -100,6 +100,7 @@ data class ProtocolKey(val value: String) {
         val FEC = ProtocolKey("fec.ble")
         val WAHOO_KICKR = ProtocolKey("wahoo.kickr.legacy")
         val RIDEON = ProtocolKey("wahoo.kickr.rideon")
+        val MAXPRO = ProtocolKey("maxpro")
         val FLYWHEEL = ProtocolKey("flywheel.sports")
         val KAYAK_FIRST = ProtocolKey("kayak.first")
         val TEST_ECHO = ProtocolKey("test.echo.rsc")
@@ -167,6 +168,7 @@ val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FEC,
     ProtocolKey.WAHOO_KICKR,
     ProtocolKey.RIDEON,
+    ProtocolKey.MAXPRO,
     ProtocolKey.FLYWHEEL,
     ProtocolKey.KAYAK_FIRST,
 )
@@ -211,6 +213,7 @@ class HandlerFactory(
                 ProtocolKey.FEC to { FeCOverBleProtocolHandler() },
                 ProtocolKey.WAHOO_KICKR to { WahooKickrProtocolHandler() },
                 ProtocolKey.RIDEON to { RideOnProtocolHandler() },
+                ProtocolKey.MAXPRO to { MaxProProtocolHandler() },
                 ProtocolKey.FLYWHEEL to { FlywheelProtocolHandler() },
                 ProtocolKey.KAYAK_FIRST to {
                     KayakFirstProtocolHandler(kayakFirstDisplayConfiguration())

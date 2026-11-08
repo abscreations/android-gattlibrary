@@ -12,6 +12,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  */
 @GattLibraryInternalApi
 public object MachineFamilyIds {
+    public const val MAXPRO: String = "vendor.maxpro"
     public const val SIG_FTMS: String = "sig.ftms"
     public const val SIG_HRM: String = "sig.hrm"
     public const val SIG_CSC: String = "sig.csc"

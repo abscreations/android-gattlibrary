@@ -338,6 +338,8 @@ class AdapterLivenessCoordinator(
      * ranked liveness fallback; a silent PM5 native stream is reported rather than using FTMS.
      */
     private fun candidatesFor(context: ConnectionContext): List<AdapterCandidate> {
+        // MAXPRO owns its own telemetry/status and has no normalized fitness-machine adapter.
+        if (context.handlers.filterIsInstance<MaxProProtocolHandler>().any { it.hasStructuralMatch() }) return emptyList()
         val services = centralProtocolServiceUuids(context.discoveredServiceUuids)
         // **The one candidate property that is discovered rather than declared.** Life Fitness
         // machines advertise and serve ordinary FTMS and then send nothing until a proprietary

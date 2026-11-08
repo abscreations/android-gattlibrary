@@ -456,6 +456,8 @@ private fun hardwareScanFilters(): List<ScanFilter> =
         when (spec) {
             is HardwareScanFilterSpec.ServiceUuid ->
                 ScanFilter.Builder().setServiceUuid(ParcelUuidCompat(spec.uuid.toUuid())).build()
+            is HardwareScanFilterSpec.ServiceDataUuid ->
+                ScanFilter.Builder().setServiceData(ParcelUuidCompat(spec.uuid.toUuid()), ByteArray(0)).build()
             is HardwareScanFilterSpec.ManufacturerId ->
                 ScanFilter.Builder()
                     .setManufacturerData(spec.companyId, ByteArray(0))

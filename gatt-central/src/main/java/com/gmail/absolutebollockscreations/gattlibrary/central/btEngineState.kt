@@ -60,6 +60,9 @@ class BtEngineState : HrmStateSink {
 
     @GattLibraryInternalApi
     val cscNativeEvents = CscNativeEventStore()
+    internal val maxProStore = MaxProStore()
+    /** Isolated vendor telemetry; never projected into canonical workout metrics or history. */
+    val maxPro: StateFlow<MaxProState> = maxProStore.state
     internal val cpsNativeEvents = CpsNativeEventStore()
     internal val treadmillNativePace = TreadmillNativePaceStore()
 
@@ -122,6 +125,7 @@ class BtEngineState : HrmStateSink {
         PRECOR_SPINNER_CHRONO_POWER,
         CONCEPT2_PM5,
         FE_C_OVER_BLE,
+        MAXPRO,
         FLYWHEEL_SPORTS,
         KAYAK_FIRST,
     }
@@ -511,6 +515,7 @@ class BtEngineState : HrmStateSink {
      */
     internal fun providerMachineCapabilities(): FtmsCapabilities {
         val context = connectionRegistry.current(LegacyConnectionRole.FTMS) ?: return FtmsCapabilities()
+        if (context.handlers.filterIsInstance<MaxProProtocolHandler>().any { it.hasStructuralMatch() }) return FtmsCapabilities()
         val selected = adapterLiveness.selectedAdapterId(context.connectionId)
         if (selected == AdapterLivenessCoordinator.FLYWHEEL_ADAPTER_ID) {
             return flywheelProviderCapabilities()
@@ -1026,6 +1031,9 @@ class BtEngineState : HrmStateSink {
         handlers: Collection<BtEngineGattCore.ProtocolHandler>,
         initialState: Int = BluetoothProfile.STATE_CONNECTING,
     ): ConnectionContext {
+        if (role == LegacyConnectionRole.FTMS) {
+            connectionRegistry.current(role)?.let { maxProStore.end(it.connectionId) }
+        }
         val context = connectionRegistry.open(role, address, gatt = null, initialState)
         context.handlers.addAll(handlers)
         if (role == LegacyConnectionRole.FTMS) linkedAtMs = null
@@ -1097,6 +1105,7 @@ class BtEngineState : HrmStateSink {
     }
 
     internal fun clearConnection(context: ConnectionContext): Boolean {
+        maxProStore.end(context.connectionId)
         val role = connectionRegistry.roleOf(context)
         val cleared = connectionRegistry.clear(context)
         if (cleared) {
@@ -1137,7 +1146,11 @@ class BtEngineState : HrmStateSink {
         value: BluetoothGatt?,
         initialState: Int,
     ) {
-        val oldAddr = connectionRegistry.current(role)?.address
+        val previous = connectionRegistry.current(role)
+        if (role == LegacyConnectionRole.FTMS && previous != null && previous.gatt !== value) {
+            maxProStore.end(previous.connectionId)
+        }
+        val oldAddr = previous?.address
         val newAddr = value?.safeAddress()?.ifBlank { address }?.let(::canonicalConnectionAddress)
         Timber.tag(TAG).d("%s GATT reference change %s → %s", label, oldAddr, newAddr)
         if (value == null) {

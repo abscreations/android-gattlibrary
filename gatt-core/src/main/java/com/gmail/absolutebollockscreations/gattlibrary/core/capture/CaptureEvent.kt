@@ -404,6 +404,18 @@ public data class DemoteEvent(
  * into a §5 fixture.
  */
 @GattLibraryInternalApi
+public data class MaxProInterpretationEvent(
+    override val conn: String,
+    public val status: String,
+    public val frameNumber: Long,
+    public val arrivalMillis: Long,
+    public val notificationBytes: Int,
+    public val values: Map<String, Double?>,
+) : CaptureEvent {
+    override val ev: String get() = "maxpro_interpretation"
+}
+
+@GattLibraryInternalApi
 public data class SampleEvent(
     override val conn: String,
     val sourceId: String,

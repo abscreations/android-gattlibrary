@@ -73,6 +73,12 @@ public class FitnessGattClient internal constructor(
     public val sessionActive: StateFlow<Boolean> = mutableSessionActive.asStateFlow()
     private val mutableInferredActivity = MutableStateFlow(backend.state.inferredActivity.value)
 
+    /** MAXPRO-only raw and derived telemetry, separate from measurements and downstream capabilities. */
+    public val maxPro: StateFlow<MaxProState> get() = backend.state.maxPro
+
+    /** Start a new display observation window without clearing the device or any standard session. */
+    public fun resetMaxProActivity(): Unit = whenOpen { backend.state.maxProStore.resetActivity() }
+
     /**
      * The attached heart-rate strap's own reading, or null when none has reported.
      *

@@ -14,6 +14,7 @@ class HandlerSet private constructor(private val selected: Set<Protocol>) {
         FEC,
         WAHOO_KICKR,
         RIDEON,
+        MAXPRO,
         FLYWHEEL,
         KAYAK_FIRST,
         KEISER_M_SERIES,
@@ -31,6 +32,7 @@ class HandlerSet private constructor(private val selected: Set<Protocol>) {
         ProtocolKey.FEC -> Protocol.FEC in selected
         ProtocolKey.WAHOO_KICKR -> Protocol.WAHOO_KICKR in selected
         ProtocolKey.RIDEON -> Protocol.RIDEON in selected
+        ProtocolKey.MAXPRO -> Protocol.MAXPRO in selected
         ProtocolKey.FLYWHEEL -> Protocol.FLYWHEEL in selected
         ProtocolKey.KAYAK_FIRST -> Protocol.KAYAK_FIRST in selected
         else -> false

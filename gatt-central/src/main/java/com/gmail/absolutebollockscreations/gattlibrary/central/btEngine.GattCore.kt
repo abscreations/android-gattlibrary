@@ -106,6 +106,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile.STATE_CONNECTED
 import android.bluetooth.BluetoothProfile.STATE_DISCONNECTED
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.RequiresPermission
@@ -351,6 +352,12 @@ object BtEngineGattCore {
             }
         }
 
+        private val maxProMtuExperiment = maxProMtuExperimentEnabled(
+            engine.state.discoveredDevices.value.values.firstOrNull {
+                canonicalScanAddress(it.address) == canonicalScanAddress(context.address)
+            }?.matchCandidateId,
+        )
+
         private val discoveryHandler = Handler(Looper.getMainLooper())
         private val discoveryGate = GattDiscoveryAttemptGate(MAX_DISCOVERY_ATTEMPTS)
         @Volatile private var activeGatt: BluetoothGatt? = null
@@ -364,6 +371,8 @@ object BtEngineGattCore {
 
         @SuppressLint("MissingPermission")
         private fun activateAdditionalHandler(handler: ProtocolHandler): Boolean {
+            if (activeHandlers.snapshot().filterIsInstance<MaxProProtocolHandler>()
+                    .any { it.hasStructuralMatch() }) return false
             val gatt = activeGatt ?: context.gatt ?: return false
             if (!ownsGatt(gatt) ||
                 context.connectionState.value != LinkState.CONNECTED ||
@@ -630,22 +639,37 @@ object BtEngineGattCore {
                     Timber.tag(BtEngineState.TAG)
                         .d("requestConnectionPriority() accepted=%s", priorityAccepted)
 
-                    val mtuAccepted = runCatching { gatt.requestMtu(PREFERRED_ATT_MTU) }
-                        .onFailure {
-                            Timber.tag(BtEngineState.TAG)
-                                .w(it, "requestMtu(%d) threw", PREFERRED_ATT_MTU)
-                        }
-                        .getOrDefault(false)
-                    Timber.tag(BtEngineState.TAG).d(
-                        "requestMtu(%d) accepted=%s",
-                        PREFERRED_ATT_MTU,
-                        mtuAccepted,
+                    val requestedMtu = maxProRequestedAttMtu(
+                        maxProMtuExperiment, Build.VERSION.SDK_INT, PREFERRED_ATT_MTU,
                     )
-
-                    if (mtuAccepted) {
-                        scheduleMtuFallback(gatt)
+                    if (requestedMtu == null) {
+                        // Calling requestMtu(23) on Android 14+ would request 517 instead.
+                        Timber.tag(BtEngineState.TAG).i(
+                            "MAXPRO MTU experiment: skip exchange; target ATT MTU=23; verify received value sizes",
+                        )
+                        startServiceDiscovery(gatt, "MAXPRO default ATT MTU experiment")
                     } else {
-                        startServiceDiscovery(gatt, "MTU request was not accepted")
+                        if (maxProMtuExperiment) Timber.tag(BtEngineState.TAG).i(
+                            "MAXPRO MTU experiment: requesting ATT MTU=%d on Android API=%d",
+                            requestedMtu, Build.VERSION.SDK_INT,
+                        )
+                        val mtuAccepted = runCatching { gatt.requestMtu(requestedMtu) }
+                            .onFailure {
+                                Timber.tag(BtEngineState.TAG)
+                                    .w(it, "requestMtu(%d) threw", requestedMtu)
+                            }
+                            .getOrDefault(false)
+                        Timber.tag(BtEngineState.TAG).d(
+                            "requestMtu(%d) accepted=%s",
+                            requestedMtu,
+                            mtuAccepted,
+                        )
+
+                        if (mtuAccepted) {
+                            scheduleMtuFallback(gatt)
+                        } else {
+                            startServiceDiscovery(gatt, "MTU request was not accepted")
+                        }
                     }
                 }
 
@@ -667,6 +691,18 @@ object BtEngineGattCore {
                 return
             }
 
+            if (maxProMtuExperiment) {
+                if (status == GATT_SUCCESS && mtu == 23) {
+                    Timber.tag(BtEngineState.TAG).i(
+                        "MAXPRO MTU experiment: confirmed ATT MTU=23; notification value limit=20",
+                    )
+                } else {
+                    Timber.tag(BtEngineState.TAG).w(
+                        "MAXPRO MTU experiment unconfirmed: observed MTU=%d status=%d; target=23",
+                        mtu, status,
+                    )
+                }
+            }
             mtuFallback?.let(discoveryHandler::removeCallbacks)
             mtuFallback = null
             Timber.tag(BtEngineState.TAG)
@@ -714,10 +750,14 @@ object BtEngineGattCore {
             engine.state.connectionRegistry.replaceServices(context, services)
 
             val discoveredServiceUuids = services.mapTo(linkedSetOf()) { it.uuid }
+            val candidateId = engine.state.discoveredDevices.value.values.firstOrNull {
+                canonicalScanAddress(it.address) == canonicalScanAddress(context.address)
+            }?.matchCandidateId
+            val handlerServiceUuids = maxProHandlerServices(candidateId, discoveredServiceUuids)
 
             // Offer every matching handler the full service list; several may activate.
             activeHandlers.addAll(
-                activateMatchingProtocolHandlers(handlers, discoveredServiceUuids) { h ->
+                activateMatchingProtocolHandlers(handlers, handlerServiceUuids) { h ->
                     runCatching { h.onServicesDiscovered(engine, gatt, services) }
                         .onFailure {
                             Timber.tag(BtEngineState.TAG)

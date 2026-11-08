@@ -592,7 +592,9 @@ internal class ConnectionRegistry {
                 connectionKey = context.connectionKey,
                 address = context.address,
                 connectionState = context.connectionState.value.bluetoothProfileState,
-                activeServices = handlerServices.ifEmpty { setOf(fallbackService) },
+                activeServices = if (context.handlers.filterIsInstance<MaxProProtocolHandler>().any { it.hasStructuralMatch() }) {
+                    emptySet()
+                } else handlerServices.ifEmpty { setOf(fallbackService) },
                 machineConnection = context.machineConnection,
                 machineIdentityFamily = machineIdentityFamily(context),
                 machineDeviceType = context.machineDeviceType
@@ -613,6 +615,9 @@ internal class ConnectionRegistry {
     private fun machineIdentityFamily(
         context: ConnectionContext,
     ): BtEngineState.MachineIdentityFamily? = when {
+        context.handlers.filterIsInstance<MaxProProtocolHandler>().any { it.hasStructuralMatch() } ->
+            BtEngineState.MachineIdentityFamily.MAXPRO
+
         Concept2Uuids.UUID_C2_ERG_SERVICE in context.discoveredServiceUuids ->
             BtEngineState.MachineIdentityFamily.CONCEPT2_PM5
 

@@ -171,8 +171,12 @@ class KeiserScanAdmissionTest {
         assertEquals(
             "service specs must remain exactly the registry's advertised UUIDs",
             registry.scanFilterServiceUuids().toSet(),
-            specs.filterIsInstance<HardwareScanFilterSpec.ServiceUuid>().mapTo(mutableSetOf()) {
-                it.uuid
+            specs.mapNotNullTo(mutableSetOf()) {
+                when (it) {
+                    is HardwareScanFilterSpec.ServiceUuid -> it.uuid
+                    is HardwareScanFilterSpec.ServiceDataUuid -> it.uuid
+                    else -> null
+                }
             },
         )
     }

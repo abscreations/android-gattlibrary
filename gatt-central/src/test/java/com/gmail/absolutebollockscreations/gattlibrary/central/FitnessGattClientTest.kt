@@ -16,6 +16,23 @@ import org.junit.Test
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FitnessGattClientTest {
     @Test
+    fun `MaxPro has a dedicated client stream without changing canonical measurements`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        val before = client.measurements.value
+        assertSame(backend.state.maxPro, client.maxPro)
+        val id = ConnectionId("AA:00", 1)
+        backend.state.maxProStore.begin(id)
+        backend.state.maxProStore.feed(id,
+            "{EVT,0F0100640A08A00A852230E00060A08400945913C10006}".toByteArray(), 100)
+        runCurrent()
+        assertNotNull(client.maxPro.value.snapshot)
+        assertEquals(before, client.measurements.value)
+        backend.state.maxProStore.end(id)
+        assertEquals(MaxProState(), client.maxPro.value)
+        client.close()
+    }
+    @Test
     fun `bounded discovery refreshes its lease and leaves telemetry running`() = runTest {
         val backend = Backend()
         backend.telemetry = true

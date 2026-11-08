@@ -157,6 +157,21 @@ public object CaptureJson {
                 appendStringField("evidence", event.evidence)
             }
 
+            is MaxProInterpretationEvent -> {
+                appendStringField("status", event.status)
+                appendNumberField("frame", event.frameNumber)
+                appendNumberField("arrivalMs", event.arrivalMillis)
+                appendNumberField("notificationBytes", event.notificationBytes.toLong())
+                append(",\"values\":{")
+                event.values.entries.forEachIndexed { index, (key, value) ->
+                    if (index > 0) append(',')
+                    appendJsonString(key)
+                    append(':')
+                    if (value == null) append("null") else appendNumber(value)
+                }
+                append('}')
+            }
+
             is SampleEvent -> {
                 appendStringField("sourceId", event.sourceId)
                 appendStringField("metric", event.metric)

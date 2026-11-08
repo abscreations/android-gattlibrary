@@ -5,6 +5,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import java.util.Locale
 import java.util.UUID
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.MaxProUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
@@ -188,6 +189,8 @@ fun interface ManufacturerAddressRule {
 sealed interface HardwareScanFilterSpec {
     data class ServiceUuid(val uuid: CanonicalUuid) : HardwareScanFilterSpec
 
+    data class ServiceDataUuid(val uuid: CanonicalUuid) : HardwareScanFilterSpec
+
     data class ManufacturerId(val companyId: Int) : HardwareScanFilterSpec {
         init {
             require(companyId in 0..0xffff) { "Company identifier must fit uint16" }
@@ -337,12 +340,14 @@ data class MatchDefinition(
      * whatever a connection later proves — except that here nothing ever connects, so it stands.
      */
     val advertisedActivityType: ActivityType? = null,
+    /** Service-data AD keys may differ from both advertised service UUIDs and the GATT service. */
+    val advertisedServiceDataUuids: Set<CanonicalUuid> = emptySet(),
 ) {
     init {
         require(serviceUuid != null || transport == MatchTransport.ADVERTISEMENT_ONLY) {
             "A GATT family must name the service UUID it serves"
         }
-        require(serviceUuid != null || advertisedServiceUuids.isEmpty()) {
+        require(serviceUuid != null || (advertisedServiceUuids.isEmpty() && advertisedServiceDataUuids.isEmpty())) {
             "An advertisement-only family must not claim a service UUID by the back door"
         }
         require(transport == MatchTransport.GATT || manufacturerPayloadRule != null) {
@@ -367,6 +372,7 @@ data class MatchDefinition(
      */
     val hardwareScanFilterSpecs: List<HardwareScanFilterSpec> = buildList {
         effectiveAdvertisedUuids.forEach { add(HardwareScanFilterSpec.ServiceUuid(it)) }
+        advertisedServiceDataUuids.forEach { add(HardwareScanFilterSpec.ServiceDataUuid(it)) }
         if (transport == MatchTransport.ADVERTISEMENT_ONLY) {
             manufacturerCompanyIds.forEach { add(HardwareScanFilterSpec.ManufacturerId(it)) }
         }
@@ -452,7 +458,7 @@ class DeviceMatcherRegistry private constructor(
      * constructed itself. Deriving it means registering a family is sufficient to find one.
      */
     fun scanFilterServiceUuids(): List<CanonicalUuid> =
-        definitions.flatMap { it.effectiveAdvertisedUuids }.distinct()
+        definitions.flatMap { it.effectiveAdvertisedUuids + it.advertisedServiceDataUuids }.distinct()
 
     /**
      * Every hardware filter the registered families need, typed by what the radio must match on.
@@ -488,7 +494,7 @@ class DeviceMatcherRegistry private constructor(
                         CollisionRisk.LOW, "Full advertised service UUID match"),
                 )
             }
-        definition.effectiveAdvertisedUuids
+        (definition.effectiveAdvertisedUuids + definition.advertisedServiceDataUuids)
             .filter { it in observation.serviceDataUuids }
             .forEach { advertised ->
                 add(
@@ -626,6 +632,7 @@ class DeviceMatcherRegistry private constructor(
                 precorDefinition(),
                 schwinnX70Definition(),
                 flywheelDefinition(),
+                maxProDefinition(),
                 kayakFirstDefinition(),
                 fecDefinition(),
                 keiserMSeriesDefinition(),
@@ -716,6 +723,26 @@ class DeviceMatcherRegistry private constructor(
             requiredEvidenceAlternatives = listOf(
                 setOf(MatchEvidenceKind.ADVERTISED_SERVICE, MatchEvidenceKind.LOCAL_NAME_PATTERN),
                 setOf(MatchEvidenceKind.GATT_SERVICE, MatchEvidenceKind.GATT_CHARACTERISTIC),
+            ),
+        )
+
+        /** Captured FFE1 service-data identity, confirmed after connection by the FFF0 fingerprint. */
+        private fun maxProDefinition() = MatchDefinition(
+            candidateId = MachineFamilyIds.MAXPRO,
+            serviceUuid = CanonicalUuid.fromUuid(MaxProUuids.SERVICE),
+            advertisedServiceDataUuids = setOf(CanonicalUuid.fromUuid(MaxProUuids.ADVERTISEMENT_DATA)),
+            preference = 145,
+            localNamePatterns = listOf(Regex("^MAXPRO$", RegexOption.IGNORE_CASE)),
+            personaCharacteristicUuids = setOf(
+                CanonicalUuid.fromUuid(MaxProUuids.TELEMETRY),
+                CanonicalUuid.fromUuid(MaxProUuids.COMMAND),
+            ),
+            machineRole = true,
+            requiredEvidenceAlternatives = listOf(
+                setOf(MatchEvidenceKind.ADVERTISED_SERVICE, MatchEvidenceKind.LOCAL_NAME_PATTERN),
+                setOf(MatchEvidenceKind.SERVICE_DATA, MatchEvidenceKind.LOCAL_NAME_PATTERN),
+                setOf(MatchEvidenceKind.GATT_SERVICE, MatchEvidenceKind.GATT_CHARACTERISTIC,
+                    MatchEvidenceKind.LOCAL_NAME_PATTERN),
             ),
         )
 
