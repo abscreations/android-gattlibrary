@@ -10,6 +10,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FlywheelUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.MaxProUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
@@ -445,15 +446,32 @@ class DeviceReachabilityTest {
             WahooUuids.UUID_WAHOO_RIDEON_SERVICE,
             WahooUuids.UUID_WAHOO_RIDEON_CORE2_SERVICE,
         )
-        val handlerServices = HandlerFactory.standard(enablePhase05HardwareTest = false)
+        val handlers = HandlerFactory.standard(enablePhase05HardwareTest = false)
             .let { factory -> MACHINE_PROTOCOLS.map(factory::create) }
-            .flatMap { it.primaryServices }
-            .toSet()
+        val handlerServices = handlers.flatMap { it.primaryServices }.toSet()
 
+        // The one deliberate exception (MAXPRO-1 scope, user-confirmed 2026-10-21): MAXPRO owns its
+        // own telemetry and status, has no normalized fitness-machine adapter, and the liveness
+        // coordinator returns no candidates for a structurally matched MAXPRO link. Its service is
+        // therefore served by a machine handler but is never an adapter candidate.
+        val adapterless = setOf(MaxProUuids.SERVICE)
         assertEquals(
-            "the adapter candidates and the machine handlers must cover the same services",
+            "the adapter candidates and the machine handlers must cover the same services, " +
+                "apart from the adapterless MAXPRO service",
             adapterServices,
-            handlerServices,
+            handlerServices - adapterless,
+        )
+        assertTrue("MAXPRO is still served by a machine handler", MaxProUuids.SERVICE in handlerServices)
+        assertEquals(
+            "only the MAXPRO handler serves the adapterless service",
+            listOf(MaxProProtocolHandler::class.java),
+            handlers.filter { MaxProUuids.SERVICE in it.primaryServices }.map { it.javaClass },
+        )
+        assertTrue(
+            "the liveness coordinator still skips structurally matched MAXPRO links",
+            sourceText("AdapterLiveness.kt").contains(
+                "filterIsInstance<MaxProProtocolHandler>().any { it.hasStructuralMatch() }) return emptyList()",
+            ),
         )
     }
 }
