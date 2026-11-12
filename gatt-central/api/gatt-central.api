@@ -2139,6 +2139,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient$Companion;
 	public final fun activateSensorService (Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;Lcom/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignment;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun beginSession (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)V
+	public final fun catalogExternalScanResult (Landroid/bluetooth/le/ScanResult;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun clearDiscoveredDevices ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun clearSessionData ()V
 	public final fun close ()V

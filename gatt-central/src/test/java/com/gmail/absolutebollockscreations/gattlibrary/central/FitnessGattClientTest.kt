@@ -1,6 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.ScanResult
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
@@ -15,6 +16,59 @@ import org.junit.Test
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FitnessGattClientTest {
+    // LIB-69. The mockable android.jar (isReturnDefaultValues) gives an empty ScanResult; the
+    // engine's admission rules are pinned separately by ExternalScanCatalogGuardTest.
+    private fun scanResult() = ScanResult(null, null, 0, 0L)
+
+    @Test
+    fun `an external scan result is offered to the catalog and the admitted row is published in the same call`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        backend.admit = "AA:01" to row()
+        val result = scanResult()
+        assertTrue(client.catalogExternalScanResult(result).accepted)
+        assertSame(result, backend.catalogued.single())
+        // No runCurrent: the snapshot is refreshed by the call itself, and the handle is a normal one.
+        val device = client.discovery.value.devices.single()
+        assertEquals("AA:01", device.address)
+        assertTrue(client.selectMachine(device.handle).accepted)
+        assertEquals(1, backend.selectCalls)
+        assertEquals(0, backend.startCalls)
+        client.close()
+    }
+
+    @Test
+    fun `a result the engine ignores is still accepted and changes nothing`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        val before = client.discovery.value
+        assertTrue(client.catalogExternalScanResult(scanResult()).accepted)
+        assertEquals(1, backend.catalogued.size)
+        assertSame("nothing changed, so nothing is republished", before, client.discovery.value)
+        client.close()
+    }
+
+    @Test
+    fun `catalog offers skip the platform check and map a permission loss`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        backend.failure = OperationFailure.BLUETOOTH_UNAVAILABLE
+        assertTrue("the caller's own scan already passed the platform gate",
+            client.catalogExternalScanResult(scanResult()).accepted)
+        backend.catalogThrows = SecurityException("revoked")
+        assertEquals(OperationFailure.PERMISSION_REQUIRED, client.catalogExternalScanResult(scanResult()).failure)
+        client.close()
+    }
+
+    @Test
+    fun `a closed client refuses catalog offers without reaching the engine`() = runTest {
+        val backend = Backend()
+        val client = client(backend)
+        client.close()
+        assertEquals(OperationFailure.CLOSED, client.catalogExternalScanResult(scanResult()).failure)
+        assertTrue(backend.catalogued.isEmpty())
+    }
+
     @Test
     fun `MaxPro has a dedicated client stream without changing canonical measurements`() = runTest {
         val backend = Backend()
@@ -797,5 +851,16 @@ class FitnessGattClientTest {
         }
         override fun deselectMachine() = true
         override fun close() { closeCalls++ }
+        val catalogued = mutableListOf<ScanResult>()
+        /** What the engine would admit for the next offered result; null admits nothing. */
+        var admit: Pair<String, BtEngineState.DiscoveredDevice>? = null
+        var catalogThrows: RuntimeException? = null
+        override fun catalogExternalScanResult(result: ScanResult) {
+            catalogThrows?.let { throw it }
+            catalogued += result
+            // The engine publishes admissions through the silent diagnostic setter, never the
+            // logging one; the fake does the same so the refresh path is the production one.
+            admit?.let { (key, row) -> state.putDiagnosticDiscoveredDevices(state.discoveredDevices.value + (key to row)) }
+        }
     }
 }

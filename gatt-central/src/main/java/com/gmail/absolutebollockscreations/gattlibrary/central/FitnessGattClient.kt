@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import com.gmail.absolutebollockscreations.gattlibrary.core.ActivityType
 import com.gmail.absolutebollockscreations.gattlibrary.core.BleConfig
@@ -166,6 +167,21 @@ public class FitnessGattClient internal constructor(
 
     public fun clearDiscoveredDevices(): OperationResult = operation(checkPlatform = false) {
         backend.state.putDiscoveredDevices(emptyMap())
+        null
+    }
+
+    /**
+     * Offers one result from a scan the app runs itself (for example a diagnostic scanner) to
+     * [discovery]. Only a connectable device whose primary match is a GATT family is catalogued;
+     * anything else is ignored and still reports accepted, because ignoring it is the contract.
+     * An admitted row carries an ordinary [DeviceHandle], so the normal connect and select calls
+     * work on it. Nothing here starts protocol setup, writes capture or advertisement telemetry,
+     * or logs payloads. No platform check: the caller's scan already needed the permission and
+     * the radio, and a packet that is not admitted must not read as a platform failure.
+     * Call on the main thread, like the scan callbacks it is fed from.
+     */
+    public fun catalogExternalScanResult(result: ScanResult): OperationResult = operation(checkPlatform = false) {
+        backend.catalogExternalScanResult(result)
         null
     }
 
@@ -455,6 +471,8 @@ internal interface CentralConnectionBackend {
     fun connectSensor(address: String, assignment: SensorAssignment): Boolean
     fun activateService(key: String, assignment: SensorAssignment): Boolean
     fun disconnect(key: String): Boolean
+    /** Catalog-only admission of an app-owned scan result; see [FitnessGattClient.catalogExternalScanResult]. */
+    fun catalogExternalScanResult(result: ScanResult)
     fun deselectMachine(): Boolean
     fun close()
 

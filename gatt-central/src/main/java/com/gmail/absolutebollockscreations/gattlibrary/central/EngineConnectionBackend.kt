@@ -2,6 +2,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.bluetooth.le.ScanResult
 import java.util.Locale
 import com.gmail.absolutebollockscreations.gattlibrary.core.HrZoneMode
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
@@ -23,6 +24,7 @@ internal class EngineConnectionBackend(private val engine: BtEngine) : CentralCo
         key, BtEngineState.BtServiceType.valueOf(assignment.service.name), assignment.engineRoles(),
     )
     override fun disconnect(key: String): Boolean = engine.disconnectDevice(key)
+    override fun catalogExternalScanResult(result: ScanResult) { engine.catalogDiagnosticAdvertisement(result) }
     /**
      * Ends whichever machine is selected. Advertisement end is idempotent (as the legacy
      * closeRunMode call relied on). GATT machine links are disconnected by registry identity; if a

@@ -683,10 +683,10 @@ private fun BtEngine.upsertDiscoveredDevice(
  * App-owned diagnostic scanning may catalog supported devices for a later normal Connect.
  * This boundary deliberately does not feed capture, advertisement telemetry, or protocol setup.
  * Unknown devices remain solely in the app's discovery report store. Main-thread only.
+ * Consumers reach it through [FitnessGattClient.catalogExternalScanResult] (LIB-69).
  */
-@GattLibraryInternalApi
 @SuppressLint("MissingPermission")
-fun BtEngine.catalogDiagnosticAdvertisement(result: ScanResult) {
+internal fun BtEngine.catalogDiagnosticAdvertisement(result: ScanResult) {
     if (!result.isConnectable) return
     val address = canonicalScanAddress(safeDeviceAddress(result))
     if (address.isBlank()) return
