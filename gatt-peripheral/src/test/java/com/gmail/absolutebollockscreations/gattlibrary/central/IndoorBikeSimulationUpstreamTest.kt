@@ -6,7 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromRawFixture
 
 /**
  * Plan §9.5.6 — upstream Indoor Bike Simulation (`0x11`).
@@ -69,7 +69,7 @@ class IndoorBikeSimulationUpstreamTest {
     fun `simulation is advertised downstream only when the machine declared bit 13`() {
         val simBit = 1 shl FtmsSpec.TargetFeature.INDOOR_BIKE_SIMULATION
 
-        val without = TargetCapabilities.fromEngineCapabilities(
+        val without = TargetCapabilities.fromRawFixture(
             BtEngineState.FtmsCapabilities(featuresRead = true, supportsIndoorBikeSimulation = false),
         )
         assertFalse(
@@ -78,7 +78,7 @@ class IndoorBikeSimulationUpstreamTest {
         )
         assertFalse(without.toTargetFeatureBits() and simBit != 0)
 
-        val with = TargetCapabilities.fromEngineCapabilities(
+        val with = TargetCapabilities.fromRawFixture(
             BtEngineState.FtmsCapabilities(featuresRead = true, supportsIndoorBikeSimulation = true),
         )
         assertTrue(with.indoorBikeSimulation)

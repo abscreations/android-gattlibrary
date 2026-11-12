@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromRawFixture
 
 /**
  * Plan §11.7, §11.8 and amended D11 for the Concept2 PM.
@@ -66,7 +66,7 @@ class Concept2ControlHonestyTest {
         // A PM has no upstream FTMS control features to mirror, so there is nothing honest to
         // advertise. §9.2's row for this family is empty by construction rather than by choice,
         // and this asserts the construction actually produces that.
-        val capabilities = TargetCapabilities.fromEngineCapabilities(
+        val capabilities = TargetCapabilities.fromRawFixture(
             BtEngineState.FtmsCapabilities(featuresRead = true),
         )
 

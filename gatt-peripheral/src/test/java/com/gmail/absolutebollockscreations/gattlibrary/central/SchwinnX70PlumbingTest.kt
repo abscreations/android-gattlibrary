@@ -10,7 +10,7 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spec
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromRawFixture
 
 /**
  * x70 production plumbing — plan §7, §11 obligation 0.
@@ -307,7 +307,7 @@ class SchwinnX70PlumbingTest {
         // than setting a target. The downstream row is empty by construction; this asserts the
         // construction, because "empty by construction" is exactly the claim that stops being true
         // when someone later adds a capability without re-reading §9.2.
-        val capabilities = TargetCapabilities.fromEngineCapabilities(
+        val capabilities = TargetCapabilities.fromRawFixture(
             BtEngineState.FtmsCapabilities(featuresRead = true),
         )
 

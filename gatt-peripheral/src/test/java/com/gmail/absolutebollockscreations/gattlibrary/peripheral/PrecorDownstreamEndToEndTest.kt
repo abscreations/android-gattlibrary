@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
+import com.gmail.absolutebollockscreations.gattlibrary.central.toMeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.ConnectionId
@@ -59,7 +60,7 @@ class PrecorDownstreamEndToEndTest {
         }
 
         val store = FtmsMetricStore()
-        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_BIKE }.sampleOnce()
+        EngineMetricPump({ state.toMeasurementSnapshot() }, store) { FtmsMachineProfile.INDOOR_BIKE }.sampleOnce()
         val snapshot = store.snapshot
         assertEquals(22.83, snapshot.speedKph!!, 1e-9)
         assertEquals(94.0, snapshot.cadence!!, 1e-9)
@@ -104,7 +105,7 @@ class PrecorDownstreamEndToEndTest {
 
     @Test
     fun `a Chrono-backed Indoor Bike feature payload exposes no target controls`() {
-        val targets = TargetCapabilities.fromEngineCapabilities(
+        val targets = TargetCapabilities.fromRawFixture(
             BtEngineState.FtmsCapabilities(featuresRead = true),
         )
 

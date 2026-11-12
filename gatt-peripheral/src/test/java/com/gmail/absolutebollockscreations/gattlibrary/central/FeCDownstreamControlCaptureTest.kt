@@ -16,7 +16,7 @@ import timber.log.Timber
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromRawFixture
 
 /** Phase 9 §11.7, §11.8 and capture evidence at the production policy seams. */
 class FeCDownstreamControlCaptureTest {
@@ -52,7 +52,7 @@ class FeCDownstreamControlCaptureTest {
             controlAvailable = true,
             page = FeCPage.FeCapabilities(800, true, true, true),
         )
-        val targets = TargetCapabilities.fromEngineCapabilities(state.ftmsCapabilities)
+        val targets = TargetCapabilities.fromRawFixture(state.ftmsCapabilities)
         val expected =
             (1 shl FtmsSpec.TargetFeature.INCLINATION) or
                 (1 shl FtmsSpec.TargetFeature.RESISTANCE) or
@@ -78,7 +78,7 @@ class FeCDownstreamControlCaptureTest {
             )
             assertEquals(
                 0,
-                TargetCapabilities.fromEngineCapabilities(state.ftmsCapabilities).toTargetFeatureBits(),
+                TargetCapabilities.fromRawFixture(state.ftmsCapabilities).toTargetFeatureBits(),
             )
         }
     }

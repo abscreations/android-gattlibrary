@@ -60,7 +60,7 @@ class FlywheelDownstreamIntegrationTest {
         assertFalse(engineCapabilities.supportsResistance)
         assertFalse(engineCapabilities.supportsPower)
 
-        val targets = TargetCapabilities.fromEngineCapabilities(engineCapabilities)
+        val targets = TargetCapabilities.fromRawFixture(engineCapabilities)
         assertEquals(0, targets.toTargetFeatureBits())
         assertEquals(0L, u32(buildFtmsFeaturePayload(FtmsMachineProfile.INDOOR_BIKE, targets, measurementCapabilities = measurements), 4))
     }

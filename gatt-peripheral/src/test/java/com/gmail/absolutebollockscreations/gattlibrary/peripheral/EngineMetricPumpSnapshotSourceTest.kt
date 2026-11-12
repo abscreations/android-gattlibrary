@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
+import com.gmail.absolutebollockscreations.gattlibrary.central.toMeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.CycleSensorEvents
 import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
@@ -111,7 +112,7 @@ class EngineMetricPumpSnapshotSourceTest {
         // imperial units a rower with no speed reported pace 1.609344 times too slow.
         val state = BtEngineState().apply { setInstantPace(2.0) } // 2.0 min/km
         val store = FtmsMetricStore()
-        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_ROWER }.sampleOnce()
+        EngineMetricPump({ state.toMeasurementSnapshot() }, store) { FtmsMachineProfile.INDOOR_ROWER }.sampleOnce()
         assertEquals(60.0, store.snapshot.paceSecondsPer500m!!, 1e-9) // 2 min/km = 60 s per 500 m
     }
 

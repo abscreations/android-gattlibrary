@@ -31,7 +31,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/De
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump : com/gmail/absolutebollockscreations/gattlibrary/server/MetricSampler {
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump$Companion;
 	public static final field DEFAULT_SAMPLE_PERIOD_MS J
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)V
 	public fun <init> (Lkotlin/jvm/functions/Function0;Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMetricStore;Lkotlin/jvm/functions/Function0;)V
 	public fun sampleOnce ()V
 	public fun start (Lkotlinx/coroutines/CoroutineScope;)V
@@ -40,10 +39,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/En
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineMetricPump$Companion {
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineTargetCapabilitiesKt {
-	public static final fun fromEngineCapabilities (Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities$Companion;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$FtmsCapabilities;)Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/peripheral/EngineUpstreamPort : com/gmail/absolutebollockscreations/gattlibrary/server/FtmsUpstreamPort {

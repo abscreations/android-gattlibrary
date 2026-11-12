@@ -13,7 +13,7 @@ import java.util.UUID
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
-import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromEngineCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.peripheral.fromRawFixture
 
 /**
  * Precor Chrono registration, matching, ownership and control honesty — plan §5b, §11.1,
@@ -284,7 +284,7 @@ class PrecorProductionPlumbingTest {
         // §9.2 and D26. The Chrono exposes no control point in either reference project, and
         // even if it did, D26 keeps control hardware-gated for a family FitBridge cannot test.
         // The downstream row is empty by construction; this asserts the construction.
-        val capabilities = TargetCapabilities.fromEngineCapabilities(
+        val capabilities = TargetCapabilities.fromRawFixture(
             BtEngineState.FtmsCapabilities(featuresRead = true),
         )
 

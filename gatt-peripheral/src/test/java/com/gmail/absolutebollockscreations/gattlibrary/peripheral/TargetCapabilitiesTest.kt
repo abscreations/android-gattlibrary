@@ -15,7 +15,7 @@ class TargetCapabilitiesTest {
 
     @Test
     fun `legacy KICKR publishes only approved control targets and exact ranges`() {
-        val caps = TargetCapabilities.fromEngineCapabilities(wahooKickrProviderCapabilities())
+        val caps = TargetCapabilities.fromRawFixture(wahooKickrProviderCapabilities())
         val bits = caps.toTargetFeatureBits()
 
         assertEquals(FtmsTargetRange(0, 1_000, 1), caps.resistanceRange)
@@ -68,7 +68,7 @@ class TargetCapabilitiesTest {
 
     @Test
     fun `every supported range is republished in the units it was read in`() {
-        val caps = TargetCapabilities.fromEngineCapabilities(simulator)
+        val caps = TargetCapabilities.fromRawFixture(simulator)
 
         assertEquals(FtmsTargetRange(0, 3000, 10), caps.speedRange)
         assertEquals(FtmsTargetRange(-100, 300, 5), caps.inclinationRange)
@@ -85,7 +85,7 @@ class TargetCapabilitiesTest {
         // upstream, which is the 1.0 -> 0.0, 3.0 -> 5.0, 10.0 -> 30.0 round trip
         // that was reported. Resistance was unaffected because it was never
         // rescaled, which is why only incline appeared broken.
-        val incline = TargetCapabilities.fromEngineCapabilities(simulator).inclinationRange!!
+        val incline = TargetCapabilities.fromRawFixture(simulator).inclinationRange!!
 
         assertEquals("minimum is -10.0 %", -100, incline.minimum)
         assertEquals("maximum is 30.0 %", 300, incline.maximum)
@@ -104,10 +104,10 @@ class TargetCapabilitiesTest {
         // A raw 3000 is 30.00 km/h. Compared against a bare 60 it looked like a
         // 3000 km/h machine, was clamped to 60, then multiplied by 100 - so a
         // 30 km/h machine was advertised as capable of 60.00 km/h.
-        assertEquals(3000, TargetCapabilities.fromEngineCapabilities(simulator).speedRange!!.maximum)
+        assertEquals(3000, TargetCapabilities.fromRawFixture(simulator).speedRange!!.maximum)
 
         val absurd = simulator.copy(speedMax = 99_000f)
-        assertEquals(6000, TargetCapabilities.fromEngineCapabilities(absurd).speedRange!!.maximum)
+        assertEquals(6000, TargetCapabilities.fromRawFixture(absurd).speedRange!!.maximum)
     }
 
     @Test

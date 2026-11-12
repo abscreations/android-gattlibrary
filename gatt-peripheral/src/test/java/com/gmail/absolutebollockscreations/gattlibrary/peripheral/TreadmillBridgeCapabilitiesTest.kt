@@ -23,7 +23,7 @@ class TreadmillBridgeCapabilitiesTest {
 
     @Test
     fun `features-only treadmill snapshot publishes no controls`() {
-        assertEquals(TargetCapabilities.NONE, TargetCapabilities.fromEngineCapabilities(featuresOnly))
+        assertEquals(TargetCapabilities.NONE, TargetCapabilities.fromRawFixture(featuresOnly))
     }
 
     @Test
@@ -33,7 +33,7 @@ class TreadmillBridgeCapabilitiesTest {
             inclineMin = -30f, inclineMax = 150f, inclineIncr = 5f, inclineRangeKnown = true,
             powerMin = 0f, powerMax = 1_000f, powerIncr = 1f, powerRangeKnown = true,
         )
-        val targets = TargetCapabilities.fromEngineCapabilities(withRanges)
+        val targets = TargetCapabilities.fromRawFixture(withRanges)
         assertTrue(targets.supportsSpeed)
         assertTrue(targets.supportsInclination)
         assertTrue(targets.supportsPower)
@@ -46,7 +46,7 @@ class TreadmillBridgeCapabilitiesTest {
             speedMin = 100f, speedMax = 2_000f, speedIncr = 10f, speedRangeKnown = true,
             inclineMin = -30f, inclineMax = 150f, inclineIncr = 5f, inclineRangeKnown = true,
         )
-        val targets = TargetCapabilities.fromEngineCapabilities(noPowerRange)
+        val targets = TargetCapabilities.fromRawFixture(noPowerRange)
         assertTrue(targets.supportsSpeed)
         assertTrue(targets.supportsInclination)
         assertFalse(targets.supportsPower)

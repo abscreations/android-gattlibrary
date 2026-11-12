@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
+import com.gmail.absolutebollockscreations.gattlibrary.central.toMeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.ConnectionId
@@ -56,7 +57,7 @@ class CscDownstreamEndToEndTest {
         )
 
         val store = FtmsMetricStore()
-        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_BIKE }.sampleOnce()
+        EngineMetricPump({ state.toMeasurementSnapshot() }, store) { FtmsMachineProfile.INDOOR_BIKE }.sampleOnce()
         val snapshot = store.snapshot
         val packet = FtmsDataEncoders.encode(
             FtmsMachineProfile.INDOOR_BIKE,
@@ -114,7 +115,7 @@ class CscDownstreamEndToEndTest {
         )
 
         val store = FtmsMetricStore()
-        EngineMetricPump(state, store) { FtmsMachineProfile.ELLIPTICAL }.sampleOnce()
+        EngineMetricPump({ state.toMeasurementSnapshot() }, store) { FtmsMachineProfile.ELLIPTICAL }.sampleOnce()
         val snapshot = store.snapshot
         val packet = FtmsDataEncoders.encode(
             FtmsMachineProfile.ELLIPTICAL,
@@ -138,7 +139,7 @@ class CscDownstreamEndToEndTest {
 
     @Test
     fun `CSC sensor-only bike and elliptical advertise no target controls`() {
-        val targets = TargetCapabilities.fromEngineCapabilities(sensorOnlyProviderCapabilities())
+        val targets = TargetCapabilities.fromRawFixture(sensorOnlyProviderCapabilities())
 
         assertEquals(0, targets.toTargetFeatureBits())
         listOf(FtmsMachineProfile.INDOOR_BIKE, FtmsMachineProfile.ELLIPTICAL).forEach { profile ->

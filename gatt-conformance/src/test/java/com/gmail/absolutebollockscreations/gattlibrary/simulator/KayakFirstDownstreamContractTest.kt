@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
+import com.gmail.absolutebollockscreations.gattlibrary.central.toMeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.ConnectionId
 import com.gmail.absolutebollockscreations.gattlibrary.central.FusionPersona
@@ -91,7 +92,7 @@ class KayakFirstDownstreamContractTest {
         }
 
         val store = FtmsMetricStore()
-        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_ROWER }
+        EngineMetricPump({ state.toMeasurementSnapshot() }, store) { FtmsMachineProfile.INDOOR_ROWER }
             .sampleOnce()
         assertEquals(9.9, store.snapshot.speedKph!!, 1e-9)
         assertEquals(76.0, store.snapshot.cadence!!, 1e-9)
@@ -112,7 +113,7 @@ class KayakFirstDownstreamContractTest {
         }
         val store = FtmsMetricStore()
 
-        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_ROWER }
+        EngineMetricPump({ state.toMeasurementSnapshot() }, store) { FtmsMachineProfile.INDOOR_ROWER }
             .sampleOnce()
 
         assertEquals(1_800.0 / 12.875, store.snapshot.paceSecondsPer500m!!, 1e-9)
@@ -126,7 +127,7 @@ class KayakFirstDownstreamContractTest {
             setAvgPace(7.0)
         }
         val fallbackStore = FtmsMetricStore()
-        EngineMetricPump(fallbackState, fallbackStore) {
+        EngineMetricPump({ fallbackState.toMeasurementSnapshot() }, fallbackStore) {
             FtmsMachineProfile.INDOOR_ROWER
         }.sampleOnce()
         assertEquals(180.0, fallbackStore.snapshot.paceSecondsPer500m!!, 1e-9)
@@ -139,7 +140,7 @@ class KayakFirstDownstreamContractTest {
             setAvgPace(7.0)
         }
         val stationaryStore = FtmsMetricStore()
-        EngineMetricPump(stationaryState, stationaryStore) {
+        EngineMetricPump({ stationaryState.toMeasurementSnapshot() }, stationaryStore) {
             FtmsMachineProfile.INDOOR_ROWER
         }.sampleOnce()
         assertEquals(null, stationaryStore.snapshot.paceSecondsPer500m)

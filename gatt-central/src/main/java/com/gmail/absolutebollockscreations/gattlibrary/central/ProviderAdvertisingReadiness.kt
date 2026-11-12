@@ -7,7 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState.Ftm
  * (LIB-9e).
  *
  * The downstream Target Setting Features word and Supported-* Range characteristics are built
- * once, from one snapshot (`TargetCapabilities.fromEngineCapabilities`), and a control whose
+ * once, from one snapshot (`TargetCapabilities.fromDeviceCapabilities`), and a control whose
  * range is unknown is dropped. So the bridge must not start before every claimed range has been
  * read. Rebuilding the GATT server later would drop any downstream client already connected.
  *

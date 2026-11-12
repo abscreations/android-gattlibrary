@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
+import com.gmail.absolutebollockscreations.gattlibrary.central.toMeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import com.gmail.absolutebollockscreations.gattlibrary.central.FusionPersona
@@ -69,7 +70,7 @@ class KeiserDownstreamIntegrationTest {
         assertEquals(estimatedSpeed, state.speedKph.value!!, 1e-9)
         assertEquals(estimatedSpeed, state.avgSpeedKph.value!!, 1e-9)
         val store = FtmsMetricStore()
-        EngineMetricPump(state, store) { FtmsMachineProfile.INDOOR_BIKE }.sampleOnce()
+        EngineMetricPump({ state.toMeasurementSnapshot() }, store) { FtmsMachineProfile.INDOOR_BIKE }.sampleOnce()
         val packet = FtmsDataEncoders.encode(
             FtmsMachineProfile.INDOOR_BIKE,
             store.snapshot,
@@ -102,7 +103,7 @@ class KeiserDownstreamIntegrationTest {
         assertTrue(measurements.heartRate)
         assertTrue(measurements.elapsedTime)
 
-        val targets = TargetCapabilities.fromEngineCapabilities(
+        val targets = TargetCapabilities.fromRawFixture(
             BtEngineState.FtmsCapabilities(featuresRead = true),
         )
         val featurePayload = buildFtmsFeaturePayload(

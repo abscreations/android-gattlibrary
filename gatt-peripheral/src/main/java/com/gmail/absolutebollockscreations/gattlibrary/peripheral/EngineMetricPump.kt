@@ -1,11 +1,9 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
 import android.os.SystemClock
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
 import com.gmail.absolutebollockscreations.gattlibrary.central.CycleSensorEvents
 import com.gmail.absolutebollockscreations.gattlibrary.central.MeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.central.TreadmillRawPace
-import com.gmail.absolutebollockscreations.gattlibrary.central.toMeasurementSnapshot
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -25,9 +23,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamReadings
  * Samples central's public [MeasurementSnapshot] into [FtmsMetricStore] (L24).
  *
  * Production reads `FitnessGattClient.measurements` through [measurements]; nothing here touches
- * engine state. The engine-state constructor below is transitional, for tests that still drive
- * `BtEngineState` directly, and is removed with them. One consequence of reading the client: the
- * snapshot is produced on the client's own collector, so it can lag the engine by one dispatch.
+ * engine state (the transitional engine-state constructor was removed in LIB-70). One consequence
+ * of reading the client: the snapshot is produced on the client's own collector, so it can lag
+ * the engine by one dispatch.
  *
  * This is the seam that replaces the old notifier's direct reads of
  * `engineState.<flow>.value` from inside the encoders. Two things change:
@@ -48,13 +46,6 @@ class EngineMetricPump(
     private val store: FtmsMetricStore,
     private val profileProvider: () -> FtmsMachineProfile?,
 ) : MetricSampler {
-
-    /** Transitional: reads engine state directly. Tests only; production passes the client's snapshot. */
-    constructor(
-        engineState: BtEngineState,
-        store: FtmsMetricStore,
-        profileProvider: () -> FtmsMachineProfile?,
-    ) : this({ engineState.toMeasurementSnapshot() }, store, profileProvider)
 
     private var job: Job? = null
 

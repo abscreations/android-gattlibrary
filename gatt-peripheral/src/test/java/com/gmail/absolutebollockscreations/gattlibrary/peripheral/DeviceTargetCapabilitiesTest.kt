@@ -6,6 +6,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.central.flywheelProviderC
 import com.gmail.absolutebollockscreations.gattlibrary.central.sensorOnlyProviderCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.central.toDeviceCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.central.wahooKickrProviderCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.server.ReportedTargetRanges
 import com.gmail.absolutebollockscreations.gattlibrary.server.TargetCapabilities
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -21,8 +22,31 @@ class DeviceTargetCapabilitiesTest {
     private fun viaDevice(raw: FtmsCapabilities, pace: Boolean = false) =
         TargetCapabilities.fromDeviceCapabilities(raw.toDeviceCapabilities(pace))
 
+    /**
+     * Reference oracle: the raw-snapshot mapping deleted from main in LIB-70, kept verbatim so the
+     * canonical production path is still compared with the path it replaced instead of with itself.
+     */
+    private fun viaRawSnapshot(caps: FtmsCapabilities) = TargetCapabilities.fromReportedRanges(
+        ReportedTargetRanges(
+            supportsSpeed = caps.supportsSpeed,
+            supportsInclination = caps.supportsInclination,
+            supportsResistance = caps.supportsResistance,
+            supportsPower = caps.supportsPower,
+            supportsIndoorBikeSimulation = caps.supportsIndoorBikeSimulation,
+            supportsWheelCircumference = caps.supportsWheelCircumference,
+            speedMin = caps.speedMin, speedMax = caps.speedMax, speedIncr = caps.speedIncr,
+            speedRangeKnown = caps.speedRangeKnown,
+            inclineMin = caps.inclineMin, inclineMax = caps.inclineMax, inclineIncr = caps.inclineIncr,
+            inclineRangeKnown = caps.inclineRangeKnown,
+            resistanceMin = caps.resistanceMin, resistanceMax = caps.resistanceMax,
+            resistanceIncr = caps.resistanceIncr, resistanceRangeKnown = caps.resistanceRangeKnown,
+            powerMin = caps.powerMin, powerMax = caps.powerMax, powerIncr = caps.powerIncr,
+            powerRangeKnown = caps.powerRangeKnown,
+        ),
+    )
+
     private fun assertSame(label: String, raw: FtmsCapabilities) =
-        assertEquals(label, TargetCapabilities.fromEngineCapabilities(raw), viaDevice(raw))
+        assertEquals(label, viaRawSnapshot(raw), viaDevice(raw))
 
     @Test
     fun `no published capabilities publish nothing`() {

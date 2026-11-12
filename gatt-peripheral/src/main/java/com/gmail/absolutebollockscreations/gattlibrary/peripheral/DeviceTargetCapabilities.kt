@@ -21,8 +21,8 @@ private fun ControlRange?.rawStep(rawPerUnit: Float): Float? = this?.let { (it.s
  *
  * Canonical units are converted back to wire units by rounding to the nearest whole unit, which is
  * exact for every value a Supported-* Range characteristic can carry; the test proves that for
- * every 16-bit value rather than assuming it. Replaces [fromEngineCapabilities] once the bridge
- * stops reading the raw snapshot.
+ * every 16-bit value rather than assuming it. This is the only path from central's capabilities
+ * to the downstream claims; the raw-snapshot mapping it replaced was removed in LIB-70.
  */
 fun TargetCapabilities.Companion.fromDeviceCapabilities(caps: DeviceCapabilities): TargetCapabilities =
     fromReportedRanges(
