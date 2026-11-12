@@ -17,7 +17,9 @@ import org.junit.Test
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FitnessGattClientTest {
     // LIB-69. The mockable android.jar (isReturnDefaultValues) gives an empty ScanResult; the
-    // engine's admission rules are pinned separately by ExternalScanCatalogGuardTest.
+    // engine's admission rules are pinned separately by ExternalScanCatalogGuardTest. The
+    // four-argument constructor is deprecated but is the only one that needs no further stubs.
+    @Suppress("DEPRECATION")
     private fun scanResult() = ScanResult(null, null, 0, 0L)
 
     @Test
