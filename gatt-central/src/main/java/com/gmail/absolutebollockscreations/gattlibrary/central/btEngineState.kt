@@ -1019,6 +1019,11 @@ class BtEngineState : HrmStateSink {
         Timber.tag(TAG).d("putDiscoveredDevices(size=%d)", map.size)
     }
 
+    /** Catalog projection for an app-owned diagnostic scanner; emits no ordinary log/capture data. */
+    internal fun putDiagnosticDiscoveredDevices(map: Map<String, DiscoveredDevice>) {
+        _discoveredDevices.value = map
+    }
+
     internal fun setActiveAdvertisementMachine(machine: ActiveAdvertisementMachine?) {
         _activeAdvertisementMachine.value = machine
     }

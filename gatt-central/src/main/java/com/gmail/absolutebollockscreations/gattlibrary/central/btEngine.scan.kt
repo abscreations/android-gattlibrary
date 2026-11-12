@@ -605,6 +605,7 @@ private fun BtEngine.upsertDiscoveredDevice(
     matchCandidateId: String? = null,
     advertisedActivityType: ActivityType? = null,
     keiserRow: KeiserRowMetadata? = null,
+    diagnostic: Boolean = false,
 ) {
     synchronized(state) {
         val display = name.ifBlank { result.scanRecord?.deviceName ?: "" }
@@ -674,6 +675,31 @@ private fun BtEngine.upsertDiscoveredDevice(
         }
 
         map[key] = dev
-        state.putDiscoveredDevices(map)
+        if (diagnostic) state.putDiagnosticDiscoveredDevices(map) else state.putDiscoveredDevices(map)
     }
+}
+
+/**
+ * App-owned diagnostic scanning may catalog supported devices for a later normal Connect.
+ * This boundary deliberately does not feed capture, advertisement telemetry, or protocol setup.
+ * Unknown devices remain solely in the app's discovery report store. Main-thread only.
+ */
+@GattLibraryInternalApi
+@SuppressLint("MissingPermission")
+fun BtEngine.catalogDiagnosticAdvertisement(result: ScanResult) {
+    if (!result.isConnectable) return
+    val address = canonicalScanAddress(safeDeviceAddress(result))
+    if (address.isBlank()) return
+    val observation = detectServiceCandidates(result)
+    val primary = observation.candidates.firstOrNull() ?: return
+    if (primary.transport != MatchTransport.GATT) return
+    val now = SystemClock.elapsedRealtime()
+    synchronized(state) {
+        state.putDiagnosticDiscoveredDevices(retainFreshScanEntries(state.discoveredDevices.value,
+            now, SCAN_ENTRY_STALE_AFTER_MS, lastSeenMs = { it.lastSeenMs }))
+    }
+    upsertDiscoveredDevice(address, safeDeviceName(result), address, result,
+        serviceUuid = primary.serviceUuid?.toUuid(), machineCandidate = primary.machineRole,
+        transport = primary.transport, matchCandidateId = primary.candidateId,
+        advertisedActivityType = primary.advertisedActivityType, diagnostic = true)
 }
