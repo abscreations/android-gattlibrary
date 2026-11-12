@@ -457,6 +457,28 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/MaxProInterpretationEvent : com/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureEvent {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;JJILjava/util/Map;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()J
+	public final fun component4 ()J
+	public final fun component5 ()I
+	public final fun component6 ()Ljava/util/Map;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;JJILjava/util/Map;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/MaxProInterpretationEvent;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/MaxProInterpretationEvent;Ljava/lang/String;Ljava/lang/String;JJILjava/util/Map;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/core/capture/MaxProInterpretationEvent;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getArrivalMillis ()J
+	public fun getConn ()Ljava/lang/String;
+	public fun getEv ()Ljava/lang/String;
+	public final fun getFrameNumber ()J
+	public final fun getNotificationBytes ()I
+	public final fun getStatus ()Ljava/lang/String;
+	public final fun getValues ()Ljava/util/Map;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/core/capture/NotifyEvent : com/gmail/absolutebollockscreations/gattlibrary/core/capture/CaptureEvent {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;[B)V
 	public final fun component1 ()Ljava/lang/String;
@@ -592,6 +614,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/catalog/
 	public static final field KAYAK_FIRST Ljava/lang/String;
 	public static final field KEISER_M_SERIES Ljava/lang/String;
 	public static final field LIFE_FITNESS Ljava/lang/String;
+	public static final field MAXPRO Ljava/lang/String;
 	public static final field PRECOR_CHRONO Ljava/lang/String;
 	public static final field SCHWINN_X70 Ljava/lang/String;
 	public static final field SIG_CPS Ljava/lang/String;
@@ -957,6 +980,14 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/ids/Life
 	public final fun getUUID_LF_USER_SERVICE ()Ljava/util/UUID;
 	public final fun getUUID_LF_VENDOR_TOKEN_1 ()Ljava/util/UUID;
 	public final fun getUUID_LF_VENDOR_TOKEN_2 ()Ljava/util/UUID;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ids/MaxProUuids {
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ids/MaxProUuids;
+	public final fun getADVERTISEMENT_DATA ()Ljava/util/UUID;
+	public final fun getCOMMAND ()Ljava/util/UUID;
+	public final fun getSERVICE ()Ljava/util/UUID;
+	public final fun getTELEMETRY ()Ljava/util/UUID;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/core/ids/NordicUuids {

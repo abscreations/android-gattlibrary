@@ -355,6 +355,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getLifeFitnessProfilePrompt ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLinkedAtMs ()Ljava/lang/Long;
 	public final fun getMachineProbe ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getMaxPro ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMetabolicEquivalent ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getPeakPower ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getPeakSpeedKph ()Lkotlinx/coroutines/flow/StateFlow;
@@ -775,6 +776,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineIdentityFamily;
 	public static final field KAYAK_FIRST Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineIdentityFamily;
 	public static final field LIFE_FITNESS Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineIdentityFamily;
+	public static final field MAXPRO Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineIdentityFamily;
 	public static final field PRECOR_SPINNER_CHRONO_POWER Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineIdentityFamily;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$MachineIdentityFamily;
@@ -2157,10 +2159,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Fitne
 	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLifeFitnessProfilePrompt ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMachineToken ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getMaxPro ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getMeasurements ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getSessionActive ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun machineIdentity ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineIdentity;
 	public final fun requestControl (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineToken;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/CommandResult;
+	public final fun resetMaxProActivity ()V
 	public final fun selectMachine (Lcom/gmail/absolutebollockscreations/gattlibrary/central/DeviceHandle;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/OperationResult;
 	public final fun setCscCalibration (II)V
 	public final fun setHeartRateProfile (Ljava/lang/Integer;Ljava/lang/Integer;Lcom/gmail/absolutebollockscreations/gattlibrary/core/HrZoneMode;)V
@@ -2451,6 +2455,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Handl
 	public static final field HRM Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field KAYAK_FIRST Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field KEISER_M_SERIES Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field MAXPRO Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field PRECOR Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field RIDEON Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field RSC Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
@@ -2471,6 +2476,17 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Hardw
 	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec$ManufacturerId;IILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec$ManufacturerId;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCompanyId ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec$ServiceDataUuid : com/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AfiAv9E ()Ljava/lang/String;
+	public final fun copy-UR8yKy4 (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec$ServiceDataUuid;
+	public static synthetic fun copy-UR8yKy4$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec$ServiceDataUuid;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HardwareScanFilterSpec$ServiceDataUuid;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getUuid-AfiAv9E ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -3562,6 +3578,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Machi
 	public static final field FTMS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
 	public static final field KAYAK_FIRST Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
 	public static final field LIFE_FITNESS Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
+	public static final field MAXPRO Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
 	public static final field PRECOR_SPINNER_CHRONO_POWER Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MachineFamily;
@@ -3638,8 +3655,8 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MatchDefinition {
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Ljava/util/Set;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component10 ()Z
 	public final fun component11 ()Ljava/util/List;
@@ -3647,6 +3664,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Match
 	public final fun component13 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;
 	public final fun component14 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;
 	public final fun component15 ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public final fun component16 ()Ljava/util/Set;
 	public final fun component2-okw5PfU ()Ljava/lang/String;
 	public final fun component3 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;
 	public final fun component4 ()I
@@ -3655,10 +3673,11 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Match
 	public final fun component7 ()Ljava/util/Set;
 	public final fun component8 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;
 	public final fun component9 ()Ljava/util/Set;
-	public final fun copy-Rw0cVzw (Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchDefinition;
-	public static synthetic fun copy-Rw0cVzw$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchDefinition;Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchDefinition;
+	public final fun copy-GKb8WAI (Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Ljava/util/Set;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchDefinition;
+	public static synthetic fun copy-GKb8WAI$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchDefinition;Ljava/lang/String;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KnownBleService;ILjava/util/List;Ljava/util/Set;Ljava/util/Set;Lcom/gmail/absolutebollockscreations/gattlibrary/central/PacketShapeRule;Ljava/util/Set;ZLjava/util/List;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerPayloadRule;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ManufacturerAddressRule;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;Ljava/util/Set;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchDefinition;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAdvertisedActivityType ()Lcom/gmail/absolutebollockscreations/gattlibrary/core/ActivityType;
+	public final fun getAdvertisedServiceDataUuids ()Ljava/util/Set;
 	public final fun getAdvertisedServiceUuids ()Ljava/util/Set;
 	public final fun getCandidateId ()Ljava/lang/String;
 	public final fun getEffectiveAdvertisedUuids ()Ljava/util/Set;
@@ -3764,6 +3783,173 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Match
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;
 	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MatchTransport;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus : java/lang/Enum {
+	public static final field AWAITING_DATA Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+	public static final field MALFORMED Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+	public static final field UNSUPPORTED Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+	public static final field V1_CAPTURE_LAYOUT Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;J)V
+	public synthetic fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Double;
+	public final fun component2 ()Ljava/lang/Double;
+	public final fun component3 ()Ljava/lang/Double;
+	public final fun component4 ()J
+	public final fun copy (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;J)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;JILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAveragePounds ()Ljava/lang/Double;
+	public final fun getLastPounds ()Ljava/lang/Double;
+	public final fun getMaximumPounds ()Ljava/lang/Double;
+	public final fun getObservedPulls ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus : java/lang/Enum {
+	public static final field DISCONNECTED Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public static final field FAILED Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public static final field LISTENING Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public static final field STALE Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public static final field SUBSCRIBING Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide {
+	public fun <init> (IIIIII)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()I
+	public final fun copy (IIIIII)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;IIIIIIILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccelerationRaw ()I
+	public final fun getDeviceRepCount ()I
+	public final fun getDistanceMillimeters ()I
+	public final fun getKnobTenths ()I
+	public final fun getTimeTicks ()I
+	public final fun getVelocityRaw ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot {
+	public fun <init> (IIIILcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;Ljava/lang/String;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;
+	public final fun component6 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun copy (IIIILcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;IIIILcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;Ljava/lang/String;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBatteryRaw ()I
+	public final fun getError ()I
+	public final fun getEvent ()I
+	public final fun getLeft ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;
+	public final fun getModel ()I
+	public final fun getPayloadHex ()Ljava/lang/String;
+	public final fun getRight ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSide;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide {
+	public fun <init> (Ljava/lang/Double;Ljava/lang/Double;IDLjava/lang/Double;Ljava/lang/Integer;)V
+	public final fun component1 ()Ljava/lang/Double;
+	public final fun component2 ()Ljava/lang/Double;
+	public final fun component3 ()I
+	public final fun component4 ()D
+	public final fun component5 ()Ljava/lang/Double;
+	public final fun component6 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Double;Ljava/lang/Double;IDLjava/lang/Double;Ljava/lang/Integer;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;Ljava/lang/Double;Ljava/lang/Double;IDLjava/lang/Double;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCalibratedDistanceMeters ()Ljava/lang/Double;
+	public final fun getDeviceRepCount ()I
+	public final fun getDeviceTimeMillis ()Ljava/lang/Integer;
+	public final fun getNominalForceNewtons ()Ljava/lang/Double;
+	public final fun getRawDistanceMeters ()D
+	public final fun getResistanceLevel ()Ljava/lang/Double;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;J)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;
+	public final fun component3 ()J
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;J)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;JILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getArrivalMillis ()J
+	public final fun getLeft ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;
+	public final fun getRight ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSide;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MaxProState {
+	public fun <init> ()V
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;Ljava/lang/String;ZZLcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;JIIJJ)V
+	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;Ljava/lang/String;ZZLcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;JIIJJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public final fun component10 ()Ljava/lang/String;
+	public final fun component11 ()Ljava/lang/String;
+	public final fun component12 ()Ljava/lang/Long;
+	public final fun component13 ()Ljava/lang/Long;
+	public final fun component14 ()J
+	public final fun component15 ()I
+	public final fun component16 ()I
+	public final fun component17 ()J
+	public final fun component18 ()J
+	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Z
+	public final fun component5 ()Z
+	public final fun component6 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;
+	public final fun component7 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;
+	public final fun component8 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;
+	public final fun component9 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;Ljava/lang/String;ZZLcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;JIIJJ)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProState;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProState;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;Ljava/lang/String;ZZLcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;JIIJJILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCompletedFrames ()J
+	public final fun getDecodeStatus ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProDecodeStatus;
+	public final fun getFirmware ()Ljava/lang/String;
+	public final fun getFirmwareQueryFailed ()Z
+	public final fun getFirmwareQuerySent ()Z
+	public final fun getLastFrame ()Ljava/lang/String;
+	public final fun getLastNotificationBytes ()I
+	public final fun getLastNotificationHex ()Ljava/lang/String;
+	public final fun getLastNotificationMillis ()Ljava/lang/Long;
+	public final fun getLastTelemetryMillis ()Ljava/lang/Long;
+	public final fun getLeftForce ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;
+	public final fun getLinkStatus ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProLinkStatus;
+	public final fun getMaximumNotificationBytes ()I
+	public final fun getNotificationsReceived ()J
+	public final fun getRaw ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProRawSnapshot;
+	public final fun getRejectedFragments ()J
+	public final fun getRightForce ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProForceSummary;
+	public final fun getSnapshot ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MaxProSnapshot;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory {
@@ -4327,6 +4513,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Proto
 	public final fun getFTMS ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ProtocolKey;
 	public final fun getHRM ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ProtocolKey;
 	public final fun getKAYAK_FIRST ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ProtocolKey;
+	public final fun getMAXPRO ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ProtocolKey;
 	public final fun getPRECOR ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ProtocolKey;
 	public final fun getRIDEON ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ProtocolKey;
 	public final fun getRSC ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ProtocolKey;
