@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.android.library)
     // API dump: releaseApiDump writes api/gatt-peripheral.api; releaseApiCheck (part of check) fails on
     // an unrecorded public-API change (LIB-12a).
-    alias(libs.plugins.binary.compatibility.validator)
     alias(libs.plugins.android.bcv.bridge)
 }
 
