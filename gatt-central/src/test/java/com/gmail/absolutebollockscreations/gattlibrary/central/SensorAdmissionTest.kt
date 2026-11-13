@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigAppearance
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -30,9 +31,9 @@ class SensorAdmissionTest {
 
     @Test
     fun `appearance maps to a capability with appearance evidence`() {
-        assertEquals(setOf(SensorRole.SPEED), SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_SENSOR)?.roles)
-        assertEquals(setOf(SensorRole.CADENCE), SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_CADENCE_SENSOR)?.roles)
-        val combined = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR)
+        assertEquals(setOf(SensorRole.SPEED), SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_SPEED_SENSOR)?.roles)
+        assertEquals(setOf(SensorRole.CADENCE), SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_CADENCE_SENSOR)?.roles)
+        val combined = SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_SPEED_CADENCE_SENSOR)
         assertEquals(SensorRole.entries.toSet(), combined?.roles)
         assertEquals(SensorRoleEvidence.APPEARANCE, combined?.evidence)
         assertNull(SensorAdmission.roleCapabilityFromAppearance(null))
@@ -108,9 +109,9 @@ class SensorAdmissionTest {
 
     @Test
     fun `csc admits only complementary classified roles`() {
-        val speedOnly = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_SENSOR)!!
-        val cadenceOnly = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_CADENCE_SENSOR)!!
-        val combined = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR)!!
+        val speedOnly = SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_SPEED_SENSOR)!!
+        val cadenceOnly = SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_CADENCE_SENSOR)!!
+        val combined = SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_SPEED_CADENCE_SENSOR)!!
         val active = listOf(link("AA:01", DeviceService.CSC, capability = speedOnly))
 
         assertTrue(SensorAdmission.canAssignService("AA:02", DeviceService.CSC, active, cadenceOnly))
@@ -120,8 +121,8 @@ class SensorAdmissionTest {
 
     @Test
     fun `an assigned combined or unresolved csc blocks a second while the same device stays idempotent`() {
-        val combined = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR)!!
-        val cadenceOnly = SensorAdmission.roleCapabilityFromAppearance(APPEARANCE_CYCLING_CADENCE_SENSOR)
+        val combined = SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_SPEED_CADENCE_SENSOR)!!
+        val cadenceOnly = SensorAdmission.roleCapabilityFromAppearance(SigAppearance.CYCLING_CADENCE_SENSOR)
         listOf(combined, null).forEach { capability ->
             val active = listOf(
                 link("AA:01", DeviceService.CSC, capability = capability, assigned = capability?.roles.orEmpty()),

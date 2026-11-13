@@ -32,6 +32,8 @@ public class FitnessGattClient internal constructor(
     private var connectionInputs: List<Any?> = emptyList()
     private val mutableDiscovery = MutableStateFlow(discoverySnapshot())
     private val mutableConnections = MutableStateFlow(connectionSnapshot())
+    // Declared before init: with Main.immediate a launched collector may run during construction.
+    private val mutableKayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgress?>(null)
     public val discovery: StateFlow<DiscoverySnapshot> = mutableDiscovery.asStateFlow()
     public val connections: StateFlow<ConnectionSnapshot> = mutableConnections.asStateFlow()
     private val mutableMeasurements = MutableStateFlow(backend.state.toMeasurementSnapshot())
@@ -108,6 +110,11 @@ public class FitnessGattClient internal constructor(
                 backend.state.connectionState.map { Unit }, backend.state.machineProbe.map { Unit },
                 backend.state.cccdReady.map { Unit },
             ).collect { synchronized(lock) { if (!closed) refresh() } }
+        }
+        scope.launch {
+            backend.config.kayakFirstSetupProgress.collect {
+                synchronized(lock) { if (!closed) publishKayakFirstSetupProgress() }
+            }
         }
         scope.launch(measurementDispatcher) {
             // StateFlow drops equal snapshots, so redundant engine pings cost one projection, not a re-emission.
@@ -226,7 +233,7 @@ public class FitnessGattClient internal constructor(
     public val lifeFitnessProfilePrompt: StateFlow<List<LifeFitnessProfileField>> get() = backend.config.lifeFitnessProfilePrompt
 
     /** Progress of the Kayak First setup handshake, or null when none is running. */
-    public val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> get() = backend.config.kayakFirstSetupProgress
+    public val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> = mutableKayakFirstSetupProgress.asStateFlow()
 
     /** Heart-rate zone inputs, applied together so zones are recalculated from one consistent set. */
     public fun setHeartRateProfile(maxHr: Int?, restingHr: Int?, zoneMode: HrZoneMode): Unit =
@@ -373,6 +380,7 @@ public class FitnessGattClient internal constructor(
             mutableSessionActive.value = false
             mutableInferredActivity.value = null
             mutableMachineToken.value = null
+            mutableKayakFirstSetupProgress.value = null
             mutableConnections.value = ConnectionSnapshot(emptyList(), null, ConnectionStatus.DISCONNECTED, MachineProbeState.IDLE, false)
         }
     }
@@ -398,6 +406,20 @@ public class FitnessGattClient internal constructor(
         updateMachineToken()
         if (!sameReferences(discoveryInputs, currentDiscoveryInputs())) mutableDiscovery.value = discoverySnapshot()
         if (!sameReferences(connectionInputs, currentConnectionInputs())) mutableConnections.value = connectionSnapshot()
+        // The link handle may appear after the progress did; republish against the current link rows.
+        publishKayakFirstSetupProgress()
+    }
+
+    /** Projects the engine's setup progress onto the consumer type, resolving its link to a [LinkHandle]. */
+    private fun publishKayakFirstSetupProgress() {
+        mutableKayakFirstSetupProgress.value = backend.config.kayakFirstSetupProgress.value?.let {
+            KayakFirstSetupProgress(
+                link = projection.linkHandle(it.connectionId.connectionKey),
+                state = it.state,
+                attempt = it.attempt,
+                maximumAttempts = it.maximumAttempts,
+            )
+        }
     }
 
     private fun updateMachineToken() {
@@ -501,7 +523,7 @@ internal interface CentralConnectionBackend {
 /** Settings the app sets on the engine, and the setup state it reads back. Test seam, like the backend. */
 internal interface CentralConfigBackend {
     val lifeFitnessProfilePrompt: StateFlow<List<LifeFitnessProfileField>>
-    val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?>
+    val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgressState?>
     fun setHeartRateProfile(maxHr: Int?, restingHr: Int?, zoneMode: HrZoneMode)
     fun setCscCalibration(wheelCircumferenceMm: Int, ellipticalStrideLengthMm: Int)
     fun setLifeFitnessProfile(profile: LifeFitnessProfile, ageYears: Int)

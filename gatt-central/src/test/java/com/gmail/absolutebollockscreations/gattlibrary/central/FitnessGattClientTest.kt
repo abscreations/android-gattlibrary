@@ -126,6 +126,37 @@ class FitnessGattClientTest {
     }
 
     @Test
+    fun `Kayak First setup progress names its link by the same handle as the connection row`() = runTest {
+        // LIB-80: the public progress carries the consumer LinkHandle, not the engine's ConnectionId.
+        val backend = Backend()
+        val context = backend.state.connectionRegistry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
+        val client = client(backend)
+        runCurrent()
+        val link = client.connections.value.links.single()
+
+        backend.kayakProgress.value =
+            KayakFirstSetupProgressState(context.connectionId, KayakFirstSetupState.HANDSHAKE, attempt = 2)
+        runCurrent()
+        val progress = requireNotNull(client.kayakFirstSetupProgress.value)
+        assertSame(link.handle, progress.link)
+        assertEquals(KayakFirstSetupState.HANDSHAKE, progress.state)
+        assertEquals(2, progress.attempt)
+        assertTrue(progress.active)
+
+        // A progress for a link the client does not list has no handle rather than a guessed one.
+        backend.kayakProgress.value =
+            KayakFirstSetupProgressState(ConnectionId("BB:02", 9), KayakFirstSetupState.READY)
+        runCurrent()
+        assertNull(client.kayakFirstSetupProgress.value?.link)
+        assertEquals(false, client.kayakFirstSetupProgress.value?.active)
+
+        backend.kayakProgress.value = null
+        runCurrent()
+        assertNull(client.kayakFirstSetupProgress.value)
+        client.close()
+    }
+
+    @Test
     fun `same-link multi-service activation passes the original generation and roles`() = runTest {
         val backend = Backend()
         val context = backend.state.connectionRegistry.openAdditional("AA:01", null, BluetoothProfile.STATE_CONNECTED)
@@ -804,9 +835,10 @@ class FitnessGattClientTest {
         override fun machineIdentity() = identity
         val configCalls = mutableListOf<String>()
         val lifeFitnessPrompt = MutableStateFlow(emptyList<LifeFitnessProfileField>())
+        val kayakProgress = MutableStateFlow<KayakFirstSetupProgressState?>(null)
         override val config = object : CentralConfigBackend {
             override val lifeFitnessProfilePrompt: StateFlow<List<LifeFitnessProfileField>> get() = lifeFitnessPrompt
-            override val kayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgress?>(null)
+            override val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgressState?> get() = kayakProgress
             override fun setHeartRateProfile(maxHr: Int?, restingHr: Int?, zoneMode: HrZoneMode) {
                 configCalls += "hr:$maxHr:$restingHr:$zoneMode"
             }

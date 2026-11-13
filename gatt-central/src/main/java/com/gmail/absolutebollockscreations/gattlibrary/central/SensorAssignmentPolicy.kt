@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigAppearance
 import android.bluetooth.BluetoothProfile
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
@@ -22,29 +23,23 @@ fun sensorConnectionLimit(serviceType: BtEngineState.BtServiceType): Int =
         -> 0
     }
 
-@GattLibraryInternalApi
-const val APPEARANCE_CYCLING_SPEED_SENSOR = 0x0482
-@GattLibraryInternalApi
-const val APPEARANCE_CYCLING_CADENCE_SENSOR = 0x0483
-@GattLibraryInternalApi
-const val APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR = 0x0485
 
 private val ALL_CSC_ROLES = BtEngineState.CscRole.entries.toSet()
 
 internal fun cscRoleCapabilityFromAppearance(
     appearance: Int?,
 ): BtEngineState.CscRoleCapability? = when (appearance) {
-    APPEARANCE_CYCLING_SPEED_SENSOR -> BtEngineState.CscRoleCapability(
+    SigAppearance.CYCLING_SPEED_SENSOR -> BtEngineState.CscRoleCapability(
         roles = setOf(BtEngineState.CscRole.SPEED),
         source = BtEngineState.CscRoleSource.APPEARANCE,
     )
 
-    APPEARANCE_CYCLING_CADENCE_SENSOR -> BtEngineState.CscRoleCapability(
+    SigAppearance.CYCLING_CADENCE_SENSOR -> BtEngineState.CscRoleCapability(
         roles = setOf(BtEngineState.CscRole.CADENCE),
         source = BtEngineState.CscRoleSource.APPEARANCE,
     )
 
-    APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR -> BtEngineState.CscRoleCapability(
+    SigAppearance.CYCLING_SPEED_CADENCE_SENSOR -> BtEngineState.CscRoleCapability(
         roles = ALL_CSC_ROLES,
         source = BtEngineState.CscRoleSource.APPEARANCE,
     )

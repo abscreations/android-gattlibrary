@@ -51,7 +51,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getDiscoveryClient ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/FitnessGattClient;
 	public final fun getHaveControlFlow ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getHrmConnectionState ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLifeFitnessProfilePrompt ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState;
 	public final fun hasSelectedKayakFirstAdapter ()Z
@@ -207,7 +206,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/BtEng
 	public final fun getInstantCadence ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInstantPaceMinPerKm ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getInstantPower ()Lkotlinx/coroutines/flow/StateFlow;
-	public final fun getKayakFirstSetupProgress ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getLapAvgCadenceCount ()I
 	public final fun getLapAvgCadenceTotal ()D
 	public final fun getLapAvgSpeedMps ()Lkotlinx/coroutines/flow/StateFlow;
@@ -1448,26 +1446,14 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Kayak
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupProgress {
-	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupProgress$Companion;
-	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupState;Ljava/lang/Integer;I)V
-	public synthetic fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupState;Ljava/lang/Integer;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;
-	public final fun component2 ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupState;
-	public final fun component3 ()Ljava/lang/Integer;
-	public final fun component4 ()I
-	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupState;Ljava/lang/Integer;I)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupProgress;
-	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupProgress;Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupState;Ljava/lang/Integer;IILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupProgress;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getActive ()Z
 	public final fun getAttempt ()Ljava/lang/Integer;
-	public final fun getConnectionId ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/ConnectionId;
+	public final fun getLink ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/LinkHandle;
 	public final fun getMaximumAttempts ()I
 	public final fun getState ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupState;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupProgress$Companion {
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/KayakFirstSetupState : java/lang/Enum {
@@ -2649,9 +2635,6 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Senso
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/SensorAssignmentPolicyKt {
-	public static final field APPEARANCE_CYCLING_CADENCE_SENSOR I
-	public static final field APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR I
-	public static final field APPEARANCE_CYCLING_SPEED_SENSOR I
 	public static final fun canAssignCscRole (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$CscRoleCapability;Ljava/lang/Iterable;)Z
 	public static final fun canAssignSensorService (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/lang/Iterable;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$CscRoleCapability;)Z
 	public static synthetic fun canAssignSensorService$default (Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$BtServiceType;Ljava/lang/Iterable;Lcom/gmail/absolutebollockscreations/gattlibrary/central/BtEngineState$CscRoleCapability;ILjava/lang/Object;)Z

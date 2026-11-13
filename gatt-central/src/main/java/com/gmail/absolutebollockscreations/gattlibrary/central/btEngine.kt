@@ -399,7 +399,7 @@ class BtEngine internal constructor(
         get() = state.discoveredDevices
     val connectedDevices: StateFlow<List<BtEngineState.ConnectedDeviceLink>>
         get() = state.connectedDevices
-    val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?>
+    internal val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgressState?>
         get() = state.kayakFirstSetupProgress
     val activeAdvertisementMachine: StateFlow<BtEngineState.ActiveAdvertisementMachine?>
         get() = state.activeAdvertisementMachine

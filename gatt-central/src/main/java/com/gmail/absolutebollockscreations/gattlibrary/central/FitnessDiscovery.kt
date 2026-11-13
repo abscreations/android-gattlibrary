@@ -176,6 +176,9 @@ internal class DiscoveryProjection(private val owner: Any) {
 
     fun accepts(handle: DeviceHandle): Boolean = handle.owner === owner && devices[handle.key] === handle
     fun accepts(handle: LinkHandle): Boolean = handle.owner === owner && links[handle.key] === handle
+
+    /** The handle published for [connectionKey] by the last [linkRows], or null if that link is not listed. */
+    fun linkHandle(connectionKey: String): LinkHandle? = links[connectionKey]
 }
 
 internal fun BtEngineState.ActiveAdvertisementMachine.toConsumer(): AdvertisementMachine = AdvertisementMachine(

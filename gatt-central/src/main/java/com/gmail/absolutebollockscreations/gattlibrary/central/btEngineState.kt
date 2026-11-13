@@ -557,11 +557,11 @@ class BtEngineState : HrmStateSink {
         _machineProbe.value = value
     }
 
-    private val _kayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgress?>(null)
-    val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgress?> =
+    private val _kayakFirstSetupProgress = MutableStateFlow<KayakFirstSetupProgressState?>(null)
+    internal val kayakFirstSetupProgress: StateFlow<KayakFirstSetupProgressState?> =
         _kayakFirstSetupProgress
 
-    internal fun setKayakFirstSetupProgress(progress: KayakFirstSetupProgress) {
+    internal fun setKayakFirstSetupProgress(progress: KayakFirstSetupProgressState) {
         val current = _kayakFirstSetupProgress.value
         if (current == null || progress.connectionId.linkGeneration >= current.connectionId.linkGeneration) {
             _kayakFirstSetupProgress.value = progress

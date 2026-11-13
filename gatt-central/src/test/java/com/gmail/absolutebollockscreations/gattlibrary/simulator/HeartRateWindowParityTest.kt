@@ -5,7 +5,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Split out of SimulatorHeartRateOverrideTest (LIB-20f): needs central, so it lives here (L25). */
+/**
+ * Split out of SimulatorHeartRateOverrideTest (LIB-20f) because it needs central. Moved from gatt-conformance to
+ * gatt-central tests in LIB-80 (L25 as amended), so the constant can become internal.
+ */
 class HeartRateWindowParityTest {
 
     @Test

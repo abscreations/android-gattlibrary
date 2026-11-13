@@ -1,5 +1,6 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
+import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigAppearance
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -12,15 +13,15 @@ class SensorAssignmentPolicyTest {
     fun `CSC appearance and feature bits classify speed cadence and combined roles`() {
         assertEquals(
             setOf(BtEngineState.CscRole.SPEED),
-            cscRoleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_SENSOR)?.roles,
+            cscRoleCapabilityFromAppearance(SigAppearance.CYCLING_SPEED_SENSOR)?.roles,
         )
         assertEquals(
             setOf(BtEngineState.CscRole.CADENCE),
-            cscRoleCapabilityFromAppearance(APPEARANCE_CYCLING_CADENCE_SENSOR)?.roles,
+            cscRoleCapabilityFromAppearance(SigAppearance.CYCLING_CADENCE_SENSOR)?.roles,
         )
         assertEquals(
             BtEngineState.CscRole.entries.toSet(),
-            cscRoleCapabilityFromAppearance(APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR)?.roles,
+            cscRoleCapabilityFromAppearance(SigAppearance.CYCLING_SPEED_CADENCE_SENSOR)?.roles,
         )
         assertEquals(
             BtEngineState.CscRole.entries.toSet(),

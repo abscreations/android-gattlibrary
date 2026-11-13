@@ -683,7 +683,11 @@ internal class ConnectionRegistry {
 }
 
 private val ConnectionContext.connectionKey: String
-    get() = "${connectionId.address}#${connectionId.linkGeneration}"
+    get() = connectionId.connectionKey
+
+/** The catalog key of a physical-link generation; [ConnectedLink.handle]s are keyed by it. */
+internal val ConnectionId.connectionKey: String
+    get() = "$address#$linkGeneration"
 
 internal fun serviceTypeForUuid(uuid: UUID): BtEngineState.BtServiceType? = when (uuid) {
     FtmsUuids.UUID_FTMS_SERVICE -> BtEngineState.BtServiceType.FTMS

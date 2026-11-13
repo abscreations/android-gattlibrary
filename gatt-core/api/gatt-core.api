@@ -1024,6 +1024,13 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/core/ids/Schw
 	public final fun getX70_OBSERVED_CHARACTERISTICS ()Ljava/util/List;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/core/ids/SigAppearance {
+	public static final field CYCLING_CADENCE_SENSOR I
+	public static final field CYCLING_SPEED_CADENCE_SENSOR I
+	public static final field CYCLING_SPEED_SENSOR I
+	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ids/SigAppearance;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/core/ids/SigUuids {
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/core/ids/SigUuids;
 	public final fun getUSER_PROFILE_CHARACTERISTICS ()Ljava/util/List;

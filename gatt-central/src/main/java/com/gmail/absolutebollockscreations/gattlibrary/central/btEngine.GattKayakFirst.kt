@@ -675,7 +675,7 @@ internal class KayakFirstProtocolHandler(
     private fun publishSetupProgress(engine: BtEngine, context: ConnectionContext) {
         val setup = coordinator ?: return
         if (setup.connectionId != context.connectionId) return
-        engine.state.setKayakFirstSetupProgress(KayakFirstSetupProgress.from(setup))
+        engine.state.setKayakFirstSetupProgress(KayakFirstSetupProgressState.from(setup))
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
