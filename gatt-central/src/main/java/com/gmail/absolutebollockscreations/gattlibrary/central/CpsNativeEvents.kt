@@ -3,7 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-data class CpsNativeEventSnapshot(
+internal data class CpsNativeEventSnapshot(
     val cumulativeWheelRevolutions: Long? = null,
     val lastWheelEventTimeTicks: Int? = null,
     val cumulativeCrankRevolutions: Int? = null,

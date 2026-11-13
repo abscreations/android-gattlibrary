@@ -12,7 +12,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
  * the spec and are surfaced as `null` rather than guessed at.
  */
 @GattLibraryInternalApi
-enum class FeCEquipmentState(val wireValue: Int) {
+internal enum class FeCEquipmentState(val wireValue: Int) {
     ASLEEP_OR_OFF(1),
     READY(2),
     IN_USE(3),

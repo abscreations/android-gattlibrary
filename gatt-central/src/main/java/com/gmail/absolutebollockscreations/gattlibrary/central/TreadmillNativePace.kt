@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
  * and [CpsNativeEventStore], which have the same shape; gating on the selected source needs a
  * fusion reference the metric pump does not currently hold. Recorded as Q27.
  */
-data class TreadmillNativePaceSnapshot(
+internal data class TreadmillNativePaceSnapshot(
     /** Raw `uint8`, 0.1 km/min. Re-emitted verbatim. */
     val instantaneousRaw: Int? = null,
     val averageRaw: Int? = null,

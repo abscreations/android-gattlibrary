@@ -43,7 +43,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
  * telling us nothing is still a machine that completes setup.
  */
 @GattLibraryInternalApi
-object LifeFitnessFingerprint {
+internal object LifeFitnessFingerprint {
 
     /**
      * Whether a discovered GATT database is a Life Fitness setup surface.

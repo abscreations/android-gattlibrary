@@ -38,7 +38,7 @@ internal fun BtEngine.metricEmitterFor(
 
 /** Stable factory key for one BLE protocol handler implementation. */
 @GattLibraryInternalApi
-data class ProtocolKey(val value: String) {
+internal data class ProtocolKey(val value: String) {
     init {
         require(value.isNotBlank()) { "Protocol key must not be blank" }
     }
@@ -130,7 +130,7 @@ data class ProtocolKey(val value: String) {
  * machine role, admitted through the machine path, not the secondary-sensor path.
  */
 @GattLibraryInternalApi
-fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): ProtocolKey? =
+internal fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): ProtocolKey? =
     when (serviceType) {
         BtEngineState.BtServiceType.HeartRate -> ProtocolKey.HRM
         BtEngineState.BtServiceType.RSC -> ProtocolKey.RSC
@@ -175,7 +175,7 @@ internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
 
 /** Creates a fresh handler instance for each protocol on each physical-link context. */
 @GattLibraryInternalApi
-class HandlerFactory(
+internal class HandlerFactory(
     private val builders: Map<ProtocolKey, () -> BtEngineGattCore.ProtocolHandler>,
     private val companionProtocols: Map<ProtocolKey, List<ProtocolKey>> = emptyMap(),
 ) {
@@ -254,20 +254,20 @@ internal fun activateMatchingProtocolHandlers(
     matchingProtocolHandlers(candidates, discoveredServiceUuids).filter(offer)
 
 @GattLibraryInternalApi
-enum class HandlerOwnership {
+internal enum class HandlerOwnership {
     EXPLICIT_CHARACTERISTIC,
     PRIMARY_SERVICE,
 }
 
 @GattLibraryInternalApi
-data class ProtocolHandlerRoute(
+internal data class ProtocolHandlerRoute(
     val owners: List<BtEngineGattCore.ProtocolHandler>,
     val ownership: HandlerOwnership?,
 )
 
 /** Resolve ownership without a fan-out fallback, which would be ambiguous with several handlers. */
 @GattLibraryInternalApi
-fun resolveProtocolHandlerRoute(
+internal fun resolveProtocolHandlerRoute(
     activeHandlers: Collection<BtEngineGattCore.ProtocolHandler>,
     characteristicUuid: UUID,
     serviceUuid: UUID?,

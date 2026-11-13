@@ -31,7 +31,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
  * `LifeFitnessUuids.UUID_LF_CONTROL_SERVICE` would quietly undo that.
  */
 @GattLibraryInternalApi
-class LifeFitnessSetupCoordinator {
+internal class LifeFitnessSetupCoordinator {
 
     sealed interface Decision {
         /** Not a Life Fitness setup surface. No prompt, no writes, no state change. */

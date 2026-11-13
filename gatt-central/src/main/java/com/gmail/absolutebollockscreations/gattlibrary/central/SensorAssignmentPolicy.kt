@@ -10,7 +10,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 // calls sensorConnectionLimit(CSC) directly, which is what SensorClass.CSC.maxConnections
 // returned.
 
-fun sensorConnectionLimit(serviceType: BtEngineState.BtServiceType): Int =
+internal fun sensorConnectionLimit(serviceType: BtEngineState.BtServiceType): Int =
     when (serviceType) {
         BtEngineState.BtServiceType.HeartRate,
         BtEngineState.BtServiceType.RSC,
@@ -66,7 +66,7 @@ internal fun occupiedCscRoles(
     capability: BtEngineState.CscRoleCapability?,
 ): Set<BtEngineState.CscRole> = capability?.roles?.takeIf { it.isNotEmpty() } ?: ALL_CSC_ROLES
 
-data class CscRoleAssignment(
+internal data class CscRoleAssignment(
     val address: String,
     val capability: BtEngineState.CscRoleCapability?,
     val assignedRoles: Set<BtEngineState.CscRole> = emptySet(),
@@ -147,7 +147,7 @@ internal fun resolveCscFeatureRoles(
 private fun ActiveCscHandler.effectiveAssignedRoles(): Set<BtEngineState.CscRole> =
     assignedRoles.ifEmpty { occupiedCscRoles(capability) }
 
-fun canAssignCscRole(
+internal fun canAssignCscRole(
     address: String,
     candidateCapability: BtEngineState.CscRoleCapability?,
     existingAssignments: Iterable<CscRoleAssignment>,
@@ -185,7 +185,7 @@ internal fun activeSensorConnectionCount(
     .size
 
 /** Existing same-device activation is idempotent and does not consume another slot. */
-fun canAssignSensorService(
+internal fun canAssignSensorService(
     address: String,
     serviceType: BtEngineState.BtServiceType,
     links: Iterable<BtEngineState.ConnectedDeviceLink>,

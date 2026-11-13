@@ -7,7 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
 
 /** Pure decoder for Cycling Speed and Cadence Measurement, `0x2A5B`. */
 @GattLibraryInternalApi
-object CscMeasurement {
+internal object CscMeasurement {
     const val FLAG_WHEEL_REVOLUTION_DATA = 0x01
     const val FLAG_CRANK_REVOLUTION_DATA = 0x02
     const val MINIMUM_LENGTH = 1

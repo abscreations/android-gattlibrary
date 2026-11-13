@@ -154,7 +154,7 @@ internal class GattDiscoveryAttemptGate(
  * Connection identity is carried by ConnectionContext rather than by this role.
  */
 @GattLibraryInternalApi
-enum class LegacyConnectionRole { FTMS, HRM }
+internal enum class LegacyConnectionRole { FTMS, HRM }
 
 internal data class LegacyConnectionSlots<T>(
     val ftms: T?,
@@ -220,7 +220,7 @@ internal class ActiveHandlerLifecycle<T> {
 }
 
 @GattLibraryInternalApi
-object BtEngineGattCore {
+internal object BtEngineGattCore {
 
     private const val PREFERRED_ATT_MTU = 512
     private const val MTU_DISCOVERY_FALLBACK_MS = 2_000L

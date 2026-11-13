@@ -39,7 +39,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  * a visible dead session rather than a machine in a state we cannot name.
  */
 @GattLibraryInternalApi
-object LifeFitnessSetup {
+internal object LifeFitnessSetup {
 
     /**
      * Characteristics whose descriptor/write callbacks advance the setup transcript.
@@ -258,7 +258,7 @@ object LifeFitnessSetup {
  * from a unit test rather than only from a machine nobody has.
  */
 @GattLibraryInternalApi
-class LifeFitnessSetupSequence(private val ops: List<LifeFitnessSetup.Op>) {
+internal class LifeFitnessSetupSequence(private val ops: List<LifeFitnessSetup.Op>) {
 
     sealed interface Outcome {
         /** Issue [op]; this is attempt [attempt] of [LifeFitnessSetup.Op.maxAttempts]. */

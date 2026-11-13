@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-data class CscNativeEventSnapshot(
+internal data class CscNativeEventSnapshot(
     val cumulativeWheelRevolutions: Long? = null,
     val lastWheelEventTimeTicks: Int? = null,
     val cumulativeCrankRevolutions: Int? = null,
@@ -13,7 +13,7 @@ data class CscNativeEventSnapshot(
 
 /** Session-only selected native CSC fields, composed across exact link generations. */
 @GattLibraryInternalApi
-class CscNativeEventStore {
+internal class CscNativeEventStore {
     private data class Entry(
         val wheel: CscMeasurement.WheelEvent? = null,
         val crank: CscMeasurement.CrankEvent? = null,

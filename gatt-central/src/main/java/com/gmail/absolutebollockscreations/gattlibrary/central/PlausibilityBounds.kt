@@ -47,7 +47,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * level with no shared meaning across machines and stays unbounded.
  */
 @GattLibraryInternalApi
-object PlausibilityBounds {
+internal object PlausibilityBounds {
 
     /** An inclusive range, or null where a metric is deliberately not bounded above. */
     data class Range(val min: Double, val max: Double) {

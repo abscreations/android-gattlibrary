@@ -16,13 +16,13 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 /** Identifies one physical-link lifetime, including reconnects to the same BLE address. */
-data class ConnectionId(
+internal data class ConnectionId(
     val address: String,
     val linkGeneration: Long,
 )
 
 @GattLibraryInternalApi
-enum class LinkState(val bluetoothProfileState: Int) {
+internal enum class LinkState(val bluetoothProfileState: Int) {
     DISCONNECTED(BluetoothProfile.STATE_DISCONNECTED),
     CONNECTING(BluetoothProfile.STATE_CONNECTING),
     CONNECTED(BluetoothProfile.STATE_CONNECTED),
@@ -37,7 +37,7 @@ enum class LinkState(val bluetoothProfileState: Int) {
 
 /** Serialized operation state owned by one physical GATT link. */
 @GattLibraryInternalApi
-class GattQueue {
+internal class GattQueue {
     private val lock: Any = Any()
     private val entries: ArrayDeque<StackEntry> = ArrayDeque()
     private var writeBusy: Boolean = false
@@ -81,21 +81,21 @@ class GattQueue {
 
 /** Full service/characteristic identity for one CCCD enable request. */
 @GattLibraryInternalApi
-data class CccdTarget(
+internal data class CccdTarget(
     val serviceUuid: UUID,
     val characteristicUuid: UUID,
 )
 
 /** Bounded result of claiming the next CCCD recovery attempt for one connection context. */
 @GattLibraryInternalApi
-sealed interface CccdRecoveryDecision {
+internal sealed interface CccdRecoveryDecision {
     data class Retry(val attempt: Int) : CccdRecoveryDecision
     data object Terminate : CccdRecoveryDecision
 }
 
 /** CCCD enable plan, readiness, and recovery state owned by one physical GATT link. */
 @GattLibraryInternalApi
-class CccdState {
+internal class CccdState {
     private val lock = Any()
     val ready = MutableStateFlow(false)
     private val enablePlan = linkedSetOf<CccdTarget>()
@@ -182,11 +182,11 @@ class CccdState {
 
 /** In-session link recovery state; intentionally empty until recovery moves in Phase 0.3. */
 @GattLibraryInternalApi
-class LinkRecoveryState
+internal class LinkRecoveryState
 
 /** Effective-readiness gate for the proprietary transcript on an FTMS machine link. */
 @GattLibraryInternalApi
-enum class LifeFitnessLinkSetupState {
+internal enum class LifeFitnessLinkSetupState {
     NOT_REQUIRED,
     PENDING,
     SUCCEEDED,
@@ -195,7 +195,7 @@ enum class LifeFitnessLinkSetupState {
 
 /** All state whose lifetime is one physical BLE connection. */
 @GattLibraryInternalApi
-class ConnectionContext(
+internal class ConnectionContext(
     val connectionId: ConnectionId,
     val address: String,
     val machineConnection: Boolean = false,

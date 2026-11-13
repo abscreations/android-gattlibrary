@@ -56,7 +56,7 @@ fun netElevationChangeMeters(
     (positiveMeters ?: 0.0) - (negativeMeters ?: 0.0)
 }
 
-class BtEngineState : HrmStateSink {
+internal class BtEngineState : HrmStateSink {
 
     @GattLibraryInternalApi
     val cscNativeEvents = CscNativeEventStore()

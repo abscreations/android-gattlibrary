@@ -59,7 +59,7 @@ private fun range(known: Boolean, min: Float?, max: Float?, step: Float?, rawPer
  * the peripheral still consumes the raw snapshot. It leaves with the raw snapshot (plan step 6).
  */
 @GattLibraryInternalApi
-public fun FtmsCapabilities.toDeviceCapabilities(paceMeasurement: Boolean): DeviceCapabilities =
+internal fun FtmsCapabilities.toDeviceCapabilities(paceMeasurement: Boolean): DeviceCapabilities =
     DeviceCapabilities(
         featuresRead = featuresRead,
         supportsSpeedTarget = supportsSpeed,

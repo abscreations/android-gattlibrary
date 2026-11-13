@@ -13,7 +13,7 @@ internal data class CscSessionSnapshot(
 )
 
 @GattLibraryInternalApi
-data class CscCalibration(
+internal data class CscCalibration(
     val wheelCircumferenceMm: Int = BleDefaults.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM,
     val ellipticalStrideLengthMm: Int = BleDefaults.DEFAULT_ELLIPTICAL_STRIDE_LENGTH_MM,
 ) {

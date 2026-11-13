@@ -21,15 +21,15 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
  * A BLE strap notifies about once a second, so this tolerates three missed notifications.
  */
 @GattLibraryInternalApi
-const val HEART_RATE_FRESHNESS_MS = 4_000L
+internal const val HEART_RATE_FRESHNESS_MS = 4_000L
 
 /** Protocol that produced a metric sample. */
 @GattLibraryInternalApi
-enum class MetricProtocol { FTMS, HRM, RSC, CSC, CPS, VENDOR, MOTION, GPS, SESSION }
+internal enum class MetricProtocol { FTMS, HRM, RSC, CSC, CPS, VENDOR, MOTION, GPS, SESSION }
 
 /** Source role used by fusion priority independently of protocol framing. */
 @GattLibraryInternalApi
-enum class MetricSourceClass {
+internal enum class MetricSourceClass {
     HRM,
     FTMS,
     RSC,
@@ -47,10 +47,10 @@ enum class MetricSourceClass {
 }
 
 @GattLibraryInternalApi
-enum class MetricQuality { NATIVE, DERIVED, ESTIMATED }
+internal enum class MetricQuality { NATIVE, DERIVED, ESTIMATED }
 
 @GattLibraryInternalApi
-enum class MetricUnit {
+internal enum class MetricUnit {
     BPM,
     KILOMETERS_PER_HOUR,
     STEPS_PER_MINUTE,
@@ -72,7 +72,7 @@ enum class MetricUnit {
 
 /** Canonical workout fields that can participate in source fusion. */
 @GattLibraryInternalApi
-enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = false) {
+internal enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = false) {
     HEART_RATE(MetricUnit.BPM),
     SPEED(MetricUnit.KILOMETERS_PER_HOUR),
     AVERAGE_SPEED(MetricUnit.KILOMETERS_PER_HOUR),
@@ -103,7 +103,7 @@ enum class MetricKind(val unit: MetricUnit, val cumulative: Boolean = false) {
 
 /** Lifetime that owns metric state. It is never synthesized across transport kinds. */
 @GattLibraryInternalApi
-sealed interface MetricOriginId {
+internal sealed interface MetricOriginId {
     data class Gatt(val connectionId: ConnectionId) : MetricOriginId
 
     data class Advertisement(
@@ -119,7 +119,7 @@ sealed interface MetricOriginId {
 
 /** Wire endpoint that produced a metric within an origin lifetime. */
 @GattLibraryInternalApi
-sealed interface MetricEndpointId {
+internal sealed interface MetricEndpointId {
     data class GattCharacteristic(val uuid: UUID) : MetricEndpointId
 
     data class ManufacturerData(val companyId: Int) : MetricEndpointId {
@@ -131,7 +131,7 @@ sealed interface MetricEndpointId {
 
 /** Stable identity of one metric-producing endpoint within one origin generation. */
 @GattLibraryInternalApi
-data class MetricSourceId(
+internal data class MetricSourceId(
     val originId: MetricOriginId,
     val protocol: MetricProtocol,
     val endpointId: MetricEndpointId,
@@ -167,7 +167,7 @@ data class MetricSourceId(
  * freshness clock. [eventMs] is protocol time and is retained only for protocol math.
  */
 @GattLibraryInternalApi
-data class MetricSample(
+internal data class MetricSample(
     val originId: MetricOriginId,
     val sourceId: MetricSourceId,
     val protocol: MetricProtocol,
@@ -239,7 +239,7 @@ data class MetricSample(
 }
 
 @GattLibraryInternalApi
-fun interface MonotonicMetricClock {
+internal fun interface MonotonicMetricClock {
     fun nowMs(): Long
 
     companion object {
@@ -249,7 +249,7 @@ fun interface MonotonicMetricClock {
 
 /** Wall-clock time used only for UI series that are rendered against epoch time. */
 @GattLibraryInternalApi
-fun interface MetricSeriesClock {
+internal fun interface MetricSeriesClock {
     fun nowMs(): Long
 
     companion object {
@@ -258,7 +258,7 @@ fun interface MetricSeriesClock {
 }
 
 @GattLibraryInternalApi
-enum class FusionSubmission {
+internal enum class FusionSubmission {
     ACCEPTED,
     REJECTED_STALE,
 
@@ -270,7 +270,7 @@ enum class FusionSubmission {
 }
 
 @GattLibraryInternalApi
-enum class FusionPersona { RIDE, RUN, ROW_PADDLE }
+internal enum class FusionPersona { RIDE, RUN, ROW_PADDLE }
 
 private data class MetricCandidateKey(
     val sourceId: MetricSourceId,
@@ -280,7 +280,7 @@ private data class MetricCandidateKey(
 
 /** Packet-scoped source binding. Every field decoded from one packet shares [arrivalMs]. */
 @GattLibraryInternalApi
-class MetricEmitter(
+internal class MetricEmitter(
     private val fusion: MetricFusion,
     val sourceId: MetricSourceId,
     val sourceClass: MetricSourceClass,
@@ -321,7 +321,7 @@ class MetricEmitter(
  * freshness and all tie-breaking recency use monotonic host [MetricSample.arrivalMs] only.
  */
 @GattLibraryInternalApi
-class MetricFusion(
+internal class MetricFusion(
     private val state: BtEngineState,
     private val clock: MonotonicMetricClock = MonotonicMetricClock.SYSTEM,
     private val seriesClock: MetricSeriesClock = MetricSeriesClock.SYSTEM,

@@ -24,7 +24,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * can arm one, and [onTimeout] so the caller can report that it fired.
  */
 @GattLibraryInternalApi
-class LifeFitnessSetupDriver(
+internal class LifeFitnessSetupDriver(
     private val coordinator: LifeFitnessSetupCoordinator = LifeFitnessSetupCoordinator(),
 ) {
 

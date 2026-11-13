@@ -117,7 +117,7 @@ private val queueIoScope = CoroutineScope(Dispatchers.IO)
 /* ────────────────────────────────────────────────────────────────────────────── */
 
 @GattLibraryInternalApi
-data class StackEntry(
+internal data class StackEntry(
     val op: Op,
     val charUuid: UUID? = null,
     val data: ByteArray? = null,

@@ -141,7 +141,7 @@ internal class KayakFirstOrangeResponseParser {
 }
 
 @GattLibraryInternalApi
-data class KayakFirstOrangeTimingTuple(
+internal data class KayakFirstOrangeTimingTuple(
     val tMinSeconds: Double,
     val tHSeconds: Double,
     val tMaxSeconds: Double,
@@ -149,7 +149,7 @@ data class KayakFirstOrangeTimingTuple(
 )
 
 @GattLibraryInternalApi
-data class KayakFirstOrangePhysicsResult(
+internal data class KayakFirstOrangePhysicsResult(
     val powerWatts: Double,
     val forceNewtons: Double,
     val speedMetresPerSecond: Double,
@@ -159,7 +159,7 @@ data class KayakFirstOrangePhysicsResult(
 
 /** E2 4.2.0 manufacturer equations recovered from the official Orange application. */
 @GattLibraryInternalApi
-object KayakFirstOrangePhysics {
+internal object KayakFirstOrangePhysics {
 
     fun calculate(
         timing: KayakFirstOrangeTimingTuple,

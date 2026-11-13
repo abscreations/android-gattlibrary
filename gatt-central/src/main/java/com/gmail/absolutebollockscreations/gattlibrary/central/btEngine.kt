@@ -152,7 +152,7 @@ internal fun kayakFirstProviderCapabilities(): FtmsCapabilities = FtmsCapabiliti
     supportsPower = false,
 )
 
-class BtEngine internal constructor(
+internal class BtEngine internal constructor(
     internal val context: Context,
     private val handlerFactory: HandlerFactory,
     /** Host-app configuration (LIB-2/S2); replaces direct reads of the app's BuildConfig. */
