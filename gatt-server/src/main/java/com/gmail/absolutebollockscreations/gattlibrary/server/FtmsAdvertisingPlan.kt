@@ -18,14 +18,14 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  * persona name silently dropped the FTMS Service Data a scanner needs to type
  * the machine.
  */
-data class FtmsAdvertisingPlan(
+public data class FtmsAdvertisingPlan(
     val localName: String,
     val serviceData: ByteArray,
     val advertisingBytes: Int,
     val scanResponseBytes: Int,
     val serviceUuids: List<UUID> = listOf(FtmsUuids.UUID_FTMS_SERVICE),
 ) {
-    val appearanceSupported: Boolean = false
+    public val appearanceSupported: Boolean = false
 
     init {
         require(advertisingBytes <= MAX_LEGACY_BYTES) {
@@ -53,8 +53,8 @@ data class FtmsAdvertisingPlan(
         return result
     }
 
-    companion object {
-        const val MAX_LEGACY_BYTES = 31
+    public companion object {
+        public const val MAX_LEGACY_BYTES: Int = 31
         private const val CONTROLLER_FLAGS_BYTES = 3
         private const val AD_HEADER_BYTES = 2
         private const val UUID_16_BYTES = 2
@@ -64,7 +64,7 @@ data class FtmsAdvertisingPlan(
          * [profile] except for the simulator's deliberately misadvertising test persona; the
          * local name and service list always follow [profile].
          */
-        fun forProfile(
+        public fun forProfile(
             profile: FtmsMachineProfile,
             includeNativeBikingSensors: Boolean = false,
             advertisedMachineType: FtmsMachineProfile = profile,
@@ -85,7 +85,7 @@ data class FtmsAdvertisingPlan(
         }
 
         /** Octets left for the local name once everything else in this persona's advertisement is counted. */
-        fun localNameBudget(
+        public fun localNameBudget(
             profile: FtmsMachineProfile,
             includeNativeBikingSensors: Boolean = false,
             advertisedMachineType: FtmsMachineProfile = profile,
@@ -105,7 +105,7 @@ data class FtmsAdvertisingPlan(
          * usable machine name (unknown, blank, or a simulator persona) the persona's fallback
          * name, for example "FB-Treadmill", is used unchanged.
          */
-        fun bridgeLocalName(
+        public fun bridgeLocalName(
             profile: FtmsMachineProfile,
             upstreamName: String?,
             includeNativeBikingSensors: Boolean = false,

@@ -21,12 +21,12 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  * Not thread-safe by itself; all mutation happens on the single GATT callback
  * thread. Fields read by the notifier coroutine are @Volatile.
  */
-class PeripheralConnection(
-    val device: BluetoothDevice,
-    val sessionId: Long,
+public class PeripheralConnection(
+    public val device: BluetoothDevice,
+    public val sessionId: Long,
 ) {
 
-    enum class CccdMode(val wireValue: ByteArray) {
+    public enum class CccdMode(public val wireValue: ByteArray) {
         DISABLED(byteArrayOf(0x00, 0x00)),
         NOTIFY(byteArrayOf(0x01, 0x00)),
         INDICATE(byteArrayOf(0x02, 0x00)),
@@ -42,43 +42,43 @@ class PeripheralConnection(
     private val subscriptions = SessionCccdState()
 
     @Volatile
-    var dataSubscribed: Boolean = false
+    public var dataSubscribed: Boolean = false
         private set
 
     @Volatile
-    var statusSubscribed: Boolean = false
+    public var statusSubscribed: Boolean = false
         private set
 
     @Volatile
-    var controlPointSubscribed: Boolean = false
+    public var controlPointSubscribed: Boolean = false
         private set
 
     @Volatile
-    var trainingStatusSubscribed: Boolean = false
+    public var trainingStatusSubscribed: Boolean = false
         private set
 
     @Volatile
-    var cscMeasurementSubscribed: Boolean = false
+    public var cscMeasurementSubscribed: Boolean = false
         private set
 
     @Volatile
-    var cyclingPowerMeasurementSubscribed: Boolean = false
+    public var cyclingPowerMeasurementSubscribed: Boolean = false
         private set
 
     @Volatile
-    var cscControlPointSubscribed: Boolean = false
+    public var cscControlPointSubscribed: Boolean = false
         private set
 
     @Volatile
     private var cscProcedureInProgress: Boolean = false
 
-    val anyMeasurementSubscribed: Boolean
+    public val anyMeasurementSubscribed: Boolean
         get() = dataSubscribed || cscMeasurementSubscribed || cyclingPowerMeasurementSubscribed
 
     /** Procedure ownership, operational state, and accepted targets for this link only. */
-    val procedure = FtmsProcedureSession()
+    public val procedure: FtmsProcedureSession = FtmsProcedureSession()
 
-    var packetsSent: Long = 0
+    public var packetsSent: Long = 0
         private set
 
     /**
@@ -88,11 +88,11 @@ class PeripheralConnection(
      * phone central typically negotiates up to ~247-517.
      */
     @Volatile
-    var attMtu: Int = DEFAULT_ATT_MTU
+    public var attMtu: Int = DEFAULT_ATT_MTU
         private set
 
     /** Largest notification value this link can carry: ATT_MTU - 3. */
-    val maxNotifyPayload: Int
+    public val maxNotifyPayload: Int
         get() = (attMtu - ATT_NOTIFY_OVERHEAD).coerceAtLeast(MIN_NOTIFY_PAYLOAD)
 
     /**
@@ -116,10 +116,10 @@ class PeripheralConnection(
      * payload budget, not the vendor. Any client that leaves the MTU near the BLE
      * minimum has the same problem and gets the same treatment.
      */
-    val prefersCompactFraming: Boolean
+    public val prefersCompactFraming: Boolean
         get() = prefersCompactFramingAt(attMtu)
 
-    fun onMtuChanged(mtu: Int) {
+    public fun onMtuChanged(mtu: Int) {
         attMtu = mtu.coerceIn(DEFAULT_ATT_MTU, MAX_ATT_MTU)
     }
 
@@ -131,17 +131,17 @@ class PeripheralConnection(
      * often than this no matter how fast it is produced.
      */
     @Volatile
-    var connectionIntervalMs: Int = 0
+    public var connectionIntervalMs: Int = 0
         private set
 
     /** Peripheral latency, in connection events the peripheral may skip. */
     @Volatile
-    var slaveLatency: Int = 0
+    public var slaveLatency: Int = 0
         private set
 
     /** Supervision timeout in milliseconds, or 0 while unknown. */
     @Volatile
-    var supervisionTimeoutMs: Int = 0
+    public var supervisionTimeoutMs: Int = 0
         private set
 
     /**
@@ -159,7 +159,7 @@ class PeripheralConnection(
      * 1.25 ms and 10 ms respectively — which is why they are converted here
      * rather than at the call site.
      */
-    fun onConnectionUpdated(intervalUnits: Int, latency: Int, timeoutUnits: Int) {
+    public fun onConnectionUpdated(intervalUnits: Int, latency: Int, timeoutUnits: Int) {
         if (intervalUnits > 0) {
             connectionIntervalMs = (intervalUnits * CONNECTION_INTERVAL_UNIT_US / 1000)
                 .coerceAtLeast(1)
@@ -181,7 +181,7 @@ class PeripheralConnection(
      * Producing faster than the link drains does not deliver data sooner; it only
      * builds a queue in front of the client's own requests.
      */
-    val emissionFloorMs: Long
+    public val emissionFloorMs: Long
         get() = emissionFloorMs(assumedConnectionIntervalMs, slaveLatency)
 
     /**
@@ -203,21 +203,21 @@ class PeripheralConnection(
      * A client that negotiates a real MTU gets no estimate at all: 0 means "no
      * opinion", and the notifier keeps its configured period.
      */
-    val assumedConnectionIntervalMs: Int
+    public val assumedConnectionIntervalMs: Int
         get() = if (connectionIntervalMs > 0) {
             connectionIntervalMs
         } else {
             assumedIntervalForMtu(attMtu)
         }
 
-    fun onCccdWrite(characteristic: UUID, dataUuid: UUID, mode: CccdMode) {
+    public fun onCccdWrite(characteristic: UUID, dataUuid: UUID, mode: CccdMode) {
         subscriptions.write(characteristic, mode)
         recompute(dataUuid)
     }
 
-    fun cccdMode(characteristic: UUID): CccdMode = subscriptions.mode(characteristic)
+    public fun cccdMode(characteristic: UUID): CccdMode = subscriptions.mode(characteristic)
 
-    fun resetSession() {
+    public fun resetSession() {
         subscriptions.clear()
         dataSubscribed = false
         statusSubscribed = false
@@ -237,12 +237,12 @@ class PeripheralConnection(
         supervisionTimeoutMs = 0
     }
 
-    fun countPacket() {
+    public fun countPacket() {
         packetsSent++
     }
 
     /** Compact one-line dump of subscription + link state for logging. */
-    fun describe(): String =
+    public fun describe(): String =
         "session=$sessionId mtu=$attMtu payloadCap=$maxNotifyPayload " +
             "~interval=${assumedConnectionIntervalMs}ms floor=${emissionFloorMs}ms ftms=$dataSubscribed " +
             "csc=$cscMeasurementSubscribed cps=$cyclingPowerMeasurementSubscribed " +
@@ -251,13 +251,13 @@ class PeripheralConnection(
             "control=${procedure.hasControl} state=${procedure.operationalState} " +
             "sent=$packetsSent"
 
-    fun tryBeginCscProcedure(): Boolean {
+    public fun tryBeginCscProcedure(): Boolean {
         if (cscProcedureInProgress) return false
         cscProcedureInProgress = true
         return true
     }
 
-    fun finishCscProcedure() {
+    public fun finishCscProcedure() {
         cscProcedureInProgress = false
     }
 
@@ -277,9 +277,9 @@ class PeripheralConnection(
             subscriptions.mode(SigUuids.UUID_SC_CONTROL_POINT) == CccdMode.INDICATE
     }
 
-    companion object {
-        const val DEFAULT_ATT_MTU = 23
-        const val MAX_ATT_MTU = 517
+    public companion object {
+        public const val DEFAULT_ATT_MTU: Int = 23
+        public const val MAX_ATT_MTU: Int = 517
 
         /**
          * Below this ATT MTU, records are packed compactly rather than fragmented.
@@ -291,7 +291,7 @@ class PeripheralConnection(
          * client that negotiates only a token increase is still treated as
          * constrained.
          */
-        const val COMPACT_FRAMING_MTU_THRESHOLD = 30
+        public const val COMPACT_FRAMING_MTU_THRESHOLD: Int = 30
 
         /**
          * The compact-framing decision as a pure function.
@@ -301,11 +301,11 @@ class PeripheralConnection(
          * a rule that changes what goes on the wire should not be untestable for
          * want of a stub.
          */
-        fun prefersCompactFramingAt(attMtu: Int): Boolean =
+        public fun prefersCompactFramingAt(attMtu: Int): Boolean =
             attMtu < COMPACT_FRAMING_MTU_THRESHOLD
 
         /** Bluetooth connection-interval unit: 1.25 ms, expressed in microseconds. */
-        const val CONNECTION_INTERVAL_UNIT_US = 1_250
+        public const val CONNECTION_INTERVAL_UNIT_US: Int = 1_250
 
         /**
          * Interval assumed for a client that never raised its ATT MTU.
@@ -316,7 +316,7 @@ class PeripheralConnection(
          * and that second failure is what actually broke the link, delaying a
          * Control Point response by 14.9 s.
          */
-        const val ASSUMED_LOW_MTU_INTERVAL_MS = 1_000
+        public const val ASSUMED_LOW_MTU_INTERVAL_MS: Int = 1_000
 
         /**
          * Interval estimate from the only signal a GATT server actually gets.
@@ -325,7 +325,7 @@ class PeripheralConnection(
          * so a phone keeps the configured period rather than being throttled on
          * a guess.
          */
-        fun assumedIntervalForMtu(attMtu: Int): Int =
+        public fun assumedIntervalForMtu(attMtu: Int): Int =
             if (prefersCompactFramingAt(attMtu)) ASSUMED_LOW_MTU_INTERVAL_MS else 0
 
         /**
@@ -335,7 +335,7 @@ class PeripheralConnection(
          * generous rather than tuned. It exists only so an implausible reported
          * interval cannot wedge the pump into near-silence.
          */
-        const val MAX_EMISSION_FLOOR_MS = 5_000L
+        public const val MAX_EMISSION_FLOOR_MS: Long = 5_000L
 
         /**
          * The pacing decision as a pure function.
@@ -350,7 +350,7 @@ class PeripheralConnection(
          * a rule that changes the on-air rate and is untestable for want of a
          * `BluetoothDevice` stub.
          */
-        fun emissionFloorMs(connectionIntervalMs: Int, slaveLatency: Int): Long {
+        public fun emissionFloorMs(connectionIntervalMs: Int, slaveLatency: Int): Long {
             if (connectionIntervalMs <= 0) return 0L
             val events = (slaveLatency.coerceAtLeast(0) + 1).toLong()
             return (connectionIntervalMs.toLong() * events).coerceAtMost(MAX_EMISSION_FLOOR_MS)
@@ -358,7 +358,7 @@ class PeripheralConnection(
 
         /** ATT notification header: opcode (1) + handle (2). */
         /** ATT notification header: opcode plus handle. Shared with the encoders. */
-        const val ATT_NOTIFY_OVERHEAD = 3
+        public const val ATT_NOTIFY_OVERHEAD: Int = 3
 
         /** Floor payload, i.e. the MTU-23 case every client supports. */
         private const val MIN_NOTIFY_PAYLOAD = 20

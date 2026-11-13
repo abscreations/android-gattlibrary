@@ -40,7 +40,7 @@ import timber.log.Timber
  * be called on one thread (the controller uses the main looper).
  */
 @GattLibraryInternalApi
-class AdapterNameCoordinator(
+public class AdapterNameCoordinator(
     private val gateway: Gateway,
     private val store: OriginalNameStore,
     private val scheduler: Scheduler,
@@ -49,25 +49,25 @@ class AdapterNameCoordinator(
 ) {
 
     /** The adapter. */
-    interface Gateway {
+    public interface Gateway {
         /** Null when the adapter is unavailable or has not published a name yet. */
-        val currentName: String?
+        public val currentName: String?
 
         /** Asks the stack to rename. True only means the request was accepted. */
-        fun requestName(name: String): Boolean
+        public fun requestName(name: String): Boolean
     }
 
     /** Persistent storage for the user's original name, across process death. */
-    interface OriginalNameStore {
-        fun read(): String?
-        fun write(name: String): Boolean
-        fun clear(): Boolean
+    public interface OriginalNameStore {
+        public fun read(): String?
+        public fun write(name: String): Boolean
+        public fun clear(): Boolean
     }
 
     /** Delayed execution, so tests can drive time. */
-    interface Scheduler {
-        fun postDelayed(token: Any, delayMs: Long, action: () -> Unit)
-        fun cancel(token: Any)
+    public interface Scheduler {
+        public fun postDelayed(token: Any, delayMs: Long, action: () -> Unit)
+        public fun cancel(token: Any)
     }
 
     private sealed interface Operation {
@@ -93,7 +93,7 @@ class AdapterNameCoordinator(
     private val pollToken = Any()
 
     /** True while any rename is queued or in flight. */
-    val isBusy: Boolean get() = inFlight != null || queue.isNotEmpty()
+    public val isBusy: Boolean get() = inFlight != null || queue.isNotEmpty()
 
     /**
      * Rename the adapter and confirm it.
@@ -101,7 +101,7 @@ class AdapterNameCoordinator(
      * [onResult] fires only once the adapter genuinely reports [target], or with
      * a failure on timeout. Callers must not advertise until success.
      */
-    fun apply(target: String, onResult: (Result<Unit>) -> Unit) {
+    public fun apply(target: String, onResult: (Result<Unit>) -> Unit) {
         enqueue(Operation.Apply(target, onResult))
     }
 
@@ -112,7 +112,7 @@ class AdapterNameCoordinator(
      * cleared only after the adapter confirms, so a failed restore is retried on
      * the next launch rather than leaving the user's phone renamed forever.
      */
-    fun restore(onResult: (Result<Unit>) -> Unit = {}) {
+    public fun restore(onResult: (Result<Unit>) -> Unit = {}) {
         enqueue(Operation.Restore(onResult))
     }
 
@@ -122,14 +122,14 @@ class AdapterNameCoordinator(
      * @param name the value from `EXTRA_LOCAL_NAME`; null falls back to polling
      * the gateway, since some stacks broadcast without the extra.
      */
-    fun onNameObserved(name: String?) {
+    public fun onNameObserved(name: String?) {
         val awaited = awaitedName ?: return
         val observed = name ?: gateway.currentName
         if (observed == awaited) settle(Result.success(Unit))
     }
 
     /** Drop everything without touching the adapter. Used on teardown. */
-    fun cancelAll(reason: String) {
+    public fun cancelAll(reason: String) {
         scheduler.cancel(timeoutToken)
         scheduler.cancel(pollToken)
         val pending = buildList {
@@ -259,7 +259,7 @@ class AdapterNameCoordinator(
     /** True for names this app assigns, so they are never saved as "original". */
     private fun isSessionName(name: String): Boolean = isKnownSessionName(name)
 
-    companion object {
+    public companion object {
         private const val TAG = "AdapterName"
 
         /**
@@ -267,8 +267,8 @@ class AdapterNameCoordinator(
          * user tapping start does not sit staring at nothing. Startup fails
          * past this rather than advertising under the wrong name.
          */
-        const val DEFAULT_TIMEOUT_MS = 3_000L
-        const val DEFAULT_POLL_INTERVAL_MS = 100L
+        public const val DEFAULT_TIMEOUT_MS: Long = 3_000L
+        public const val DEFAULT_POLL_INTERVAL_MS: Long = 100L
 
         /**
          * Referenced rather than duplicated: if this drifted from the advertised
@@ -276,13 +276,13 @@ class AdapterNameCoordinator(
          * as the user's "original" and strand their phone under one permanently.
          * `const val` is inlined, so this costs no class loading in a JVM test.
          */
-        const val SESSION_NAME_PREFIX = BtServiceProfiles.DEVICE_NAME_PREFIX
+        public const val SESSION_NAME_PREFIX: String = BtServiceProfiles.DEVICE_NAME_PREFIX
 
         /**
          * Pre-LIB-18e prefix. Recognised so that a phone left named "FBRG-Treadmill" by a crash
          * under an older build is still restored instead of being saved as the user's name.
          */
-        const val LEGACY_SESSION_NAME_PREFIX = BtServiceProfiles.LEGACY_DEVICE_NAME_PREFIX
+        public const val LEGACY_SESSION_NAME_PREFIX: String = BtServiceProfiles.LEGACY_DEVICE_NAME_PREFIX
         /**
          * Persona names that carry no [SESSION_NAME_PREFIX].
          *
@@ -309,7 +309,7 @@ class AdapterNameCoordinator(
          * stranded by an older build whose manifest this one no longer lists.
          */
         @GattLibraryInternalApi
-        val UNPREFIXED_SESSION_NAMES: Set<String> = setOf(
+        public val UNPREFIXED_SESSION_NAMES: Set<String> = setOf(
             BtServiceProfiles.DEVICE_NAME_CSC_CPS,
             "Stryd",
             "CHRONO 0",
@@ -341,7 +341,7 @@ class AdapterNameCoordinator(
 
         /** True for names this app assigns, so they are never saved as "original". */
         @GattLibraryInternalApi
-        fun isKnownSessionName(name: String): Boolean =
+        public fun isKnownSessionName(name: String): Boolean =
             name.startsWith(SESSION_NAME_PREFIX) ||
                 name.startsWith(LEGACY_SESSION_NAME_PREFIX) ||
                 name in UNPREFIXED_SESSION_NAMES ||

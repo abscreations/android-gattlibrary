@@ -12,12 +12,12 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
  * `DEFAULT_NOTIFY_INTERVAL_MS` were deleted: nothing called them (peripheral's `FtmsProfileSpec`
  * owns the real Feature words).
  */
-object BtServiceProfiles {
+public object BtServiceProfiles {
 
     // ─────────────────────────────────────────────────────────────
     // Service modes (two-mode model)
     // ─────────────────────────────────────────────────────────────
-    enum class ServiceMode {
+    public enum class ServiceMode {
         /** Local provider exposes FTMS (0x1826) with FTMS data chars. */
         FTMS,
 
@@ -28,7 +28,7 @@ object BtServiceProfiles {
     // ─────────────────────────────────────────────────────────────
     // CSC+CPS device persona
     // ─────────────────────────────────────────────────────────────
-    enum class CscCpsProfile {
+    public enum class CscCpsProfile {
         BIKE,
     }
 
@@ -50,20 +50,20 @@ object BtServiceProfiles {
      * ([FtmsAdvertisingPlan.bridgeLocalName] in peripheral). The names below are the fallback
      * when no machine name is known, and the names simulator standard personas use.
      */
-    const val DEVICE_NAME_PREFIX: String = "FB-"
+    public const val DEVICE_NAME_PREFIX: String = "FB-"
 
     /**
      * Prefix used before LIB-18e. Never advertised any more, but a phone left renamed by a crash
      * under an older build still carries it, so it stays recognised as a session name.
      */
-    const val LEGACY_DEVICE_NAME_PREFIX: String = "FBRG-"
+    public const val LEGACY_DEVICE_NAME_PREFIX: String = "FBRG-"
 
-    const val DEVICE_NAME_FTMS_BIKE: String       = DEVICE_NAME_PREFIX + "Bike"
-    const val DEVICE_NAME_FTMS_ELLIPTICAL: String = DEVICE_NAME_PREFIX + "Elliptical"
-    const val DEVICE_NAME_FTMS_ROWER: String      = DEVICE_NAME_PREFIX + "Rower"
-    const val DEVICE_NAME_FTMS_CLIMBER: String    = DEVICE_NAME_PREFIX + "Climber"
-    const val DEVICE_NAME_FTMS_STEPPER: String    = DEVICE_NAME_PREFIX + "Stepper"
-    const val DEVICE_NAME_FTMS_TREAD: String      = DEVICE_NAME_PREFIX + "Treadmill"
+    public const val DEVICE_NAME_FTMS_BIKE: String       = DEVICE_NAME_PREFIX + "Bike"
+    public const val DEVICE_NAME_FTMS_ELLIPTICAL: String = DEVICE_NAME_PREFIX + "Elliptical"
+    public const val DEVICE_NAME_FTMS_ROWER: String      = DEVICE_NAME_PREFIX + "Rower"
+    public const val DEVICE_NAME_FTMS_CLIMBER: String    = DEVICE_NAME_PREFIX + "Climber"
+    public const val DEVICE_NAME_FTMS_STEPPER: String    = DEVICE_NAME_PREFIX + "Stepper"
+    public const val DEVICE_NAME_FTMS_TREAD: String      = DEVICE_NAME_PREFIX + "Treadmill"
     /**
      * The native CSC + Cycling Power persona names itself after the two services it publishes.
      *
@@ -78,7 +78,7 @@ object BtServiceProfiles {
      * explicitly - otherwise a crash mid-session would strand the user's phone permanently named
      * "CSC/CPS".
      */
-    const val DEVICE_NAME_CSC_CPS: String         = "CSC/CPS"
+    public const val DEVICE_NAME_CSC_CPS: String         = "CSC/CPS"
 
     /**
      * Advertised local name for an FTMS persona.
@@ -100,7 +100,7 @@ object BtServiceProfiles {
      * The indoor bike is the only persona that advertises extra UUIDs (CSC and
      * Cycling Power), and "FB-Bike" is short enough to absorb them at 27/31.
      */
-    fun deviceNameFor(machine: FtmsMachineProfile): String = when (machine) {
+    public fun deviceNameFor(machine: FtmsMachineProfile): String = when (machine) {
         FtmsMachineProfile.INDOOR_BIKE   -> DEVICE_NAME_FTMS_BIKE
         FtmsMachineProfile.ELLIPTICAL    -> DEVICE_NAME_FTMS_ELLIPTICAL
         FtmsMachineProfile.INDOOR_ROWER  -> DEVICE_NAME_FTMS_ROWER
@@ -126,7 +126,7 @@ object BtServiceProfiles {
      * @param available value of the Fitness Machine Available flag. Pass false to
      *   advertise the service while signalling that no machine is usable yet.
      */
-    fun ftmsServiceDataFor(machine: FtmsMachineProfile, available: Boolean = true): ByteArray {
+    public fun ftmsServiceDataFor(machine: FtmsMachineProfile, available: Boolean = true): ByteArray {
         val type = FtmsMachineType.fitnessMachineTypeFor(machine)
         val flags = if (available) FtmsMachineType.FM_FLAG_MACHINE_AVAILABLE else 0
         return byteArrayOf(
@@ -140,5 +140,5 @@ object BtServiceProfiles {
      * Max number of concurrent GATT clients we will serve.
      * This is non-spec (spec doesn’t limit us) but keeps memory and per-client state sane.
      */
-    const val MAX_CLIENTS: Int = 3
+    public const val MAX_CLIENTS: Int = 3
 }

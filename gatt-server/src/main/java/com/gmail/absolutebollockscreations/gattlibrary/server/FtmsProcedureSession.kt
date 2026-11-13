@@ -13,9 +13,9 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
  * address, so a bonded peer reconnecting on the same address could inherit
  * control it had never re-requested.
  */
-class FtmsProcedureSession {
+public class FtmsProcedureSession {
 
-    enum class OperationalState {
+    public enum class OperationalState {
         IDLE,
         RUNNING,
         PAUSED,
@@ -29,7 +29,7 @@ class FtmsProcedureSession {
      * [FtmsControlPointHandler] mutates them only after the downstream operation
      * succeeds.
      */
-    data class AcceptedTargets(
+    public data class AcceptedTargets(
         var speedKph: Double? = null,
         var inclinationPercent: Double? = null,
         var resistance: Double? = null,
@@ -38,7 +38,7 @@ class FtmsProcedureSession {
         var indoorBikeSimulation: IndoorBikeSimulation? = null,
         var wheelCircumferenceMm: Double? = null,
     ) {
-        fun clear() {
+        public fun clear() {
             speedKph = null
             inclinationPercent = null
             resistance = null
@@ -49,28 +49,28 @@ class FtmsProcedureSession {
         }
     }
 
-    data class IndoorBikeSimulation(
+    public data class IndoorBikeSimulation(
         val windMps: Double,
         val gradePercent: Double,
         val crr: Double,
         val cw: Double,
     )
 
-    var hasControl: Boolean = false
+    public var hasControl: Boolean = false
         @GattLibraryInternalApi set
 
-    var operationalState: OperationalState = OperationalState.IDLE
+    public var operationalState: OperationalState = OperationalState.IDLE
         @GattLibraryInternalApi set
 
-    val acceptedTargets = AcceptedTargets()
+    public val acceptedTargets: AcceptedTargets = AcceptedTargets()
 
     @Volatile
     private var proceduresInFlight: Int = 0
 
-    val procedureInFlight: Boolean
+    public val procedureInFlight: Boolean
         get() = proceduresInFlight > 0
 
-    val trainingStatus: Byte
+    public val trainingStatus: Byte
         get() = when (operationalState) {
             OperationalState.RUNNING -> FtmsSpec.TrainingStatus.MANUAL_MODE_QUICK_START
             OperationalState.IDLE,
@@ -80,9 +80,9 @@ class FtmsProcedureSession {
         }
 
     /** Flags=0 means no optional status string follows. */
-    fun trainingStatusPayload(): ByteArray = byteArrayOf(0x00, trainingStatus)
+    public fun trainingStatusPayload(): ByteArray = byteArrayOf(0x00, trainingStatus)
 
-    fun resetForDisconnect() {
+    public fun resetForDisconnect() {
         // A bonded peer may reconnect with the same address. Clear every
         // connection-scoped privilege and target so that identity reuse cannot
         // inherit control from the previous GATT session.
@@ -98,7 +98,7 @@ class FtmsProcedureSession {
     }
 
     @Synchronized
-    fun tryBeginProcedure(): Boolean {
+    public fun tryBeginProcedure(): Boolean {
         // Strict FTMS clients wait for each response indication before writing
         // again. Garmin Connect IQ clients on a ~990 ms interval may submit a
         // second target while the first response is still behind a measurement
@@ -110,12 +110,12 @@ class FtmsProcedureSession {
     }
 
     @Synchronized
-    fun finishProcedure() {
+    public fun finishProcedure() {
         if (proceduresInFlight > 0) proceduresInFlight--
     }
 
-    companion object {
+    public companion object {
         /** Bounded protection against a client flooding Write Commands. */
-        const val MAX_PIPELINED_PROCEDURES = 8
+        public const val MAX_PIPELINED_PROCEDURES: Int = 8
     }
 }

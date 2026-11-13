@@ -12,7 +12,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.PrecorUuids
 
 /** Stable measurement capabilities for one GATT database lifetime. */
-data class FtmsMeasurementCapabilities(
+public data class FtmsMeasurementCapabilities(
     val averageSpeed: Boolean = false,
     val cadence: Boolean = false,
     val totalDistance: Boolean = false,
@@ -36,7 +36,7 @@ data class FtmsMeasurementCapabilities(
     /** Claims Feature bit 13. Same reasoning as [metabolicEquivalent]. */
     val remainingTime: Boolean = false,
 ) {
-    fun toFeatureBits(): Int {
+    public fun toFeatureBits(): Int {
         val f = FtmsSpec.Feature
         var bits = 0
         if (averageSpeed) bits = bits or (1 shl f.AVERAGE_SPEED)
@@ -78,7 +78,7 @@ data class FtmsMeasurementCapabilities(
  */
 
 /** The one machine data characteristic this persona exposes. */
-val FtmsMachineProfile.dataCharacteristic: UUID
+public val FtmsMachineProfile.dataCharacteristic: UUID
     get() = FtmsUuids.dataUuidForProfile(this)
 
 /** Fitness Machine Type bit for the advertising Service Data structure. */
@@ -91,11 +91,11 @@ internal val FtmsMachineProfile.machineTypeBit: Int
  * Deliberately short: the name costs (2 + length) octets of the 31-octet legacy
  * advertising budget, and we also carry a 7-octet Service Data structure.
  */
-val FtmsMachineProfile.advertisedName: String
+public val FtmsMachineProfile.advertisedName: String
     get() = BtServiceProfiles.deviceNameFor(this)
 
 /** Stable wire name used for status reporting and diagnostics. */
-val FtmsMachineProfile.wireName: String
+public val FtmsMachineProfile.wireName: String
     get() = when (this) {
         FtmsMachineProfile.TREADMILL -> "treadmill"
         FtmsMachineProfile.ELLIPTICAL -> "crossTrainer"
@@ -118,7 +118,7 @@ val FtmsMachineProfile.wireName: String
  * Step Count inconsistently with their encoders, and claimed Pace (bit 5) for the
  * treadmill, which emits neither instantaneous nor average pace.
  */
-val FtmsMachineProfile.measurementCapabilities: FtmsMeasurementCapabilities
+public val FtmsMachineProfile.measurementCapabilities: FtmsMeasurementCapabilities
     get() = when (this) {
         FtmsMachineProfile.TREADMILL -> FtmsMeasurementCapabilities(
             averageSpeed = true,
@@ -169,7 +169,7 @@ val FtmsMachineProfile.measurementCapabilities: FtmsMeasurementCapabilities
         )
     }
 
-val FtmsMachineProfile.featureBits: Int
+public val FtmsMachineProfile.featureBits: Int
     get() = measurementCapabilities.toFeatureBits()
 
 /**
@@ -229,7 +229,7 @@ internal val feCTreadmillMeasurementCapabilities =
  * FTMS first. The override is intentionally limited to a Precor-only machine link; simulator
  * bikes and ordinary FTMS bikes keep the established indoor-bike capabilities.
  */
-fun providerMeasurementCapabilities(
+public fun providerMeasurementCapabilities(
     profile: FtmsMachineProfile,
     upstreamServiceUuids: Set<UUID>,
     advertisementCandidateId: String? = null,
@@ -270,7 +270,7 @@ internal fun ftmsServiceData(profile: FtmsMachineProfile, available: Boolean = t
     BtServiceProfiles.ftmsServiceDataFor(profile, available)
 
 /** Personas whose data characteristic requires Instantaneous Speed. */
-fun requiresSpeed(profile: FtmsMachineProfile): Boolean = when (profile) {
+public fun requiresSpeed(profile: FtmsMachineProfile): Boolean = when (profile) {
     FtmsMachineProfile.INDOOR_BIKE,
     FtmsMachineProfile.TREADMILL,
     FtmsMachineProfile.ELLIPTICAL,

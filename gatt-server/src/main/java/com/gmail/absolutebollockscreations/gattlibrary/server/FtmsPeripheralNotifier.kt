@@ -20,7 +20,7 @@ import timber.log.Timber
  * sampler (`EngineMetricPump`, in gatt-peripheral) can derive its sample period from it without
  * reaching into an internal class (LIB-19i).
  */
-const val DEFAULT_EMISSION_PERIOD_MS: Long = 250L
+public const val DEFAULT_EMISSION_PERIOD_MS: Long = 250L
 
 /**
  * How long a client pump waits before its next emission.

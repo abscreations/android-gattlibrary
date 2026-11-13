@@ -31,7 +31,7 @@ import timber.log.Timber
  * cancellation barrier: a late onStartCommand cannot resurrect a peripheral that
  * has already been stopped.
  */
-class FtmsForegroundService : Service() {
+public class FtmsForegroundService : Service() {
 
     private val foregroundStopped = AtomicBoolean(false)
 
@@ -116,7 +116,7 @@ class FtmsForegroundService : Service() {
         )
     }
 
-    companion object {
+    public companion object {
         private const val TAG = "FtmsFgService"
         private const val CHANNEL_ID = "ftms_pass_through"
         private const val NOTIFICATION_ID = 0x46544D53 // "FTMS"
@@ -135,7 +135,7 @@ class FtmsForegroundService : Service() {
         // call cannot hang forever if the OS never delivers it.
         private val pending = ConcurrentHashMap<Long, (Result<Unit>) -> Unit>()
 
-        fun start(context: Context, title: String, text: String, onResult: (Result<Unit>) -> Unit) {
+        public fun start(context: Context, title: String, text: String, onResult: (Result<Unit>) -> Unit) {
             val token = nextToken.incrementAndGet()
             val intent = Intent(context, FtmsForegroundService::class.java)
                 .putExtra(EXTRA_TITLE, title)
@@ -166,7 +166,7 @@ class FtmsForegroundService : Service() {
             main.post { pending.remove(token)?.invoke(result) }
         }
 
-        fun stop(context: Context) {
+        public fun stop(context: Context) {
             // Mark every issued token cancelled before stopService(). Android may
             // still deliver a previously queued start Intent after this call.
             val cancelledThrough = nextToken.get()

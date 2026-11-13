@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
  * control targets are refused (the simulator installs its own control override), and
  * [supportsPaceMeasurement] is whatever the host chose.
  */
-class InMemoryUpstream(
+public class InMemoryUpstream(
     private val pacedMachine: Boolean = false,
     private val elapsedRealtimeMs: () -> Long = { SystemClock.elapsedRealtime() },
     private val wallClockMs: () -> Long = { System.currentTimeMillis() },
@@ -54,7 +54,7 @@ class InMemoryUpstream(
         private set
 
     /** Feed an external strap reading (or null when it drops); the simulator prefers it to its own value. */
-    fun setExternalHeartRate(bpm: Int?) {
+    public fun setExternalHeartRate(bpm: Int?) {
         lastExternalHeartRateAtMs = if (bpm == null) 0L else wallClockMs()
         _externalHeartRate.value = bpm
     }
@@ -110,7 +110,7 @@ class InMemoryUpstream(
     }
 
     /** The current readings, for tests and diagnostics. */
-    fun currentReadings(): UpstreamReadings = readings
+    public fun currentReadings(): UpstreamReadings = readings
 
     // ---- FtmsUpstreamPort ----
 

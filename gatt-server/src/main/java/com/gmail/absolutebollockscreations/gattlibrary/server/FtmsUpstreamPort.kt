@@ -4,21 +4,21 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
 import kotlinx.coroutines.CoroutineScope
 
 /** Periodically fills a [FtmsMetricStore] from whatever supplies live metrics (LIB-19f host port). */
-interface MetricSampler {
-    fun start(scope: CoroutineScope)
+public interface MetricSampler {
+    public fun start(scope: CoroutineScope)
 
-    fun stop()
+    public fun stop()
 
     /** Force one fresh sample, for status reads. */
-    fun sampleOnce()
+    public fun sampleOnce()
 }
 
 /** A control sink whose target capability follows the lifetime of a start/stop session. */
-interface UpstreamControlSink : FtmsControlSink {
+public interface UpstreamControlSink : FtmsControlSink {
     /** Called when a session begins so advertised targets and registered ranges share one snapshot. */
-    fun beginSession(targets: TargetCapabilities)
+    public fun beginSession(targets: TargetCapabilities)
 
-    fun endSession()
+    public fun endSession()
 }
 
 /**
@@ -26,17 +26,17 @@ interface UpstreamControlSink : FtmsControlSink {
  * central type. The bridge implements it over the central engine; a test or the simulator can
  * implement it directly (L22: the server layer depends on core only).
  */
-interface FtmsUpstreamPort {
+public interface FtmsUpstreamPort {
     /** Where Control Point writes go: the real machine, or an inert sink when none is attached. */
-    val controlSink: UpstreamControlSink
+    public val controlSink: UpstreamControlSink
 
     /** Lower-cased addresses of devices currently connected in the central role. Read live. */
-    fun connectedCentralAddresses(): Set<String>
+    public fun connectedCentralAddresses(): Set<String>
 
     /** Whether the upstream machine declared Pace Supported. Read live. */
-    fun supportsPaceMeasurement(): Boolean
+    public fun supportsPaceMeasurement(): Boolean
 
-    fun createMetricSampler(
+    public fun createMetricSampler(
         store: FtmsMetricStore,
         profileProvider: () -> FtmsMachineProfile?,
     ): MetricSampler

@@ -29,11 +29,11 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  */
 
 /** Immutable native-cycling configuration for one published GATT database. */
-data class CyclingSensorConfig(
+public data class CyclingSensorConfig(
     val enabled: Boolean = false,
     val wheelCircumferenceMm: Int = DEFAULT_WHEEL_CIRCUMFERENCE_MM,
 ) {
-    fun effectiveFor(profile: FtmsMachineProfile): CyclingSensorConfig = copy(
+    public fun effectiveFor(profile: FtmsMachineProfile): CyclingSensorConfig = copy(
         enabled = enabled && profile == FtmsMachineProfile.INDOOR_BIKE,
         wheelCircumferenceMm = wheelCircumferenceMm.coerceIn(
             MIN_WHEEL_CIRCUMFERENCE_MM,
@@ -41,16 +41,16 @@ data class CyclingSensorConfig(
         ),
     )
 
-    companion object {
-        const val MIN_WHEEL_CIRCUMFERENCE_MM = BleDefaults.MIN_CSC_WHEEL_CIRCUMFERENCE_MM
-        const val DEFAULT_WHEEL_CIRCUMFERENCE_MM = BleDefaults.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM
-        const val MAX_WHEEL_CIRCUMFERENCE_MM = BleDefaults.MAX_CSC_WHEEL_CIRCUMFERENCE_MM
+    public companion object {
+        public const val MIN_WHEEL_CIRCUMFERENCE_MM: Int = BleDefaults.MIN_CSC_WHEEL_CIRCUMFERENCE_MM
+        public const val DEFAULT_WHEEL_CIRCUMFERENCE_MM: Int = BleDefaults.DEFAULT_CSC_WHEEL_CIRCUMFERENCE_MM
+        public const val MAX_WHEEL_CIRCUMFERENCE_MM: Int = BleDefaults.MAX_CSC_WHEEL_CIRCUMFERENCE_MM
 
-        val DISABLED = CyclingSensorConfig()
+        public val DISABLED: CyclingSensorConfig = CyclingSensorConfig()
     }
 }
 
-data class CyclingRevolutionSnapshot(
+public data class CyclingRevolutionSnapshot(
     val cumulativeWheelRevolutions: Long = 0L,
     val lastWheelEventTime: Int = 0,
     val cumulativeCrankRevolutions: Int = 0,
@@ -58,7 +58,7 @@ data class CyclingRevolutionSnapshot(
 )
 
 /** Prefer each exact upstream CSC field pair independently; synthesize only its missing peer. */
-fun CyclingRevolutionSnapshot.withNativeEvents(
+public fun CyclingRevolutionSnapshot.withNativeEvents(
     native: CscNativeEventInput?,
 ): CyclingRevolutionSnapshot {
     val nativeWheel = native?.cumulativeWheelRevolutions?.let { revolutions ->
@@ -89,7 +89,7 @@ internal fun FtmsMetricSnapshot.allowsCscCumulativeWheelReset(): Boolean =
  * because the notifier runs on a coroutine while CSC Control Point writes arrive
  * on Android's GATT callback thread.
  */
-class CyclingEventAccumulator(wheelCircumferenceMm: Int) {
+public class CyclingEventAccumulator(wheelCircumferenceMm: Int) {
     private val wheelCircumferenceMetres =
         wheelCircumferenceMm.coerceIn(
             CyclingSensorConfig.MIN_WHEEL_CIRCUMFERENCE_MM,
@@ -105,7 +105,7 @@ class CyclingEventAccumulator(wheelCircumferenceMm: Int) {
     private var lastCrankEventTime = 0
 
     @Synchronized
-    fun update(speedKph: Double?, cadenceRpm: Double?, nowMs: Long): CyclingRevolutionSnapshot {
+    public fun update(speedKph: Double?, cadenceRpm: Double?, nowMs: Long): CyclingRevolutionSnapshot {
         val priorMs = lastUpdateMs
         lastUpdateMs = nowMs
         if (priorMs == null) return snapshotUnsafe()
@@ -144,15 +144,15 @@ class CyclingEventAccumulator(wheelCircumferenceMm: Int) {
     }
 
     @Synchronized
-    fun setCumulativeWheelRevolutions(value: Long) {
+    public fun setCumulativeWheelRevolutions(value: Long) {
         wheelRevolutions = value.coerceIn(0L, MAX_WHEEL_REVOLUTIONS)
     }
 
     @Synchronized
-    fun snapshot(): CyclingRevolutionSnapshot = snapshotUnsafe()
+    public fun snapshot(): CyclingRevolutionSnapshot = snapshotUnsafe()
 
     @Synchronized
-    fun reset() {
+    public fun reset() {
         lastUpdateMs = null
         wheelPhase = 0.0
         crankPhase = 0.0
@@ -174,9 +174,9 @@ class CyclingEventAccumulator(wheelCircumferenceMm: Int) {
         return (((ticks % EVENT_TIME_MODULUS) + EVENT_TIME_MODULUS) % EVENT_TIME_MODULUS).toInt()
     }
 
-    companion object {
-        const val MAX_INTEGRATION_GAP_MS = 5_000L
-        const val MAX_WHEEL_REVOLUTIONS = 0xFFFF_FFFFL
+    public companion object {
+        public const val MAX_INTEGRATION_GAP_MS: Long = 5_000L
+        public const val MAX_WHEEL_REVOLUTIONS: Long = 0xFFFF_FFFFL
         private const val EVENT_TIME_HZ = 1024.0
         private const val EVENT_TIME_MODULUS = 65_536L
         private const val UINT16_MASK = 0xFFFF
@@ -184,21 +184,21 @@ class CyclingEventAccumulator(wheelCircumferenceMm: Int) {
 }
 
 /** Pure CSC/CPS characteristic encoders. */
-object CyclingSensorEncoders {
-    const val CSC_FEATURE_WHEEL_AND_CRANK = 0x0003
-    const val CPS_FEATURE_CRANK_REVOLUTION_DATA = 1 shl 3
-    const val CPS_FLAG_CRANK_REVOLUTION_DATA_PRESENT = 1 shl 5
-    const val CPS_FLAG_WHEEL_REVOLUTION_DATA_PRESENT = 1 shl 4
-    const val SENSOR_LOCATION_REAR_HUB = 0x0D
+public object CyclingSensorEncoders {
+    public const val CSC_FEATURE_WHEEL_AND_CRANK: Int = 0x0003
+    public const val CPS_FEATURE_CRANK_REVOLUTION_DATA: Int = 1 shl 3
+    public const val CPS_FLAG_CRANK_REVOLUTION_DATA_PRESENT: Int = 1 shl 5
+    public const val CPS_FLAG_WHEEL_REVOLUTION_DATA_PRESENT: Int = 1 shl 4
+    public const val SENSOR_LOCATION_REAR_HUB: Int = 0x0D
 
-    fun cscMeasurement(revolutions: CyclingRevolutionSnapshot): ByteArray =
+    public fun cscMeasurement(revolutions: CyclingRevolutionSnapshot): ByteArray =
         u8Wrapping(CSC_FEATURE_WHEEL_AND_CRANK) +
             u32Saturating(revolutions.cumulativeWheelRevolutions) +
             u16Wrapping(revolutions.lastWheelEventTime) +
             u16Wrapping(revolutions.cumulativeCrankRevolutions) +
             u16Wrapping(revolutions.lastCrankEventTime)
 
-    fun cyclingPowerMeasurement(
+    public fun cyclingPowerMeasurement(
         instantaneousPowerWatts: Int,
         revolutions: CyclingRevolutionSnapshot,
         native: CpsNativeEventInput? = null,
@@ -223,11 +223,11 @@ object CyclingSensorEncoders {
             u16Wrapping(nativeCrank?.second ?: revolutions.lastCrankEventTime)
     }
 
-    fun cscFeature(): ByteArray = u16Wrapping(CSC_FEATURE_WHEEL_AND_CRANK)
+    public fun cscFeature(): ByteArray = u16Wrapping(CSC_FEATURE_WHEEL_AND_CRANK)
 
-    fun cyclingPowerFeature(): ByteArray = u32Wrapping(CPS_FEATURE_CRANK_REVOLUTION_DATA.toLong())
+    public fun cyclingPowerFeature(): ByteArray = u32Wrapping(CPS_FEATURE_CRANK_REVOLUTION_DATA.toLong())
 
-    fun sensorLocation(): ByteArray = u8Wrapping(SENSOR_LOCATION_REAR_HUB)
+    public fun sensorLocation(): ByteArray = u8Wrapping(SENSOR_LOCATION_REAR_HUB)
 }
 
 internal sealed interface CscControlPointRequest {
@@ -264,8 +264,8 @@ internal object CscControlPoint {
 }
 
 /** Builds the optional native CSC and CPS services for the Indoor Bike persona. */
-object CyclingServiceRegistry {
-    fun buildCscService(): BluetoothGattService = BluetoothGattService(
+public object CyclingServiceRegistry {
+    public fun buildCscService(): BluetoothGattService = BluetoothGattService(
         SigUuids.UUID_CSC_SERVICE,
         BluetoothGattService.SERVICE_TYPE_PRIMARY,
     ).apply {
@@ -281,7 +281,7 @@ object CyclingServiceRegistry {
         )
     }
 
-    fun buildCyclingPowerService(): BluetoothGattService = BluetoothGattService(
+    public fun buildCyclingPowerService(): BluetoothGattService = BluetoothGattService(
         SigUuids.UUID_CYCLING_POWER_SERVICE,
         BluetoothGattService.SERVICE_TYPE_PRIMARY,
     ).apply {

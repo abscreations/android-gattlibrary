@@ -92,7 +92,7 @@ internal class FtmsPeripheralStatusRelay(
  * backgrounded process), and renamed the Bluetooth adapter without ever
  * restoring it.
  */
-class FtmsPeripheralController(
+public class FtmsPeripheralController(
     private val context: Context,
     /** Everything the controller needs from the upstream machine; the bridge supplies [EngineUpstreamPort]. */
     private val upstream: FtmsUpstreamPort,
@@ -101,7 +101,7 @@ class FtmsPeripheralController(
     private val config: PeripheralConfig = PeripheralConfig(),
 ) : FtmsPeripheralAdvertiser.Listener {
 
-    data class PeripheralStatus(
+    public data class PeripheralStatus(
         val advertising: Boolean = false,
         val connected: Boolean = false,
         /** FTMS-only link state, including peers still performing service discovery. */
@@ -290,7 +290,7 @@ class FtmsPeripheralController(
             !treadmillSpeedControlsEnabled()
 
     /** Rebuild the GATT range and feature surface after a settings change. */
-    fun refreshTreadmillSpeedControls() {
+    public fun refreshTreadmillSpeedControls() {
         val desired = desiredStart ?: return
         if (runState != RunState.RUNNING || desired.profile != FtmsMachineProfile.TREADMILL) return
         val effectiveSpeed = desired.targets.supportsSpeed && !treadmillSpeedGated(desired.profile)
@@ -424,10 +424,10 @@ class FtmsPeripheralController(
     private val status: PeripheralStatus
         get() = statusRelay.baseStatus()
 
-    val isRunning: Boolean
+    public val isRunning: Boolean
         get() = runState == RunState.RUNNING
 
-    val isAdvertising: Boolean
+    public val isAdvertising: Boolean
         get() = advertiser.isAdvertising
 
     @Volatile
@@ -460,7 +460,7 @@ class FtmsPeripheralController(
     // ── public API ────────────────────────────────────────────────────────────
 
     @SuppressLint("MissingPermission")
-    fun start(
+    public fun start(
         profile: FtmsMachineProfile,
         upstreamAddress: String?,
         targets: TargetCapabilities,
@@ -685,17 +685,17 @@ class FtmsPeripheralController(
      * downstream client slot. It is not part of the FTMS persona, so changing it
      * must never rebuild the GATT database.
      */
-    fun updateUpstreamAddress(upstreamAddress: String?) {
+    public fun updateUpstreamAddress(upstreamAddress: String?) {
         desiredStart = desiredStart?.copy(upstreamAddress = upstreamAddress)
         advertiser.updateUpstreamAddress(upstreamAddress)
     }
 
-    fun setGarminCompatibilityFraming(enabled: Boolean) {
+    public fun setGarminCompatibilityFraming(enabled: Boolean) {
         notifier.garminCompatibilityFraming = enabled
         advertiser.setGarminCompatibility(enabled)
     }
 
-    fun setNotifyIntervalMs(intervalMs: Long) {
+    public fun setNotifyIntervalMs(intervalMs: Long) {
         notifier.periodMs = intervalMs
     }
 
@@ -705,12 +705,12 @@ class FtmsPeripheralController(
      * Used by the data simulator so a watch can take control of, and actually
      * steer, a synthetic machine. Pass null to hand control back to the engine.
      */
-    fun setControlOverride(sink: FtmsControlSink?) {
+    public fun setControlOverride(sink: FtmsControlSink?) {
         controlSink.override = sink
     }
 
     @SuppressLint("MissingPermission")
-    fun stop() {
+    public fun stop() {
         desiredStart = null
         cancelRetry()
         operationEpoch.incrementAndGet()
@@ -750,7 +750,7 @@ class FtmsPeripheralController(
         }
     }
 
-    fun dispose() {
+    public fun dispose() {
         desiredStart = null
         cancelRetry()
         operationEpoch.incrementAndGet()
@@ -760,7 +760,7 @@ class FtmsPeripheralController(
         scope.cancel()
     }
 
-    fun currentStatus(): PeripheralStatus = statusRelay.snapshot()
+    public fun currentStatus(): PeripheralStatus = statusRelay.snapshot()
 
     private fun withDiagnostics(base: PeripheralStatus): PeripheralStatus {
         val revolutions = notifier.cyclingRevolutions()
@@ -804,7 +804,7 @@ class FtmsPeripheralController(
     // must hear about it. Every one now goes through the serialised TX queue and
     // only to clients that actually subscribed to 0x2ADA.
 
-    fun emitStatusControlPermissionLost() {
+    public fun emitStatusControlPermissionLost() {
         // The machine has taken control back. Drop every downstream client's
         // control ownership so a subsequent target write is answered with
         // CONTROL_NOT_PERMITTED rather than being forwarded and ignored.
@@ -812,41 +812,41 @@ class FtmsPeripheralController(
         broadcastStatus(byteArrayOf(FtmsSpec.Status.CONTROL_PERMISSION_LOST))
     }
 
-    fun emitStatusSafetyKeyPulled() {
+    public fun emitStatusSafetyKeyPulled() {
         broadcastStatus(byteArrayOf(FtmsSpec.Status.STOPPED_BY_SAFETY_KEY))
     }
 
-    fun emitStatusTargetSpeedChanged(kmh: Float) {
+    public fun emitStatusTargetSpeedChanged(kmh: Float) {
         broadcastStatus(
             byteArrayOf(FtmsSpec.Status.TARGET_SPEED_CHANGED) +
                 u16Wrapping((kmh * 100f).toInt().coerceIn(0, 0xFFFF)),
         )
     }
 
-    fun emitStatusTargetInclineChanged(percent: Float) {
+    public fun emitStatusTargetInclineChanged(percent: Float) {
         broadcastStatus(
             byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED) +
                 s16Wrapping((percent * 10f).toInt()),
         )
     }
 
-    fun emitStatusTargetResistanceLevelChanged(level: Float) {
+    public fun emitStatusTargetResistanceLevelChanged(level: Float) {
         broadcastStatus(
             byteArrayOf(FtmsSpec.Status.TARGET_RESISTANCE_CHANGED) +
                 u8Wrapping((level * 10f).toInt().coerceIn(0, 0xFF)),
         )
     }
 
-    fun emitStatusTargetPowerChanged(watts: Int) {
+    public fun emitStatusTargetPowerChanged(watts: Int) {
         broadcastStatus(byteArrayOf(FtmsSpec.Status.TARGET_POWER_CHANGED) + s16Wrapping(watts))
     }
 
-    fun emitStatusWheelCircumferenceChanged(millimetres: Double) {
+    public fun emitStatusWheelCircumferenceChanged(millimetres: Double) {
         val raw = (millimetres * 10.0).roundToInt().coerceIn(1, 0xFFFF)
         broadcastStatus(byteArrayOf(FtmsSpec.Status.WHEEL_CIRCUMFERENCE_CHANGED) + u16Wrapping(raw))
     }
 
-    fun emitStatusTargetHeartRateChanged(bpm: Int) {
+    public fun emitStatusTargetHeartRateChanged(bpm: Int) {
         broadcastStatus(
             byteArrayOf(FtmsSpec.Status.TARGET_HEART_RATE_CHANGED) + u8Wrapping(bpm.coerceIn(0, 0xFF)),
         )
@@ -1033,7 +1033,7 @@ class FtmsPeripheralController(
 
     // ── permissions ───────────────────────────────────────────────────────────
 
-    fun hasAdvertisePermission(): Boolean =
+    public fun hasAdvertisePermission(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             granted(Manifest.permission.BLUETOOTH_ADVERTISE)
         } else {
@@ -1058,7 +1058,7 @@ class FtmsPeripheralController(
 
     private fun refreshPublishedDiagnostics() = statusRelay.refreshDiagnostics()
 
-    companion object {
+    public companion object {
         private const val TAG = "FtmsController"
         private const val PREFS = "com.gmail.absolutebollockscreations.Fitbridge.peripheral"
         private const val KEY_ORIGINAL_NAME = "original_adapter_name"

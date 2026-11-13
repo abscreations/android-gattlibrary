@@ -9,13 +9,13 @@ package com.gmail.absolutebollockscreations.gattlibrary.server
  * `BtServiceControlPoint` called `BtServiceEngineFacade` inline and could only
  * be exercised on real hardware.
  */
-interface FtmsControlSink {
+public interface FtmsControlSink {
 
     /** False while no downstream write path exists. */
-    val canControl: Boolean
+    public val canControl: Boolean
 
     /** What the downstream can actually be asked to change. */
-    val targetCapabilities: TargetCapabilities
+    public val targetCapabilities: TargetCapabilities
 
     /**
      * True when accepted targets are followed by an authoritative asynchronous
@@ -25,7 +25,7 @@ interface FtmsControlSink {
      * that event publish the target. Otherwise a pass-through session would
      * publish an optimistic status and then publish the machine's echo again.
      */
-    val reportsTargetChangesAsynchronously: Boolean
+    public val reportsTargetChangesAsynchronously: Boolean
         get() = false
 
     /**
@@ -33,30 +33,30 @@ interface FtmsControlSink {
      * machine pass-through keeps strict range validation and lets the upstream
      * machine remain authoritative.
      */
-    val clampsTargetsToAdvertisedRange: Boolean
+    public val clampsTargetsToAdvertisedRange: Boolean
         get() = false
 
-    fun requestControl(): Boolean
+    public fun requestControl(): Boolean
 
-    fun reset(): Boolean
+    public fun reset(): Boolean
 
-    fun startOrResume(): Boolean
+    public fun startOrResume(): Boolean
 
     /** @param stop true for Stop (param 0x01), false for Pause (param 0x02). */
-    fun stopOrPause(stop: Boolean): Boolean
+    public fun stopOrPause(stop: Boolean): Boolean
 
-    fun setTargetSpeedKph(kph: Double): Boolean
+    public fun setTargetSpeedKph(kph: Double): Boolean
 
-    fun setTargetInclinationPercent(percent: Double): Boolean
+    public fun setTargetInclinationPercent(percent: Double): Boolean
 
-    fun setTargetResistance(level: Double): Boolean
+    public fun setTargetResistance(level: Double): Boolean
 
-    fun setTargetPowerWatts(watts: Int): Boolean
+    public fun setTargetPowerWatts(watts: Int): Boolean
 
-    fun setTargetHeartRate(bpm: Int): Boolean
+    public fun setTargetHeartRate(bpm: Int): Boolean
 
     /** FTMS 0x12 value in millimetres (wire: uint16, 0.1 mm). */
-    fun setWheelCircumferenceMm(millimetres: Double): Boolean = false
+    public fun setWheelCircumferenceMm(millimetres: Double): Boolean = false
 
     /**
      * FTMS 0x11 Set Indoor Bike Simulation Parameters.
@@ -71,7 +71,7 @@ interface FtmsControlSink {
      * @param crr          coefficient of rolling resistance (wire: uint8, 0.0001)
      * @param cw           wind resistance coefficient, kg/m (wire: uint8, 0.01)
      */
-    fun setIndoorBikeSimulation(
+    public fun setIndoorBikeSimulation(
         windMps: Double,
         gradePercent: Double,
         crr: Double,
@@ -94,7 +94,7 @@ interface FtmsControlSink {
  * require a downstream we do not have; they are refused up front by [canControl]
  * and [TargetCapabilities], never reported as a synthetic success.
  */
-object InertFtmsControlSink : FtmsControlSink {
+public object InertFtmsControlSink : FtmsControlSink {
     override val canControl: Boolean = false
     override val targetCapabilities: TargetCapabilities = TargetCapabilities.NONE
 
@@ -135,13 +135,13 @@ object InertFtmsControlSink : FtmsControlSink {
  * machine: while an [override] is installed, speed follows the override's own capabilities
  * (LIB-9d).
  */
-class SwitchableFtmsControlSink(
+public class SwitchableFtmsControlSink(
     private val default: FtmsControlSink,
     private val speedControlAllowed: () -> Boolean = { true },
 ) : FtmsControlSink {
 
     @Volatile
-    var override: FtmsControlSink? = null
+    public var override: FtmsControlSink? = null
 
     private val active: FtmsControlSink
         get() = override ?: default

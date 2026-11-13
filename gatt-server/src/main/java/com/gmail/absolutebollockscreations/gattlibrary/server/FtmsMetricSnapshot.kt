@@ -20,7 +20,7 @@ import kotlin.math.sin
  * read `StateFlow.value` directly and substituted 0 for every absent metric,
  * which told the client the machine was reporting a real zero.
  */
-data class FtmsMetricSnapshot(
+public data class FtmsMetricSnapshot(
     /** km/h. Mandatory for speed-based personas. */
     val speedKph: Double? = null,
     /** Session-average speed in km/h. */
@@ -106,8 +106,8 @@ data class FtmsMetricSnapshot(
      */
     val updatedAtMs: Long = 0L,
 ) {
-    companion object {
-        val EMPTY = FtmsMetricSnapshot()
+    public companion object {
+        public val EMPTY: FtmsMetricSnapshot = FtmsMetricSnapshot()
 
         /**
          * How long a non-null speed is reused after the source stops supplying
@@ -116,8 +116,8 @@ data class FtmsMetricSnapshot(
          * holding the last value briefly is the lesser evil. After this window
          * we fall back to zero rather than silence.
          */
-        const val METRIC_FRESHNESS_MS = 5_000L
-        const val SPEED_HOLD_MS = METRIC_FRESHNESS_MS
+        public const val METRIC_FRESHNESS_MS: Long = 5_000L
+        public const val SPEED_HOLD_MS: Long = METRIC_FRESHNESS_MS
     }
 }
 
@@ -127,9 +127,9 @@ data class FtmsMetricSnapshot(
  * immutable value is sufficient - no lock, and readers never see a half-written
  * snapshot.
  */
-class FtmsMetricStore {
+public class FtmsMetricStore {
     @Volatile
-    var snapshot: FtmsMetricSnapshot = FtmsMetricSnapshot.EMPTY
+    public var snapshot: FtmsMetricSnapshot = FtmsMetricSnapshot.EMPTY
         private set
 
     /**
@@ -138,7 +138,7 @@ class FtmsMetricStore {
      * peripheral, not in the encoder or notifier.
      */
     @Volatile
-    var updateCount: Long = 0L
+    public var updateCount: Long = 0L
         private set
 
     @Volatile
@@ -152,7 +152,7 @@ class FtmsMetricStore {
     private val elevationAccumulator = ElevationAccumulator()
 
     @Synchronized
-    fun update(next: FtmsMetricSnapshot, profile: FtmsMachineProfile? = null) {
+    public fun update(next: FtmsMetricSnapshot, profile: FtmsMachineProfile? = null) {
         if (next.speedKph != null) {
             lastKnownSpeedKph = next.speedKph
             lastKnownSpeedAtMs = next.updatedAtMs
@@ -211,7 +211,7 @@ class FtmsMetricStore {
     }
 
     @Synchronized
-    fun clear() {
+    public fun clear() {
         snapshot = FtmsMetricSnapshot.EMPTY
         updateCount = 0L
         lastKnownSpeedKph = null
@@ -230,7 +230,7 @@ class FtmsMetricStore {
      * have never seen a speed at all - before the first sample there is nothing
      * to send.
      */
-    fun effectiveSpeedKph(nowMs: Long): Double? {
+    public fun effectiveSpeedKph(nowMs: Long): Double? {
         val current = snapshot
         val s = current.speedKph
         if (s != null && nowMs - current.updatedAtMs in 0..FtmsMetricSnapshot.SPEED_HOLD_MS) return s
@@ -259,7 +259,7 @@ class FtmsMetricStore {
      *
      * Returns null only before the very first sample.
      */
-    fun snapshotForNotification(nowMs: Long): FtmsMetricSnapshot? {
+    public fun snapshotForNotification(nowMs: Long): FtmsMetricSnapshot? {
         val current = snapshot
         if (current.updatedAtMs <= 0L) return null
         val age = nowMs - current.updatedAtMs
@@ -390,8 +390,8 @@ class FtmsMetricStore {
         }
     }
 
-    companion object {
-        const val METRES_PER_FLOOR = 3.0
+    public companion object {
+        public const val METRES_PER_FLOOR: Double = 3.0
         private const val MIN_FORCE_SPEED_METRES_PER_SECOND = 0.01
     }
 }

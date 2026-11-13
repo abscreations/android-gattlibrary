@@ -39,7 +39,7 @@ import java.util.UUID
  * nowhere.
  */
 @GattLibraryInternalApi
-object PeripheralCaptureHooks {
+public object PeripheralCaptureHooks {
 
     /**
      * A client connected.
@@ -49,7 +49,7 @@ object PeripheralCaptureHooks {
      * notification or is fragmented across several, and a client that never
      * raises it cannot be sent the same bytes as one that does.
      */
-    fun clientConnected(address: String, sessionId: Long, mtu: Int) {
+    public fun clientConnected(address: String, sessionId: Long, mtu: Int) {
         BleCapture.emit(
             ConnectEvent(
                 conn = BleCapture.labelFor(address),
@@ -60,7 +60,7 @@ object PeripheralCaptureHooks {
         )
     }
 
-    fun clientDisconnected(address: String, sessionId: Long, reason: String) {
+    public fun clientDisconnected(address: String, sessionId: Long, reason: String) {
         BleCapture.emit(
             DisconnectEvent(
                 conn = BleCapture.labelFor(address),
@@ -72,7 +72,7 @@ object PeripheralCaptureHooks {
     }
 
     /** A client subscribed or unsubscribed. */
-    fun clientCccd(address: String, characteristic: UUID, enabled: Boolean, mode: String) {
+    public fun clientCccd(address: String, characteristic: UUID, enabled: Boolean, mode: String) {
         BleCapture.emit(
             CccdEvent(
                 conn = BleCapture.labelFor(address),
@@ -92,7 +92,7 @@ object PeripheralCaptureHooks {
      * fragmented record separately. That is what makes it possible to see whether
      * a client was sent a record it could reassemble.
      */
-    fun notified(address: String, characteristic: UUID, payload: ByteArray) {
+    public fun notified(address: String, characteristic: UUID, payload: ByteArray) {
         BleCapture.emit(
             NotifyEvent(
                 conn = BleCapture.labelFor(address),
@@ -104,7 +104,7 @@ object PeripheralCaptureHooks {
     }
 
     /** A client wrote to us — Control Point requests land here. */
-    fun clientWrote(
+    public fun clientWrote(
         address: String,
         characteristic: UUID,
         payload: ByteArray,
@@ -135,9 +135,9 @@ object PeripheralCaptureHooks {
      * Extracted rather than inlined in the GATT callback so the rule is
      * reachable from a test. The callback itself is not.
      */
-    fun shouldCaptureRead(offset: Int): Boolean = offset <= 0
+    public fun shouldCaptureRead(offset: Int): Boolean = offset <= 0
 
-    fun clientRead(address: String, characteristic: UUID, payload: ByteArray) {
+    public fun clientRead(address: String, characteristic: UUID, payload: ByteArray) {
         BleCapture.emit(
             ReadEvent(
                 conn = BleCapture.labelFor(address),

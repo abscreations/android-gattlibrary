@@ -11,21 +11,21 @@ import java.util.concurrent.ConcurrentHashMap
  * activity must not affect it.
  */
 @GattLibraryInternalApi
-class PeripheralConnectionRetentionGuard {
+public class PeripheralConnectionRetentionGuard {
     private val retainedConnections = ConcurrentHashMap.newKeySet<String>()
 
     /** Runs [retain] exactly once for a key until [release] or [clear] is called. */
-    fun retainOnce(key: String, retain: () -> Unit): Boolean {
+    public fun retainOnce(key: String, retain: () -> Unit): Boolean {
         if (!retainedConnections.add(key)) return false
         retain()
         return true
     }
 
-    fun release(key: String) {
+    public fun release(key: String) {
         retainedConnections.remove(key)
     }
 
-    fun clear() {
+    public fun clear() {
         retainedConnections.clear()
     }
 

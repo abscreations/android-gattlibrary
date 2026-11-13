@@ -7,46 +7,46 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.s
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 
 /** Integer wire-unit range shared by feature publication and CP validation. */
-data class FtmsTargetRange(
+public data class FtmsTargetRange(
     val minimum: Int,
     val maximum: Int,
     val increment: Int,
 ) {
-    val isValid: Boolean
+    public val isValid: Boolean
         get() = increment > 0 && minimum <= maximum
 
-    val isValidU16: Boolean
+    public val isValidU16: Boolean
         get() = isValid && minimum >= 0 && maximum <= 0xFFFF && increment <= 0xFFFF
 
-    val isValidS16: Boolean
+    public val isValidS16: Boolean
         get() = isValid && minimum >= Short.MIN_VALUE && maximum <= Short.MAX_VALUE &&
             increment <= 0xFFFF
 
-    val isValidU8: Boolean
+    public val isValidU8: Boolean
         get() = isValid && minimum >= 0 && maximum <= 0xFF && increment <= 0xFF
 
-    fun contains(value: Int): Boolean =
+    public fun contains(value: Int): Boolean =
         isValid && value in minimum..maximum && (value - minimum) % increment == 0
 
     /** Clamp to the machine limits, then snap to the nearest advertised step. */
-    fun clampAndSnap(value: Int): Int {
+    public fun clampAndSnap(value: Int): Int {
         require(isValid)
         val clamped = value.coerceIn(minimum, maximum)
         val steps = ((clamped - minimum).toDouble() / increment).roundToInt()
         return (minimum + steps * increment).coerceIn(minimum, maximum)
     }
 
-    fun encodeU16(): ByteArray {
+    public fun encodeU16(): ByteArray {
         require(isValidU16)
         return u16Wrapping(minimum) + u16Wrapping(maximum) + u16Wrapping(increment)
     }
 
-    fun encodeS16(): ByteArray {
+    public fun encodeS16(): ByteArray {
         require(isValidS16)
         return s16Wrapping(minimum) + s16Wrapping(maximum) + u16Wrapping(increment)
     }
 
-    fun encodeU8(): ByteArray {
+    public fun encodeU8(): ByteArray {
         require(isValidU8)
         return u8Wrapping(minimum) + u8Wrapping(maximum) + u8Wrapping(increment)
     }
@@ -72,7 +72,7 @@ data class FtmsTargetRange(
  * TrackMyIndoorWorkout original: these ranges are read from the *real* upstream
  * machine rather than hardcoded.
  */
-data class TargetCapabilities(
+public data class TargetCapabilities(
     val speed: Boolean = false,
     val inclination: Boolean = false,
     val resistance: Boolean = false,
@@ -86,14 +86,14 @@ data class TargetCapabilities(
     val powerRange: FtmsTargetRange? = null,
     val heartRateRange: FtmsTargetRange? = null,
 ) {
-    val supportsSpeed get() = speed && speedRange?.isValidU16 == true
-    val supportsInclination get() = inclination && inclinationRange?.isValidS16 == true
-    val supportsResistance get() = resistance && resistanceRange?.isValidS16 == true
-    val supportsPower get() = power && powerRange?.isValidS16 == true
-    val supportsHeartRate get() = heartRate && heartRateRange?.isValidU8 == true
+    public val supportsSpeed: Boolean get() = speed && speedRange?.isValidU16 == true
+    public val supportsInclination: Boolean get() = inclination && inclinationRange?.isValidS16 == true
+    public val supportsResistance: Boolean get() = resistance && resistanceRange?.isValidS16 == true
+    public val supportsPower: Boolean get() = power && powerRange?.isValidS16 == true
+    public val supportsHeartRate: Boolean get() = heartRate && heartRateRange?.isValidU8 == true
 
     /** Target Setting Features bitfield for the upper word of 0x2ACC. */
-    fun toTargetFeatureBits(): Int {
+    public fun toTargetFeatureBits(): Int {
         val t = FtmsSpec.TargetFeature
         var bits = 0
         if (supportsSpeed) bits = bits or (1 shl t.SPEED)
@@ -106,12 +106,12 @@ data class TargetCapabilities(
         return bits
     }
 
-    val any: Boolean
+    public val any: Boolean
         get() = supportsSpeed || supportsInclination || supportsResistance ||
             supportsPower || supportsHeartRate || indoorBikeSimulation || wheelCircumference
 
-    companion object {
-        val NONE = TargetCapabilities()
+    public companion object {
+        public val NONE: TargetCapabilities = TargetCapabilities()
 
         /**
          * Generous sanity cap, in the characteristic's own 0.01 km/h units:
@@ -131,7 +131,7 @@ data class TargetCapabilities(
          * `min=0 max=0 step=0.1`, which is what the old
          * `BtServiceSupportedRangesAdapter` fallbacks produced.
          */
-        fun fromReportedRanges(caps: ReportedTargetRanges): TargetCapabilities {
+        public fun fromReportedRanges(caps: ReportedTargetRanges): TargetCapabilities {
             // [ReportedTargetRanges] holds every range in RAW SPEC
             // UNITS, exactly as read off the upstream machine - 0.01 km/h,
             // 0.1 %, 0.1 level, whole watts. The Supported-* Range
@@ -218,7 +218,7 @@ data class TargetCapabilities(
  * What an upstream machine reported about its target support, in raw spec units (0.01 km/h, 0.1 %, 0.1 level,
  * whole watts). Server-owned so the server layer has no central dependency; the bridge fills it from the engine.
  */
-data class ReportedTargetRanges(
+public data class ReportedTargetRanges(
     val supportsSpeed: Boolean = false,
     val supportsInclination: Boolean = false,
     val supportsResistance: Boolean = false,

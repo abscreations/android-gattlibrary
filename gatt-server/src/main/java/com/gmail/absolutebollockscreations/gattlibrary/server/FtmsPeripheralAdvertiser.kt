@@ -56,7 +56,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  * would be a protocol violation. Only the treadmill persona has the field.
  */
 @GattLibraryInternalApi
-fun buildFtmsFeaturePayload(
+public fun buildFtmsFeaturePayload(
     profile: FtmsMachineProfile,
     targets: TargetCapabilities,
     upstreamPaceSupported: Boolean = false,

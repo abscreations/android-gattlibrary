@@ -18,6 +18,6 @@ package com.gmail.absolutebollockscreations.gattlibrary.server
  * treadmill with "Accept target commands" on always advertises and accepts target speed
  * (LIB-9d).
  */
-class PeripheralConfig(
-    val treadmillSpeedControlsEnabled: () -> Boolean = { false },
+public class PeripheralConfig(
+    public val treadmillSpeedControlsEnabled: () -> Boolean = { false },
 )

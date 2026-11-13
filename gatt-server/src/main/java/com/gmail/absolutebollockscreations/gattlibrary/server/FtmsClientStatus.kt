@@ -1,16 +1,16 @@
 package com.gmail.absolutebollockscreations.gattlibrary.server
 
-enum class FtmsClientConnectionStatus { READY, CONNECTED, DISCONNECTED }
-enum class FtmsClientControlStatus { NOT_CONTROLLABLE, CONTROLLABLE, CLIENT_IS_CONTROLLING }
+public enum class FtmsClientConnectionStatus { READY, CONNECTED, DISCONNECTED }
+public enum class FtmsClientControlStatus { NOT_CONTROLLABLE, CONTROLLABLE, CLIENT_IS_CONTROLLING }
 
-fun FtmsPeripheralController.PeripheralStatus.clientConnectionStatus(): FtmsClientConnectionStatus =
+public fun FtmsPeripheralController.PeripheralStatus.clientConnectionStatus(): FtmsClientConnectionStatus =
     when {
         clientLinkConnected -> FtmsClientConnectionStatus.CONNECTED
         clientAdvertising && !clientEverConnected -> FtmsClientConnectionStatus.READY
         else -> FtmsClientConnectionStatus.DISCONNECTED
     }
 
-fun FtmsPeripheralController.PeripheralStatus.clientControlStatus(): FtmsClientControlStatus =
+public fun FtmsPeripheralController.PeripheralStatus.clientControlStatus(): FtmsClientControlStatus =
     when {
         clientControlReceived -> FtmsClientControlStatus.CLIENT_IS_CONTROLLING
         clientControllable -> FtmsClientControlStatus.CONTROLLABLE

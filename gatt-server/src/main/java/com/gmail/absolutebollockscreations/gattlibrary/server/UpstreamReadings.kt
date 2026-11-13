@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
  * elevation accumulator are trapezoidal and time-weighted, so a shorter period leaves them
  * mathematically unchanged.
  */
-const val DEFAULT_METRIC_SAMPLE_PERIOD_MS: Long = DEFAULT_EMISSION_PERIOD_MS / 2
+public const val DEFAULT_METRIC_SAMPLE_PERIOD_MS: Long = DEFAULT_EMISSION_PERIOD_MS / 2
 
 /**
  * One coherent read of an upstream machine's metrics, in the units the FitBridge engine holds them,
@@ -29,7 +29,7 @@ const val DEFAULT_METRIC_SAMPLE_PERIOD_MS: Long = DEFAULT_EMISSION_PERIOD_MS / 2
  * left broken in the other. A null field means the source never supplied the metric; it is carried
  * through as a null snapshot field, never as zero.
  */
-data class UpstreamReadings(
+public data class UpstreamReadings(
     val speedKph: Double? = null,
     val averageSpeedKph: Double? = null,
     /** Minutes per km, as the engine holds pace. */
@@ -63,7 +63,7 @@ data class UpstreamReadings(
      * @param updatedAtMs `SystemClock.elapsedRealtime()` at sampling time (see
      *   [FtmsMetricSnapshot.updatedAtMs] for what that does and does not measure).
      */
-    fun toSnapshot(profile: FtmsMachineProfile?, updatedAtMs: Long): FtmsMetricSnapshot {
+    public fun toSnapshot(profile: FtmsMachineProfile?, updatedAtMs: Long): FtmsMetricSnapshot {
         // FTMS Rower Data carries pace rather than speed. Prefer canonical native
         // speed so a distance-derived pace cannot disagree with the speed shown by
         // the central UI. Display units never participate in this projection.

@@ -10,16 +10,16 @@ import android.os.Looper
  * The part of a GATT server that [GattServerSessions] drives. Abstract so the close logic can
  * be tested without Android.
  */
-interface GattServerOps<S> {
-    fun addService(service: S): Boolean
-    fun removeService(service: S): Boolean
-    fun clearServices()
-    fun close()
+public interface GattServerOps<S> {
+    public fun addService(service: S): Boolean
+    public fun removeService(service: S): Boolean
+    public fun clearServices()
+    public fun close()
 }
 
 /** Delayed work for [GattServerSessions]; the default posts to the main looper. */
-fun interface GattTimer {
-    fun schedule(delayMs: Long, action: () -> Unit)
+public fun interface GattTimer {
+    public fun schedule(delayMs: Long, action: () -> Unit)
 }
 
 /** Main-looper [GattTimer]; the handler is created on first use. */
@@ -32,7 +32,7 @@ internal object MainLooperGattTimer : GattTimer {
 
 /** Adapts a platform server to [GattServerOps]. */
 @SuppressLint("MissingPermission")
-fun BluetoothGattServer.gattOps(): GattServerOps<BluetoothGattService> {
+public fun BluetoothGattServer.gattOps(): GattServerOps<BluetoothGattService> {
     val server = this
     return object : GattServerOps<BluetoothGattService> {
         override fun addService(service: BluetoothGattService): Boolean = server.addService(service)
@@ -61,7 +61,7 @@ fun BluetoothGattServer.gattOps(): GattServerOps<BluetoothGattService> {
  * while an old one is still waiting to close. Every `addService` must go through [addService],
  * and every `onServiceAdded` callback must call [onServiceAdded] first.
  */
-class GattServerSessions<S>(
+public class GattServerSessions<S>(
     private val timer: GattTimer = MainLooperGattTimer,
     private val closeWaitMs: Long = CLOSE_WAIT_MS,
 ) {
@@ -75,7 +75,7 @@ class GattServerSessions<S>(
     private val closing = mutableMapOf<Long, Session<S>>()
 
     /** Registers a newly opened server; any previous current server is closed first. */
-    fun open(epoch: Long, ops: GattServerOps<S>) {
+    public fun open(epoch: Long, ops: GattServerOps<S>) {
         val previous = synchronized(lock) {
             current.also { current = Session(epoch, ops) }
         }
@@ -83,7 +83,7 @@ class GattServerSessions<S>(
     }
 
     /** Adds [service] to the current server, recording it as unconfirmed until [onServiceAdded]. */
-    fun addService(service: S): Boolean {
+    public fun addService(service: S): Boolean {
         val session = synchronized(lock) {
             current?.also { it.inFlight = service }
         } ?: return false
@@ -98,7 +98,7 @@ class GattServerSessions<S>(
      * @return true when the callback belongs to a server that is closing or already closed, so the
      * owner must ignore it; false for the current server, whose own handling should continue.
      */
-    fun onServiceAdded(epoch: Long, service: S): Boolean {
+    public fun onServiceAdded(epoch: Long, service: S): Boolean {
         val finishing = synchronized(lock) {
             val live = current
             if (live != null && live.epoch == epoch) {
@@ -112,13 +112,13 @@ class GattServerSessions<S>(
     }
 
     /** Closes the current server, deferring while an add is unconfirmed. */
-    fun closeCurrent() {
+    public fun closeCurrent() {
         val session = synchronized(lock) { current.also { current = null } } ?: return
         beginClose(session)
     }
 
     /** True while some closed server still waits for an add confirmation (tests, diagnostics). */
-    val hasPendingClose: Boolean get() = synchronized(lock) { closing.isNotEmpty() }
+    public val hasPendingClose: Boolean get() = synchronized(lock) { closing.isNotEmpty() }
 
     private fun beginClose(session: Session<S>) {
         val wait = synchronized(lock) {
@@ -151,8 +151,8 @@ class GattServerSessions<S>(
         runCatching { session.ops.close() }
     }
 
-    companion object {
+    public companion object {
         /** How long a close waits for an unconfirmed add before closing anyway. */
-        const val CLOSE_WAIT_MS = 2_000L
+        public const val CLOSE_WAIT_MS: Long = 2_000L
     }
 }

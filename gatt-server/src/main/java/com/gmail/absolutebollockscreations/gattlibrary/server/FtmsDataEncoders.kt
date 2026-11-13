@@ -26,7 +26,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
  * Fields the upstream machine cannot supply are simply omitted and their flag bit
  * left clear.
  */
-object FtmsDataEncoders {
+public object FtmsDataEncoders {
 
     /**
      * Payload budget at or below which compact framing applies.
@@ -36,7 +36,7 @@ object FtmsDataEncoders {
      * cannot drift apart and leave a range of MTUs where the caller enables
      * compact framing and the encoder quietly declines it.
      */
-    const val COMPACT_FRAMING_MAX_PAYLOAD =
+    public const val COMPACT_FRAMING_MAX_PAYLOAD: Int =
         PeripheralConnection.COMPACT_FRAMING_MTU_THRESHOLD -
             PeripheralConnection.ATT_NOTIFY_OVERHEAD
 
@@ -64,9 +64,9 @@ object FtmsDataEncoders {
      * has no exponent while Cross Trainer Stride Count does, and both read from
      * [FtmsMetricSnapshot.strokeCount].
      */
-    const val CROSS_TRAINER_TENTHS_SCALE = 10
+    public const val CROSS_TRAINER_TENTHS_SCALE: Int = 10
 
-    fun encode(
+    public fun encode(
         profile: FtmsMachineProfile,
         snapshot: FtmsMetricSnapshot,
         speedKph: Double?,

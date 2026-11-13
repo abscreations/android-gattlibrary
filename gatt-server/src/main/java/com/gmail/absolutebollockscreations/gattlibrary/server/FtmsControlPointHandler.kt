@@ -35,7 +35,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
  *    than blanket-refused, so they work the moment a downstream path exists.
  */
 @OptIn(GattLibraryInternalApi::class)
-class FtmsControlPointHandler(
+public class FtmsControlPointHandler(
     private val sink: FtmsControlSink,
 ) {
 
@@ -46,18 +46,18 @@ class FtmsControlPointHandler(
      * of the Control Point response. [resetMetrics] tells the controller to clear
      * its snapshot only after the reset command has been accepted downstream.
      */
-    class Outcome(
-        val response: ByteArray,
-        val status: ByteArray? = null,
-        val trainingStatusChanged: Boolean = false,
-        val resetMetrics: Boolean = false,
+    public class Outcome(
+        public val response: ByteArray,
+        public val status: ByteArray? = null,
+        public val trainingStatusChanged: Boolean = false,
+        public val resetMetrics: Boolean = false,
     )
 
-    fun operationFailed(value: ByteArray): Outcome = Outcome(
+    public fun operationFailed(value: ByteArray): Outcome = Outcome(
         response(value.firstOrNull() ?: 0xFF.toByte(), FtmsSpec.Result.OPERATION_FAILED),
     )
 
-    fun handle(value: ByteArray, session: FtmsProcedureSession): Outcome {
+    public fun handle(value: ByteArray, session: FtmsProcedureSession): Outcome {
         if (value.isEmpty()) {
             return Outcome(response(0xFF.toByte(), FtmsSpec.Result.OPCODE_NOT_SUPPORTED))
         }
@@ -376,14 +376,14 @@ class FtmsControlPointHandler(
 
     private fun response(requestOp: Byte, result: Byte): ByteArray =
         byteArrayOf(FtmsSpec.Opcode.RESPONSE_CODE, requestOp, result)
-    companion object {
+    public companion object {
         private const val LEGACY_RESISTANCE_PROCEDURE_LENGTH = 2
         private const val SINT16_RESISTANCE_PROCEDURE_LENGTH = 3
 
         /** 0x2AD6/0x2AD9 wire units are 0.1 level, so a whole-level reading scales by this. */
         private const val LEGACY_RESISTANCE_SCALE = 10
 
-        fun opcodeName(op: Int): String = when (op.toByte()) {
+        public fun opcodeName(op: Int): String = when (op.toByte()) {
             FtmsSpec.Opcode.REQUEST_CONTROL -> "REQUEST_CONTROL"
             FtmsSpec.Opcode.RESET -> "RESET"
             FtmsSpec.Opcode.SET_TARGET_SPEED -> "SET_TARGET_SPEED"
@@ -400,7 +400,7 @@ class FtmsControlPointHandler(
             else -> "UNKNOWN(0x%02X)".format(op)
         }
 
-        fun resultName(res: Int): String = when (res.toByte()) {
+        public fun resultName(res: Int): String = when (res.toByte()) {
             FtmsSpec.Result.SUCCESS -> "SUCCESS"
             FtmsSpec.Result.OPCODE_NOT_SUPPORTED -> "OPCODE_NOT_SUPPORTED"
             FtmsSpec.Result.INVALID_PARAMETER -> "INVALID_PARAMETER"

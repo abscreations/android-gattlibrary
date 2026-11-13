@@ -14,7 +14,7 @@ internal data class FtmsField(val bit: Int, val bytes: ByteArray) {
 }
 
 /** How to handle a logical record that is larger than one ATT value. */
-enum class FtmsPayloadMode {
+public enum class FtmsPayloadMode {
     /** Prefer one useful record for clients that do not reassemble FTMS fragments. */
     COMPATIBILITY_COMPACT,
 
@@ -22,7 +22,7 @@ enum class FtmsPayloadMode {
     STRICT_FRAGMENTATION,
 }
 
-enum class FtmsPackOutcome { COMPLETE, COMPACTED, FRAGMENTED }
+public enum class FtmsPackOutcome { COMPLETE, COMPACTED, FRAGMENTED }
 
 /**
  * Assembles FTMS machine data notifications, fragmenting with the More Data bit
