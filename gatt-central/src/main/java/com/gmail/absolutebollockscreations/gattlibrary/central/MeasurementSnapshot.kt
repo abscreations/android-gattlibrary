@@ -85,7 +85,7 @@ public data class TreadmillRawPace(
  * tests that still drive engine state directly, and is deleted with them.
  */
 @GattLibraryInternalApi
-public fun BtEngineState.toMeasurementSnapshot(): MeasurementSnapshot = MeasurementSnapshot(
+internal fun BtEngineState.toMeasurementSnapshot(): MeasurementSnapshot = MeasurementSnapshot(
     speedKph = speedKph.value,
     averageSpeedKph = avgSpeedKph.value,
     // The canonical min/km flows, NOT instPace/avgPace: those are display-unit paces (min/mi when the

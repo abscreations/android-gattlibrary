@@ -44,7 +44,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
  * cost of false accusations against working hardware.
  */
 @GattLibraryInternalApi
-class AdapterLivenessCoordinator(
+internal class AdapterLivenessCoordinator(
     private val livenessTimeoutMs: Long = DEFAULT_LIVENESS_TIMEOUT_MS,
 ) {
 

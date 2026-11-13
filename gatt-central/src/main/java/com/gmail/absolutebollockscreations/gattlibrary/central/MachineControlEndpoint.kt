@@ -91,7 +91,7 @@ internal enum class MachineControlRoute {
 
 /** Exact downstream ranges approved for the legacy KICKR protocol surface. */
 @GattLibraryInternalApi
-fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
+internal fun wahooKickrProviderCapabilities() = BtEngineState.FtmsCapabilities(
     featuresRead = true,
     supportsResistance = true,
     supportsPower = true,

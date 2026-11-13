@@ -76,7 +76,7 @@ internal fun decodeRscRead(
 }
 
 @GattLibraryInternalApi
-fun emitRscMetrics(reading: RscMeasurement.Reading, emitter: MetricEmitter) {
+internal fun emitRscMetrics(reading: RscMeasurement.Reading, emitter: MetricEmitter) {
     emitter.emit(MetricKind.SPEED, reading.speedKph)
     emitter.emit(MetricKind.CADENCE, reading.cadenceStepsPerMinute.toDouble())
     reading.totalDistanceMetres?.let {

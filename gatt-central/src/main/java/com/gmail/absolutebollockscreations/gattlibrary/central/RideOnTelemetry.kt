@@ -13,7 +13,7 @@ data class RideOnTelemetry(
 )
 
 @GattLibraryInternalApi
-fun decodeRideOnTelemetry(packet: ByteArray): RideOnTelemetry? {
+internal fun decodeRideOnTelemetry(packet: ByteArray): RideOnTelemetry? {
     val decoded = (RideOnProtoCodec.decode(packet) as? RideOnDecodeResult.Decoded)?.packet ?: return null
     if (decoded.opcode != RideOnSpec.OPCODE_RIDING_DATA) return null
     val known = decoded.fields.filter { it.number in 1..6 }

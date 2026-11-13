@@ -398,7 +398,7 @@ data class RankedMatchCandidate(
 }
 
 @GattLibraryInternalApi
-class DeviceMatcherRegistry private constructor(
+internal class DeviceMatcherRegistry private constructor(
     private val definitions: List<MatchDefinition>,
 ) {
     fun rankedCandidates(observation: MatchObservation): List<RankedMatchCandidate> =

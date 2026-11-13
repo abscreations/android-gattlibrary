@@ -30,7 +30,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  * No generic command forwarding, movement targets, or downstream target capabilities exist.
  */
 @GattLibraryInternalApi
-class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
+internal class Concept2ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(Concept2Uuids.UUID_C2_ERG_SERVICE)
 

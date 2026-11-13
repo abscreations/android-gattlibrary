@@ -48,7 +48,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.catalog.MachineFamil
  * own [RedactionReason] instead.
  */
 @GattLibraryInternalApi
-object CaptureHooks {
+internal object CaptureHooks {
 
     fun advertisementSource(
         sourceKey: String?,

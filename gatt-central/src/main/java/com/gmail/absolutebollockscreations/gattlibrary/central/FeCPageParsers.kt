@@ -204,7 +204,7 @@ sealed interface FeCPage {
 }
 
 @GattLibraryInternalApi
-object FeCPageParsers {
+internal object FeCPageParsers {
 
     private const val HR_UNAVAILABLE = 0xFF
     private const val CADENCE_UNAVAILABLE = 0xFF

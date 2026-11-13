@@ -24,7 +24,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
  * value for.
  */
 @GattLibraryInternalApi
-object FeCControlEncoder {
+internal object FeCControlEncoder {
 
     private const val CHANNEL = FecBleUuids.FEC_DEFAULT_CHANNEL
     private const val RESERVED: Byte = 0xFF.toByte()

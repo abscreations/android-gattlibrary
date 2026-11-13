@@ -68,7 +68,7 @@ sealed interface FeCFrameDecodeResult {
  * F8` XORs (over the first 12 bytes) to `0xF8`, matching the trailing checksum byte.
  */
 @GattLibraryInternalApi
-object FeCFrameCodec {
+internal object FeCFrameCodec {
 
     /** ANT+ broadcast/acknowledged data messages carry a fixed page(1) + payload(7) = 8 bytes. */
     private const val ANT_STANDARD_PAGE_LENGTH = 8

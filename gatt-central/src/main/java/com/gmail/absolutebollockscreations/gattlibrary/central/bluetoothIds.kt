@@ -40,7 +40,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 // ============================================================================
 // 1) BluetoothIds — ParcelUuid wrappers
 // ============================================================================
-object BluetoothIds {
+internal object BluetoothIds {
 
 
     // ─────────────────────────────────────────────────────────────

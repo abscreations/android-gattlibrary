@@ -21,7 +21,7 @@ data class KayakFirstSample(
  * accepted row/paddle cadence to its stroke-rate field after the 120 spm source bound has run.
  */
 @GattLibraryInternalApi
-fun kayakFirstSamples(reading: KayakFirstMeasurement.Reading): List<KayakFirstSample> =
+internal fun kayakFirstSamples(reading: KayakFirstMeasurement.Reading): List<KayakFirstSample> =
     buildList {
         add(KayakFirstSample(
             metric = MetricKind.DISTANCE,
@@ -47,7 +47,7 @@ fun kayakFirstSamples(reading: KayakFirstMeasurement.Reading): List<KayakFirstSa
     }
 
 @GattLibraryInternalApi
-fun kayakFirstEstimatedPowerSamples(
+internal fun kayakFirstEstimatedPowerSamples(
     powerWatts: Double,
     averagePowerWatts: Double,
 ): List<KayakFirstSample> = listOf(
@@ -66,7 +66,7 @@ fun kayakFirstEstimatedPowerSamples(
 )
 
 @GattLibraryInternalApi
-fun kayakFirstEstimatedEnergySamples(
+internal fun kayakFirstEstimatedEnergySamples(
     estimate: KayakFirstEnergyEstimate,
 ): List<KayakFirstSample> = listOf(
     KayakFirstSample(

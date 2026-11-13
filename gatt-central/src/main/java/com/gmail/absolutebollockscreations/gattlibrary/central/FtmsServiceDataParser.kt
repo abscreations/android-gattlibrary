@@ -13,7 +13,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineType
  * payload independently in `peripheral.BtServiceProfiles.ftmsServiceDataFor`.
  */
 @GattLibraryInternalApi
-object FtmsServiceDataParser {
+internal object FtmsServiceDataParser {
     fun activityType(payload: ByteArray?): ActivityType? {
         if (payload == null || payload.size < 3) return null
         val machineTypes = (payload[1].toInt() and 0xFF) or

@@ -12,7 +12,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
  * Merely recording RideOn UUIDs does not activate that separate protocol.
  */
 @GattLibraryInternalApi
-object WahooKickrUuids {
+internal object WahooKickrUuids {
     val CYCLING_POWER_SERVICE = SigUuids.UUID_CYCLING_POWER_SERVICE
     val MARKER_EE01 = WahooUuids.UUID_WAHOO_KICKR_MARKER_EE01
     val MARKER_EE0B = WahooUuids.UUID_WAHOO_KICKR_MARKER_EE0B

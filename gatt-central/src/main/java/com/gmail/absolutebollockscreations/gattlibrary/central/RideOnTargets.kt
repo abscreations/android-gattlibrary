@@ -19,7 +19,7 @@ sealed interface RideOnControlTarget {
 }
 
 @GattLibraryInternalApi
-fun encodeRideOnTarget(target: RideOnControlTarget): ByteArray? = runCatching {
+internal fun encodeRideOnTarget(target: RideOnControlTarget): ByteArray? = runCatching {
     when (target) {
         is RideOnControlTarget.Erg -> {
             require(target.watts in 0..2_000)

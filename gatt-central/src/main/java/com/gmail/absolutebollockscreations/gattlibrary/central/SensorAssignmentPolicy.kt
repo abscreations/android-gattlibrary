@@ -31,7 +31,7 @@ const val APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR = 0x0485
 
 private val ALL_CSC_ROLES = BtEngineState.CscRole.entries.toSet()
 
-fun cscRoleCapabilityFromAppearance(
+internal fun cscRoleCapabilityFromAppearance(
     appearance: Int?,
 ): BtEngineState.CscRoleCapability? = when (appearance) {
     APPEARANCE_CYCLING_SPEED_SENSOR -> BtEngineState.CscRoleCapability(
@@ -67,7 +67,7 @@ fun cscRoleCapabilityFromFeature(
 }
 
 /** Missing classification occupies both roles until the mandatory Feature read resolves it. */
-fun occupiedCscRoles(
+internal fun occupiedCscRoles(
     capability: BtEngineState.CscRoleCapability?,
 ): Set<BtEngineState.CscRole> = capability?.roles?.takeIf { it.isNotEmpty() } ?: ALL_CSC_ROLES
 
@@ -97,7 +97,7 @@ data class CscFeatureResolution(
 
 /** Defensive post-read resolution for two provisional links admitted by a connection race. */
 @GattLibraryInternalApi
-fun resolveCscFeatureRoles(
+internal fun resolveCscFeatureRoles(
     resolvedConnectionKey: String,
     featureBits: Int,
     activeHandlers: Iterable<ActiveCscHandler>,
@@ -177,7 +177,7 @@ fun canAssignCscRole(
 }
 
 @GattLibraryInternalApi
-fun activeSensorConnectionCount(
+internal fun activeSensorConnectionCount(
     links: Iterable<BtEngineState.ConnectedDeviceLink>,
     serviceType: BtEngineState.BtServiceType,
 ): Int = links

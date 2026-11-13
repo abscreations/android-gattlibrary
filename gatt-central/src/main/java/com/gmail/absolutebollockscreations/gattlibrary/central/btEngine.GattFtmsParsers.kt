@@ -92,7 +92,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsDataFlags
 import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 @GattLibraryInternalApi
-object BtEngineFtmsParsers {
+internal object BtEngineFtmsParsers {
 
     private const val TAG = "BtEngine" // or BtEngineState.TAG
 

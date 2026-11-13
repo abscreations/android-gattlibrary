@@ -52,7 +52,7 @@ data class PrecorSample(
  * `strokeCountMetric` to null for this device, and its own tests assert that.
  */
 @GattLibraryInternalApi
-fun precorSamples(reading: PrecorMeasurement.Reading): List<PrecorSample> {
+internal fun precorSamples(reading: PrecorMeasurement.Reading): List<PrecorSample> {
     val eventMs = reading.elapsedSeconds * 1_000L
     val samples = mutableListOf<PrecorSample>()
 

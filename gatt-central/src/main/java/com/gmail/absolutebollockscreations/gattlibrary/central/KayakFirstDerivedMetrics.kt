@@ -7,7 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpe
 
 /** Manufacturer-model estimates used only when KayakFirst does not transmit a native metric. */
 @GattLibraryInternalApi
-object KayakFirstDerivedMetrics {
+internal object KayakFirstDerivedMetrics {
     const val MODEL_COEFFICIENT = 0.1419262
     const val KAYAK_MASS_KG = 12.0
 

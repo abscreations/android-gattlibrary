@@ -123,7 +123,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsSpec
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.LifeFitnessUuids
 
 @GattLibraryInternalApi
-class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
+internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(UUID_FTMS_SERVICE)
 
@@ -731,7 +731,7 @@ internal fun correlateControlPointResponse(value: ByteArray): CpResponseOutcome 
 }
 
 @GattLibraryInternalApi
-fun applyFitnessMachineStatus(
+internal fun applyFitnessMachineStatus(
     state: BtEngineState,
     value: ByteArray,
 ) {

@@ -62,7 +62,7 @@ data class FeCMeasurementSnapshot(
  * §2.2/§2.3) - there is no multi-notification reassembly here.
  */
 @GattLibraryInternalApi
-class FeCProtocolSession(
+internal class FeCProtocolSession(
     override val connectionId: ConnectionId,
 ) : ProtocolSession {
 

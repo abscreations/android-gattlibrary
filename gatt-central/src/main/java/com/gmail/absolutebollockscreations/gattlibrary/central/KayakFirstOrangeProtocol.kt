@@ -91,7 +91,7 @@ sealed interface KayakFirstOrangeResponse {
 
 /** Strict three-line response grammar: command, unsigned sequence, positive timing in microseconds. */
 @GattLibraryInternalApi
-class KayakFirstOrangeResponseParser {
+internal class KayakFirstOrangeResponseParser {
     private val fields = mutableListOf<String>()
 
     fun accept(rawLine: String): KayakFirstOrangeResponse? {
@@ -221,7 +221,7 @@ data class KayakFirstOrangeReading(
 
 /** Owns the reset/poll sequence and only publishes complete, non-duplicate 1/2/3/4 tuples. */
 @GattLibraryInternalApi
-class KayakFirstOrangeSession(
+internal class KayakFirstOrangeSession(
     private val athleteWeightKg: () -> Double?,
 ) {
     private val timings = mutableMapOf<KayakFirstOrangeCommand, KayakFirstOrangeTimingResponse>()

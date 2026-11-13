@@ -125,7 +125,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpe
  * remain absent. `featuresRead` means the answer is final, not that a `0x2ACC` read occurred.
  */
 @GattLibraryInternalApi
-fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
+internal fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
     featuresRead = true,
     supportsSpeed = false,
     supportsInclination = false,
@@ -135,7 +135,7 @@ fun sensorOnlyProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
 
 /** Settled control capabilities for a measurement-only Flywheel Sports upstream. */
 @GattLibraryInternalApi
-fun flywheelProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
+internal fun flywheelProviderCapabilities(): FtmsCapabilities = FtmsCapabilities(
     featuresRead = true,
     supportsSpeed = false,
     supportsInclination = false,

@@ -313,7 +313,7 @@ private fun BtEngine.pruneStaleScanEntries(nowMs: Long) {
 }
 
 @GattLibraryInternalApi
-fun <K, V> retainFreshScanEntries(
+internal fun <K, V> retainFreshScanEntries(
     entries: Map<K, V>,
     nowMs: Long,
     staleAfterMs: Long,

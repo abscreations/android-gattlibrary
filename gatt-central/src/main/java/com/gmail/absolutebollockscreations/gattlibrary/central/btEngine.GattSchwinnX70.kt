@@ -61,7 +61,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spe
  * sets no target bits for this family.
  */
 @GattLibraryInternalApi
-class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
+internal class SchwinnX70ProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(SchwinnX70Uuids.UUID_X70_SERVICE)
 

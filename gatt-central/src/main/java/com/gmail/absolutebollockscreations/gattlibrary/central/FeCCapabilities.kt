@@ -15,7 +15,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * FTMS raw units; it is not a claim about a particular machine's physical limit.
  */
 @GattLibraryInternalApi
-object FeCCapabilities {
+internal object FeCCapabilities {
 
     /** Page 48 (Basic Resistance): 0-100%, 0.5% resolution -> FTMS raw 0.1-level units. */
     private const val RESISTANCE_MIN_RAW = 0f

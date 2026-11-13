@@ -35,7 +35,7 @@ data class CscDerivedMetric(
 
 /** Session-scoped metric accumulation over one link's native CSC event deltas. */
 @GattLibraryInternalApi
-class CscDerivationState {
+internal class CscDerivationState {
     private var bikeDistanceMeters = 0.0
     private var ellipticalDistanceMeters = 0.0
     private var ellipticalStrides = 0.0

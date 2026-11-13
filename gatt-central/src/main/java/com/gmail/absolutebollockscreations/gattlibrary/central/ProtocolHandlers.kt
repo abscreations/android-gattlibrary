@@ -160,7 +160,7 @@ fun sensorProtocolFor(serviceType: BtEngineState.BtServiceType): ProtocolKey? =
  * Concept2 native-only exclusion in [centralProtocolServiceUuids].
  */
 @GattLibraryInternalApi
-val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
+internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FTMS,
     ProtocolKey.CONCEPT2,
     ProtocolKey.PRECOR,
@@ -246,7 +246,7 @@ internal fun centralProtocolServiceUuids(discoveredServiceUuids: Set<UUID>): Set
 
 /** Offer discovery to eligible candidates and retain every successful activation. */
 @GattLibraryInternalApi
-fun activateMatchingProtocolHandlers(
+internal fun activateMatchingProtocolHandlers(
     candidates: List<BtEngineGattCore.ProtocolHandler>,
     discoveredServiceUuids: Set<UUID>,
     offer: (BtEngineGattCore.ProtocolHandler) -> Boolean,

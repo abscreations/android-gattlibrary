@@ -38,7 +38,7 @@ internal fun keiserAverageSpeedKph(reading: KeiserMSeriesMeasurement.Reading): D
  * zero immediately. Counter/time rollback and unit changes rebase the estimator.
  */
 @GattLibraryInternalApi
-class KeiserSpeedEstimator {
+internal class KeiserSpeedEstimator {
     private data class Observation(val elapsedSeconds: Int, val distanceMetres: Double)
 
     private val distanceChanges = ArrayDeque<Observation>()
@@ -175,7 +175,7 @@ class KeiserSpeedEstimator {
  * **Anything writable.** No target, no capability, no control signal. The bike cannot receive.
  */
 @GattLibraryInternalApi
-fun keiserSamples(
+internal fun keiserSamples(
     reading: KeiserMSeriesMeasurement.Reading,
     estimatedSpeedKph: Double? = null,
 ): List<KeiserSample> {

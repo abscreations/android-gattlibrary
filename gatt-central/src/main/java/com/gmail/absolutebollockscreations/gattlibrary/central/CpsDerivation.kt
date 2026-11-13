@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 
 /** Session-scoped derivation from native CPS wheel/crank events. */
 @GattLibraryInternalApi
-class CpsDerivationState {
+internal class CpsDerivationState {
     private var distanceMeters = 0.0
 
     fun derive(update: CpsMeasurementTracker.Update, wheelCircumferenceMm: Int): List<CscDerivedMetric> = buildList {

@@ -63,7 +63,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursor
  * forward a simulator request to a physical Concept2 link.
  */
 @GattLibraryInternalApi
-object Concept2Measurement {
+internal object Concept2Measurement {
 
     /** Low byte of the characteristic UUID, which is also the multiplexed identification byte. */
     object Id {

@@ -38,7 +38,7 @@ sealed interface WahooKickrEncodeResult {
 
 /** Pure legacy KICKR encoder. It validates engineering values and has no transport side effects. */
 @GattLibraryInternalApi
-object WahooKickrCodec {
+internal object WahooKickrCodec {
     fun encode(command: WahooKickrCommand): WahooKickrEncodeResult = when (command) {
         WahooKickrCommand.Unlock -> encoded(
             WahooKickrSpec.OPCODE_UNLOCK,

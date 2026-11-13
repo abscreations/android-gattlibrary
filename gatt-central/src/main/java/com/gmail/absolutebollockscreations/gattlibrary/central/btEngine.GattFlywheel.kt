@@ -225,7 +225,7 @@ internal class FlywheelSubscriptionGate(
  * discarded on disconnect before another generation can emit.
  */
 @GattLibraryInternalApi
-class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
+internal class FlywheelProtocolHandler : BtEngineGattCore.ProtocolHandler {
     override val primaryServices: Set<UUID> = setOf(FlywheelUuids.UUID_FLYWHEEL_SERVICE)
     override val extraCharacteristics: Set<UUID> = setOf(
         FlywheelUuids.UUID_FLYWHEEL_TX,

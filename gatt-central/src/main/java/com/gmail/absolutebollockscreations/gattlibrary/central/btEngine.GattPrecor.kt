@@ -34,7 +34,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
  * measurement only and advertises no target capability downstream.
  */
 @GattLibraryInternalApi
-class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
+internal class PrecorProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     override val primaryServices: Set<UUID> = setOf(PrecorUuids.UUID_PRECOR_SERVICE)
 
