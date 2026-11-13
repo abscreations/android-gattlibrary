@@ -126,6 +126,39 @@ public class MeasurementHistory internal constructor(private val slices: Array<S
 
     internal class Slice(val times: LongArray, val values: DoubleArray, val size: Int)
 
+    /**
+     * Builds a history from recorded points without a live connection: for showing, testing or
+     * replaying a session. Backed by the same recorder the client uses, so it has the same semantics:
+     * each [build] is an immutable snapshot, later appends never change an earlier one, and a series
+     * that did not change between two builds is the *same* [HistorySeries] (equal in O(1)), which is
+     * what lets a collector skip a series that did not grow.
+     *
+     * Values are canonical, in each [MetricSeriesKind]'s documented unit. Not thread-safe for
+     * concurrent appends from several threads without external ordering; [build] may be called
+     * from any thread.
+     */
+    public class Builder {
+        private val recorder = HistoryRecorder()
+        private val lastTime = LongArray(MetricSeriesKind.entries.size) { Long.MIN_VALUE }
+
+        /**
+         * Appends one point to [kind]. Timestamps within one series must not decrease
+         * ([HistorySeries.since] relies on it); an earlier timestamp throws [IllegalArgumentException].
+         */
+        public fun append(kind: MetricSeriesKind, tMillis: Long, value: Double): Builder {
+            val k = kind.ordinal
+            require(tMillis >= lastTime[k]) {
+                "$kind timestamps must not decrease: $tMillis after ${lastTime[k]}"
+            }
+            lastTime[k] = tMillis
+            recorder.append(kind, tMillis, value)
+            return this
+        }
+
+        /** The history as it stands now. Cheap: no copying. */
+        public fun build(): MeasurementHistory = recorder.history.value
+    }
+
     public companion object {
         public val EMPTY: MeasurementHistory = MeasurementHistory(
             Array(MetricSeriesKind.entries.size) { Slice(LongArray(0), DoubleArray(0), 0) },

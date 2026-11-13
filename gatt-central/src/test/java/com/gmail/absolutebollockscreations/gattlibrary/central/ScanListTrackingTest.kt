@@ -61,6 +61,10 @@ class ScanListTrackingTest {
 
     @Test
     fun `connected entries remain visible even when advertisements stop`() {
+        // Plan section 4a (moved from the app's ServiceSelectionTest in LIB-76): a connected device
+        // need not keep advertising. A Garmin HRM-Pro connected for heart rate would otherwise age
+        // out of discovery, vanish from the RSC picker, and leave the user unable to add a second
+        // class from a device they are actively using.
         val retained = retainFreshScanEntries(
             entries = mapOf(
                 "connected" to SeenEntry("AA:00", lastSeenMs = 0L, connected = true),

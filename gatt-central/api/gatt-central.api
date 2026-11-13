@@ -3958,6 +3958,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Measu
 	public final fun series (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HistorySeries;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory$Builder {
+	public fun <init> ()V
+	public final fun append (Lcom/gmail/absolutebollockscreations/gattlibrary/central/MetricSeriesKind;JD)Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory$Builder;
+	public final fun build ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory$Companion {
 	public final fun getEMPTY ()Lcom/gmail/absolutebollockscreations/gattlibrary/central/MeasurementHistory;
 }

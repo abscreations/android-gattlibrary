@@ -1,11 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState.FtmsCapabilities
+import com.gmail.absolutebollockscreations.gattlibrary.central.ControlRange
 import com.gmail.absolutebollockscreations.gattlibrary.central.DeviceCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.central.flywheelProviderCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.central.sensorOnlyProviderCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.central.toDeviceCapabilities
-import com.gmail.absolutebollockscreations.gattlibrary.central.wahooKickrProviderCapabilities
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ProviderAdvertisingReadiness.Decision
 import com.gmail.absolutebollockscreations.gattlibrary.peripheral.ProviderAdvertisingReadiness.RANGE_WAIT_MS
 import org.junit.Assert.assertEquals
@@ -13,57 +9,57 @@ import org.junit.Test
 
 /**
  * LIB-9e over the public capabilities (unit 4b step 4a-2). Every case is the central readiness
- * test's case with its raw fixture converted through `toDeviceCapabilities`, with the same expected
- * decision, so the canonical gate is shown to decide exactly as the raw gate did.
+ * test's case with the same expected decision, so the canonical gate is shown to decide exactly as
+ * the raw gate did.
+ *
+ * Inputs are public [DeviceCapabilities] literals (LIB-76). They are the exact canonical conversions
+ * of the central test's raw fixtures (raw speed 0.01 km/h, incline 0.1 %, resistance 0.1 level,
+ * power 1 W). gatt-central's ProviderCapabilityLiteralsTest pins that the engine's provider fixtures
+ * still convert to [SENSOR_ONLY], [FLYWHEEL] and [WAHOO_KICKR], so the two sides cannot drift.
  */
 class ProviderAdvertisingReadinessTest {
 
-    private fun FtmsCapabilities.canonical() = toDeviceCapabilities(paceMeasurement = false)
-
-    private val treadmillFeaturesOnly = FtmsCapabilities(
+    private val treadmillFeaturesOnly = DeviceCapabilities(
         featuresRead = true,
-        supportsSpeed = true,
-        supportsInclination = true,
-        supportsPower = true,
+        supportsSpeedTarget = true,
+        supportsInclineTarget = true,
+        supportsPowerTarget = true,
     )
+    private val speedRange = ControlRange(1f, 20f, 0.1f) // raw 100..2000 step 10
     private val treadmillWithRanges = treadmillFeaturesOnly.copy(
-        speedMin = 100f, speedMax = 2_000f, speedIncr = 10f, speedRangeKnown = true,
-        inclineMin = -30f, inclineMax = 150f, inclineIncr = 5f, inclineRangeKnown = true,
-        powerMin = 0f, powerMax = 1_000f, powerIncr = 1f, powerRangeKnown = true,
+        speedRangeKph = speedRange,
+        inclineRangePercent = ControlRange(-3f, 15f, 0.5f), // raw -30..150 step 5
+        powerRangeWatts = ControlRange(0f, 1_000f, 1f),
     )
 
     @Test
     fun `treadmill with only FEATURES waits for all three claimed ranges`() {
         assertEquals(
             Decision.WaitForRanges(listOf("speed", "inclination", "power")),
-            ProviderAdvertisingReadiness.decide(treadmillFeaturesOnly.canonical(), rangeWaitMs = 0),
+            ProviderAdvertisingReadiness.decide(treadmillFeaturesOnly, rangeWaitMs = 0),
         )
-        val partial = treadmillFeaturesOnly.copy(
-            speedMin = 100f, speedMax = 2_000f, speedIncr = 10f, speedRangeKnown = true,
-        )
+        val partial = treadmillFeaturesOnly.copy(speedRangeKph = speedRange)
         assertEquals(
             Decision.WaitForRanges(listOf("inclination", "power")),
-            ProviderAdvertisingReadiness.decide(partial.canonical(), rangeWaitMs = 1_000),
+            ProviderAdvertisingReadiness.decide(partial, rangeWaitMs = 1_000),
         )
     }
 
     @Test
     fun `treadmill with every range is ready`() {
-        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(treadmillWithRanges.canonical(), 0))
+        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(treadmillWithRanges, 0))
     }
 
     @Test
     fun `missing ranges stop blocking at the timeout and are reported`() {
         assertEquals(
             Decision.WaitForRanges(listOf("speed", "inclination", "power")),
-            ProviderAdvertisingReadiness.decide(treadmillFeaturesOnly.canonical(), RANGE_WAIT_MS - 1),
+            ProviderAdvertisingReadiness.decide(treadmillFeaturesOnly, RANGE_WAIT_MS - 1),
         )
-        val partial = treadmillWithRanges.copy(
-            powerMin = null, powerMax = null, powerIncr = null, powerRangeKnown = false,
-        )
+        val partial = treadmillWithRanges.copy(powerRangeWatts = null)
         assertEquals(
             Decision.ReadyWithoutRanges(listOf("power")),
-            ProviderAdvertisingReadiness.decide(partial.canonical(), RANGE_WAIT_MS),
+            ProviderAdvertisingReadiness.decide(partial, RANGE_WAIT_MS),
         )
     }
 
@@ -75,21 +71,21 @@ class ProviderAdvertisingReadinessTest {
         )
         assertEquals(
             Decision.WaitForFeatures,
-            ProviderAdvertisingReadiness.decide(FtmsCapabilities().canonical(), rangeWaitMs = 60_000),
+            ProviderAdvertisingReadiness.decide(DeviceCapabilities(), rangeWaitMs = 60_000),
         )
     }
 
     @Test
     fun `machines claiming nothing or carrying settled ranges are ready at once`() {
-        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(sensorOnlyProviderCapabilities().canonical(), 0))
-        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(flywheelProviderCapabilities().canonical(), 0))
-        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(wahooKickrProviderCapabilities().canonical(), 0))
+        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(SENSOR_ONLY, 0))
+        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(FLYWHEEL, 0))
+        assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(WAHOO_KICKR, 0))
         assertEquals(Decision.Ready, ProviderAdvertisingReadiness.decide(SENSOR_ONLY_CAPABILITIES, 0))
         // A bike still waits for its resistance range, as the old gate did.
         assertEquals(
             Decision.WaitForRanges(listOf("resistance")),
             ProviderAdvertisingReadiness.decide(
-                FtmsCapabilities(featuresRead = true, supportsResistance = true).canonical(),
+                DeviceCapabilities(featuresRead = true, supportsResistanceTarget = true),
                 0,
             ),
         )
@@ -97,6 +93,27 @@ class ProviderAdvertisingReadinessTest {
 
     @Test
     fun `the peripheral's sensor-only capabilities equal the engine's once converted`() {
-        assertEquals(sensorOnlyProviderCapabilities().canonical(), SENSOR_ONLY_CAPABILITIES)
+        // Joined with gatt-central's ProviderCapabilityLiteralsTest, which pins that the engine's
+        // sensor-only fixture converts to SENSOR_ONLY.
+        assertEquals(SENSOR_ONLY, SENSOR_ONLY_CAPABILITIES)
+    }
+
+    private companion object {
+        /** Canonical `sensorOnlyProviderCapabilities()`: settled, claims nothing. */
+        val SENSOR_ONLY = DeviceCapabilities(featuresRead = true)
+
+        /** Canonical `flywheelProviderCapabilities()`: settled, measurement only. */
+        val FLYWHEEL = DeviceCapabilities(featuresRead = true)
+
+        /** Canonical `wahooKickrProviderCapabilities()`: raw resistance 0..1000 step 1, power 0..2000 W step 1. */
+        val WAHOO_KICKR = DeviceCapabilities(
+            featuresRead = true,
+            supportsResistanceTarget = true,
+            supportsPowerTarget = true,
+            supportsIndoorBikeSimulation = true,
+            supportsWheelCircumference = true,
+            resistanceRange = ControlRange(0f, 100f, 0.1f),
+            powerRangeWatts = ControlRange(0f, 2_000f, 1f),
+        )
     }
 }

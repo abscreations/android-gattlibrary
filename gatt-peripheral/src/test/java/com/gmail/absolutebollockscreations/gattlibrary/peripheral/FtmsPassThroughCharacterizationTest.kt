@@ -1,15 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.peripheral
 
-import com.gmail.absolutebollockscreations.gattlibrary.central.BtEngineState
-import com.gmail.absolutebollockscreations.gattlibrary.central.ControlEvent
 import com.gmail.absolutebollockscreations.gattlibrary.central.CommandResult
 import com.gmail.absolutebollockscreations.gattlibrary.central.MachineIdentity
 import com.gmail.absolutebollockscreations.gattlibrary.central.RejectionReason
-import com.gmail.absolutebollockscreations.gattlibrary.central.applyFitnessMachineStatus
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -102,32 +95,9 @@ class FtmsPassThroughCharacterizationTest {
         assertEquals(1, upstream.startCalls)
     }
 
-    /** Records the control events the engine publishes for a status, standing in for the downstream mirror. */
-    private class RecordingStatusSink(state: BtEngineState) {
-        var targetSpeedKph: Float? = null
-        var targetInclinePercent: Float? = null
-        var inclineCallbacks = 0
-
-        init {
-            CoroutineScope(Dispatchers.Unconfined).launch(start = CoroutineStart.UNDISPATCHED) {
-                state.controlEvents.collect { event ->
-                    when (event) {
-                        is ControlEvent.TargetSpeedKph -> targetSpeedKph = event.kph
-                        is ControlEvent.TargetInclinePercent -> {
-                            targetInclinePercent = event.percent
-                            inclineCallbacks++
-                        }
-                        else -> Unit
-                    }
-                }
-            }
-        }
-    }
-
     @Test
-    fun `downstream target writes upstream and status waits for upstream 2ADA`() {
+    fun `downstream target writes upstream and publishes no optimistic status`() {
         val upstream = RecordingLink()
-        val engineState = BtEngineState()
         val passThrough = ClientFtmsControlSink(upstream).apply {
             beginSession(
                 TargetCapabilities(
@@ -151,55 +121,9 @@ class FtmsPassThroughCharacterizationTest {
         )
         assertEquals(12.34f, upstream.requestedSpeedKph!!, 0.001f)
         assertNull("pass-through must not publish optimistic status", outcome.status)
-
-        val downstreamStatus = RecordingStatusSink(engineState)
-        assertNull(downstreamStatus.targetSpeedKph)
-
-        applyFitnessMachineStatus(
-            engineState,
-            byteArrayOf(FtmsSpec.Status.TARGET_SPEED_CHANGED, 0xD2.toByte(), 0x04),
-        )
-
-        assertEquals(12.34f, engineState.targetSpeedKmh.value!!, 0.001f)
-        assertEquals(12.34f, downstreamStatus.targetSpeedKph!!, 0.001f)
     }
 
-    @Test
-    fun `target incline status decodes sint16 percent including a decline`() {
-        val state = BtEngineState()
-        val sink = RecordingStatusSink(state)
-
-        // -5.0 % grade = -50 = 0xFFCE little-endian. Read unsigned this reported 6553.5 %.
-        applyFitnessMachineStatus(
-            state,
-            byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0xCE.toByte(), 0xFF.toByte()),
-        )
-
-        assertEquals(-5.0f, state.targetInclinePercent.value!!, 0.001f)
-        assertEquals(-5.0f, sink.targetInclinePercent!!, 0.001f)
-
-        // +10.0 % grade = 100 = 0x0064.
-        applyFitnessMachineStatus(
-            state,
-            byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0x64, 0x00),
-        )
-
-        assertEquals(10.0f, state.targetInclinePercent.value!!, 0.001f)
-        assertEquals(10.0f, sink.targetInclinePercent!!, 0.001f)
-    }
-
-    @Test
-    fun `truncated target incline status is rejected rather than reported as zero`() {
-        val state = BtEngineState()
-        val sink = RecordingStatusSink(state)
-
-        applyFitnessMachineStatus(
-            state,
-            byteArrayOf(FtmsSpec.Status.TARGET_INCLINE_CHANGED, 0xCE.toByte()),
-        )
-
-        // Zero is a valid movement target, so a short payload must not synthesise one.
-        assertNull(state.targetInclinePercent.value)
-        assertEquals(0, sink.inclineCallbacks)
-    }
+    // The upstream half (the machine's 2ADA Target Speed Changed reaching engine state and control
+    // events, which the downstream mirror follows) and the target-incline status decoding moved to
+    // gatt-central's FitnessMachineStatusTargetTest in LIB-76: they exercise central internals.
 }
