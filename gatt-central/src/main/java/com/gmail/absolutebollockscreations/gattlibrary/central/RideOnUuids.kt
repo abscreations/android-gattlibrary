@@ -8,7 +8,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
  * vocabulary; Q1). The protocol vocabulary moved to `core.vendor.RideOnSpec` (LIB-19c).
  */
 @GattLibraryInternalApi
-object RideOnUuids {
+internal object RideOnUuids {
 
     // HubRidingData (RideOnSpec.OPCODE_RIDING_DATA) fields 5 and 6, present on every frame in that same
     // real KICKR Core capture but never documented anywhere found. Field 6 was constant for the

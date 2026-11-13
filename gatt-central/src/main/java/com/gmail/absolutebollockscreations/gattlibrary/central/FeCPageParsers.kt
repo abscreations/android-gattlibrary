@@ -34,7 +34,7 @@ enum class FeCEquipmentState(val wireValue: Int) {
  * GATT or engine-state scaffolding.
  */
 @GattLibraryInternalApi
-sealed interface FeCPage {
+internal sealed interface FeCPage {
 
     /**
      * Page 16 - General FE Data. Present on every FE-C device.

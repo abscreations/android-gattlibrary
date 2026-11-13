@@ -93,7 +93,7 @@ enum class KayakFirstProtocolChoice(
 
 /** Commands in the first D98/D99 central compatibility profile. */
 @GattLibraryInternalApi
-sealed interface KayakFirstCommand {
+internal sealed interface KayakFirstCommand {
     data object Reset : KayakFirstCommand
 
     /** Common surface so setup can hold one handshake without knowing its dialect. */
@@ -156,7 +156,7 @@ sealed interface KayakFirstCommand {
 
 /** Pure command serializer and payload chunker. It owns no queue or Bluetooth state. */
 @GattLibraryInternalApi
-object KayakFirstCommandCodec {
+internal object KayakFirstCommandCodec {
     const val DEFAULT_PAYLOAD_CAPACITY = 20
 
     /**

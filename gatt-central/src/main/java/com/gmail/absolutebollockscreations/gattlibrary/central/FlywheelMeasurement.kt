@@ -4,13 +4,13 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 
 /** Typed reasons a Flywheel statistics notification can be rejected before field access. */
 @GattLibraryInternalApi
-enum class FlywheelRejection {
+internal enum class FlywheelRejection {
     TOO_SHORT,
     BAD_MAGIC,
 }
 
 @GattLibraryInternalApi
-sealed interface FlywheelDecodeResult {
+internal sealed interface FlywheelDecodeResult {
     data class Decoded(val reading: FlywheelMeasurement.Reading) : FlywheelDecodeResult
     data class Rejected(val reason: FlywheelRejection) : FlywheelDecodeResult
 }
@@ -28,7 +28,7 @@ sealed interface FlywheelDecodeResult {
  * decoded readings to it.
  */
 @GattLibraryInternalApi
-object FlywheelMeasurement {
+internal object FlywheelMeasurement {
     const val MINIMUM_FRAME_BYTES = 13
 
     private const val POWER_OFFSET = 3

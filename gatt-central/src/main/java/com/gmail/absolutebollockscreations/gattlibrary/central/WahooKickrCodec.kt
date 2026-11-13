@@ -25,7 +25,7 @@ internal sealed interface WahooKickrCommand {
 }
 
 @GattLibraryInternalApi
-data class WahooKickrValidationError(
+internal data class WahooKickrValidationError(
     val field: String,
     val reason: String,
 )

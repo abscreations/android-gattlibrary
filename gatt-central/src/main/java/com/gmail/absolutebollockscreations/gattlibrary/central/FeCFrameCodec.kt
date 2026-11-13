@@ -12,7 +12,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
  * notification (plan §2.2/§2.3) - there is no reassembly buffer here.
  */
 @GattLibraryInternalApi
-data class AntSerialFrame(
+internal data class AntSerialFrame(
     val messageType: Int,
     val channel: Int,
     val data: ByteArray,
@@ -33,7 +33,7 @@ data class AntSerialFrame(
 
 /** Structured rejection reasons for [FeCFrameCodec.decode], per plan §14 diagnostics. */
 @GattLibraryInternalApi
-enum class FeCFrameRejection {
+internal enum class FeCFrameRejection {
     TOO_SHORT,
     BAD_SYNC,
     BAD_LENGTH,

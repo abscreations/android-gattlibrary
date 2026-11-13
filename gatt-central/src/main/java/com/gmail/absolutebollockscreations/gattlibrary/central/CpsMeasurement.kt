@@ -5,7 +5,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ByteCursor
 
 /** Bounds-checked decoder for Cycling Power Measurement, `0x2A63`. */
 @GattLibraryInternalApi
-object CpsMeasurement {
+internal object CpsMeasurement {
     data class WheelEvent(val cumulativeRevolutions: Long, val lastEventTimeTicks: Int)
     data class CrankEvent(val cumulativeRevolutions: Int, val lastEventTimeTicks: Int)
 

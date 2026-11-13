@@ -46,7 +46,7 @@ internal fun isKayakFirstAddressCorrelation(
 /** Matcher-layer UUID storage. Values are always lowercase canonical 128-bit UUID strings. */
 @JvmInline
 @GattLibraryInternalApi
-value class CanonicalUuid private constructor(val value: String) {
+internal value class CanonicalUuid private constructor(val value: String) {
     fun toUuid(): UUID = UUID.fromString(value)
     override fun toString(): String = value
 
@@ -74,7 +74,7 @@ private fun registeredSig16(assignedNumber: Int): CanonicalUuid {
 }
 
 @GattLibraryInternalApi
-enum class MatchEvidenceKind {
+internal enum class MatchEvidenceKind {
     LOCAL_NAME_PATTERN,
     MANUFACTURER_COMPANY_ID,
     SERVICE_DATA,
@@ -106,7 +106,7 @@ enum class MatchEvidenceKind {
  * service" are different claims and only the second is a protocol fact.
  */
 @GattLibraryInternalApi
-enum class MatchTransport { GATT, ADVERTISEMENT_ONLY }
+internal enum class MatchTransport { GATT, ADVERTISEMENT_ONLY }
 
 /**
  * One advertisement's manufacturer-data payload, in canonical form.
@@ -129,7 +129,7 @@ enum class MatchTransport { GATT, ADVERTISEMENT_ONLY }
  * here is persisted: an observation lives for the duration of one match.
  */
 @GattLibraryInternalApi
-class ManufacturerPayload(bytes: ByteArray) {
+internal class ManufacturerPayload(bytes: ByteArray) {
 
     private val bytes: ByteArray = bytes.copyOf()
 
@@ -167,13 +167,13 @@ class ManufacturerPayload(bytes: ByteArray) {
  * of as an anonymous predicate.
  */
 @GattLibraryInternalApi
-fun interface ManufacturerPayloadRule {
+internal fun interface ManufacturerPayloadRule {
     fun matches(companyId: Int, payload: ManufacturerPayload): Boolean
 }
 
 /** Optional, transient correlation evidence. Implementations must never expose the address. */
 @GattLibraryInternalApi
-fun interface ManufacturerAddressRule {
+internal fun interface ManufacturerAddressRule {
     fun matches(address: String, payload: ManufacturerPayload): Boolean
 }
 
@@ -186,7 +186,7 @@ fun interface ManufacturerAddressRule {
  * Typed so a definition contributes the filter its own transport needs.
  */
 @GattLibraryInternalApi
-sealed interface HardwareScanFilterSpec {
+internal sealed interface HardwareScanFilterSpec {
     data class ServiceUuid(val uuid: CanonicalUuid) : HardwareScanFilterSpec
 
     data class ServiceDataUuid(val uuid: CanonicalUuid) : HardwareScanFilterSpec
@@ -199,10 +199,10 @@ sealed interface HardwareScanFilterSpec {
 }
 
 @GattLibraryInternalApi
-enum class CollisionRisk { LOW, MEDIUM, HIGH }
+internal enum class CollisionRisk { LOW, MEDIUM, HIGH }
 
 @GattLibraryInternalApi
-data class MatchEvidenceFact(
+internal data class MatchEvidenceFact(
     val kind: MatchEvidenceKind,
     val structuralValue: String,
     val weight: Int,
@@ -217,7 +217,7 @@ data class MatchEvidenceFact(
 }
 
 @GattLibraryInternalApi
-data class MatchEvidence(val facts: List<MatchEvidenceFact>) {
+internal data class MatchEvidence(val facts: List<MatchEvidenceFact>) {
     val totalWeight: Int = facts.sumOf { it.weight }
     val rankingWeight: Int = facts
         .filterNot { it.kind == MatchEvidenceKind.LOCAL_NAME_PATTERN }
@@ -232,10 +232,10 @@ data class MatchEvidence(val facts: List<MatchEvidenceFact>) {
 }
 
 @GattLibraryInternalApi
-enum class KnownBleService { FTMS, HRM, CSC, RSC, CPS, GLUCOSE }
+internal enum class KnownBleService { FTMS, HRM, CSC, RSC, CPS, GLUCOSE }
 
 @GattLibraryInternalApi
-data class PacketShapeRule(
+internal data class PacketShapeRule(
     val lengths: IntRange? = null,
     val flagsMask: Long? = null,
     val flagsValue: Long? = null,

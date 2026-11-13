@@ -74,7 +74,7 @@ internal class KayakFirstOrangeLineAssembler(
 }
 
 @GattLibraryInternalApi
-data class KayakFirstOrangeTimingResponse(
+internal data class KayakFirstOrangeTimingResponse(
     val command: KayakFirstOrangeCommand,
     val sequence: Long,
     val timingMicroseconds: Long,

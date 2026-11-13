@@ -8,7 +8,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 @GattLibraryInternalApi
-sealed interface RideOnProtoField {
+internal sealed interface RideOnProtoField {
     val number: Int
     data class Varint(override val number: Int, val value: Long) : RideOnProtoField
     data class Fixed64(override val number: Int, val bytes: ByteArray) : RideOnProtoField
@@ -17,16 +17,16 @@ sealed interface RideOnProtoField {
 }
 
 @GattLibraryInternalApi
-data class RideOnDecodedPacket(val opcode: Int, val fields: List<RideOnProtoField>)
+internal data class RideOnDecodedPacket(val opcode: Int, val fields: List<RideOnProtoField>)
 
 @GattLibraryInternalApi
-sealed interface RideOnDecodeResult {
+internal sealed interface RideOnDecodeResult {
     data class Decoded(val packet: RideOnDecodedPacket) : RideOnDecodeResult
     data class Invalid(val reason: String) : RideOnDecodeResult
 }
 
 @GattLibraryInternalApi
-data class RideOnSimulationParam(
+internal data class RideOnSimulationParam(
     val windMpsX100: Int,
     val gradePercentX100: Int,
     val aerodynamicCoefficientX10000: Long,
@@ -34,7 +34,7 @@ data class RideOnSimulationParam(
 )
 
 @GattLibraryInternalApi
-data class RideOnPhysicalParam(
+internal data class RideOnPhysicalParam(
     val gearRatioX10000: Long? = null,
     val bicycleMassKgX100: Long,
     val riderMassKgX100: Long,

@@ -39,7 +39,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 
 /** One field in an overridden layout, in wire order. */
 @GattLibraryInternalApi
-sealed interface FtmsLayoutStep {
+internal sealed interface FtmsLayoutStep {
     /** Decode [width] octets as [field]. */
     data class Read(val field: FtmsQuirkField, val width: Int) : FtmsLayoutStep
 
@@ -52,7 +52,7 @@ sealed interface FtmsLayoutStep {
 
 /** Fields an override can produce. Deliberately small: a quirk decodes, it does not derive. */
 @GattLibraryInternalApi
-enum class FtmsQuirkField {
+internal enum class FtmsQuirkField {
     STROKE_RATE_HALF_SPM,
     STROKE_COUNT,
     TOTAL_DISTANCE_M,
@@ -65,13 +65,13 @@ enum class FtmsQuirkField {
 }
 
 @GattLibraryInternalApi
-enum class UnknownPacketPolicy {
+internal enum class UnknownPacketPolicy {
     /** Packet does not match the fingerprint: parse it as an ordinary FTMS frame. */
     FALL_BACK_TO_STANDARD,
 }
 
 @GattLibraryInternalApi
-data class FtmsQuirk(
+internal data class FtmsQuirk(
     val id: String,
     /** Lowercased device-name prefix. The only identity these machines expose. */
     val namePrefix: String,

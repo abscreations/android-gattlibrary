@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 
 /** Typed rejection for one complete Kayak First measurement line. */
 @GattLibraryInternalApi
-enum class KayakFirstMeasurementRejection {
+internal enum class KayakFirstMeasurementRejection {
     EMPTY_LINE,
     WRONG_COMMAND,
     TOO_FEW_FIELDS,
@@ -17,7 +17,7 @@ enum class KayakFirstMeasurementRejection {
 }
 
 @GattLibraryInternalApi
-sealed interface KayakFirstMeasurementDecodeResult {
+internal sealed interface KayakFirstMeasurementDecodeResult {
     data class Decoded(val reading: KayakFirstMeasurement.Reading) : KayakFirstMeasurementDecodeResult
     data class Rejected(
         val reason: KayakFirstMeasurementRejection,
@@ -47,7 +47,7 @@ sealed interface KayakFirstMeasurementDecodeResult {
  * integrated quantity. It is never allowed to reject or rewrite a metric.
  */
 @GattLibraryInternalApi
-object KayakFirstMeasurement {
+internal object KayakFirstMeasurement {
     const val MINIMUM_FIELDS = 24
     const val EVENT_TIMESTAMP_INDEX = 1
     const val ACTIVE_PADDLING_INDEX = 7
