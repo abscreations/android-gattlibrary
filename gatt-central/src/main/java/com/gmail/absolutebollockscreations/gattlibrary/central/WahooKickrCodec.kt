@@ -7,7 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.WahooKickrSpec
 
 @GattLibraryInternalApi
-sealed interface WahooKickrCommand {
+internal sealed interface WahooKickrCommand {
     data object Unlock : WahooKickrCommand
     data class Resistance(val fraction: Double) : WahooKickrCommand
     data class StandardLevel(val level: Int) : WahooKickrCommand
@@ -31,7 +31,7 @@ data class WahooKickrValidationError(
 )
 
 @GattLibraryInternalApi
-sealed interface WahooKickrEncodeResult {
+internal sealed interface WahooKickrEncodeResult {
     data class Encoded(val bytes: ByteArray) : WahooKickrEncodeResult
     data class Invalid(val error: WahooKickrValidationError) : WahooKickrEncodeResult
 }

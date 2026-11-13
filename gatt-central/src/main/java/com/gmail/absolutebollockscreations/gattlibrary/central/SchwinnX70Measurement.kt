@@ -72,7 +72,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spe
  * and the receive clock, and inventing a delta from one frame is the mistake being described.
  */
 @GattLibraryInternalApi
-object SchwinnX70Measurement {
+internal object SchwinnX70Measurement {
     /**
      * Whether [data] is the measurement characteristic's stream marker rather than a measurement.
      *

@@ -254,7 +254,7 @@ data class PacketShapeRule(
 }
 
 @GattLibraryInternalApi
-data class MatchObservation(
+internal data class MatchObservation(
     val localName: String? = null,
     val deviceAddress: String? = null,
     val manufacturerCompanyIds: Set<Int> = emptySet(),
@@ -275,7 +275,7 @@ data class MatchObservation(
 )
 
 @GattLibraryInternalApi
-data class MatchDefinition(
+internal data class MatchDefinition(
     val candidateId: String,
     /**
      * The service UUID present in the GATT database **after connecting**, or null for an
@@ -380,7 +380,7 @@ data class MatchDefinition(
 }
 
 @GattLibraryInternalApi
-data class RankedMatchCandidate(
+internal data class RankedMatchCandidate(
     val candidateId: String,
     /** Null for an advertisement-only family, which serves no GATT service. */
     val serviceUuid: CanonicalUuid?,

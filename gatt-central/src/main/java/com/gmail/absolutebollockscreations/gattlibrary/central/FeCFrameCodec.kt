@@ -43,7 +43,7 @@ enum class FeCFrameRejection {
 }
 
 @GattLibraryInternalApi
-sealed interface FeCFrameDecodeResult {
+internal sealed interface FeCFrameDecodeResult {
     data class Decoded(val frame: AntSerialFrame) : FeCFrameDecodeResult
     data class Rejected(val reason: FeCFrameRejection) : FeCFrameDecodeResult
 }

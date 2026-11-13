@@ -54,7 +54,7 @@ internal fun cscRoleCapabilityFromAppearance(
 
 /** Feature bit 0 is wheel/speed and bit 1 is crank/cadence. Zero is not a usable CSC role. */
 @GattLibraryInternalApi
-fun cscRoleCapabilityFromFeature(
+internal fun cscRoleCapabilityFromFeature(
     featureBits: Int,
 ): BtEngineState.CscRoleCapability? {
     val roles = buildSet {
@@ -78,7 +78,7 @@ data class CscRoleAssignment(
 )
 
 @GattLibraryInternalApi
-data class ActiveCscHandler(
+internal data class ActiveCscHandler(
     val connectionKey: String,
     val linkGeneration: Long,
     val address: String,
@@ -88,7 +88,7 @@ data class ActiveCscHandler(
 )
 
 @GattLibraryInternalApi
-data class CscFeatureResolution(
+internal data class CscFeatureResolution(
     val capability: BtEngineState.CscRoleCapability,
     val assignedRoles: Set<BtEngineState.CscRole>,
     val disconnectConnectionKey: String? = null,

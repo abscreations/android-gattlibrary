@@ -75,7 +75,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
  * the one it is tempting to ship.
  */
 @GattLibraryInternalApi
-object PrecorMeasurement {
+internal object PrecorMeasurement {
     /** Offsets, named so a reader can check them against the table above without counting. */
     private const val OFFSET_ELAPSED = 3
     private const val OFFSET_HEART_RATE = 5

@@ -42,7 +42,7 @@ data class RideOnPhysicalParam(
 
 /** Small protobuf-v2 wire codec for only the independently authored RideOn schema. */
 @GattLibraryInternalApi
-object RideOnProtoCodec {
+internal object RideOnProtoCodec {
     fun decode(packet: ByteArray): RideOnDecodeResult {
         if (packet.isEmpty()) return RideOnDecodeResult.Invalid("missing opcode")
         if (packet.size > RideOnSpec.MAX_PACKET_BYTES) {

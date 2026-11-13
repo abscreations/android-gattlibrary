@@ -139,7 +139,7 @@ data class FtmsQuirk(
 }
 
 @GattLibraryInternalApi
-object FtmsQuirkRegistry {
+internal object FtmsQuirkRegistry {
 
     /**
      * Mr Captain rower (`XG` name prefix), Rower Data `0x2AD1`, 20 octets.

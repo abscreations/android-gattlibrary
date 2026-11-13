@@ -17,7 +17,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
  * needs to tell "never sent" apart from "explicitly invalid" yet.
  */
 @GattLibraryInternalApi
-data class FeCMeasurementSnapshot(
+internal data class FeCMeasurementSnapshot(
     val equipmentType: Int? = null,
     val equipmentState: FeCEquipmentState? = null,
     val elapsedTimeSeconds: Double? = null,

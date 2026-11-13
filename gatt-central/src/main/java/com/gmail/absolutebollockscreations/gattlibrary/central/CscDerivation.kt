@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.BleDefaults
 import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi
 
 @GattLibraryInternalApi
-enum class CscWorkoutPersona { BIKE, ELLIPTICAL }
+internal enum class CscWorkoutPersona { BIKE, ELLIPTICAL }
 
 internal data class CscSessionSnapshot(
     val generation: Long,
@@ -26,7 +26,7 @@ data class CscCalibration(
 }
 
 @GattLibraryInternalApi
-data class CscDerivedMetric(
+internal data class CscDerivedMetric(
     val metric: MetricKind,
     val value: Double,
     val sourceClass: MetricSourceClass,

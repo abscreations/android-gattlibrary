@@ -16,7 +16,7 @@ import java.util.UUID
  * never survives a reconnect by accident.
  */
 @GattLibraryInternalApi
-interface ProtocolSession {
+internal interface ProtocolSession {
     val connectionId: ConnectionId
     val protocolId: String
 

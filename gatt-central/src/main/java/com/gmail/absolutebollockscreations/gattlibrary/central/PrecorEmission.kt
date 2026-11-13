@@ -9,7 +9,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * protocol math only; fusion's freshness clock stays on arrival time.
  */
 @GattLibraryInternalApi
-data class PrecorSample(
+internal data class PrecorSample(
     val metric: MetricKind,
     val value: Double,
     val nativeCumulative: Double? = null,

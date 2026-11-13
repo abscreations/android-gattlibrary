@@ -5,7 +5,7 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 @GattLibraryInternalApi
-sealed interface RideOnControlTarget {
+internal sealed interface RideOnControlTarget {
     data class Erg(val watts: Int) : RideOnControlTarget
     data class Simulation(
         val windMps: Double,

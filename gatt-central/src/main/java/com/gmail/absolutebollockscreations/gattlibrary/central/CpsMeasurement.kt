@@ -98,7 +98,7 @@ object CpsMeasurement {
 }
 
 @GattLibraryInternalApi
-class CpsMeasurementTracker {
+internal class CpsMeasurementTracker {
     data class WheelDelta(
         val revolutions: Long,
         val eventTimeTicks: Int,

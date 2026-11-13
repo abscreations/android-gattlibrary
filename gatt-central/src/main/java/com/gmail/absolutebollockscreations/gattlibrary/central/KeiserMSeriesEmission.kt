@@ -10,7 +10,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * [MetricSample.freshnessMs].
  */
 @GattLibraryInternalApi
-data class KeiserSample(
+internal data class KeiserSample(
     val metric: MetricKind,
     val value: Double,
     val nativeCumulative: Double? = null,

@@ -83,7 +83,7 @@ data class KayakFirstOrangeTimingResponse(
 }
 
 @GattLibraryInternalApi
-sealed interface KayakFirstOrangeResponse {
+internal sealed interface KayakFirstOrangeResponse {
     data object ResetOk : KayakFirstOrangeResponse
     data class Timing(val value: KayakFirstOrangeTimingResponse) : KayakFirstOrangeResponse
     data object Rejected : KayakFirstOrangeResponse
@@ -198,7 +198,7 @@ object KayakFirstOrangePhysics {
 }
 
 @GattLibraryInternalApi
-data class KayakFirstOrangeReading(
+internal data class KayakFirstOrangeReading(
     val sequence: Long,
     val elapsedSeconds: Double,
     /**

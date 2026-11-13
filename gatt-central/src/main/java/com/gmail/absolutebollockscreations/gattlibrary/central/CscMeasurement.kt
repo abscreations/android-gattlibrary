@@ -70,7 +70,7 @@ object CscMeasurement {
 
 /** Per-link-generation CSC baselines and wrap-safe revolution/event-time deltas. */
 @GattLibraryInternalApi
-class CscMeasurementTracker {
+internal class CscMeasurementTracker {
     data class WheelDelta(
         val revolutions: Long,
         val eventTimeTicks: Int,

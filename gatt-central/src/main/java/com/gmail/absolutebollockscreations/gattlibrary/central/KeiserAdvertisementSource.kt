@@ -168,7 +168,7 @@ internal enum class KeiserAdvertisementOutcome {
  * Deliberately not called "connected" at any point, because nothing ever connects.
  */
 @GattLibraryInternalApi
-enum class KeiserSourceState {
+internal enum class KeiserSourceState {
     /** No bike selected. */
     IDLE,
 

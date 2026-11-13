@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 
 /** One canonical, source-independent metric mapped from an accepted Kayak First reading. */
 @GattLibraryInternalApi
-data class KayakFirstSample(
+internal data class KayakFirstSample(
     val metric: MetricKind,
     val value: Double,
     val nativeCumulative: Double? = null,

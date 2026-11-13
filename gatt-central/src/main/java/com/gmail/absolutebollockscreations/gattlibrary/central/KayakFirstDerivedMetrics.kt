@@ -248,7 +248,7 @@ internal class KayakFirstEnergyEstimator {
 }
 
 @GattLibraryInternalApi
-data class KayakFirstEnergyEstimate(
+internal data class KayakFirstEnergyEstimate(
     val totalKilocalories: Double,
     val kilocaloriesPerHour: Double,
 )

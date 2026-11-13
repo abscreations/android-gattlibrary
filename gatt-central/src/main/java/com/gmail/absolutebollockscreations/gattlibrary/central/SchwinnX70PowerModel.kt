@@ -59,7 +59,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spe
  * visible step, and nothing about the protocol requires them.
  */
 @GattLibraryInternalApi
-object SchwinnX70PowerModel {
+internal object SchwinnX70PowerModel {
     /** The minimum legal resistance the console reports. Level 1 selects the first row. */
     const val MINIMUM_RESISTANCE = 1
 

@@ -30,7 +30,7 @@ internal data class MachineAdapterCandidate(
 }
 
 @GattLibraryInternalApi
-enum class AdapterPolicyState {
+internal enum class AdapterPolicyState {
     NOT_STARTED,
     SETUP_REQUIRED,
     SUBSCRIPTION_PENDING,

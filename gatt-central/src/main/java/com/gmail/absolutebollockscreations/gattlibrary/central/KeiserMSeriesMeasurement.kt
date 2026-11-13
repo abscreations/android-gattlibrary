@@ -113,7 +113,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeries
  * at byte 18 is a *reading* of where the rider set the lever.
  */
 @GattLibraryInternalApi
-object KeiserMSeriesMeasurement {
+internal object KeiserMSeriesMeasurement {
     /** Smallest firmware minor byte that carries byte 18. Compared as a byte, never as text. */
     const val RESISTANCE_FROM_MINOR = 0x21
 

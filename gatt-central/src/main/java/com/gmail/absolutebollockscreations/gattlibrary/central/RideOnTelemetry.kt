@@ -4,7 +4,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 @GattLibraryInternalApi
-data class RideOnTelemetry(
+internal data class RideOnTelemetry(
     val powerWatts: Int?,
     val cadenceRpm: Int?,
     val speedKph: Double?,

@@ -11,7 +11,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalA
  * Protocol time only; fusion's freshness clock stays on arrival time.
  */
 @GattLibraryInternalApi
-data class SchwinnX70Sample(
+internal data class SchwinnX70Sample(
     val metric: MetricKind,
     val value: Double,
     val quality: MetricQuality,

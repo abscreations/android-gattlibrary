@@ -104,7 +104,7 @@ internal fun List<BluetoothGattService>.toFlywheelInventory(): FlywheelGattInven
     )
 
 @GattLibraryInternalApi
-enum class FlywheelSetupState { IDLE, SUBSCRIBING, READY, FAILED, CANCELLED }
+internal enum class FlywheelSetupState { IDLE, SUBSCRIBING, READY, FAILED, CANCELLED }
 
 internal data class FlywheelDisconnectDiagnosis(
     val matchesConnectionIntervalQuirk: Boolean,

@@ -55,7 +55,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
  * not in a magic constant here. Recorded in the divergence register.
  */
 @GattLibraryInternalApi
-object RscMeasurement {
+internal object RscMeasurement {
 
     /** Metres per second per wire unit: the speed field is in 1/256 m/s. */
     private const val SPEED_UNITS_PER_MPS = 256.0
