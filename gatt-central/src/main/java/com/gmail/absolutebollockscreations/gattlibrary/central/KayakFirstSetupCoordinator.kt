@@ -3,7 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.central
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHandshakeVariant
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
-enum class KayakFirstSetupState {
+public enum class KayakFirstSetupState {
     DISCOVERING,
     SUBSCRIBING,
     RESET_A,

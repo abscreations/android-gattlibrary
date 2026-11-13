@@ -7,9 +7,9 @@ import kotlin.math.pow
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstOrangeCommand
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
-enum class KayakFirstGeneration { ORANGE, BLUE }
+public enum class KayakFirstGeneration { ORANGE, BLUE }
 
-fun kayakFirstGeneration(localName: String?): KayakFirstGeneration? {
+public fun kayakFirstGeneration(localName: String?): KayakFirstGeneration? {
     if (localName == null || !localName.matches(Regex("^[0-9]{8}$"))) return null
     return if (localName.substring(0, 2).toInt() < 18) {
         KayakFirstGeneration.ORANGE

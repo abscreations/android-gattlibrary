@@ -36,7 +36,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.SigUserDataUnits
  * - Every value is redaction-registered by UUID in `SensitiveCharacteristics`, so no capture
  *   can carry it at any level.
  */
-data class LifeFitnessProfile(
+public data class LifeFitnessProfile(
     val firstName: String,
     val lastName: String,
     val email: String,
@@ -58,10 +58,10 @@ data class LifeFitnessProfile(
     val heightCm: Int = BleDefaults.LF_DEFAULT_HEIGHT_CM,
 ) {
     /** Weight in the SIG `0x2A98` unit: `uint16` of 0.005 kg. */
-    val weightWireUnits: Int get() = SigUserDataUnits.weightToWireUnits(weightKg)
+    public val weightWireUnits: Int get() = SigUserDataUnits.weightToWireUnits(weightKg)
 
     /** Height in the SIG `0x2A8E` unit: `uint16` of 0.01 m. */
-    val heightWireUnits: Int get() = SigUserDataUnits.heightToWireUnits(heightCm)
+    public val heightWireUnits: Int get() = SigUserDataUnits.heightToWireUnits(heightCm)
 
     /**
      * Whether every required field carries something.
@@ -72,23 +72,23 @@ data class LifeFitnessProfile(
      * person filling the form, and a gate the user cannot see the reason for is worse than no
      * gate.
      */
-    val isPopulated: Boolean
+    public val isPopulated: Boolean
         get() = missingFields.isEmpty()
 
     /** Which fields are blank, in the order the settings screen presents them. */
-    val missingFields: List<LifeFitnessProfileField>
+    public val missingFields: List<LifeFitnessProfileField>
         get() = buildList {
             if (firstName.isBlank()) add(LifeFitnessProfileField.FIRST_NAME)
             if (lastName.isBlank()) add(LifeFitnessProfileField.LAST_NAME)
             if (email.isBlank()) add(LifeFitnessProfileField.EMAIL)
         }
 
-    companion object {
-        val EMPTY = LifeFitnessProfile(firstName = "", lastName = "", email = "")
+    public companion object {
+        public val EMPTY: LifeFitnessProfile = LifeFitnessProfile(firstName = "", lastName = "", email = "")
     }
 }
 
-enum class LifeFitnessProfileField(val settingsLabel: String) {
+public enum class LifeFitnessProfileField(public val settingsLabel: String) {
     FIRST_NAME("First name"),
     LAST_NAME("Last name"),
     EMAIL("Email address"),

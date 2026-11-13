@@ -1,7 +1,7 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 /** What the UI shows for the connected machine while its capabilities are being read (LIB-9f). */
-enum class MachineProbeState {
+public enum class MachineProbeState {
     /** No machine link. */
     IDLE,
 

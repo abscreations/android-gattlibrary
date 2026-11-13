@@ -24,7 +24,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeries
  * `SharedPreferences`: the bike a person rode on Tuesday is not a preference, and a remembered
  * address would silently re-attach a returning user to a machine somebody else is now riding.
  */
-data class KeiserSelection(
+public data class KeiserSelection(
     val address: String,
     val systemId: Int,
     /**
@@ -55,17 +55,17 @@ data class KeiserSelection(
      * Dropping the address from the key also removes it from one more structure: `CaptureHooks`
      * already redacted this string, and now there is nothing in it left to redact.
      */
-    val sourceKey: String get() = "keiser:#$systemId"
+    public val sourceKey: String get() = "keiser:#$systemId"
 
     /** Row and run-screen label, e.g. `M3i #1`. */
-    val displayName: String get() = "$model #$systemId"
+    public val displayName: String get() = "$model #$systemId"
 
     /** The same bike, now speaking from [address]. Identity, generation and origin are unchanged. */
     internal fun boundTo(address: String): KeiserSelection = copy(address = address)
 
-    companion object {
+    public companion object {
         /** Used when a row was admitted without a decodable variant letter in its local name. */
-        const val DEFAULT_MODEL = "M3"
+        public const val DEFAULT_MODEL: String = "M3"
 
         /**
          * `M3`, optionally one variant letter. Anything else is not a model label.
@@ -83,7 +83,7 @@ data class KeiserSelection(
          * case-insensitively, and two rows that differ only in the case a console was flashed with
          * would otherwise read as two different machines.
          */
-        fun modelFromAdvertisedName(name: String?): String {
+        public fun modelFromAdvertisedName(name: String?): String {
             val match = name?.trim()?.let { MODEL_PATTERN.find(it) }?.value ?: return DEFAULT_MODEL
             return match.take(2).uppercase() + match.drop(2).lowercase()
         }

@@ -6,17 +6,17 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstHan
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 /** Immutable five-slot snapshot shared later by settings, setup, and the simulator. */
-data class KayakFirstDisplayConfiguration(
+public data class KayakFirstDisplayConfiguration(
     val slot1: KayakFirstDisplayMetric,
     val slot2: KayakFirstDisplayMetric,
     val slot3: KayakFirstDisplayMetric,
     val slot4: KayakFirstDisplayMetric,
     val slot5: KayakFirstDisplayMetric,
 ) {
-    val slots: List<KayakFirstDisplayMetric>
+    public val slots: List<KayakFirstDisplayMetric>
         get() = listOf(slot1, slot2, slot3, slot4, slot5)
 
-    fun withSlot(index: Int, metric: KayakFirstDisplayMetric): KayakFirstDisplayConfiguration {
+    public fun withSlot(index: Int, metric: KayakFirstDisplayMetric): KayakFirstDisplayConfiguration {
         require(index in 0 until SLOT_COUNT)
         val updated = slots.toMutableList().also { it[index] = metric }
         return KayakFirstDisplayConfiguration(
@@ -24,8 +24,8 @@ data class KayakFirstDisplayConfiguration(
         )
     }
 
-    companion object {
-        val DEFAULT = KayakFirstDisplayConfiguration(
+    public companion object {
+        public val DEFAULT: KayakFirstDisplayConfiguration = KayakFirstDisplayConfiguration(
             slot1 = KayakFirstDisplayMetric.ELAPSED_TIME,
             slot2 = KayakFirstDisplayMetric.TOTAL_DISTANCE,
             slot3 = KayakFirstDisplayMetric.AVERAGE_STROKE_RATE,
@@ -33,7 +33,7 @@ data class KayakFirstDisplayConfiguration(
             slot5 = KayakFirstDisplayMetric.TOTAL_EXPENDED_ENERGY,
         )
 
-        fun fromWireCodes(codes: List<Int>): KayakFirstDisplayConfiguration? {
+        public fun fromWireCodes(codes: List<Int>): KayakFirstDisplayConfiguration? {
             if (codes.size != SLOT_COUNT) return null
             val metrics = codes.map { KayakFirstDisplayMetric.fromWireCode(it) ?: return null }
             return KayakFirstDisplayConfiguration(
@@ -45,12 +45,12 @@ data class KayakFirstDisplayConfiguration(
             )
         }
 
-        const val SLOT_COUNT = 5
+        public const val SLOT_COUNT: Int = 5
     }
 }
 
 /** Bounded sport values corroborated by the paired TMIW simulator captures. */
-enum class KayakFirstSportMode(val wireCode: Int) {
+public enum class KayakFirstSportMode(public val wireCode: Int) {
     CANOEING(1),
     KAYAKING(2),
 }
@@ -68,9 +68,9 @@ enum class KayakFirstSportMode(val wireCode: Int) {
  * silence-triggered retry would send command 21 to every working Blue console. The user states the
  * dialect instead, once, at connect time.
  */
-enum class KayakFirstProtocolChoice(
-    val handshakeVariant: KayakFirstHandshakeVariant,
-    val sportMode: KayakFirstSportMode,
+public enum class KayakFirstProtocolChoice(
+    public val handshakeVariant: KayakFirstHandshakeVariant,
+    public val sportMode: KayakFirstSportMode,
 ) {
     /** Legacy Blue console (command-2 handshake), paddled as a kayak. */
     LEGACY_KAYAKING(KayakFirstHandshakeVariant.LEGACY, KayakFirstSportMode.KAYAKING),
@@ -88,7 +88,7 @@ enum class KayakFirstProtocolChoice(
     BULL(KayakFirstHandshakeVariant.BULL, KayakFirstSportMode.CANOEING),
     ;
 
-    val isLegacy: Boolean get() = handshakeVariant == KayakFirstHandshakeVariant.LEGACY
+    public val isLegacy: Boolean get() = handshakeVariant == KayakFirstHandshakeVariant.LEGACY
 }
 
 /** Commands in the first D98/D99 central compatibility profile. */

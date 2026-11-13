@@ -39,6 +39,10 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEa
     compilerOptions.optIn.add(
         "com.gmail.absolutebollockscreations.gattlibrary.core.GattLibraryInternalApi"
     )
+    // Match gatt-core: enforce explicit API on production variants only.
+    if (!name.contains("UnitTest") && !name.contains("AndroidTest")) {
+        compilerOptions.freeCompilerArgs.add("-Xexplicit-api=strict")
+    }
 }
 
 // Unit-test compilations only (LIB-72): tests moved from gatt-conformance use the simulator's probe

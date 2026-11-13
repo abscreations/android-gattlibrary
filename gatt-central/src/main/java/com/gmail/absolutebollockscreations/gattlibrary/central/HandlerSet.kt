@@ -1,8 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.central
 
 /** Protocol implementations a host elects to register in one engine. */
-class HandlerSet private constructor(private val selected: Set<Protocol>) {
-    enum class Protocol {
+public class HandlerSet private constructor(private val selected: Set<Protocol>) {
+    public enum class Protocol {
         FTMS,
         HRM,
         RSC,
@@ -47,11 +47,11 @@ class HandlerSet private constructor(private val selected: Set<Protocol>) {
 
     override fun hashCode(): Int = selected.hashCode()
 
-    companion object {
-        fun all(): HandlerSet = HandlerSet(Protocol.entries.toSet())
+    public companion object {
+        public fun all(): HandlerSet = HandlerSet(Protocol.entries.toSet())
 
-        fun ftmsAndHrm(): HandlerSet = of(Protocol.FTMS, Protocol.HRM)
+        public fun ftmsAndHrm(): HandlerSet = of(Protocol.FTMS, Protocol.HRM)
 
-        fun of(vararg protocols: Protocol): HandlerSet = HandlerSet(protocols.toSet())
+        public fun of(vararg protocols: Protocol): HandlerSet = HandlerSet(protocols.toSet())
     }
 }

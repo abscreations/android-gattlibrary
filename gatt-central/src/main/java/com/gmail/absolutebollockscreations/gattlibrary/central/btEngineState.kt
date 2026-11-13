@@ -47,7 +47,7 @@ import timber.log.Timber
 import java.util.UUID
 import kotlin.math.roundToInt
 
-fun netElevationChangeMeters(
+public fun netElevationChangeMeters(
     positiveMeters: Double?,
     negativeMeters: Double?,
 ): Double? = if (positiveMeters == null && negativeMeters == null) {
