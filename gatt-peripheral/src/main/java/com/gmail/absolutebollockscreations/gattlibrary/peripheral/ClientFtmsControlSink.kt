@@ -28,7 +28,7 @@ import timber.log.Timber
  * A machine that runs its own session (Kayak First) accepts Start/Stop locally inside the client,
  * not here.
  */
-class ClientFtmsControlSink(
+public class ClientFtmsControlSink(
     private val link: UpstreamMachineLink,
 ) : UpstreamControlSink {
 

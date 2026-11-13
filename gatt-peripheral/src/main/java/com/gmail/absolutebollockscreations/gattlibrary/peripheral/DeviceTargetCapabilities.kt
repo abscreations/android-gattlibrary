@@ -24,7 +24,7 @@ private fun ControlRange?.rawStep(rawPerUnit: Float): Float? = this?.let { (it.s
  * every 16-bit value rather than assuming it. This is the only path from central's capabilities
  * to the downstream claims; the raw-snapshot mapping it replaced was removed in LIB-70.
  */
-fun TargetCapabilities.Companion.fromDeviceCapabilities(caps: DeviceCapabilities): TargetCapabilities =
+public fun TargetCapabilities.Companion.fromDeviceCapabilities(caps: DeviceCapabilities): TargetCapabilities =
     fromReportedRanges(
         ReportedTargetRanges(
             supportsSpeed = caps.supportsSpeedTarget,

@@ -12,7 +12,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.MetricSampler
 import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamControlSink
 
 /** Bridge implementation of [FtmsUpstreamPort] over the central engine (moves off central in L24). */
-class EngineUpstreamPort(
+public class EngineUpstreamPort(
     /** Live read of the public client's measurements (`client.measurements.value`). */
     private val measurements: () -> MeasurementSnapshot,
     /** Live read of the public client capabilities (`client.capabilities.value`). */

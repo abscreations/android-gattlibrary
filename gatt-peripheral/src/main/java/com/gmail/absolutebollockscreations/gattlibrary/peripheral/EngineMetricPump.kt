@@ -41,7 +41,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.server.UpstreamReadings
  * the snapshot internally consistent and bounds the update rate regardless of how
  * chatty the upstream machine is.
  */
-class EngineMetricPump(
+public class EngineMetricPump(
     private val measurements: () -> MeasurementSnapshot,
     private val store: FtmsMetricStore,
     private val profileProvider: () -> FtmsMachineProfile?,
@@ -51,7 +51,7 @@ class EngineMetricPump(
 
     override fun start(scope: CoroutineScope): Unit = start(scope, DEFAULT_SAMPLE_PERIOD_MS)
 
-    fun start(scope: CoroutineScope, periodMs: Long) {
+    public fun start(scope: CoroutineScope, periodMs: Long): Unit {
         if (job != null) return
         job = scope.launch {
             while (isActive) {
@@ -103,9 +103,9 @@ class EngineMetricPump(
         ).toSnapshot(profileProvider(), SystemClock.elapsedRealtime())
     }
 
-    companion object {
+    public companion object {
         /** Shared with every other sampler; the derivation and its rationale live on [DEFAULT_METRIC_SAMPLE_PERIOD_MS]. */
-        const val DEFAULT_SAMPLE_PERIOD_MS = DEFAULT_METRIC_SAMPLE_PERIOD_MS
+        public const val DEFAULT_SAMPLE_PERIOD_MS: Long = DEFAULT_METRIC_SAMPLE_PERIOD_MS
     }
 }
 
