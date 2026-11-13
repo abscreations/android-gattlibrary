@@ -78,6 +78,7 @@ class FamilyCoverageTest {
         val KNOWN_GAPS: Map<String, String> = mapOf(
             MachineFamilyIds.SIG_HRM to "no standalone HRM persona; heart rate is published by machine personas",
             MachineFamilyIds.SIG_GLUCOSE to "no glucose persona; out of scope for the simulator",
+            MachineFamilyIds.MAXPRO to "no MAXPRO persona; MAXPRO-1 scope (2026-10-21) deferred the simulator",
         )
     }
 }
