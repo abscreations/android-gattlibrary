@@ -3,6 +3,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.conformance
 import com.gmail.absolutebollockscreations.gattlibrary.central.FixtureJson
 
 /** Reads gatt-fixtures resources for conformance tests (classpath paths stay `fixtures/...`). */
+/** gatt-central tests hold an identical copy for the golden tests moved there (LIB-75). Keep identical. */
 internal object Fixtures {
     fun json(path: String): Map<String, Any?> {
         val stream = requireNotNull(Fixtures::class.java.classLoader?.getResourceAsStream("fixtures/$path")) {
