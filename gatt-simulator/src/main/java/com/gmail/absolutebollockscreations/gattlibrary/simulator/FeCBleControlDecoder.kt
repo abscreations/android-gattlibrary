@@ -5,30 +5,30 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.FecBleUuids
 
 /** Typed outcome of decoding one FEC3 write. Never throws; unknown/malformed input is a value. */
 @SimulatorProbeApi
-sealed interface FeCBleControlCommand {
-    data class BasicResistance(val resistancePercent: Double) : FeCBleControlCommand
-    data class TargetPower(val watts: Double) : FeCBleControlCommand
-    data class WindResistance(
+public sealed interface FeCBleControlCommand {
+    public data class BasicResistance(val resistancePercent: Double) : FeCBleControlCommand
+    public data class TargetPower(val watts: Double) : FeCBleControlCommand
+    public data class WindResistance(
         val windCoefficient: Double?,
         val windSpeedEncodedUnit: Int?,
         val draftingFactor: Double?,
     ) : FeCBleControlCommand
-    data class TrackResistance(val gradePercent: Double, val crr: Double) : FeCBleControlCommand
-    data class UserConfiguration(val userWeightKg: Double?, val rawPage: ByteArray) : FeCBleControlCommand
-    data class RequestDataPage(
+    public data class TrackResistance(val gradePercent: Double, val crr: Double) : FeCBleControlCommand
+    public data class UserConfiguration(val userWeightKg: Double?, val rawPage: ByteArray) : FeCBleControlCommand
+    public data class RequestDataPage(
         val requestedPage: Int,
         val transmissionCount: Int,
         val acknowledgedResponse: Boolean,
         val transmitUntilAcknowledged: Boolean,
     ) : FeCBleControlCommand
-    data class Unsupported(val page: Int) : FeCBleControlCommand
+    public data class Unsupported(val page: Int) : FeCBleControlCommand
 
     /** Structural envelope rejection (plan §30.3): never mutates state. */
-    data class Rejected(val reason: RejectReason) : FeCBleControlCommand
+    public data class Rejected(val reason: RejectReason) : FeCBleControlCommand
 }
 
 @SimulatorProbeApi
-enum class RejectReason {
+public enum class RejectReason {
     BAD_LENGTH,
     BAD_SYNC,
     BAD_CHECKSUM,
@@ -43,10 +43,10 @@ enum class RejectReason {
  * says the channel number is ignored when sending to the trainer.
  */
 @SimulatorProbeApi
-object FeCBleControlDecoder {
+public object FeCBleControlDecoder {
 
     /** Decode one raw FEC3 write. Malformed envelopes return [FeCBleControlCommand.Rejected]. */
-    fun decode(raw: ByteArray): FeCBleControlCommand {
+    public fun decode(raw: ByteArray): FeCBleControlCommand {
         if (raw.size < 5 || raw.size > 20) return FeCBleControlCommand.Rejected(RejectReason.BAD_LENGTH)
         if ((raw[0].toInt() and 0xFF) != FecBleUuids.FEC_ANT_SYNC) {
             return FeCBleControlCommand.Rejected(RejectReason.BAD_SYNC)

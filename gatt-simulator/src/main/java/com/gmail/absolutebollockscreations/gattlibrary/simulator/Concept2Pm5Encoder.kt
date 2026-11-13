@@ -7,7 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Bounds-safe PM5 1.30 measurement encoders. */
 @SimulatorProbeApi
-object Concept2Pm5Encoder {
+public object Concept2Pm5Encoder {
     /**
      * PM5 207.000's two-notification FTMS Rower Data report.
      *
@@ -15,7 +15,7 @@ object Concept2Pm5Encoder {
      * the second clears More Data and supplies those mandatory fields plus energy. Both are
      * derived from the same snapshot, so FTMS and CE060080 cannot disagree.
      */
-    fun ftmsRower(s: Concept2Pm5Snapshot): List<ByteArray> = listOf(
+    public fun ftmsRower(s: Concept2Pm5Snapshot): List<ByteArray> = listOf(
         packet {
             u16(0x0AFF)
             u8(kotlin.math.round(s.averageCadence * 2.0).toInt())
@@ -38,7 +38,7 @@ object Concept2Pm5Encoder {
         },
     )
 
-    fun individual(uuid: UUID, s: Concept2Pm5Snapshot): ByteArray? = when (uuid) {
+    public fun individual(uuid: UUID, s: Concept2Pm5Snapshot): ByteArray? = when (uuid) {
         Concept2Uuids.UUID_C2_GENERAL_STATUS -> generalStatus(s)
         Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1 -> additionalStatus1(s, multiplexed = false)
         Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2 -> additionalStatus2(s, multiplexed = false)
@@ -54,7 +54,7 @@ object Concept2Pm5Encoder {
         else -> null
     }
 
-    fun multiplexed(id: Int, s: Concept2Pm5Snapshot): ByteArray? {
+    public fun multiplexed(id: Int, s: Concept2Pm5Snapshot): ByteArray? {
         val payload = when (id) {
             0x31 -> generalStatus(s)
             0x32 -> additionalStatus1(s, multiplexed = true)
@@ -73,7 +73,7 @@ object Concept2Pm5Encoder {
         return byteArrayOf(id.toByte()) + payload
     }
 
-    fun generalStatus(s: Concept2Pm5Snapshot) = packet {
+    public fun generalStatus(s: Concept2Pm5Snapshot): ByteArray = packet {
         u24(s.elapsedCentiseconds)
         u24(s.distanceDecimetres)
         u8(s.workoutType); u8(s.intervalType); u8(s.workoutState); u8(s.rowingState); u8(s.strokeState)
@@ -155,7 +155,7 @@ object Concept2Pm5Encoder {
     }
 
     /** One complete force curve, split into PM5 frames that always fit ATT MTU 23. */
-    fun forceCurve(s: Concept2Pm5Snapshot): List<ByteArray> {
+    public fun forceCurve(s: Concept2Pm5Snapshot): List<ByteArray> {
         val peak = (s.peakForceTenthsPound / 10).coerceAtLeast(1)
         val points = s.forceCurvePounds.takeIf { it.isNotEmpty() } ?: (0 until 24).map { index ->
             val x = index / 23.0

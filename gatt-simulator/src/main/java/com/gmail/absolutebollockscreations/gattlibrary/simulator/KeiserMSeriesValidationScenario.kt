@@ -4,10 +4,10 @@ import kotlin.math.roundToInt
 
 /** Deterministic five-minute adversarial ride shared by the Android M3i, M3m and M3o personas. */
 @SimulatorProbeApi
-class KeiserMSeriesValidationScenario(
+public class KeiserMSeriesValidationScenario(
     private val profile: KeiserMSeriesSimulatorProfile,
 ) {
-    enum class Event {
+    public enum class Event {
         RIDE,
         POWER_DROPOUT,
         CADENCE_DROPOUT,
@@ -20,7 +20,7 @@ class KeiserMSeriesValidationScenario(
         RECOVERY,
     }
 
-    data class Output(
+    public data class Output(
         val sample: FtmsMockSample,
         /** Null means stop transmitting until a later output supplies a new value. */
         val manufacturerPayload: ByteArray?,
@@ -37,7 +37,7 @@ class KeiserMSeriesValidationScenario(
     private var repeatedPayload: ByteArray? = null
     private var recoveringFromSilence = false
 
-    fun next(generated: FtmsMockSample): Output {
+    public fun next(generated: FtmsMockSample): Output {
         val loopIndex = elapsedMs / LOOP_DURATION_MS
         val at = elapsedMs % LOOP_DURATION_MS
         if (at < previousLoopElapsedMs) resetLoopState()
@@ -162,14 +162,14 @@ class KeiserMSeriesValidationScenario(
         recoveringFromSilence = false
     }
 
-    companion object {
-        const val LOOP_DURATION_MS = 300_000L
-        const val MALFORMED_PERIOD_MS = 15_000L
-        const val COAST_START_MS = 90_000L
-        const val COAST_END_MS = 120_000L
-        const val REPEAT_START_MS = 122_000L
-        const val REPEAT_END_MS = 127_000L
-        const val STALE_START_MS = 137_000L
+    public companion object {
+        public const val LOOP_DURATION_MS: Long = 300_000L
+        public const val MALFORMED_PERIOD_MS: Long = 15_000L
+        public const val COAST_START_MS: Long = 90_000L
+        public const val COAST_END_MS: Long = 120_000L
+        public const val REPEAT_START_MS: Long = 122_000L
+        public const val REPEAT_END_MS: Long = 127_000L
+        public const val STALE_START_MS: Long = 137_000L
         private const val POWER_DROPOUT_AT_MS = 32_000L
         private const val CADENCE_DROPOUT_AT_MS = 37_000L
         private const val REALTIME_BOUNDARY_START_MS = 62_000L

@@ -11,4 +11,4 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
     message = "Simulator probe API: public only for gatt-conformance; not a supported surface.",
 )
 @Retention(AnnotationRetention.BINARY)
-annotation class SimulatorProbeApi
+public annotation class SimulatorProbeApi

@@ -18,7 +18,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsMachineProf
  * UI passes `BuildConfig.DEBUG` and keeps the KICKR selector gate on its side.
  */
 @GattLibraryInternalApi
-fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona> =
+public fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona> =
     listOf(SimulatorPersona.IndoorBikeSpeedAndPower, SimulatorPersona.StrydFootpod) +
         FtmsMockEngine.supportedMachines.flatMap { machine ->
             // The broken-advertisement rower sits directly below the honest one: same persona,
@@ -66,7 +66,7 @@ fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona> =
         }
 
 @GattLibraryInternalApi
-fun simulatorAdvertisedNameLine(persona: SimulatorPersona): String? = when (persona) {
+public fun simulatorAdvertisedNameLine(persona: SimulatorPersona): String? = when (persona) {
     SimulatorPersona.KayakFirstBlue,
     SimulatorPersona.KayakFirstOrange,
     -> "Name: ${persona.advertisedName}"

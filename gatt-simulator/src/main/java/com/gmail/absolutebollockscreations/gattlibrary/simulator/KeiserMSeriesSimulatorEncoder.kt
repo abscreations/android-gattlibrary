@@ -6,15 +6,15 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeries
 
 /** Renders the dynamic part Android supplies to Keiser's manufacturer-data AD structure. */
 @SimulatorProbeApi
-object KeiserMSeriesSimulatorEncoder {
-    const val DATA_TYPE_REALTIME = 0x00
+public object KeiserMSeriesSimulatorEncoder {
+    public const val DATA_TYPE_REALTIME: Int = 0x00
     /** Keiser's captured fast interval (`0x0237 * 0.625 ms`), rounded for coroutine scheduling. */
-    const val SAMPLE_PERIOD_MS = 354L
+    public const val SAMPLE_PERIOD_MS: Long = 354L
 
     /** Company ID is supplied separately to Android and is therefore absent from this value. */
-    const val MANUFACTURER_PAYLOAD_LENGTH = KeiserMSeriesSpec.CURRENT_FIELD_LENGTH - 2
+    public const val MANUFACTURER_PAYLOAD_LENGTH: Int = KeiserMSeriesSpec.CURRENT_FIELD_LENGTH - 2
 
-    fun encode(
+    public fun encode(
         sample: FtmsMockSample,
         profile: KeiserMSeriesSimulatorProfile,
         dataType: Int = DATA_TYPE_REALTIME,
@@ -47,7 +47,7 @@ object KeiserMSeriesSimulatorEncoder {
     }
 
     /** Reattaches the little-endian company prefix used by the production decoder and fixtures. */
-    fun canonicalField(manufacturerPayload: ByteArray): ByteArray =
+    public fun canonicalField(manufacturerPayload: ByteArray): ByteArray =
         byteArrayOf(
             (KeiserMSeriesSpec.COMPANY_ID and 0xff).toByte(),
             (KeiserMSeriesSpec.COMPANY_ID ushr 8).toByte(),

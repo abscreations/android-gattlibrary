@@ -24,7 +24,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
  * capture taken against this simulator is distinguishable from a physical one.
  */
 @SimulatorProbeApi
-class SchwinnX70FrameEncoder {
+public class SchwinnX70FrameEncoder {
 
     private val template = SchwinnX70Template.DEFAULT
     private var frameIndex = 0
@@ -35,11 +35,11 @@ class SchwinnX70FrameEncoder {
      * Supplemental first, then sibling: that is the arrival order in every captured session, and the
      * two carry the same sequence counter because they are one emission rather than two.
      */
-    fun encodePair(state: SchwinnX70ConsoleState): List<ByteArray> =
+    public fun encodePair(state: SchwinnX70ConsoleState): List<ByteArray> =
         listOf(encodeSupplemental(state), encodeSibling(state))
 
     /** The 20-byte supplemental frame: heart rate, resistance, an accumulator. */
-    fun encodeSupplemental(state: SchwinnX70ConsoleState): ByteArray {
+    public fun encodeSupplemental(state: SchwinnX70ConsoleState): ByteArray {
         val frame = template.supplemental.copyOf()
         frame[0] = state.sequence.toByte()
         // Byte 2 is a second counter on the 170 and near-static on the 270. Advancing it with the
@@ -57,7 +57,7 @@ class SchwinnX70FrameEncoder {
     }
 
     /** The 14-byte sibling frame: native speed and power, two accumulators. */
-    fun encodeSibling(state: SchwinnX70ConsoleState): ByteArray {
+    public fun encodeSibling(state: SchwinnX70ConsoleState): ByteArray {
         val frame = template.sibling.copyOf()
         frame[0] = state.sequence.toByte()
         frame[1] = cycled(template.siblingByte1).toByte()
@@ -69,7 +69,7 @@ class SchwinnX70FrameEncoder {
     }
 
     /** The 17-byte main frame: crank counter, console clock, cumulative energy, resistance. */
-    fun encodeMain(state: SchwinnX70ConsoleState): ByteArray {
+    public fun encodeMain(state: SchwinnX70ConsoleState): ByteArray {
         val frame = template.main.copyOf()
         frame[3] = cycled(template.mainByte3).toByte()
         putU16(frame, MAIN_CRANK_COUNTER, state.crankCounter)
@@ -86,18 +86,18 @@ class SchwinnX70FrameEncoder {
      * `isStreamMarker` and decodes nothing from it; a client that treats its first main-frame
      * notification as a measurement is wrong on hardware, and this is what proves it.
      */
-    fun streamMarker(index: Int): ByteArray =
+    public fun streamMarker(index: Int): ByteArray =
         OBSERVED_MARKERS[index.mod(OBSERVED_MARKERS.size)].copyOf()
 
     /** Advance the replay cursor without emitting, so a paused stream does not freeze its octets. */
-    fun skipTick() {
+    public fun skipTick() {
         frameIndex++
     }
 
     private fun cycled(values: IntArray): Int = values[frameIndex % values.size]
 
     /** Called once per tick, after both paired frames are built from one index. */
-    fun completeTick() {
+    public fun completeTick() {
         frameIndex++
     }
 
@@ -116,7 +116,7 @@ class SchwinnX70FrameEncoder {
         }
     }
 
-    companion object {
+    public companion object {
         // Offsets restated from central's SchwinnX70Measurement, which keeps them private. A mismatch is
         // caught by the simulator tests, which round-trip every generated frame through that decoder.
         private const val SIBLING_SPEED = 3
@@ -142,7 +142,7 @@ class SchwinnX70FrameEncoder {
          * and so the central's own `isStreamMarker` is exercised against the full family rather
          * than the two variants an earlier revision generalised from.
          */
-        val OBSERVED_MARKERS: List<ByteArray> = listOf(
+        public val OBSERVED_MARKERS: List<ByteArray> = listOf(
             byteArrayOf(0x05, 0x09, 0x01, 0x00, 0x00),
             byteArrayOf(0x05, 0x09, 0x01, 0x01, 0x00),
             byteArrayOf(0x05, 0x09, 0x01, 0x03, 0x00),

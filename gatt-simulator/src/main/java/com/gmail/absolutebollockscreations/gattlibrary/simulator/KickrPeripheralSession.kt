@@ -10,13 +10,13 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 @SimulatorProbeApi
-enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
+public enum class KickrControlRoute { FTMS, LEGACY_WAHOO, ZWIFT_PROPRIETARY }
 
 /** Which Zwift Click button a simulator UI tap represents - see KickrPeripheralSession.sendZwiftClickShift()'s KDoc. */
-enum class ZwiftClickDirection { UP, DOWN }
+public enum class ZwiftClickDirection { UP, DOWN }
 
 @SimulatorProbeApi
-data class KickrTxFrame(
+public data class KickrTxFrame(
     val characteristicUuid: UUID,
     val value: ByteArray,
     val indicate: Boolean,
@@ -24,24 +24,24 @@ data class KickrTxFrame(
 
 /** Android-free per-link generation state used by the GATT callback and exhaustive tests. */
 @SimulatorProbeApi
-class KickrPeripheralSession(
-    val generation: Long,
-    val model: KickrSyntheticModel,
+public class KickrPeripheralSession(
+    public val generation: Long,
+    public val model: KickrSyntheticModel,
     legacyAckMode: KickrLegacyAckMode? = null,
     zwiftServiceForm: RideOnServiceForm? = null,
     private val queueCapacity: Int = DEFAULT_QUEUE_CAPACITY,
 ) {
     private val subscriptions = mutableMapOf<UUID, PeripheralConnection.CccdMode>()
     private val queue = ArrayDeque<KickrTxFrame>()
-    val ftms = KickrFtmsControlProcessor(model)
-    val legacy = legacyAckMode?.let { KickrLegacyControlServer(model, it) }
-    val zwift = zwiftServiceForm?.let { ZwiftTrainerPeripheralServer(it, model) }
+    public val ftms: KickrFtmsControlProcessor = KickrFtmsControlProcessor(model)
+    public val legacy: KickrLegacyControlServer? = legacyAckMode?.let { KickrLegacyControlServer(model, it) }
+    public val zwift: ZwiftTrainerPeripheralServer? = zwiftServiceForm?.let { ZwiftTrainerPeripheralServer(it, model) }
 
-    var route: KickrControlRoute? = null
+    public var route: KickrControlRoute? = null
         private set
-    var inFlight: KickrTxFrame? = null
+    public var inFlight: KickrTxFrame? = null
         private set
-    var droppedFrames: Long = 0
+    public var droppedFrames: Long = 0
         private set
 
     init {
@@ -49,22 +49,22 @@ class KickrPeripheralSession(
         require(queueCapacity > 0)
     }
 
-    fun subscribe(characteristic: UUID, mode: PeripheralConnection.CccdMode) {
+    public fun subscribe(characteristic: UUID, mode: PeripheralConnection.CccdMode) {
         if (mode == PeripheralConnection.CccdMode.DISABLED) subscriptions.remove(characteristic)
         else subscriptions[characteristic] = mode
     }
 
-    fun subscription(characteristic: UUID): PeripheralConnection.CccdMode =
+    public fun subscription(characteristic: UUID): PeripheralConnection.CccdMode =
         subscriptions[characteristic] ?: PeripheralConnection.CccdMode.DISABLED
 
-    fun acquire(candidate: KickrControlRoute): Boolean {
+    public fun acquire(candidate: KickrControlRoute): Boolean {
         val current = route
         if (current == null) route = candidate
         return current == null || current == candidate
     }
 
     @Synchronized
-    fun handleLegacyControl(value: ByteArray): KickrLegacyControlOutcome? {
+    public fun handleLegacyControl(value: ByteArray): KickrLegacyControlOutcome? {
         val server = legacy ?: return null
         if (subscription(WahooUuids.UUID_WAHOO_KICKR_CONTROL) != PeripheralConnection.CccdMode.INDICATE ||
             route !in setOf(null, KickrControlRoute.LEGACY_WAHOO)
@@ -78,7 +78,7 @@ class KickrPeripheralSession(
     }
 
     @Synchronized
-    fun handleFtmsControl(value: ByteArray): com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler.Outcome? {
+    public fun handleFtmsControl(value: ByteArray): com.gmail.absolutebollockscreations.gattlibrary.server.FtmsControlPointHandler.Outcome? {
         if (subscription(FtmsUuids.UUID_FITNESS_MACHINE_CONTROL_POINT) != PeripheralConnection.CccdMode.INDICATE ||
             route !in setOf(null, KickrControlRoute.FTMS) ||
             !ftms.session.tryBeginProcedure()
@@ -105,7 +105,7 @@ class KickrPeripheralSession(
     }
 
     @Synchronized
-    fun handleZwiftControl(value: ByteArray): ZwiftTrainerServerOutcome? {
+    public fun handleZwiftControl(value: ByteArray): ZwiftTrainerServerOutcome? {
         val server = zwift ?: return null
         if (route !in setOf(null, KickrControlRoute.ZWIFT_PROPRIETARY)) return null
         val bothTxSubscribed =
@@ -118,7 +118,7 @@ class KickrPeripheralSession(
     }
 
     @Synchronized
-    fun enqueueZwiftTelemetry() {
+    public fun enqueueZwiftTelemetry() {
         val server = zwift ?: return
         if (!server.controlReady ||
             subscription(RideOnSpec.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
@@ -142,7 +142,7 @@ class KickrPeripheralSession(
      * protocol violation).
      */
     @Synchronized
-    fun sendZwiftClickShift(direction: ZwiftClickDirection): Boolean {
+    public fun sendZwiftClickShift(direction: ZwiftClickDirection): Boolean {
         val server = zwift ?: return false
         if (!server.controlReady ||
             subscription(RideOnSpec.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
@@ -168,7 +168,7 @@ class KickrPeripheralSession(
         )
     }
 
-    fun enqueue(frame: KickrTxFrame) {
+    public fun enqueue(frame: KickrTxFrame) {
         if (queue.size >= queueCapacity) {
             queue.removeFirst()
             droppedFrames++
@@ -176,7 +176,7 @@ class KickrPeripheralSession(
         queue.addLast(frame.copy(value = frame.value.copyOf()))
     }
 
-    fun enqueueCoalesced(frame: KickrTxFrame) {
+    public fun enqueueCoalesced(frame: KickrTxFrame) {
         queue.removeIf { pending ->
             pending.characteristicUuid == frame.characteristicUuid &&
                 pending.value.getOrNull(1) == frame.value.getOrNull(1)
@@ -184,18 +184,18 @@ class KickrPeripheralSession(
         enqueue(frame)
     }
 
-    fun beginNext(): KickrTxFrame? {
+    public fun beginNext(): KickrTxFrame? {
         if (inFlight != null) return null
         return queue.pollFirst()?.also { inFlight = it }
     }
 
-    fun completeInFlight(): KickrTxFrame? {
+    public fun completeInFlight(): KickrTxFrame? {
         val completed = inFlight
         inFlight = null
         return completed
     }
 
-    fun clear() {
+    public fun clear() {
         subscriptions.clear()
         queue.clear()
         inFlight = null
@@ -205,7 +205,7 @@ class KickrPeripheralSession(
         zwift?.reset()
     }
 
-    val pendingCount: Int get() = queue.size
+    public val pendingCount: Int get() = queue.size
 
-    companion object { const val DEFAULT_QUEUE_CAPACITY = 16 }
+    public companion object { public const val DEFAULT_QUEUE_CAPACITY: Int = 16 }
 }

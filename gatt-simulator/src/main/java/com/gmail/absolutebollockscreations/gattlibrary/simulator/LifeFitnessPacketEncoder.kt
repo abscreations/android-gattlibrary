@@ -9,8 +9,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian
  * persona layouts; unobserved machine types and optional fields are not added speculatively.
  */
 @SimulatorProbeApi
-object LifeFitnessPacketEncoder {
-    fun encode(machine: LifeFitnessMachine, sample: FtmsMockSample): ByteArray = when (machine) {
+public object LifeFitnessPacketEncoder {
+    public fun encode(machine: LifeFitnessMachine, sample: FtmsMockSample): ByteArray = when (machine) {
         LifeFitnessMachine.TREADMILL -> treadmill(sample)
         LifeFitnessMachine.CROSS_TRAINER -> crossTrainer(sample)
         LifeFitnessMachine.STAIR_CLIMBER -> stairClimber(sample)

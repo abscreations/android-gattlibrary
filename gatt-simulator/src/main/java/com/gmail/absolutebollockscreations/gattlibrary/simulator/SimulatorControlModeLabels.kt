@@ -14,7 +14,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
  * speed/resistance/incline/gear value, an ERG power target, or a full simulation
  * (wind/grade/rolling-resistance/wind-resistance) parameter set.
  */
-object SimulatorControlModeLabels {
+public object SimulatorControlModeLabels {
     /**
      * Protocol-independent control-kind words.
      *
@@ -33,16 +33,16 @@ object SimulatorControlModeLabels {
         const val NONE = "none"
     }
 
-    const val AUTOMATIC = "Automatic"
+    public const val AUTOMATIC: String = "Automatic"
 
     @SimulatorProbeApi
-    const val FTMS_DIRECT = "FTMS - ${Kind.DIRECT}"
+    public const val FTMS_DIRECT: String = "FTMS - ${Kind.DIRECT}"
     @SimulatorProbeApi
-    const val FTMS_ERG = "FTMS - ${Kind.ERG}"
-    const val FTMS_SIM = "FTMS - ${Kind.SIM}"
+    public const val FTMS_ERG: String = "FTMS - ${Kind.ERG}"
+    public const val FTMS_SIM: String = "FTMS - ${Kind.SIM}"
 
-    const val ANT_DIRECT = "ANT+ ${Kind.DIRECT}"
-    const val ANT_SIM = "ANT+ ${Kind.SIM}"
+    public const val ANT_DIRECT: String = "ANT+ ${Kind.DIRECT}"
+    public const val ANT_SIM: String = "ANT+ ${Kind.SIM}"
 
     internal const val KICKR_DIRECT = "KICKR-${Kind.DIRECT}"
     internal const val KICKR_SIM = "KICKR-${Kind.SIM}"

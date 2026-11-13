@@ -6,59 +6,59 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Pure per-link PM5 state: subscriptions, rate and deterministic mux position. */
 @SimulatorProbeApi
-class Concept2Pm5Session {
+public class Concept2Pm5Session {
     private val subscriptions = mutableSetOf<UUID>()
     private val csafe = Concept2CsafeLink()
     private var heartRateInputBytes: ByteArray? = null
     private var lastAdditionalStatus3Bytes: ByteArray? = null
-    var sampleRate: Int = DEFAULT_SAMPLE_RATE
+    public var sampleRate: Int = DEFAULT_SAMPLE_RATE
         private set
-    var muxPosition: Int = 0
+    public var muxPosition: Int = 0
         private set
 
-    val periodMs: Long get() = PERIODS_MS.getValue(sampleRate)
+    public val periodMs: Long get() = PERIODS_MS.getValue(sampleRate)
 
-    val csafeResponse: ByteArray? get() = csafe.response
-    val csafeHandshakeState: Concept2CsafeLink.HandshakeState get() = csafe.handshakeState
-    val csafeWorkoutProgram: Concept2WorkoutProgram? get() = csafe.handshakeState.workoutProgram
+    public val csafeResponse: ByteArray? get() = csafe.response
+    public val csafeHandshakeState: Concept2CsafeLink.HandshakeState get() = csafe.handshakeState
+    public val csafeWorkoutProgram: Concept2WorkoutProgram? get() = csafe.handshakeState.workoutProgram
 
-    fun acceptCsafeRequest(value: ByteArray, nowMs: Long): Concept2CsafeLink.RequestResult =
+    public fun acceptCsafeRequest(value: ByteArray, nowMs: Long): Concept2CsafeLink.RequestResult =
         csafe.accept(value, nowMs)
 
-    fun notificationForAcceptedCsafe(result: Concept2CsafeLink.RequestResult): ByteArray? =
+    public fun notificationForAcceptedCsafe(result: Concept2CsafeLink.RequestResult): ByteArray? =
         (result as? Concept2CsafeLink.RequestResult.Accepted)?.response
             ?.takeIf { isSubscribed(Concept2Uuids.UUID_C2_CSAFE_RESPONSE) }
 
-    fun consumeWorkoutTerminationRequest(): Boolean = csafe.consumeWorkoutTerminationRequest()
+    public fun consumeWorkoutTerminationRequest(): Boolean = csafe.consumeWorkoutTerminationRequest()
 
     /** Clear workout configuration/response state without dropping this client's CCCDs. */
-    fun resetCsafeWorkoutState() = csafe.reset()
+    public fun resetCsafeWorkoutState(): Unit = csafe.reset()
 
-    fun setSampleRate(value: Int): Boolean {
+    public fun setSampleRate(value: Int): Boolean {
         if (value !in PERIODS_MS) return false
         sampleRate = value
         return true
     }
 
     @Synchronized
-    fun setSubscribed(uuid: UUID, enabled: Boolean) {
+    public fun setSubscribed(uuid: UUID, enabled: Boolean) {
         if (enabled) subscriptions += uuid else subscriptions -= uuid
     }
 
     @Synchronized
-    fun isSubscribed(uuid: UUID): Boolean = uuid in subscriptions
+    public fun isSubscribed(uuid: UUID): Boolean = uuid in subscriptions
 
-    val hasSubscriptions: Boolean
+    public val hasSubscriptions: Boolean
         @Synchronized get() = subscriptions.isNotEmpty()
 
-    val hasWorkoutMeasurementSubscription: Boolean
+    public val hasWorkoutMeasurementSubscription: Boolean
         @Synchronized get() = subscriptions.any(WORKOUT_MEASUREMENT_UUIDS::contains)
 
-    val heartRateInput: ByteArray?
+    public val heartRateInput: ByteArray?
         get() = heartRateInputBytes?.copyOf()
 
     /** C1 retains a valid client-to-PM HR packet; C5 will apply it to virtual monitor state. */
-    fun setHeartRateInput(value: ByteArray): Boolean {
+    public fun setHeartRateInput(value: ByteArray): Boolean {
         if (value.size != HEART_RATE_INPUT_SIZE) return false
         val type = value[0].toInt() and 0xFF
         if (type !in 0..1) return false
@@ -67,7 +67,7 @@ class Concept2Pm5Session {
     }
 
     @Synchronized
-    fun nextMuxId(enabledIds: List<Int>): Int? {
+    public fun nextMuxId(enabledIds: List<Int>): Int? {
         if (!isSubscribed(Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION)) return null
         val eligible = enabledIds.filter { id ->
             val individual = uuidForId(id)
@@ -81,7 +81,7 @@ class Concept2Pm5Session {
 
     /** Per-link edge detector for the status stream; forced emissions represent its rate tick. */
     @Synchronized
-    fun shouldEmitAdditionalStatus3(value: ByteArray, force: Boolean = false): Boolean {
+    public fun shouldEmitAdditionalStatus3(value: ByteArray, force: Boolean = false): Boolean {
         val changed = lastAdditionalStatus3Bytes?.contentEquals(value) != true
         if (!force && !changed) return false
         lastAdditionalStatus3Bytes = value.copyOf()
@@ -89,16 +89,16 @@ class Concept2Pm5Session {
     }
 
     @Synchronized
-    fun reset() {
+    public fun reset() {
         subscriptions.clear(); sampleRate = DEFAULT_SAMPLE_RATE; muxPosition = 0
         heartRateInputBytes = null
         lastAdditionalStatus3Bytes = null
         csafe.reset()
     }
 
-    companion object {
-        const val DEFAULT_SAMPLE_RATE = 1
-        val PERIODS_MS = mapOf(0 to 1000L, 1 to 500L, 2 to 250L, 3 to 100L)
+    public companion object {
+        public const val DEFAULT_SAMPLE_RATE: Int = 1
+        public val PERIODS_MS: Map<Int, Long> = mapOf(0 to 1000L, 1 to 500L, 2 to 250L, 3 to 100L)
 
         private val WORKOUT_MEASUREMENT_UUIDS = setOf(
             Concept2Uuids.UUID_C2_MULTIPLEXED_INFORMATION,
@@ -113,7 +113,7 @@ class Concept2Pm5Session {
             FtmsUuids.UUID_ROWING_MACHINE_DATA,
         )
 
-        fun uuidForId(id: Int): UUID? = when (id) {
+        public fun uuidForId(id: Int): UUID? = when (id) {
             0x31 -> Concept2Uuids.UUID_C2_GENERAL_STATUS
             0x32 -> Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_1
             0x33 -> Concept2Uuids.UUID_C2_ADDITIONAL_STATUS_2

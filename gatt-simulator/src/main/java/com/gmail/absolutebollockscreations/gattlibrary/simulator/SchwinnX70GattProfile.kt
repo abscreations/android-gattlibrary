@@ -41,7 +41,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
  * than assumed.
  */
 @SimulatorProbeApi
-data class SchwinnX70AdvertisingPlan(
+public data class SchwinnX70AdvertisingPlan(
     val serviceUuid: UUID,
     val localName: String,
     val includeNameInAdvertising: Boolean,
@@ -59,8 +59,8 @@ data class SchwinnX70AdvertisingPlan(
         require(scanResponseBytes <= MAX_LEGACY_BYTES)
     }
 
-    companion object {
-        const val MAX_LEGACY_BYTES = 31
+    public companion object {
+        public const val MAX_LEGACY_BYTES: Int = 31
 
         /**
          * Little-endian `64 33` from the captured Manufacturer Specific Data field.
@@ -69,13 +69,13 @@ data class SchwinnX70AdvertisingPlan(
          * because it is what the console sends; understood as nothing. The two captures differ here
          * in a single nibble, and two samples is not a vocabulary.
          */
-        const val CAPTURED_MANUFACTURER_ID = 0x3364
+        public const val CAPTURED_MANUFACTURER_ID: Int = 0x3364
 
         /** The six octets following the company identifier, verbatim. */
-        val CAPTURED_MANUFACTURER_PAYLOAD: ByteArray =
+        public val CAPTURED_MANUFACTURER_PAYLOAD: ByteArray =
             byteArrayOf(0xDB.toByte(), 0xD0.toByte(), 0xF4.toByte(), 0xD7.toByte(), 0x00, 0x80.toByte())
 
-        fun create(): SchwinnX70AdvertisingPlan {
+        public fun create(): SchwinnX70AdvertisingPlan {
             val name = SCHWINN_X70_ADVERTISED_NAME
             return SchwinnX70AdvertisingPlan(
                 serviceUuid = SchwinnX70Uuids.UUID_X70_SERVICE,
@@ -123,7 +123,7 @@ data class SchwinnX70AdvertisingPlan(
 
 /** One characteristic in the served manifest. */
 @SimulatorProbeApi
-data class SchwinnX70GattCharacteristic(
+public data class SchwinnX70GattCharacteristic(
     val uuid: UUID,
     val properties: Int,
     val notifies: Boolean,
@@ -141,7 +141,7 @@ data class SchwinnX70GattCharacteristic(
 
 /** One service in the served manifest. */
 @SimulatorProbeApi
-data class SchwinnX70GattService(
+public data class SchwinnX70GattService(
     val uuid: UUID,
     val characteristics: List<SchwinnX70GattCharacteristic>,
 )
@@ -165,7 +165,7 @@ data class SchwinnX70GattService(
  * inventory, and a client that finds `0x180F` on an x70 has learned something false about the family.
  */
 @SimulatorProbeApi
-object SchwinnX70GattProfile {
+public object SchwinnX70GattProfile {
 
     private const val READ = BluetoothGattCharacteristic.PROPERTY_READ
     private const val WRITE = BluetoothGattCharacteristic.PROPERTY_WRITE
@@ -179,10 +179,10 @@ object SchwinnX70GattProfile {
      * it, and because a central that assumes its first notification is a measurement is wrong on
      * hardware.
      */
-    val AUX_STATUS_FRAME: ByteArray = byteArrayOf(0x01, 0x1F, 0x00, 0x00)
+    public val AUX_STATUS_FRAME: ByteArray = byteArrayOf(0x01, 0x1F, 0x00, 0x00)
 
     /** Notify characteristics, in the order a console arms and uses them. */
-    val NOTIFY_CHARACTERISTICS: List<UUID> = listOf(
+    public val NOTIFY_CHARACTERISTICS: List<UUID> = listOf(
         SchwinnX70Uuids.UUID_X70_AUX_STATUS,
         SchwinnX70Uuids.UUID_X70_MEASUREMENT,
         SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
@@ -192,13 +192,13 @@ object SchwinnX70GattProfile {
     )
 
     /** The three that carry measurements. The other four are served and stay quiet. */
-    val MEASUREMENT_CHARACTERISTICS: List<UUID> = listOf(
+    public val MEASUREMENT_CHARACTERISTICS: List<UUID> = listOf(
         SchwinnX70Uuids.UUID_X70_MEASUREMENT,
         SchwinnX70Uuids.UUID_X70_SUPPLEMENTAL,
         SchwinnX70Uuids.UUID_X70_SIBLING,
     )
 
-    fun manifest(): List<SchwinnX70GattService> = listOf(
+    public fun manifest(): List<SchwinnX70GattService> = listOf(
         SchwinnX70GattService(
             SchwinnX70Uuids.UUID_X70_SERVICE,
             listOf(
@@ -251,12 +251,12 @@ object SchwinnX70GattProfile {
     )
 
     /** Read-back values by characteristic, for the server's read handler. */
-    fun readValues(): Map<UUID, ByteArray> =
+    public fun readValues(): Map<UUID, ByteArray> =
         manifest().flatMap { it.characteristics }
             .mapNotNull { characteristic -> characteristic.readValue?.let { characteristic.uuid to it } }
             .toMap()
 
-    fun buildServices(): List<BluetoothGattService> =
+    public fun buildServices(): List<BluetoothGattService> =
         manifest().map { definition ->
             BluetoothGattService(definition.uuid, BluetoothGattService.SERVICE_TYPE_PRIMARY).also { service ->
                 definition.characteristics.forEach { spec ->
@@ -320,16 +320,16 @@ object SchwinnX70GattProfile {
  * already disagree and nothing can choose between them.
  */
 @SimulatorProbeApi
-object SchwinnX70SetupGate {
+public object SchwinnX70SetupGate {
 
     /** QZ's literal, which FitBridge's own central sends. */
-    val QZ_COMMAND: ByteArray = SchwinnX70Spec.INITIALISATION
+    public val QZ_COMMAND: ByteArray = SchwinnX70Spec.INITIALISATION
 
     /** TMIW's literal, a second unreconciled sample (V17). */
-    val TMIW_COMMAND: ByteArray = byteArrayOf(0x05, 0x03, 0xD9.toByte(), 0x00, 0x1F)
+    public val TMIW_COMMAND: ByteArray = byteArrayOf(0x05, 0x03, 0xD9.toByte(), 0x00, 0x1F)
 
     /** Both known literals, for tests and diagnostics. */
-    val KNOWN_COMMANDS: List<ByteArray> = listOf(QZ_COMMAND, TMIW_COMMAND)
+    public val KNOWN_COMMANDS: List<ByteArray> = listOf(QZ_COMMAND, TMIW_COMMAND)
 
     /**
      * Whether [command] opens the gate.
@@ -338,7 +338,7 @@ object SchwinnX70SetupGate {
      * else — an empty write, a wrong length prefix, a bad checksum — so a client that writes
      * nonsense gets `GATT_FAILURE` and no stream, which is what a console does.
      */
-    fun accepts(command: ByteArray): Boolean =
+    public fun accepts(command: ByteArray): Boolean =
         KNOWN_COMMANDS.any { it.contentEquals(command) } ||
             isWellFormedCommand(command)
 

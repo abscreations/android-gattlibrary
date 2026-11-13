@@ -81,7 +81,7 @@ internal enum class SimulatorRangeKind(val heading: String) {
 
 /** Machine names for the FTMS profiles, shared by the persona title and the status card. */
 @GattLibraryInternalApi
-fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machine) {
+public fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machine) {
     FtmsMachineProfile.INDOOR_BIKE -> "Indoor bike"
     FtmsMachineProfile.TREADMILL -> "Treadmill"
     FtmsMachineProfile.ELLIPTICAL -> "Cross trainer"
@@ -91,9 +91,9 @@ fun ftmsMachineLabel(machine: FtmsMachineProfile): String = when (machine) {
 }
 
 /** Normalized selector descriptor for one persona. */
-fun SimulatorPersona.descriptorTitle(): String = describe().title
+public fun SimulatorPersona.descriptorTitle(): String = describe().title
 
-fun SimulatorPersona.descriptorLine(): String = describe().descriptorLine
+public fun SimulatorPersona.descriptorLine(): String = describe().descriptorLine
 
 internal fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (this) {
     SimulatorPersona.IndoorBikeSpeedAndPower -> describeIndoorBikeSpeedAndPower()

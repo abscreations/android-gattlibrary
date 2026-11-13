@@ -6,17 +6,17 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.BigEndian
 
 /** Specification-derived CSAFE framing used only by the simulated PM5 peripheral. */
 @SimulatorProbeApi
-object Concept2CsafeCodec {
-    const val MAX_WIRE_FRAME_SIZE = 120
+public object Concept2CsafeCodec {
+    public const val MAX_WIRE_FRAME_SIZE: Int = 120
 
-    data class Command(val identifier: Int, val data: ByteArray)
+    public data class Command(val identifier: Int, val data: ByteArray)
 
-    sealed interface DecodeResult {
-        data class Success(val commands: List<Command>) : DecodeResult
-        data class Failure(val reason: FailureReason) : DecodeResult
+    public sealed interface DecodeResult {
+        public data class Success(val commands: List<Command>) : DecodeResult
+        public data class Failure(val reason: FailureReason) : DecodeResult
     }
 
-    enum class FailureReason {
+    public enum class FailureReason {
         FRAME_TOO_LARGE,
         INVALID_DELIMITERS,
         EXTENDED_FRAME_UNSUPPORTED,
@@ -25,7 +25,7 @@ object Concept2CsafeCodec {
         TRUNCATED_COMMAND,
     }
 
-    fun decodeStandard(wire: ByteArray): DecodeResult {
+    public fun decodeStandard(wire: ByteArray): DecodeResult {
         if (wire.size > MAX_WIRE_FRAME_SIZE) return DecodeResult.Failure(FailureReason.FRAME_TOO_LARGE)
         if (wire.firstOrNull()?.u8() == EXTENDED_START) {
             return DecodeResult.Failure(FailureReason.EXTENDED_FRAME_UNSUPPORTED)
@@ -72,12 +72,12 @@ object Concept2CsafeCodec {
         }
     }
 
-    fun parseCommandBytes(contents: ByteArray): DecodeResult = when (val parsed = parseCommands(contents)) {
+    public fun parseCommandBytes(contents: ByteArray): DecodeResult = when (val parsed = parseCommands(contents)) {
         is CommandParse.Success -> DecodeResult.Success(parsed.commands)
         CommandParse.Truncated -> DecodeResult.Failure(FailureReason.TRUNCATED_COMMAND)
     }
 
-    fun encodeStandard(contents: ByteArray): ByteArray? {
+    public fun encodeStandard(contents: ByteArray): ByteArray? {
         val stuffed = ArrayList<Byte>(contents.size + 4)
         stuffed += STANDARD_START.toByte()
         (contents + xor(contents).toByte()).forEach { byte ->
@@ -132,8 +132,8 @@ object Concept2CsafeCodec {
  * fields with device-global virtual PM state; the autonomous measurement engine remains unchanged.
  */
 @SimulatorProbeApi
-class Concept2CsafeLink {
-    data class HandshakeState(
+public class Concept2CsafeLink {
+    public data class HandshakeState(
         val workoutType: Int? = null,
         val screenType: Int? = null,
         val screenValue: Int? = null,
@@ -154,27 +154,27 @@ class Concept2CsafeLink {
         val workoutProgram: Concept2WorkoutProgram? = null,
     )
 
-    sealed interface RequestResult {
-        data class Accepted(val response: ByteArray) : RequestResult
-        data class Rejected(val reason: RejectionReason) : RequestResult
+    public sealed interface RequestResult {
+        public data class Accepted(val response: ByteArray) : RequestResult
+        public data class Rejected(val reason: RejectionReason) : RequestResult
     }
 
-    enum class RejectionReason { MALFORMED, UNSUPPORTED, TOO_SOON }
+    public enum class RejectionReason { MALFORMED, UNSUPPORTED, TOO_SOON }
 
     private var responseBytes: ByteArray? = null
     private var toggle = false
     private var lastAcceptedAtMs: Long? = null
     private var workoutTerminationPending = false
 
-    var handshakeState = HandshakeState()
+    public var handshakeState: HandshakeState = HandshakeState()
         private set
 
     @get:Synchronized
-    val response: ByteArray?
+    public val response: ByteArray?
         get() = responseBytes?.copyOf()
 
     @Synchronized
-    fun accept(wire: ByteArray, nowMs: Long): RequestResult {
+    public fun accept(wire: ByteArray, nowMs: Long): RequestResult {
         val previous = lastAcceptedAtMs
         if (previous != null && nowMs - previous < MIN_INTER_FRAME_MS) {
             return RequestResult.Rejected(RejectionReason.TOO_SOON)
@@ -253,7 +253,7 @@ class Concept2CsafeLink {
     }
 
     @Synchronized
-    fun reset() {
+    public fun reset() {
         responseBytes = null
         toggle = false
         lastAcceptedAtMs = null
@@ -263,7 +263,7 @@ class Concept2CsafeLink {
 
     /** Consume the accepted Workout/Terminate Workout command exactly once for this link. */
     @Synchronized
-    fun consumeWorkoutTerminationRequest(): Boolean {
+    public fun consumeWorkoutTerminationRequest(): Boolean {
         val pending = workoutTerminationPending
         workoutTerminationPending = false
         return pending
@@ -483,8 +483,8 @@ class Concept2CsafeLink {
 
     private fun Byte.u8(): Int = toInt() and 0xFF
 
-    companion object {
-        const val MIN_INTER_FRAME_MS = 50L
+    public companion object {
+        public const val MIN_INTER_FRAME_MS: Long = 50L
         private const val STATUS_READY = 0x01
         private const val STATUS_READY_WITH_TOGGLE = 0x81
         private const val STATUS_WORKOUT_END = 0x09

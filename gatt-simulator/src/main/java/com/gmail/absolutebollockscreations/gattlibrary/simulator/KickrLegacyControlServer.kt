@@ -20,22 +20,22 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.WahooKickrSpe
  * now accepts legacy control opcodes with or without a prior Unlock.
  */
 @SimulatorProbeApi
-enum class KickrLegacyAckMode(val evidence: KickrEvidenceLabel) {
+public enum class KickrLegacyAckMode(public val evidence: KickrEvidenceLabel) {
     ACKNOWLEDGING_SYNTHETIC(KickrEvidenceLabel.SYN),
     SILENT_CORROBORATED(KickrEvidenceLabel.X),
 }
 
 @SimulatorProbeApi
-sealed interface KickrLegacyDecodeResult {
-    data class Decoded(val command: KickrLegacyCommand) : KickrLegacyDecodeResult
-    data class Invalid(val reason: String) : KickrLegacyDecodeResult
-    data class Unsupported(val opcode: Int) : KickrLegacyDecodeResult
+public sealed interface KickrLegacyDecodeResult {
+    public data class Decoded(val command: KickrLegacyCommand) : KickrLegacyDecodeResult
+    public data class Invalid(val reason: String) : KickrLegacyDecodeResult
+    public data class Unsupported(val opcode: Int) : KickrLegacyDecodeResult
 }
 
 /** Reverse of the production encoder, independently length/range checked before every access. */
 @SimulatorProbeApi
-object KickrLegacyCommandDecoder {
-    fun decode(value: ByteArray): KickrLegacyDecodeResult {
+public object KickrLegacyCommandDecoder {
+    public fun decode(value: ByteArray): KickrLegacyDecodeResult {
         if (value.isEmpty()) return KickrLegacyDecodeResult.Invalid("empty command")
         val opcode = value[0].toInt() and 0xFF
         fun exact(size: Int): Boolean = value.size == size
@@ -115,7 +115,7 @@ object KickrLegacyCommandDecoder {
 }
 
 @SimulatorProbeApi
-data class KickrLegacyControlOutcome(
+public data class KickrLegacyControlOutcome(
     val accepted: Boolean,
     val response: ByteArray? = null,
     val decoded: KickrLegacyDecodeResult,
@@ -130,15 +130,15 @@ data class KickrLegacyControlOutcome(
  * [KickrPeripheralAdvertiser.diagnostics]'s `LEGACY_LOCKED`/`LEGACY_UNLOCKED` stage label.
  */
 @SimulatorProbeApi
-class KickrLegacyControlServer(
+public class KickrLegacyControlServer(
     private val model: KickrSyntheticModel,
-    val ackMode: KickrLegacyAckMode,
+    public val ackMode: KickrLegacyAckMode,
 ) {
-    var unlocked: Boolean = false
+    public var unlocked: Boolean = false
         private set
     private var simulation = KickrSimulationTarget()
 
-    fun handle(value: ByteArray): KickrLegacyControlOutcome {
+    public fun handle(value: ByteArray): KickrLegacyControlOutcome {
         val decoded = KickrLegacyCommandDecoder.decode(value)
         if (decoded !is KickrLegacyDecodeResult.Decoded) return KickrLegacyControlOutcome(false, decoded = decoded)
         val command = decoded.command
@@ -158,7 +158,7 @@ class KickrLegacyControlServer(
         return KickrLegacyControlOutcome(applied, response, decoded)
     }
 
-    fun reset() {
+    public fun reset() {
         unlocked = false
         simulation = KickrSimulationTarget()
     }

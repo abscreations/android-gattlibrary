@@ -38,7 +38,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SchwinnX70Uuids
  * LIB-9c): when the engine starts an upstream machine link for bridging, a running simulator
  * stops completely, and it does not restart when the bridge ends.
  */
-class FtmsSimulator(
+public class FtmsSimulator(
     private val upstream: SimulatedUpstreamHost,
     private val peripheral: SimulatorPeripheralHost,
     /** CPU keep-awake owned by the host app (LIB-7/S7); shares its registry with RunMode. */
@@ -62,48 +62,48 @@ class FtmsSimulator(
      * generator can be tested without a Bluetooth stack, and so the simulator
      * does not reach into `BtServiceManager`'s internals.
      */
-    interface SimulatorPeripheralHost {
+    public interface SimulatorPeripheralHost {
         /** Publish the GATT database and advertise. Blocking; returns success. */
-        fun startAdvertising(persona: SimulatorPersona, targets: TargetCapabilities): Boolean
+        public fun startAdvertising(persona: SimulatorPersona, targets: TargetCapabilities): Boolean
 
-        fun stopAdvertising()
+        public fun stopAdvertising()
 
         /** Route Control Point procedures to [sink], or back to the machine on null. */
-        fun setControlOverride(sink: FtmsControlSink?)
+        public fun setControlOverride(sink: FtmsControlSink?)
 
         /** Publish the latest rich PM5 snapshot to the PM5 measurement scheduler. */
-        fun publishConcept2(snapshot: Concept2Pm5Snapshot) {}
+        public fun publishConcept2(snapshot: Concept2Pm5Snapshot) {}
 
         /** Clear PM5 CSAFE workout state without changing its connection or CCCD state. */
-        fun resetConcept2WorkoutState() {}
+        public fun resetConcept2WorkoutState() {}
 
         /** Latest complete CSAFE workout program accepted from the connected PM5 client. */
-        val concept2WorkoutProgram: Concept2WorkoutProgram? get() = null
+        public val concept2WorkoutProgram: Concept2WorkoutProgram? get() = null
 
         /** Consume an acknowledged Workout/Terminate Workout command without dropping BLE. */
-        fun consumeConcept2WorkoutTerminationRequest(): Boolean = false
+        public fun consumeConcept2WorkoutTerminationRequest(): Boolean = false
 
         /** Publish one proprietary Chrono measurement frame from the coherent bike sample. */
-        fun publishPrecor(sample: FtmsMockSample) {}
+        public fun publishPrecor(sample: FtmsMockSample) {}
 
         /** Publish one proprietary Flywheel measurement frame from the coherent bike sample. */
-        fun publishFlywheel(sample: FtmsMockSample) {}
+        public fun publishFlywheel(sample: FtmsMockSample) {}
 
         /** Update the snapshot returned by the KayakFirst console on its next command-6 poll. */
-        fun publishKayakFirst(sample: FtmsMockSample) {}
+        public fun publishKayakFirst(sample: FtmsMockSample) {}
 
         /**
          * Publish one running-footpod tick: RSC measurement, Cycling Power measurement and, on
          * its own slower tick, battery level. The peripheral renders all three from one gait
          * snapshot so cadence and the crank counter cannot disagree.
          */
-        fun publishStrydFootpod(sample: FtmsMockSample) {}
+        public fun publishStrydFootpod(sample: FtmsMockSample) {}
 
         /** Set the Keiser manufacturer value, or suspend its advertising set on null. */
-        fun publishKeiser(manufacturerPayload: ByteArray?) {}
+        public fun publishKeiser(manufacturerPayload: ByteArray?) {}
 
         /** Publish one capture-shaped Life Fitness FTMS record after local setup unlocks the link. */
-        fun publishLifeFitness(sample: FtmsMockSample) {}
+        public fun publishLifeFitness(sample: FtmsMockSample) {}
 
         /**
          * Offer one tick's x70 frames, each tagged with the characteristic it belongs on.
@@ -113,7 +113,7 @@ class FtmsSimulator(
          * the peripheral a sample would mean encoding twice and inviting the two copies to disagree
          * about resistance, which is the one cross-stream property hardware never gets wrong.
          */
-        fun publishSchwinnX70(frames: List<Pair<java.util.UUID, ByteArray>>) {}
+        public fun publishSchwinnX70(frames: List<Pair<java.util.UUID, ByteArray>>) {}
 
         /**
          * Emit a Zwift Click button tap on the active Kickr/Zwift Hub persona's already-open
@@ -122,17 +122,17 @@ class FtmsSimulator(
          * unchanged (same rationale as publishPrecor()/publishLifeFitness()'s empty defaults
          * above).
          */
-        fun sendZwiftClickShift(
+        public fun sendZwiftClickShift(
             direction: ZwiftClickDirection,
         ): Boolean = false
 
         /** True when the active persona has completed the setup required before generation. */
-        val generationReady: Boolean get() = false
+        public val generationReady: Boolean get() = false
 
         /** True while the active persona permits cumulative model state to advance. */
-        val generationAdvancing: Boolean get() = generationReady
+        public val generationAdvancing: Boolean get() = generationReady
 
-        val isAdvertising: Boolean
+        public val isAdvertising: Boolean
     }
 
     /** Live x70 generation state: one console model, one encoder, one tick period. */
@@ -148,7 +148,7 @@ class FtmsSimulator(
     private var keiserScenario: KeiserMSeriesValidationScenario? = null
     private var lastKeiserScenarioEvent: KeiserMSeriesValidationScenario.Event? = null
 
-    data class State(
+    public data class State(
         val running: Boolean = false,
         val persona: SimulatorPersona? = null,
         val concept2Scenario: Concept2Scenario? = null,
@@ -173,7 +173,7 @@ class FtmsSimulator(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _state = MutableStateFlow(State())
-    val state: StateFlow<State> = _state
+    public val state: StateFlow<State> = _state
 
     private var job: Job? = null
 
@@ -295,16 +295,16 @@ class FtmsSimulator(
         _state.value = _state.value.copy(lastError = SimulatorBridgeGuard.STOPPED_FOR_BRIDGE)
     }
 
-    fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
+    public fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
         FtmsMockControlProfile.forMachine(machine).any
 
     /** UI entry point for the simulator's Zwift Click section. */
-    fun sendZwiftClickShift(
+    public fun sendZwiftClickShift(
         direction: ZwiftClickDirection,
     ): Boolean = peripheral.sendZwiftClickShift(direction)
 
     /** Begin or resume only the PM5 workout model; advertising and GATT already remain active. */
-    fun startConcept2Workout(): Boolean {
+    public fun startConcept2Workout(): Boolean {
         val active = concept2Engine ?: return false
         if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
         active.startWorkout()
@@ -317,7 +317,7 @@ class FtmsSimulator(
     }
 
     /** Freeze only PM5 metric advancement. The existing [stop] remains the teardown operation. */
-    fun pauseConcept2Workout(): Boolean {
+    public fun pauseConcept2Workout(): Boolean {
         val active = concept2Engine ?: return false
         if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
         active.pauseWorkout()
@@ -330,7 +330,7 @@ class FtmsSimulator(
     }
 
     /** Finish PM5 telemetry and emit its summary state without clearing accumulated totals. */
-    fun endConcept2Workout(): Boolean {
+    public fun endConcept2Workout(): Boolean {
         val active = concept2Engine ?: return false
         if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
         val changed = active.endWorkout()
@@ -344,7 +344,7 @@ class FtmsSimulator(
     }
 
     /** Reset PM5 workout metrics without touching advertising, GATT, CCCDs or CSAFE state. */
-    fun resetConcept2Workout(): Boolean {
+    public fun resetConcept2Workout(): Boolean {
         val active = concept2Engine ?: return false
         if (_state.value.persona !is SimulatorPersona.Concept2Pm5) return false
         active.resetWorkout()
@@ -358,7 +358,7 @@ class FtmsSimulator(
     }
 
     /** Protocol-level entry point for the standard and proprietary simulator personas. */
-    fun start(
+    public fun start(
         persona: SimulatorPersona,
         enableControls: Boolean = false,
         concept2Scenario: Concept2Scenario = Concept2Scenario.STEADY,
@@ -491,7 +491,7 @@ class FtmsSimulator(
         Timber.tag(TAG).i("simulator started machine=%s controls=%s", machine, effectiveControls)
     }
 
-    fun stop() {
+    public fun stop() {
         schwinnX70 = null
         keiserScenario = null
         lastKeiserScenarioEvent = null
@@ -1055,13 +1055,13 @@ class FtmsSimulator(
         )
     }
 
-    fun dispose() {
+    public fun dispose() {
         stop()
         scope.cancel()
     }
 
     /** Refresh the advertising flag, which the peripheral owns and can change. */
-    fun refreshAdvertisingState() {
+    public fun refreshAdvertisingState() {
         val s = _state.value
         if (!s.running) return
         _state.value = s.copy(advertising = peripheral.isAdvertising)
@@ -1238,7 +1238,7 @@ class FtmsSimulator(
         }
     }
 
-    companion object {
+    public companion object {
         private const val SUBSCRIPTION_POLL_MS = 50L
         private const val TAG = "FtmsSimulator"
 
@@ -1252,7 +1252,7 @@ class FtmsSimulator(
 
         /** ErgData sample-rate value 2 requests one PM5 sample every 250 ms. */
         @SimulatorProbeApi
-        const val CONCEPT2_PERIOD_MS = 250L
+        public const val CONCEPT2_PERIOD_MS: Long = 250L
 
         /** Capture corpus median is 1.02 seconds; one second preserves the physical cadence. */
         internal const val LIFE_FITNESS_PERIOD_MS = 1_000L

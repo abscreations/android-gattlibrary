@@ -25,9 +25,9 @@ import kotlin.random.Random
 
 /** Inclusive bounds for one synthetic instantaneous metric. */
 @SimulatorProbeApi
-data class FtmsMockRange(val min: Double, val max: Double) {
-    fun at(fraction: Double): Double = min + (max - min) * fraction
-    fun clamp(value: Double): Double = value.coerceIn(min, max)
+public data class FtmsMockRange(val min: Double, val max: Double) {
+    public fun at(fraction: Double): Double = min + (max - min) * fraction
+    public fun clamp(value: Double): Double = value.coerceIn(min, max)
 }
 
 /**
@@ -40,7 +40,7 @@ data class FtmsMockRange(val min: Double, val max: Double) {
  * judging whether a downstream display is sane.
  */
 @SimulatorProbeApi
-data class FtmsMockProfile(
+public data class FtmsMockProfile(
     val machine: FtmsMachineProfile,
     val power: FtmsMockRange,
     val heartRate: FtmsMockRange,
@@ -55,15 +55,15 @@ data class FtmsMockProfile(
     /** Mechanical-to-metabolic efficiency used for synthetic energy totals. */
     val metabolicEfficiency: Double = 0.25,
 ) {
-    val isBike get() = machine == FtmsMachineProfile.INDOOR_BIKE
-    val isTreadmill get() = machine == FtmsMachineProfile.TREADMILL
-    val isCrossTrainer get() = machine == FtmsMachineProfile.ELLIPTICAL
-    val isRower get() = machine == FtmsMachineProfile.INDOOR_ROWER
-    val isClimber get() =
+    public val isBike: Boolean get() = machine == FtmsMachineProfile.INDOOR_BIKE
+    public val isTreadmill: Boolean get() = machine == FtmsMachineProfile.TREADMILL
+    public val isCrossTrainer: Boolean get() = machine == FtmsMachineProfile.ELLIPTICAL
+    public val isRower: Boolean get() = machine == FtmsMachineProfile.INDOOR_ROWER
+    public val isClimber: Boolean get() =
         machine == FtmsMachineProfile.STAIR_STEPPER || machine == FtmsMachineProfile.STAIR_CLIMBER
 
-    companion object {
-        val profiles: Map<FtmsMachineProfile, FtmsMockProfile> = mapOf(
+    public companion object {
+        public val profiles: Map<FtmsMachineProfile, FtmsMockProfile> = mapOf(
             FtmsMachineProfile.INDOOR_BIKE to FtmsMockProfile(
                 machine = FtmsMachineProfile.INDOOR_BIKE,
                 speed = FtmsMockRange(24.0, 38.0),
@@ -124,7 +124,7 @@ data class FtmsMockProfile(
             ),
         )
 
-        fun forMachine(machine: FtmsMachineProfile): FtmsMockProfile =
+        public fun forMachine(machine: FtmsMachineProfile): FtmsMockProfile =
             profiles.getValue(machine)
     }
 }
@@ -140,7 +140,7 @@ data class FtmsMockProfile(
  * as long as nothing exercised it.
  */
 @SimulatorProbeApi
-object FtmsMockControlProfile {
+public object FtmsMockControlProfile {
 
     /**
      * One shared set of full machine limits for every simulator persona.
@@ -149,10 +149,10 @@ object FtmsMockControlProfile {
      * values. These ranges are deliberately wider and are the only limits used
      * for advertised target features and externally requested targets.
      */
-    val speedRange = FtmsTargetRange(0, 3_000, 10)
-    val inclinationRange = FtmsTargetRange(-100, 300, 5)
-    val resistanceRange = FtmsTargetRange(10, 300, 10)
-    val powerRange = FtmsTargetRange(1, 1_000, 1)
+    public val speedRange: FtmsTargetRange = FtmsTargetRange(0, 3_000, 10)
+    public val inclinationRange: FtmsTargetRange = FtmsTargetRange(-100, 300, 5)
+    public val resistanceRange: FtmsTargetRange = FtmsTargetRange(10, 300, 10)
+    public val powerRange: FtmsTargetRange = FtmsTargetRange(1, 1_000, 1)
 
     private val bike = TargetCapabilities(
         speed = true,
@@ -196,7 +196,7 @@ object FtmsMockControlProfile {
         powerRange = powerRange,
     )
 
-    fun forMachine(machine: FtmsMachineProfile): TargetCapabilities = when (machine) {
+    public fun forMachine(machine: FtmsMachineProfile): TargetCapabilities = when (machine) {
         FtmsMachineProfile.INDOOR_BIKE -> bike
         FtmsMachineProfile.TREADMILL -> treadmill
         FtmsMachineProfile.ELLIPTICAL -> crossTrainer
@@ -210,7 +210,7 @@ object FtmsMockControlProfile {
 }
 
 /** Which simulated metric an accepted Control Point target drives. */
-enum class FtmsMockTarget { SPEED, INCLINATION, RESISTANCE, POWER }
+public enum class FtmsMockTarget { SPEED, INCLINATION, RESISTANCE, POWER }
 
 /**
  * Which family of Control Point write last steered this machine, for the debug UI's "Control
@@ -229,7 +229,7 @@ internal enum class FtmsControlKind { DIRECT, ERG, SIMULATION }
  * half of end-to-end Set Indoor Bike Simulation Parameters support; see
  * [FtmsMockEngine.setSimulationParams].
  */
-data class FtmsMockSimulationParams(
+public data class FtmsMockSimulationParams(
     val windMps: Double,
     val gradePercent: Double,
     val crr: Double,
@@ -237,7 +237,7 @@ data class FtmsMockSimulationParams(
 )
 
 /** One coherent sample of the simulated machine, in FitBridge engine units. */
-data class FtmsMockSample(
+public data class FtmsMockSample(
     val elapsedSeconds: Int,
     val heartRate: Int,
     val caloriesTotal: Int,
@@ -268,14 +268,14 @@ data class FtmsMockSample(
  * from a single coroutine.
  */
 @SimulatorProbeApi
-class FtmsMockEngine(
+public class FtmsMockEngine(
     machine: FtmsMachineProfile,
-    val controlsEnabled: Boolean = false,
+    public val controlsEnabled: Boolean = false,
     private val random: Random = Random.Default,
 ) {
-    val profile: FtmsMockProfile = FtmsMockProfile.forMachine(machine)
+    public val profile: FtmsMockProfile = FtmsMockProfile.forMachine(machine)
 
-    val controlCapabilities: TargetCapabilities =
+    public val controlCapabilities: TargetCapabilities =
         if (controlsEnabled) FtmsMockControlProfile.forMachine(machine) else TargetCapabilities.NONE
 
     private val targets = mutableMapOf<FtmsMockTarget, Double>()
@@ -309,15 +309,15 @@ class FtmsMockEngine(
 
     /** Accepted targets, normalized to the advertised range and increment. */
     @Synchronized
-    fun controlTargets(): Map<FtmsMockTarget, Double> = targets.toMap()
+    public fun controlTargets(): Map<FtmsMockTarget, Double> = targets.toMap()
 
     /** Last accepted Set Indoor Bike Simulation Parameters payload, or null. */
     @Synchronized
-    fun simulationParams(): FtmsMockSimulationParams? = simulationParams
+    public fun simulationParams(): FtmsMockSimulationParams? = simulationParams
 
     /** "Control mode" label for the debug UI; see [SimulatorControlModeLabels]. */
     @Synchronized
-    fun controlModeLabel(): String = when (lastControlKind) {
+    public fun controlModeLabel(): String = when (lastControlKind) {
         null -> SimulatorControlModeLabels.AUTOMATIC
         FtmsControlKind.DIRECT -> SimulatorControlModeLabels.FTMS_DIRECT
         FtmsControlKind.ERG -> SimulatorControlModeLabels.FTMS_ERG
@@ -325,7 +325,7 @@ class FtmsMockEngine(
     }
 
     @Synchronized
-    fun reset() {
+    public fun reset() {
         elapsedSeconds = 0.0
         distanceMeters = 0.0
         caloriesKcal = 0.0
@@ -355,7 +355,7 @@ class FtmsMockEngine(
      * @return false when this persona does not advertise the requested target.
      */
     @Synchronized
-    fun setTarget(type: FtmsMockTarget, value: Double): Boolean {
+    public fun setTarget(type: FtmsMockTarget, value: Double): Boolean {
         val range = rangeFor(type) ?: return false
         if (!controlsEnabled) return false
         val normalized = normalize(type, value, range)
@@ -385,7 +385,7 @@ class FtmsMockEngine(
      * @return false when this persona/session does not advertise indoor bike simulation support.
      */
     @Synchronized
-    fun setSimulationParams(params: FtmsMockSimulationParams): Boolean {
+    public fun setSimulationParams(params: FtmsMockSimulationParams): Boolean {
         if (!controlsEnabled || !controlCapabilities.indoorBikeSimulation) return false
         simulationParams = params
         targets.remove(FtmsMockTarget.POWER)
@@ -395,7 +395,7 @@ class FtmsMockEngine(
 
     /** Advance the workout by [dtSeconds] and return the new sample. */
     @Synchronized
-    fun tick(dtSeconds: Double): FtmsMockSample {
+    public fun tick(dtSeconds: Double): FtmsMockSample {
         if (dtSeconds <= 0.0) return snapshot()
 
         elapsedSeconds += dtSeconds
@@ -450,7 +450,7 @@ class FtmsMockEngine(
     }
 
     @Synchronized
-    fun snapshot(): FtmsMockSample {
+    public fun snapshot(): FtmsMockSample {
         val caloriesPerHour = (kcalPerSecond() * 3600.0).roundToInt()
         val s = speed
 
@@ -581,7 +581,7 @@ class FtmsMockEngine(
         return current + (target - current) * alpha
     }
 
-    companion object {
+    public companion object {
         private const val JOULES_PER_KCAL = 4184.0
         private const val INITIAL_EFFORT = 0.35
         private const val INITIAL_TARGET_EFFORT = 0.52
@@ -590,7 +590,7 @@ class FtmsMockEngine(
         private const val METRES_PER_FLOOR = 3.0
 
         /** Personas the simulator can emulate, in menu order. */
-        val supportedMachines: List<FtmsMachineProfile> = listOf(
+        public val supportedMachines: List<FtmsMachineProfile> = listOf(
             FtmsMachineProfile.INDOOR_BIKE,
             FtmsMachineProfile.TREADMILL,
             FtmsMachineProfile.ELLIPTICAL,

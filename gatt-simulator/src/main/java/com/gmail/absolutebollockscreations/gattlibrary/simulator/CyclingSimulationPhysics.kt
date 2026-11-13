@@ -15,15 +15,15 @@ import kotlin.math.sin
  * power, not brake power.
  */
 @SimulatorProbeApi
-object CyclingSimulationPhysics {
-    const val DEFAULT_RIDER_MASS_KG = 75.0
-    const val DEFAULT_BIKE_MASS_KG = 10.0
-    const val DEFAULT_TOTAL_MASS_KG = DEFAULT_RIDER_MASS_KG + DEFAULT_BIKE_MASS_KG
-    const val DEFAULT_CRR = 0.004
-    const val DEFAULT_CW_KG_PER_M = 0.51
-    const val DEFAULT_DRIVETRAIN_EFFICIENCY = 0.975
+public object CyclingSimulationPhysics {
+    public const val DEFAULT_RIDER_MASS_KG: Double = 75.0
+    public const val DEFAULT_BIKE_MASS_KG: Double = 10.0
+    public const val DEFAULT_TOTAL_MASS_KG: Double = DEFAULT_RIDER_MASS_KG + DEFAULT_BIKE_MASS_KG
+    public const val DEFAULT_CRR: Double = 0.004
+    public const val DEFAULT_CW_KG_PER_M: Double = 0.51
+    public const val DEFAULT_DRIVETRAIN_EFFICIENCY: Double = 0.975
 
-    fun requiredRiderPowerWatts(
+    public fun requiredRiderPowerWatts(
         speedKph: Double,
         gradePercent: Double,
         crr: Double,

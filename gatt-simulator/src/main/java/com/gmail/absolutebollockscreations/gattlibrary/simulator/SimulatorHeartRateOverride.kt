@@ -35,7 +35,7 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
  * source whose class is `HRM`. That separation already existed; this override simply depends on it.
  */
 @SimulatorProbeApi
-object SimulatorHeartRateOverride {
+public object SimulatorHeartRateOverride {
 
     /**
      * How recently the strap must have reported for its value to be used.
@@ -49,10 +49,10 @@ object SimulatorHeartRateOverride {
     // Mirrors central's fusion freshness window (MetricFusion.HEART_RATE_FRESHNESS_MS = 4 s). Restated
     // rather than imported so the simulator does not depend on central (L22, LIB-19j); a simulator
     // test compares the two values.
-    const val FRESHNESS_MS = 4_000L
+    public const val FRESHNESS_MS: Long = 4_000L
 
     /** What the override did, so a validation capture can say which frames carried a real strap. */
-    enum class Outcome {
+    public enum class Outcome {
         /** No strap has ever reported on this link. The generated value stands, silently. */
         NO_EXTERNAL_SOURCE,
 
@@ -63,7 +63,7 @@ object SimulatorHeartRateOverride {
         STALE_FELL_BACK,
     }
 
-    data class Result(val bpm: Int, val outcome: Outcome)
+    public data class Result(val bpm: Int, val outcome: Outcome)
 
     /**
      * Choose between the strap's reading and the generated one.
@@ -77,7 +77,7 @@ object SimulatorHeartRateOverride {
      * because those need different treatment: the first is a fallback worth recording in a capture,
      * the second is the ordinary case and logging it every second would be noise.
      */
-    fun resolve(
+    public fun resolve(
         generatedBpm: Int,
         externalBpm: Int?,
         lastExternalAtMs: Long,

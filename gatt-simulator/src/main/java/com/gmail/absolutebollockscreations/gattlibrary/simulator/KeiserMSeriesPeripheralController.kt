@@ -24,7 +24,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KeiserMSeries
 
 /** Pure legacy-envelope facts, kept separate from Android objects for focused unit coverage. */
 @SimulatorProbeApi
-data class KeiserMSeriesAdvertisingPlan(
+public data class KeiserMSeriesAdvertisingPlan(
     val localName: String,
     val manufacturerId: Int,
     val manufacturerPayload: ByteArray,
@@ -38,11 +38,11 @@ data class KeiserMSeriesAdvertisingPlan(
         require(advertisingBytes <= MAX_LEGACY_BYTES)
     }
 
-    companion object {
-        const val MAX_LEGACY_BYTES = 31
-        const val FAST_INTERVAL_UNITS = 0x0237
+    public companion object {
+        public const val MAX_LEGACY_BYTES: Int = 31
+        public const val FAST_INTERVAL_UNITS: Int = 0x0237
 
-        fun create(persona: SimulatorPersona.KeiserMSeries, payload: ByteArray): KeiserMSeriesAdvertisingPlan {
+        public fun create(persona: SimulatorPersona.KeiserMSeries, payload: ByteArray): KeiserMSeriesAdvertisingPlan {
             val name = persona.advertisedName
             return KeiserMSeriesAdvertisingPlan(
                 localName = name,

@@ -8,28 +8,28 @@ import kotlin.math.roundToLong
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 @SimulatorProbeApi
-object KayakFirstOrangeSimulatorProtocol {
-    const val ADVERTISED_NAME = "17100001"
+public object KayakFirstOrangeSimulatorProtocol {
+    public const val ADVERTISED_NAME: String = "17100001"
 
     /**
      * The one captured hardware tuple, kept as the generator's calibration point rather than as
      * replayable data: T_MAX is used verbatim, and T_H/T_V set the pull fraction every generated
      * tuple is shaped by. Deleting these would leave nothing to calibrate generation against.
      */
-    const val CAPTURED_T_MIN_US = 65_008L
-    const val CAPTURED_T_H_US = 335_046L
-    const val CAPTURED_T_MAX_US = 70_009L
-    const val CAPTURED_T_V_US = 340_048L
-    const val SEQUENCE_DIGITS = 5
-    const val TIMING_DIGITS = 10
+    public const val CAPTURED_T_MIN_US: Long = 65_008L
+    public const val CAPTURED_T_H_US: Long = 335_046L
+    public const val CAPTURED_T_MAX_US: Long = 70_009L
+    public const val CAPTURED_T_V_US: Long = 340_048L
+    public const val SEQUENCE_DIGITS: Int = 5
+    public const val TIMING_DIGITS: Int = 10
 
-    fun decodeCommand(value: ByteArray): KayakFirstOrangeCommand? {
+    public fun decodeCommand(value: ByteArray): KayakFirstOrangeCommand? {
         if (value.size != 1) return null
         return KayakFirstOrangeCommand.entries.firstOrNull { it.wire == value[0] }
     }
 
     /** The calibration tuple itself, as a reference vector. Not a replay mode. */
-    fun capturedTuple(): KayakFirstOrangeTimingTuple = KayakFirstOrangeTimingTuple(
+    public fun capturedTuple(): KayakFirstOrangeTimingTuple = KayakFirstOrangeTimingTuple(
         tMinSeconds = CAPTURED_T_MIN_US / 1_000_000.0,
         tHSeconds = CAPTURED_T_H_US / 1_000_000.0,
         tMaxSeconds = CAPTURED_T_MAX_US / 1_000_000.0,
@@ -43,7 +43,7 @@ object KayakFirstOrangeSimulatorProtocol {
      * using the captured pull fraction. T_MIN is solved from the manufacturer's power equation,
      * so running the tuple back through [KayakFirstOrangePhysics] reproduces the requested power.
      */
-    fun dynamicTuple(powerWatts: Double, cadenceSpm: Double): KayakFirstOrangeTimingTuple? {
+    public fun dynamicTuple(powerWatts: Double, cadenceSpm: Double): KayakFirstOrangeTimingTuple? {
         if (!powerWatts.isFinite() || powerWatts < 0.0) return null
         if (!cadenceSpm.isFinite() || cadenceSpm <= 0.0) return null
         val strokePeriod = 60.0 / cadenceSpm
@@ -59,7 +59,7 @@ object KayakFirstOrangeSimulatorProtocol {
         return KayakFirstOrangeTimingTuple(tMin, tH, tMax, tV)
     }
 
-    fun timingMicroseconds(
+    public fun timingMicroseconds(
         command: KayakFirstOrangeCommand,
         tuple: KayakFirstOrangeTimingTuple,
         auxiliaryRpm: Double,
@@ -85,23 +85,23 @@ object KayakFirstOrangeSimulatorProtocol {
      * The counter restarts at zero on RESET. The captured session began mid-workout at 438, which
      * says nothing about the value a reset leaves behind.
      */
-    fun sequenceFor(tuple: KayakFirstOrangeTimingTuple, elapsedSinceResetMs: Long): Long {
+    public fun sequenceFor(tuple: KayakFirstOrangeTimingTuple, elapsedSinceResetMs: Long): Long {
         val strokePeriodSeconds = tuple.tHSeconds + tuple.tVSeconds
         if (strokePeriodSeconds <= 0.0 || elapsedSinceResetMs <= 0L) return 0L
         return floor(elapsedSinceResetMs / 1_000.0 / strokePeriodSeconds).toLong()
     }
 
     /** The device zero-pads both the sequence and the microsecond value on the wire. */
-    fun response(command: KayakFirstOrangeCommand, sequence: Long, value: Long): ByteArray {
+    public fun response(command: KayakFirstOrangeCommand, sequence: Long, value: Long): ByteArray {
         val commandLine = command.wire.toInt().toChar()
         val sequenceLine = sequence.toString().padStart(SEQUENCE_DIGITS, '0')
         val timingLine = value.toString().padStart(TIMING_DIGITS, '0')
         return "$commandLine\n$sequenceLine\n$timingLine\n".toByteArray(Charsets.US_ASCII)
     }
 
-    fun resetResponse(): ByteArray = "OK\n".toByteArray(Charsets.US_ASCII)
+    public fun resetResponse(): ByteArray = "OK\n".toByteArray(Charsets.US_ASCII)
 
-    fun oracle(
+    public fun oracle(
         tuple: KayakFirstOrangeTimingTuple,
         athleteWeightKg: Double = 80.0,
     ): KayakFirstOrangePhysicsResult? = KayakFirstOrangePhysics.calculate(tuple, athleteWeightKg)

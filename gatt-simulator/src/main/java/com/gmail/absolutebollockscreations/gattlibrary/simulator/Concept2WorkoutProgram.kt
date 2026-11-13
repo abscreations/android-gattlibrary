@@ -1,8 +1,8 @@
 package com.gmail.absolutebollockscreations.gattlibrary.simulator
 
-enum class Concept2WorkoutGoalKind { TIME, DISTANCE, CALORIES }
+public enum class Concept2WorkoutGoalKind { TIME, DISTANCE, CALORIES }
 
-data class Concept2WorkoutInterval(
+public data class Concept2WorkoutInterval(
     val goalKind: Concept2WorkoutGoalKind,
     /** Centiseconds for time, metres for distance, whole calories for calories. */
     val goalValue: Int,
@@ -16,7 +16,7 @@ data class Concept2WorkoutInterval(
 )
 
 /** A complete, validated CSAFE workout configuration that can drive the virtual PM. */
-data class Concept2WorkoutProgram(
+public data class Concept2WorkoutProgram(
     val workoutType: Int,
     val goalKind: Concept2WorkoutGoalKind,
     /** Centiseconds for time, metres for distance, whole calories for calories. */
@@ -42,13 +42,13 @@ data class Concept2WorkoutProgram(
         ),
     ),
 ) {
-    val isInterval: Boolean get() = workoutType in setOf(6, 7, 12)
-    val isVariableInterval: Boolean get() = workoutType in setOf(8, 9)
+    public val isInterval: Boolean get() = workoutType in setOf(6, 7, 12)
+    public val isVariableInterval: Boolean get() = workoutType in setOf(8, 9)
 }
 
-enum class Concept2ProgramPhase { ACTIVE, REST, COMPLETE }
+public enum class Concept2ProgramPhase { ACTIVE, REST, COMPLETE }
 
-data class Concept2ProgramProgress(
+public data class Concept2ProgramProgress(
     val program: Concept2WorkoutProgram,
     val currentInterval: Concept2WorkoutInterval,
     val phase: Concept2ProgramPhase,

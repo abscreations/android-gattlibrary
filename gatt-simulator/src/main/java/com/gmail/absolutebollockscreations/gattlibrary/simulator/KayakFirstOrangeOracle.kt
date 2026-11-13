@@ -11,7 +11,7 @@ import kotlin.math.pow
  * tests compare the two.
  */
 @SimulatorProbeApi
-data class KayakFirstOrangeTimingTuple(
+public data class KayakFirstOrangeTimingTuple(
     val tMinSeconds: Double,
     val tHSeconds: Double,
     val tMaxSeconds: Double,
@@ -19,7 +19,7 @@ data class KayakFirstOrangeTimingTuple(
 )
 
 @SimulatorProbeApi
-data class KayakFirstOrangePhysicsResult(
+public data class KayakFirstOrangePhysicsResult(
     val powerWatts: Double,
     val forceNewtons: Double,
     val speedMetresPerSecond: Double,
@@ -28,8 +28,8 @@ data class KayakFirstOrangePhysicsResult(
 )
 
 @SimulatorProbeApi
-object KayakFirstOrangePhysics {
-    fun calculate(
+public object KayakFirstOrangePhysics {
+    public fun calculate(
         timing: KayakFirstOrangeTimingTuple,
         athleteWeightKg: Double?,
     ): KayakFirstOrangePhysicsResult? {

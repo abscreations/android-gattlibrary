@@ -6,19 +6,19 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
  * `WahooKickrCommand`. Tests map between the two to prove they agree.
  */
 @SimulatorProbeApi
-sealed interface KickrLegacyCommand {
-    data object Unlock : KickrLegacyCommand
-    data class Resistance(val fraction: Double) : KickrLegacyCommand
-    data class StandardLevel(val level: Int) : KickrLegacyCommand
-    data class Erg(val watts: Int) : KickrLegacyCommand
-    data class Simulation(
+public sealed interface KickrLegacyCommand {
+    public data object Unlock : KickrLegacyCommand
+    public data class Resistance(val fraction: Double) : KickrLegacyCommand
+    public data class StandardLevel(val level: Int) : KickrLegacyCommand
+    public data class Erg(val watts: Int) : KickrLegacyCommand
+    public data class Simulation(
         val totalMassKg: Double,
         val crr: Double,
         val cw: Double,
     ) : KickrLegacyCommand
-    data class RollingResistance(val crr: Double) : KickrLegacyCommand
-    data class WindResistance(val cw: Double) : KickrLegacyCommand
-    data class Grade(val percent: Double) : KickrLegacyCommand
-    data class WindSpeed(val metresPerSecond: Double) : KickrLegacyCommand
-    data class WheelCircumference(val millimetres: Double) : KickrLegacyCommand
+    public data class RollingResistance(val crr: Double) : KickrLegacyCommand
+    public data class WindResistance(val cw: Double) : KickrLegacyCommand
+    public data class Grade(val percent: Double) : KickrLegacyCommand
+    public data class WindSpeed(val metresPerSecond: Double) : KickrLegacyCommand
+    public data class WheelCircumference(val millimetres: Double) : KickrLegacyCommand
 }

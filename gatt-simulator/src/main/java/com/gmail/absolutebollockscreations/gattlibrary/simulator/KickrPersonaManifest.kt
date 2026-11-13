@@ -10,11 +10,11 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.ZwiftUuids
 
 /** Field-level provenance carried into diagnostics and evidence exports. */
 @SimulatorProbeApi
-enum class KickrEvidenceLabel { HCI, LOG, P, M, X, R, SYN }
+public enum class KickrEvidenceLabel { HCI, LOG, P, M, X, R, SYN }
 
-enum class KickrSimulatorPersona(
-    val displayLabel: String,
-    val provisional: Boolean,
+public enum class KickrSimulatorPersona(
+    public val displayLabel: String,
+    public val provisional: Boolean,
 ) {
     V5_STANDARD_LEGACY("KICKR v5 — standard/legacy only", false),
     CORE_ORIGINAL_ZWIFT("KICKR Core — original Zwift service", false),
@@ -23,27 +23,27 @@ enum class KickrSimulatorPersona(
 }
 
 @SimulatorProbeApi
-enum class KickrGattProperty { READ, WRITE, WRITE_WITHOUT_RESPONSE, NOTIFY, INDICATE }
+public enum class KickrGattProperty { READ, WRITE, WRITE_WITHOUT_RESPONSE, NOTIFY, INDICATE }
 
 @SimulatorProbeApi
-data class KickrCharacteristicManifest(
+public data class KickrCharacteristicManifest(
     val uuid: UUID,
     val properties: Set<KickrGattProperty>,
     val evidence: Set<KickrEvidenceLabel>,
 ) {
-    val hasCccd: Boolean =
+    public val hasCccd: Boolean =
         KickrGattProperty.NOTIFY in properties || KickrGattProperty.INDICATE in properties
 }
 
 @SimulatorProbeApi
-data class KickrServiceManifest(
+public data class KickrServiceManifest(
     val uuid: UUID,
     val characteristics: List<KickrCharacteristicManifest>,
     val evidence: Set<KickrEvidenceLabel>,
 )
 
 @SimulatorProbeApi
-data class KickrDeviceIdentity(
+public data class KickrDeviceIdentity(
     val manufacturer: String?,
     val hardwareRevision: String?,
     val firmwareRevision: String?,
@@ -52,7 +52,7 @@ data class KickrDeviceIdentity(
 
 /** Pure advertising contract. [exactLegacyPayload] is present only for byte-captured advertising. */
 @SimulatorProbeApi
-data class KickrAdvertisingPlan(
+public data class KickrAdvertisingPlan(
     val localName: String,
     val advertisedServices: List<UUID>,
     val scanResponseServices: List<UUID> = emptyList(),
@@ -62,14 +62,14 @@ data class KickrAdvertisingPlan(
     val evidence: Set<KickrEvidenceLabel>,
     val exactLegacyPayload: ByteArray? = null,
 ) {
-    val semanticLegacyBytes: Int = FLAGS_STRUCTURE_BYTES +
+    public val semanticLegacyBytes: Int = FLAGS_STRUCTURE_BYTES +
         COMPLETE_NAME_HEADER_BYTES + localName.toByteArray(Charsets.UTF_8).size +
         groupedServiceStructureBytes(advertisedServices) +
         serviceData.entries.sumOf { (uuid, value) ->
             AD_HEADER_BYTES + encodedUuidBytes(uuid) + value.size
         } + (manufacturerData?.let { MANUFACTURER_HEADER_BYTES + it.size } ?: 0)
 
-    val semanticScanResponseBytes: Int = groupedServiceStructureBytes(scanResponseServices)
+    public val semanticScanResponseBytes: Int = groupedServiceStructureBytes(scanResponseServices)
 
     init {
         require((manufacturerId == null) == (manufacturerData == null)) {
@@ -123,8 +123,8 @@ data class KickrAdvertisingPlan(
         return result
     }
 
-    companion object {
-        const val MAX_LEGACY_BYTES = 31
+    public companion object {
+        public const val MAX_LEGACY_BYTES: Int = 31
         private const val FLAGS_STRUCTURE_BYTES = 3
         private const val COMPLETE_NAME_HEADER_BYTES = 2
         private const val AD_HEADER_BYTES = 2
@@ -146,7 +146,7 @@ data class KickrAdvertisingPlan(
 }
 
 @SimulatorProbeApi
-data class KickrPersonaManifest(
+public data class KickrPersonaManifest(
     val persona: KickrSimulatorPersona,
     val advertising: KickrAdvertisingPlan,
     val identity: KickrDeviceIdentity,
@@ -154,10 +154,10 @@ data class KickrPersonaManifest(
     val legacyAckMode: KickrLegacyAckMode?,
     val zwiftServiceForm: RideOnServiceForm?,
 ) {
-    fun service(uuid: UUID): KickrServiceManifest? = services.singleOrNull { it.uuid == uuid }
+    public fun service(uuid: UUID): KickrServiceManifest? = services.singleOrNull { it.uuid == uuid }
 
-    companion object {
-        fun forPersona(persona: KickrSimulatorPersona): KickrPersonaManifest = when (persona) {
+    public companion object {
+        public fun forPersona(persona: KickrSimulatorPersona): KickrPersonaManifest = when (persona) {
             KickrSimulatorPersona.V5_STANDARD_LEGACY -> v5()
             KickrSimulatorPersona.CORE_ORIGINAL_ZWIFT -> originalCore()
             KickrSimulatorPersona.CORE2_FC82_PROVISIONAL -> core2Probe()
@@ -457,7 +457,7 @@ data class KickrPersonaManifest(
             KickrGattProperty.NOTIFY,
         )
 
-        val ORIGINAL_CORE_ADVERTISING: ByteArray = byteArrayOf(
+        public val ORIGINAL_CORE_ADVERTISING: ByteArray = byteArrayOf(
             0x02, 0x01, 0x06,
             0x05, 0x03, 0x18, 0x18, 0x26, 0x18,
             0x10, 0x09, 0x4B, 0x49, 0x43, 0x4B, 0x52, 0x20,
@@ -465,7 +465,7 @@ data class KickrPersonaManifest(
         )
 
         /** User-supplied physical CORE 2 legacy advertisement, pinned without interpretation. */
-        val CAPTURED_CORE2_ADVERTISING: ByteArray = byteArrayOf(
+        public val CAPTURED_CORE2_ADVERTISING: ByteArray = byteArrayOf(
             0x02, 0x01, 0x06,
             0x05, 0x03, 0x18, 0x18, 0x26, 0x18,
             0x10, 0x09, 0x4B, 0x49, 0x43, 0x4B, 0x52, 0x20,
@@ -473,7 +473,7 @@ data class KickrPersonaManifest(
         )
 
         /** Captured packet adapted only by inserting "2 " before the four-character suffix. */
-        val CORE2_SIM_ADVERTISING: ByteArray = byteArrayOf(
+        public val CORE2_SIM_ADVERTISING: ByteArray = byteArrayOf(
             0x02, 0x01, 0x06,
             0x05, 0x03, 0x18, 0x18, 0x26, 0x18,
             0x12, 0x09, 0x4B, 0x49, 0x43, 0x4B, 0x52, 0x20,

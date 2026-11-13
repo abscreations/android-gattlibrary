@@ -18,7 +18,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.ZwiftUuids
 
 @SimulatorProbeApi
-enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
+public enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
 
 /**
  * Which protocol surface last wrote a control target on this shared model.
@@ -34,13 +34,13 @@ enum class KickrControlMode { AUTONOMOUS, ERG, SIMULATION, RESISTANCE }
  * axis; the two together select one [SimulatorControlModeLabels] string.
  */
 @SimulatorProbeApi
-enum class KickrControlSource { NONE, FTMS, LEGACY_KICKR, RIDE_ON }
+public enum class KickrControlSource { NONE, FTMS, LEGACY_KICKR, RIDE_ON }
 
 /** DIRECT covers resistance-level and virtual-gear writes; see [KickrControlSource]. */
 internal enum class KickrControlKind { DIRECT, ERG, SIMULATION }
 
 @SimulatorProbeApi
-data class KickrSimulationTarget(
+public data class KickrSimulationTarget(
     val windMps: Double = 0.0,
     val gradePercent: Double = 0.0,
     val crr: Double = 0.004,
@@ -50,7 +50,7 @@ data class KickrSimulationTarget(
 
 /** One immutable state read by every standard and proprietary encoder. */
 @SimulatorProbeApi
-data class KickrMachineSnapshot(
+public data class KickrMachineSnapshot(
     val elapsedSeconds: Double,
     val running: Boolean,
     val mode: KickrControlMode,
@@ -82,7 +82,7 @@ data class KickrMachineSnapshot(
  * accepted controls externally observable while keeping all wire surfaces coherent.
  */
 @SimulatorProbeApi
-class KickrSyntheticModel(
+public class KickrSyntheticModel(
     initialWheelCircumferenceMm: Double = DEFAULT_WHEEL_CIRCUMFERENCE_MM,
 ) {
     /**
@@ -97,7 +97,7 @@ class KickrSyntheticModel(
      * OPCODE_NOT_SUPPORTED while the advertised surface still describes the real trainer.
      */
     @Volatile
-    var ftmsControlEnabled: Boolean = true
+    public var ftmsControlEnabled: Boolean = true
 
     private var elapsedSeconds = 0.0
     private var running = false
@@ -126,13 +126,13 @@ class KickrSyntheticModel(
     private var accumulatedTorque = 0.0
 
     @Synchronized
-    fun startOrResume(): Boolean {
+    public fun startOrResume(): Boolean {
         running = true
         return true
     }
 
     @Synchronized
-    fun stopOrPause(stop: Boolean): Boolean {
+    public fun stopOrPause(stop: Boolean): Boolean {
         running = false
         speedKph = 0.0
         cadenceRpm = 0.0
@@ -147,7 +147,7 @@ class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun reset(): Boolean {
+    public fun reset(): Boolean {
         elapsedSeconds = 0.0
         running = false
         mode = KickrControlMode.AUTONOMOUS
@@ -175,7 +175,7 @@ class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun setTargetPower(watts: Int, source: KickrControlSource = KickrControlSource.NONE): Boolean {
+    public fun setTargetPower(watts: Int, source: KickrControlSource = KickrControlSource.NONE): Boolean {
         if (watts !in MIN_POWER_WATTS..MAX_POWER_WATTS) return false
         mode = KickrControlMode.ERG
         targetPowerWatts = watts
@@ -185,7 +185,7 @@ class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun setResistance(level: Double, source: KickrControlSource = KickrControlSource.NONE): Boolean {
+    public fun setResistance(level: Double, source: KickrControlSource = KickrControlSource.NONE): Boolean {
         if (!level.isFinite() || level !in MIN_RESISTANCE..MAX_RESISTANCE) return false
         mode = KickrControlMode.RESISTANCE
         resistanceLevel = level
@@ -196,7 +196,7 @@ class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun setSimulation(
+    public fun setSimulation(
         target: KickrSimulationTarget,
         source: KickrControlSource = KickrControlSource.NONE,
     ): Boolean {
@@ -214,7 +214,7 @@ class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun setWheelCircumference(millimetres: Double): Boolean {
+    public fun setWheelCircumference(millimetres: Double): Boolean {
         if (!millimetres.isFinite() || millimetres !in MIN_WHEEL_CIRCUMFERENCE_MM..MAX_WHEEL_CIRCUMFERENCE_MM) {
             return false
         }
@@ -223,7 +223,7 @@ class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun setVirtualGear(index: Int, ratio: Double): Boolean {
+    public fun setVirtualGear(index: Int, ratio: Double): Boolean {
         if (index !in 1..24 || !ratio.isFinite() || ratio <= 0.0) return false
         virtualGearIndex = index
         gearRatio = ratio
@@ -243,13 +243,13 @@ class KickrSyntheticModel(
      * `ZwiftTrainerPeripheralServer.handleHubCommand`) - calls this.
      */
     @Synchronized
-    fun markDirectControl(source: KickrControlSource) {
+    public fun markDirectControl(source: KickrControlSource) {
         controlSource = source
         controlKind = KickrControlKind.DIRECT
     }
 
     @Synchronized
-    fun advance(dtSeconds: Double): KickrMachineSnapshot {
+    public fun advance(dtSeconds: Double): KickrMachineSnapshot {
         if (!dtSeconds.isFinite() || dtSeconds <= 0.0 || dtSeconds > MAX_TICK_SECONDS) return snapshot()
         elapsedSeconds += dtSeconds
         if (!running) return snapshot()
@@ -308,7 +308,7 @@ class KickrSyntheticModel(
     }
 
     @Synchronized
-    fun snapshot(): KickrMachineSnapshot = KickrMachineSnapshot(
+    public fun snapshot(): KickrMachineSnapshot = KickrMachineSnapshot(
         elapsedSeconds = elapsedSeconds,
         running = running,
         mode = mode,
@@ -432,17 +432,17 @@ class KickrSyntheticModel(
         return value
     }
 
-    companion object {
-        const val MIN_POWER_WATTS = 0
-        const val MAX_POWER_WATTS = 2_000
-        const val MIN_RESISTANCE = 1.0
-        const val MAX_RESISTANCE = 100.0
-        const val MIN_WHEEL_CIRCUMFERENCE_MM = 0.1
-        const val MAX_WHEEL_CIRCUMFERENCE_MM = 6_553.5
-        const val DEFAULT_WHEEL_CIRCUMFERENCE_MM = 2_096.0
-        const val MAX_TICK_SECONDS = 10.0
-        const val DEFAULT_VIRTUAL_GEAR_INDEX = 12
-        const val DEFAULT_GEAR_RATIO = 2.4
+    public companion object {
+        public const val MIN_POWER_WATTS: Int = 0
+        public const val MAX_POWER_WATTS: Int = 2_000
+        public const val MIN_RESISTANCE: Double = 1.0
+        public const val MAX_RESISTANCE: Double = 100.0
+        public const val MIN_WHEEL_CIRCUMFERENCE_MM: Double = 0.1
+        public const val MAX_WHEEL_CIRCUMFERENCE_MM: Double = 6_553.5
+        public const val DEFAULT_WHEEL_CIRCUMFERENCE_MM: Double = 2_096.0
+        public const val MAX_TICK_SECONDS: Double = 10.0
+        public const val DEFAULT_VIRTUAL_GEAR_INDEX: Int = 12
+        public const val DEFAULT_GEAR_RATIO: Double = 2.4
         private const val DEFAULT_RESISTANCE = 35.0
         private const val IDLE_HEART_RATE = 80
         private const val MAX_HEART_RATE = 220
@@ -463,13 +463,13 @@ class KickrSyntheticModel(
 }
 
 @SimulatorProbeApi
-object KickrStandardEncoders {
-    const val CPS_FLAGS_CAPTURE_SHAPE = 0x0034
-    const val FTMS_FLAGS_CAPTURE_SHAPE = 0x0044
+public object KickrStandardEncoders {
+    public const val CPS_FLAGS_CAPTURE_SHAPE: Int = 0x0034
+    public const val FTMS_FLAGS_CAPTURE_SHAPE: Int = 0x0044
 
-    val CORE_FTMS_FEATURE: ByteArray = byteArrayOf(0x03, 0x40, 0x00, 0x00, 0x0C, 0x60, 0x00, 0x00)
-    val CPS_FEATURE: ByteArray = byteArrayOf(0x08, 0x00, 0x00, 0x00)
-    val SENSOR_LOCATION: ByteArray = byteArrayOf(0x0D)
+    public val CORE_FTMS_FEATURE: ByteArray = byteArrayOf(0x03, 0x40, 0x00, 0x00, 0x0C, 0x60, 0x00, 0x00)
+    public val CPS_FEATURE: ByteArray = byteArrayOf(0x08, 0x00, 0x00, 0x00)
+    public val SENSOR_LOCATION: ByteArray = byteArrayOf(0x0D)
     /**
      * Derived from [KickrFtmsCapabilities] rather than restated, so the range a client reads from
      * 0x2AD6 and the range [FtmsControlPointHandler] validates against can never drift apart.
@@ -477,11 +477,11 @@ object KickrStandardEncoders {
      * hardcoded Dircon table, not from a read of a physical trainer, and its 1.0-15.0 ceiling with
      * a 1.0 step rejected every whole-level resistance the Wahoo app writes.
      */
-    val SUPPORTED_RESISTANCE_RANGE: ByteArray =
+    public val SUPPORTED_RESISTANCE_RANGE: ByteArray =
         requireNotNull(KickrFtmsCapabilities.VALUE.resistanceRange).encodeS16()
-    val SUPPORTED_POWER_RANGE: ByteArray = s16Wrapping(0) + s16Wrapping(2_000) + u16Wrapping(1)
+    public val SUPPORTED_POWER_RANGE: ByteArray = s16Wrapping(0) + s16Wrapping(2_000) + u16Wrapping(1)
 
-    fun cyclingPowerMeasurement(snapshot: KickrMachineSnapshot): ByteArray =
+    public fun cyclingPowerMeasurement(snapshot: KickrMachineSnapshot): ByteArray =
         u16Wrapping(CPS_FLAGS_CAPTURE_SHAPE) +
             s16Wrapping(snapshot.powerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())) +
             u16Wrapping(snapshot.accumulatedTorqueRaw) +
@@ -490,13 +490,13 @@ object KickrStandardEncoders {
             u16Wrapping(snapshot.cumulativeCrankRevolutions) +
             u16Wrapping(snapshot.lastCrankEventTicks)
 
-    fun indoorBikeData(snapshot: KickrMachineSnapshot): ByteArray =
+    public fun indoorBikeData(snapshot: KickrMachineSnapshot): ByteArray =
         u16Wrapping(FTMS_FLAGS_CAPTURE_SHAPE) +
             u16Wrapping((snapshot.speedKph * 100.0).roundToInt().coerceIn(0, 0xFFFF)) +
             u16Wrapping((snapshot.cadenceRpm * 2.0).roundToInt().coerceIn(0, 0xFFFF)) +
             s16Wrapping(snapshot.powerWatts.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()))
 
-    fun readValue(
+    public fun readValue(
         persona: KickrSimulatorPersona,
         uuid: UUID,
         trainingStatus: ByteArray = byteArrayOf(0x00, 0x01),
@@ -566,14 +566,14 @@ object KickrStandardEncoders {
 }
 
 @SimulatorProbeApi
-data class KickrReadValue(
+public data class KickrReadValue(
     val bytes: ByteArray,
     val evidence: Set<KickrEvidenceLabel>,
 )
 
 @SimulatorProbeApi
-object KickrFtmsCapabilities {
-    val VALUE = TargetCapabilities(
+public object KickrFtmsCapabilities {
+    public val VALUE: TargetCapabilities = TargetCapabilities(
         resistance = true,
         power = true,
         indoorBikeSimulation = true,
@@ -624,15 +624,15 @@ internal class KickrSyntheticFtmsControlSink(
 
 /** One pure FTMS procedure session; Android indication ordering is added in KS-S3. */
 @SimulatorProbeApi
-class KickrFtmsControlProcessor(
-    val model: KickrSyntheticModel = KickrSyntheticModel(),
+public class KickrFtmsControlProcessor(
+    public val model: KickrSyntheticModel = KickrSyntheticModel(),
 ) {
-    val session = FtmsProcedureSession()
+    public val session: FtmsProcedureSession = FtmsProcedureSession()
     private val handler = FtmsControlPointHandler(KickrSyntheticFtmsControlSink(model))
 
-    fun handle(value: ByteArray): FtmsControlPointHandler.Outcome = handler.handle(value, session)
+    public fun handle(value: ByteArray): FtmsControlPointHandler.Outcome = handler.handle(value, session)
 
-    fun disconnect() {
+    public fun disconnect() {
         session.resetForDisconnect()
     }
 }

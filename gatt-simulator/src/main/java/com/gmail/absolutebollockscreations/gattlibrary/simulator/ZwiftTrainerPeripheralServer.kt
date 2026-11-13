@@ -6,16 +6,16 @@ import kotlin.math.roundToLong
 import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 
 @SimulatorProbeApi
-enum class ZwiftTrainerStage { CONNECTED, NEGOTIATED, INITIALIZED, READY }
+public enum class ZwiftTrainerStage { CONNECTED, NEGOTIATED, INITIALIZED, READY }
 
 @SimulatorProbeApi
-data class ZwiftTrainerServerFrame(
+public data class ZwiftTrainerServerFrame(
     val async: Boolean,
     val value: ByteArray,
 )
 
 @SimulatorProbeApi
-data class ZwiftTrainerServerOutcome(
+public data class ZwiftTrainerServerOutcome(
     val accepted: Boolean,
     val negotiated: Boolean = false,
     val frames: List<ZwiftTrainerServerFrame> = emptyList(),
@@ -24,17 +24,17 @@ data class ZwiftTrainerServerOutcome(
 
 /** Per-link peripheral inverse of the production Zwift trainer-control session. */
 @SimulatorProbeApi
-class ZwiftTrainerPeripheralServer(
+public class ZwiftTrainerPeripheralServer(
     // Retained for callers/manifest wiring; no longer gates handshake acceptance (see isHandshake).
     @Suppress("UNUSED_PARAMETER") form: RideOnServiceForm,
     private val model: KickrSyntheticModel,
 ) {
-    var stage = ZwiftTrainerStage.CONNECTED
+    public var stage: ZwiftTrainerStage = ZwiftTrainerStage.CONNECTED
         private set
 
-    val controlReady: Boolean get() = stage == ZwiftTrainerStage.READY
+    public val controlReady: Boolean get() = stage == ZwiftTrainerStage.READY
 
-    fun handle(value: ByteArray, bothTxSubscribed: Boolean): ZwiftTrainerServerOutcome {
+    public fun handle(value: ByteArray, bothTxSubscribed: Boolean): ZwiftTrainerServerOutcome {
         if (!bothTxSubscribed) return rejected("both TX CCCDs are required")
         // Handshake acceptance used to require an exact match against a form-specific 8-byte
         // array (HANDSHAKE_ORIGINAL = "RideOn" 02 02 for the 128-bit service, HANDSHAKE_CORE2 =
@@ -146,7 +146,7 @@ class ZwiftTrainerPeripheralServer(
         }
     }
 
-    fun telemetryFrame(): ZwiftTrainerServerFrame {
+    public fun telemetryFrame(): ZwiftTrainerServerFrame {
         val snapshot = model.snapshot()
         return ZwiftTrainerServerFrame(
             async = true,
@@ -168,7 +168,7 @@ class ZwiftTrainerPeripheralServer(
      * telemetryFrame() is gated by its own caller (enqueueZwiftTelemetry()) instead of by
      * anything in this class.
      */
-    fun clickButtonFrame(upPressed: Boolean, downPressed: Boolean): ZwiftTrainerServerFrame =
+    public fun clickButtonFrame(upPressed: Boolean, downPressed: Boolean): ZwiftTrainerServerFrame =
         ZwiftTrainerServerFrame(
             async = true,
             value = RideOnWire.clickKeyPadStatus(upPressed, downPressed),
@@ -197,7 +197,7 @@ class ZwiftTrainerPeripheralServer(
             ),
         )
 
-    fun reset() {
+    public fun reset() {
         stage = ZwiftTrainerStage.CONNECTED
     }
 

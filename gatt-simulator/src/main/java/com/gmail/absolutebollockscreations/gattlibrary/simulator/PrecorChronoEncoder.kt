@@ -6,11 +6,11 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.PrecorSpec
 
 /** Encoder for the fixed 19-byte Precor Spinner Chrono Power measurement fixture. */
 @SimulatorProbeApi
-object PrecorChronoEncoder {
+public object PrecorChronoEncoder {
     /** One physical Chrono measurement/auxiliary pair is observed approximately every second. */
-    const val PAIR_PERIOD_MS = 1_000L
+    public const val PAIR_PERIOD_MS: Long = 1_000L
 
-    fun encode(sample: FtmsMockSample): ByteArray {
+    public fun encode(sample: FtmsMockSample): ByteArray {
         val frame = ByteArray(PrecorSpec.FRAME_LENGTH)
         PrecorSpec.MAGIC_PREFIX.forEachIndexed { index, value -> frame[index] = value.toByte() }
 
@@ -31,7 +31,7 @@ object PrecorChronoEncoder {
     }
 
     /** Ordered notifications observed on `a026e01d-…` in QZ issue #261's physical capture. */
-    fun encodeNotifications(sample: FtmsMockSample): List<ByteArray> =
+    public fun encodeNotifications(sample: FtmsMockSample): List<ByteArray> =
         listOf(encode(sample), PrecorSpec.auxiliaryFrame())
 
     private fun scaled(value: Double?, scale: Double): Int =

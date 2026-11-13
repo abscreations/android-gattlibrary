@@ -8,7 +8,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.KayakFirstUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.SigUuids
 
 @SimulatorProbeApi
-data class KayakFirstAdvertisingPlan(
+public data class KayakFirstAdvertisingPlan(
     val localName: String,
     val manufacturerId: Int,
     val manufacturerPayload: ByteArray,
@@ -22,8 +22,8 @@ data class KayakFirstAdvertisingPlan(
         require(advertisingBytes <= 31 && scanResponseBytes <= 31)
     }
 
-    companion object {
-        fun create(
+    public companion object {
+        public fun create(
             localName: String = SimulatorPersona.KayakFirstBlue.advertisedName,
             localAddress: String = "06:05:04:03:02:01",
         ): KayakFirstAdvertisingPlan {
@@ -58,8 +58,8 @@ data class KayakFirstAdvertisingPlan(
 }
 
 @SimulatorProbeApi
-object KayakFirstGattProfile {
-    data class Characteristic(
+public object KayakFirstGattProfile {
+    public data class Characteristic(
         val uuid: java.util.UUID,
         val writeWithResponse: Boolean,
         val writeWithoutResponse: Boolean,
@@ -67,7 +67,7 @@ object KayakFirstGattProfile {
         val hasCccd: Boolean,
     )
 
-    val characteristics = listOf(
+    public val characteristics: List<Characteristic> = listOf(
         Characteristic(
             uuid = KayakFirstUuids.UUID_KAYAK_FIRST_IO,
             writeWithResponse = true,
@@ -77,7 +77,7 @@ object KayakFirstGattProfile {
         ),
     )
 
-    fun buildService(): BluetoothGattService = BluetoothGattService(
+    public fun buildService(): BluetoothGattService = BluetoothGattService(
         KayakFirstUuids.UUID_KAYAK_FIRST_SERVICE,
         BluetoothGattService.SERVICE_TYPE_PRIMARY,
     ).also { service ->
@@ -102,6 +102,6 @@ object KayakFirstGattProfile {
         )
     }
 
-    fun acceptsWrite(characteristic: BluetoothGattCharacteristic, prepared: Boolean, offset: Int) =
+    public fun acceptsWrite(characteristic: BluetoothGattCharacteristic, prepared: Boolean, offset: Int): Boolean =
         characteristic.uuid == KayakFirstUuids.UUID_KAYAK_FIRST_IO && !prepared && offset == 0
 }

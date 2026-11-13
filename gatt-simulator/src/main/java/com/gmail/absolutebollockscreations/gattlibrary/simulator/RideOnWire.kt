@@ -14,27 +14,27 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.ProtobufVarint
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.RideOnSpec
 
 @SimulatorProbeApi
-sealed interface RideOnWireField {
-    val number: Int
-    data class Varint(override val number: Int, val value: Long) : RideOnWireField
-    data class Fixed64(override val number: Int, val bytes: ByteArray) : RideOnWireField
-    data class Bytes(override val number: Int, val value: ByteArray) : RideOnWireField
-    data class Fixed32(override val number: Int, val bytes: ByteArray) : RideOnWireField
+public sealed interface RideOnWireField {
+    public val number: Int
+    public data class Varint(override val number: Int, val value: Long) : RideOnWireField
+    public data class Fixed64(override val number: Int, val bytes: ByteArray) : RideOnWireField
+    public data class Bytes(override val number: Int, val value: ByteArray) : RideOnWireField
+    public data class Fixed32(override val number: Int, val bytes: ByteArray) : RideOnWireField
 }
 
 @SimulatorProbeApi
-data class RideOnWirePacket(val opcode: Int, val fields: List<RideOnWireField>)
+public data class RideOnWirePacket(val opcode: Int, val fields: List<RideOnWireField>)
 
 @SimulatorProbeApi
-sealed interface RideOnWireDecodeResult {
-    data class Decoded(val packet: RideOnWirePacket) : RideOnWireDecodeResult
-    data class Invalid(val reason: String) : RideOnWireDecodeResult
+public sealed interface RideOnWireDecodeResult {
+    public data class Decoded(val packet: RideOnWirePacket) : RideOnWireDecodeResult
+    public data class Invalid(val reason: String) : RideOnWireDecodeResult
 }
 
 /** Small protobuf-v2 wire codec for only the independently authored RideOn schema. */
 @SimulatorProbeApi
-object RideOnWire {
-    fun decode(packet: ByteArray): RideOnWireDecodeResult {
+public object RideOnWire {
+    public fun decode(packet: ByteArray): RideOnWireDecodeResult {
         if (packet.isEmpty()) return RideOnWireDecodeResult.Invalid("missing opcode")
         if (packet.size > RideOnSpec.MAX_PACKET_BYTES) {
             return RideOnWireDecodeResult.Invalid("packet exceeds ${RideOnSpec.MAX_PACKET_BYTES} bytes")
@@ -79,7 +79,7 @@ object RideOnWire {
         )
     }
 
-    fun virtualShiftResponse(sequence: Long): ByteArray = packet(
+    public fun virtualShiftResponse(sequence: Long): ByteArray = packet(
         RideOnSpec.OPCODE_VIRTUAL_SHIFT_RESPONSE,
         uint32Field(2, sequence),
     )
@@ -95,7 +95,7 @@ object RideOnWire {
      * for gear ratio). Only dataId 520's leaf field number is confirmed; see
      * [hubRequestGearRatio].
      */
-    fun hubRequestResponse(dataId: Long, leafFieldNumber: Int, value: Long): ByteArray {
+    public fun hubRequestResponse(dataId: Long, leafFieldNumber: Int, value: Long): ByteArray {
         val leaf = uint32Field(leafFieldNumber, value)
         val wrapped = bytesField(1, leaf)
         return packet(
@@ -105,7 +105,7 @@ object RideOnWire {
     }
 
     /** [hubRequestResponse] for [RideOnSpec.HUB_REQUEST_DATA_ID_GEAR_RATIO] - see its KDoc. */
-    fun hubRequestGearRatio(gearRatioX10000: Long): ByteArray =
+    public fun hubRequestGearRatio(gearRatioX10000: Long): ByteArray =
         hubRequestResponse(RideOnSpec.HUB_REQUEST_DATA_ID_GEAR_RATIO, GEAR_RATIO_LEAF_FIELD, gearRatioX10000)
 
     /**
@@ -119,7 +119,7 @@ object RideOnWire {
      * meaning is unconfirmed (constant 3 in both QZ messages); field2.field4 is a
      * null-terminated ASCII string.
      */
-    fun statusMessage(code: Long, text: String): ByteArray {
+    public fun statusMessage(code: Long, text: String): ByteArray {
         val nested = bytesField(4, text.toByteArray(Charsets.US_ASCII) + byteArrayOf(0))
         return packet(RideOnSpec.OPCODE_STATUS_MESSAGE, uint32Field(1, code) + bytesField(2, nested))
     }
@@ -181,7 +181,7 @@ object RideOnWire {
      * the channel and in the frame shape Zwift is actually waiting on matters more than getting
      * every field byte-exact for an ID nobody has documented.
      */
-    fun hubGeneralInfoReply(
+    public fun hubGeneralInfoReply(
         serial: String,
         opaque: ByteArray = byteArrayOf(0x00, 0x04, 0x00, 0x0c),
         versionMajor: Long = 1L,
@@ -203,7 +203,7 @@ object RideOnWire {
      * 6:<serial>, 7:"1", 8:{1:1, 2:20}}}}` - one extra level of nesting under field2 compared to
      * [hubGeneralInfoReply].
      */
-    fun hubDeviceInfoReply(
+    public fun hubDeviceInfoReply(
         deviceName: String,
         serial: String,
         shortField: String,
@@ -225,12 +225,12 @@ object RideOnWire {
      * passing unit test, which reads `value == 0` as pressed for both fields. So each field is
      * `0` while held and `1` while released, not a plain boolean.
      */
-    fun clickKeyPadStatus(upPressed: Boolean, downPressed: Boolean): ByteArray = packet(
+    public fun clickKeyPadStatus(upPressed: Boolean, downPressed: Boolean): ByteArray = packet(
         RideOnSpec.OPCODE_CLICK_BUTTON_STATUS,
         uint32Field(1, if (upPressed) 0L else 1L) + uint32Field(2, if (downPressed) 0L else 1L),
     )
 
-    fun ridingData(
+    public fun ridingData(
         powerWatts: Long,
         cadenceRpm: Long,
         speedX100: Long,
@@ -249,9 +249,9 @@ object RideOnWire {
             uint32Field(6, deviceParameter),
     )
 
-    fun zigZagEncode32(value: Int): Long = ProtobufVarint.zigZagEncode32(value)
+    public fun zigZagEncode32(value: Int): Long = ProtobufVarint.zigZagEncode32(value)
 
-    fun zigZagDecode32(value: Long): Int = ProtobufVarint.zigZagDecode32(value)
+    public fun zigZagDecode32(value: Long): Int = ProtobufVarint.zigZagDecode32(value)
 
     private fun sint32Field(number: Int, value: Int): ByteArray =
         key(number, 0) + varint(zigZagEncode32(value))
@@ -306,8 +306,8 @@ object RideOnWire {
     // mid-ride that correlated with nothing; field 5 tracked field 3 (speedX100) at a ratio of 29.00
     // (stdev 0.02 over ~300 samples). Reproduced for wire fidelity only: a real Zwift completed
     // negotiation and drove the simulator without them. Restated from central's RideOnUuids (L22).
-    const val RIDING_DATA_FIELD5_SPEED_MULTIPLIER = 29.0
-    const val RIDING_DATA_FIELD6_OBSERVED_CONSTANT = 32_972L
+    public const val RIDING_DATA_FIELD5_SPEED_MULTIPLIER: Double = 29.0
+    public const val RIDING_DATA_FIELD6_OBSERVED_CONSTANT: Long = 32_972L
 
     // Leaf field number for a gear-ratio HubRequest reply - see hubRequestResponse()'s KDoc.
     private const val GEAR_RATIO_LEAF_FIELD = 8

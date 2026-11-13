@@ -7,7 +7,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Legacy-PDU advertisement layout for a PM5 persona, kept separate from FTMS budgeting. */
 @SimulatorProbeApi
-data class Concept2Pm5AdvertisingPlan(
+public data class Concept2Pm5AdvertisingPlan(
     val localName: String,
     val includeNameInAdvertisement: Boolean,
     val includeTxPowerInAdvertisement: Boolean,
@@ -22,8 +22,8 @@ data class Concept2Pm5AdvertisingPlan(
         require(scanResponseBytes <= MAX_LEGACY_BYTES)
     }
 
-    companion object {
-        const val MAX_LEGACY_BYTES = 31
+    public companion object {
+        public const val MAX_LEGACY_BYTES: Int = 31
         private const val FLAGS_STRUCTURE_BYTES = 3
         private const val UUID128_STRUCTURE_BYTES = 18
         private const val UUID16_STRUCTURE_BYTES = 4
@@ -31,7 +31,7 @@ data class Concept2Pm5AdvertisingPlan(
         private const val STRUCTURE_OVERHEAD_BYTES = 2
         private const val FTMS_SERVICE_DATA_STRUCTURE_BYTES = 7
 
-        fun forPersona(persona: SimulatorPersona.Concept2Pm5): Concept2Pm5AdvertisingPlan {
+        public fun forPersona(persona: SimulatorPersona.Concept2Pm5): Concept2Pm5AdvertisingPlan {
             val nameBytes = persona.advertisedName.toByteArray(Charsets.UTF_8).size
             if (persona.compatibility.exposesFtms) {
                 val ftmsData = when (persona.machine) {

@@ -36,7 +36,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.WahooUuids
 
 /** Build only measurement frames that the selected persona actually exposes as notifiable. */
 @SimulatorProbeApi
-fun kickrStandardMeasurementFrames(
+public fun kickrStandardMeasurementFrames(
     manifest: KickrPersonaManifest,
     snapshot: KickrMachineSnapshot,
 ): List<KickrTxFrame> {

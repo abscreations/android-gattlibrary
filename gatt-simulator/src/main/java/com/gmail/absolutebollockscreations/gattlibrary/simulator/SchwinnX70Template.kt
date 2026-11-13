@@ -26,13 +26,13 @@ package com.gmail.absolutebollockscreations.gattlibrary.simulator
  * in main sources because the test fixtures are not on the runtime classpath.
  */
 @SimulatorProbeApi
-enum class SchwinnX70Template(
-    val supplemental: ByteArray,
-    val sibling: ByteArray,
-    val main: ByteArray,
-    val supplementalByte3: IntArray,
-    val siblingByte1: IntArray,
-    val mainByte3: IntArray,
+public enum class SchwinnX70Template(
+    public val supplemental: ByteArray,
+    public val sibling: ByteArray,
+    public val main: ByteArray,
+    public val supplementalByte3: IntArray,
+    public val siblingByte1: IntArray,
+    public val mainByte3: IntArray,
 ) {
     /** QZ issue #1365, file 11097202 — the console behind every other 170 artefact in the project. */
     PAIRED_170(
@@ -119,7 +119,7 @@ enum class SchwinnX70Template(
     ),
     ;
 
-    companion object {
+    public companion object {
         /**
          * The template the persona copies.
          *
@@ -130,6 +130,6 @@ enum class SchwinnX70Template(
          * captured octets and losing that would be losing evidence, not because anything selects
          * between them any more.
          */
-        val DEFAULT: SchwinnX70Template = MAIN_270
+        public val DEFAULT: SchwinnX70Template = MAIN_270
     }
 }

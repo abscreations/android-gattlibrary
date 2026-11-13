@@ -15,8 +15,8 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
  * writes belt heart rate into the PM must find nowhere to write it here either.
  */
 @SimulatorProbeApi
-class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
-    val services: Map<UUID, List<Concept2CharacteristicManifest>> = buildMap {
+public class Concept2Pm5GattProfile(public val persona: SimulatorPersona.Concept2Pm5) {
+    public val services: Map<UUID, List<Concept2CharacteristicManifest>> = buildMap {
         if (persona.compatibility.exposesFtms) {
             // Registration order reproduces the captured post-GAP/GATT handle order.
             put(Concept2Uuids.UUID_C2_PM_CONTROL_SERVICE, modernPmControlManifest)
@@ -43,7 +43,7 @@ class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
      * it, which is the kind of divergence between declaration and behaviour that makes a
      * simulator stop being evidence about anything.
      */
-    fun readDeviceInformation(uuid: UUID, offset: Int, negotiatedMtu: Int = 23): ByteArray? {
+    public fun readDeviceInformation(uuid: UUID, offset: Int, negotiatedMtu: Int = 23): ByteArray? {
         if (offset < 0) return null
         if (uuid !in persona.compatibility.deviceInformation) return null
         val value = when (uuid) {
@@ -65,13 +65,13 @@ class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
     }
 
     /** Read-only standard values captured from the modern RowErg's minimal FTMS service. */
-    fun readFtms(uuid: UUID): ByteArray? = when (uuid) {
+    public fun readFtms(uuid: UUID): ByteArray? = when (uuid) {
         FtmsUuids.UUID_FITNESS_MACHINE_FEATURE -> MODERN_ROW_FTMS_FEATURE.copyOf()
         else -> null
     }
 
-    companion object {
-        val pmControlManifest: List<Concept2CharacteristicManifest> = listOf(
+    public companion object {
+        public val pmControlManifest: List<Concept2CharacteristicManifest> = listOf(
             Concept2CharacteristicManifest(Concept2Uuids.UUID_C2_CSAFE_REQUEST, writable = true),
             Concept2CharacteristicManifest(
                 Concept2Uuids.UUID_C2_CSAFE_RESPONSE,
@@ -81,7 +81,7 @@ class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
         )
 
         /** Exact `0x0C` request and `0x10` response properties from PM5 431225189. */
-        val modernPmControlManifest: List<Concept2CharacteristicManifest> = listOf(
+        public val modernPmControlManifest: List<Concept2CharacteristicManifest> = listOf(
             Concept2CharacteristicManifest(
                 Concept2Uuids.UUID_C2_CSAFE_REQUEST,
                 writable = true,
@@ -93,11 +93,11 @@ class Concept2Pm5GattProfile(val persona: SimulatorPersona.Concept2Pm5) {
             ),
         )
 
-        val heartRateReceiveManifest: List<Concept2CharacteristicManifest> = listOf(
+        public val heartRateReceiveManifest: List<Concept2CharacteristicManifest> = listOf(
             Concept2CharacteristicManifest(Concept2Uuids.UUID_C2_HEART_RATE_RECEIVE, writable = true),
         )
 
-        fun ftmsManifest(machine: Concept2Machine): List<Concept2CharacteristicManifest> = listOf(
+        public fun ftmsManifest(machine: Concept2Machine): List<Concept2CharacteristicManifest> = listOf(
             Concept2CharacteristicManifest(FtmsUuids.UUID_FITNESS_MACHINE_FEATURE, readable = true),
             Concept2CharacteristicManifest(
                 if (machine == Concept2Machine.BIKE_ERG) FtmsUuids.UUID_BIKING_DATA

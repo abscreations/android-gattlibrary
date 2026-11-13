@@ -8,11 +8,11 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.ftms.FtmsUuids
 import com.gmail.absolutebollockscreations.gattlibrary.core.ids.Concept2Uuids
 
 /** Protocol-level identity selected by the debug peripheral simulator. */
-sealed interface SimulatorPersona {
-    val advertisedName: String
+public sealed interface SimulatorPersona {
+    public val advertisedName: String
 
     /** Indoor-bike ride published through the native CSC and Cycling Power sensor services. */
-    data object IndoorBikeSpeedAndPower : SimulatorPersona {
+    public data object IndoorBikeSpeedAndPower : SimulatorPersona {
         override val advertisedName: String = BtServiceProfiles.DEVICE_NAME_CSC_CPS
     }
 
@@ -27,7 +27,7 @@ sealed interface SimulatorPersona {
      *
      * Wire specification and evidence: `docs/stryd-footpod-simulator-implementation.md`.
      */
-    data object StrydFootpod : SimulatorPersona {
+    public data object StrydFootpod : SimulatorPersona {
         override val advertisedName: String = "Stryd"
     }
 
@@ -41,25 +41,25 @@ sealed interface SimulatorPersona {
      * machine whose advertisement misstates its type. GATT, data characteristic and the ride are
      * still [profile]'s; only the advertisement lies.
      */
-    data class Ftms(
+    public data class Ftms(
         val profile: FtmsMachineProfile,
         val advertisedMachineType: FtmsMachineProfile = profile,
     ) : SimulatorPersona {
         override val advertisedName: String = profile.advertisedName
 
         /** True when the advertisement's machine type deliberately disagrees with [profile]. */
-        val misadvertisesMachineType: Boolean get() = advertisedMachineType != profile
+        public val misadvertisesMachineType: Boolean get() = advertisedMachineType != profile
 
-        companion object {
+        public companion object {
             /** Standard FTMS rower whose advertisement Service Data claims Cross Trainer. */
-            val BROKEN_ROWER_ADVERTISEMENT = Ftms(
+            public val BROKEN_ROWER_ADVERTISEMENT: Ftms = Ftms(
                 profile = FtmsMachineProfile.INDOOR_ROWER,
                 advertisedMachineType = FtmsMachineProfile.ELLIPTICAL,
             )
         }
     }
 
-    data class Concept2Pm5(
+    public data class Concept2Pm5(
         val machine: Concept2Machine,
         val compatibility: Concept2Pm5CompatibilityProfile =
             Concept2Pm5CompatibilityProfile.forMachine(machine),
@@ -77,35 +77,35 @@ sealed interface SimulatorPersona {
     }
 
     /** Best-effort Android host for one M-series validation identity. */
-    data class KeiserMSeries(
+    public data class KeiserMSeries(
         val profile: KeiserMSeriesSimulatorProfile,
     ) : SimulatorPersona {
         override val advertisedName: String = profile.advertisedName
     }
 
     /** Physical-capture-backed Precor Spinner Chrono Power fixture. */
-    data object PrecorChrono : SimulatorPersona {
+    public data object PrecorChrono : SimulatorPersona {
         override val advertisedName: String = "CHRONO 0"
     }
 
     /** Corroborated Flywheel Sports measurement protocol validation fixture. */
-    data object FlywheelSports : SimulatorPersona {
+    public data object FlywheelSports : SimulatorPersona {
         override val advertisedName: String = "Flywheel 1"
     }
 
     /** Capture-corroborated KayakFirst Blue console hosted on the evidenced FFE0/FFE1 surface. */
-    data object KayakFirstBlue : SimulatorPersona {
+    public data object KayakFirstBlue : SimulatorPersona {
         // Deliberately synthetic: the captures do not prove a stable physical-device name.
         override val advertisedName: String = "25100001"
     }
 
     /** E2 4.2.0 Orange timing-MCU protocol on the documented Blue-derived RF shell. */
-    data object KayakFirstOrange : SimulatorPersona {
+    public data object KayakFirstOrange : SimulatorPersona {
         override val advertisedName: String = KayakFirstOrangeSimulatorProtocol.ADVERTISED_NAME
     }
 
     /** Capture-backed setup-gated Life Fitness FTMS console. */
-    data class LifeFitness(
+    public data class LifeFitness(
         val machine: LifeFitnessMachine,
     ) : SimulatorPersona {
         override val advertisedName: String = machine.syntheticName
@@ -124,7 +124,7 @@ sealed interface SimulatorPersona {
      * Metrics now come from the shared ride engine, as they do for every other persona. What stays
      * capture-derived is the thing that actually needs to be: the frame octets (§8.2).
      */
-    data object SchwinnX70 : SimulatorPersona {
+    public data object SchwinnX70 : SimulatorPersona {
         override val advertisedName: String = SCHWINN_X70_ADVERTISED_NAME
     }
 
@@ -145,7 +145,7 @@ sealed interface SimulatorPersona {
      * as page 25 (plan §18.2) — never an independent generator. This is not a separate debug
      * persona; it is implicit to the equipment type and never described in the UI.
      */
-    data class FeCBle(
+    public data class FeCBle(
         val equipmentType: FeCEquipmentType,
         val controlEnabled: Boolean = equipmentType.supportsControl,
         val identity: FeCBleSimulatorIdentity = FeCBleSimulatorIdentity.GENERIC,
@@ -169,7 +169,7 @@ sealed interface SimulatorPersona {
      * (`KickrControlRoute`), so this gates the FTMS route only; the legacy Wahoo and RideOn
      * control points are unaffected.
      */
-    data class Kickr(
+    public data class Kickr(
         val device: KickrSimulatorPersona,
         val controlEnabled: Boolean = true,
     ) : SimulatorPersona {
@@ -178,16 +178,16 @@ sealed interface SimulatorPersona {
 }
 
 /** Distinct identities intended to run on distinct Android simulator phones. */
-enum class KeiserMSeriesSimulatorProfile(
-    val displayName: String,
-    val advertisedName: String,
-    val systemId: Int,
-    val distanceUnit: KeiserMSeriesSimulatorDistanceUnit,
-    val firmwareMajor: Int,
-    val firmwareMinor: Int,
-    val samplePeriodMs: Long,
-    val advertisingIntervalUnits: Int,
-    val statsTimeoutMs: Long,
+public enum class KeiserMSeriesSimulatorProfile(
+    public val displayName: String,
+    public val advertisedName: String,
+    public val systemId: Int,
+    public val distanceUnit: KeiserMSeriesSimulatorDistanceUnit,
+    public val firmwareMajor: Int,
+    public val firmwareMinor: Int,
+    public val samplePeriodMs: Long,
+    public val advertisingIntervalUnits: Int,
+    public val statsTimeoutMs: Long,
 ) {
     M3I_IMPERIAL(
         displayName = "M3i · Imperial validation",
@@ -224,7 +224,7 @@ enum class KeiserMSeriesSimulatorProfile(
     ),
 }
 
-enum class KeiserMSeriesSimulatorDistanceUnit(val metresPerTenth: Double) {
+public enum class KeiserMSeriesSimulatorDistanceUnit(public val metresPerTenth: Double) {
     MILES(160.934),
     KILOMETRES(100.0),
 }
@@ -251,15 +251,15 @@ internal fun SimulatorPersona.standardSurface(): StandardSimulatorSurface? = whe
 }
 
 /** Capture-grounded BLE identities layered over the same deterministic FE-C trainer model. */
-enum class FeCBleSimulatorIdentity(
-    val displayName: String,
-    val localName: String?,
-    val syntheticSerial: String,
-    val supplementalRevision: Int,
-    val mainRevision: Int,
-    val antHardwareRevision: Int? = null,
-    val antManufacturerId: Int? = null,
-    val antModelNumber: Int? = null,
+public enum class FeCBleSimulatorIdentity(
+    public val displayName: String,
+    public val localName: String?,
+    public val syntheticSerial: String,
+    public val supplementalRevision: Int,
+    public val mainRevision: Int,
+    public val antHardwareRevision: Int? = null,
+    public val antManufacturerId: Int? = null,
+    public val antModelNumber: Int? = null,
 ) {
     GENERIC("FitBridge", null, "900000000", 1, 1),
     TACX_NEO(
@@ -299,16 +299,16 @@ internal const val SCHWINN_X70_ADVERTISED_NAME = "SCHWINN 170/270"
  * can visit the whole legal range rather than one machine's slice of it.
  */
 @SimulatorProbeApi
-object SchwinnX70Ride {
+public object SchwinnX70Ride {
     /** Median interval between supplemental/sibling pairs, across all captured consoles. */
-    const val PAIR_PERIOD_MS = 96L
+    public const val PAIR_PERIOD_MS: Long = 96L
 
     /** Median interval between 17-byte main frames. */
-    const val MAIN_PERIOD_MS = 96L
+    public const val MAIN_PERIOD_MS: Long = 96L
 
     /** The family's legal resistance range; the engine's level is mapped onto it. */
-    const val RESISTANCE_FLOOR = 1
-    const val RESISTANCE_CEILING = 22
+    public const val RESISTANCE_FLOOR: Int = 1
+    public const val RESISTANCE_CEILING: Int = 22
 }
 
 /**
@@ -318,27 +318,27 @@ object SchwinnX70Ride {
  * the family has and the persona uses it verbatim.
  */
 @SimulatorProbeApi
-object SchwinnX70Identity {
+public object SchwinnX70Identity {
     /**
      * **NUL-padded to nineteen octets on the wire**, which the 570u logs show and no earlier record
      * captured. TMIW does a `contains` check and never noticed; a byte-exact simulator has to.
      */
-    const val MANUFACTURER = "Nautilus, Inc.\u0000\u0000\u0000\u0000\u0000"
-    const val MODEL_NUMBER = "SCHWINN 170/270"
-    const val HARDWARE_REVISION = "SCHWINN 170/270"
-    const val FIRMWARE_REVISION = "R04.12.004P"
-    const val SOFTWARE_REVISION = "H44_R15"
+    public const val MANUFACTURER: String = "Nautilus, Inc.\u0000\u0000\u0000\u0000\u0000"
+    public const val MODEL_NUMBER: String = "SCHWINN 170/270"
+    public const val HARDWARE_REVISION: String = "SCHWINN 170/270"
+    public const val FIRMWARE_REVISION: String = "R04.12.004P"
+    public const val SOFTWARE_REVISION: String = "H44_R15"
 
     /** Company `0x00F4` (Nautilus), product 0, version 0, from a Bluetooth-SIG-assigned vendor. */
-    val PNP_ID: ByteArray = byteArrayOf(0x01, 0xF4.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00)
+    public val PNP_ID: ByteArray = byteArrayOf(0x01, 0xF4.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00)
 }
 
-enum class LifeFitnessMachine(
-    val displayName: String,
-    val profile: FtmsMachineProfile,
-    val measurementUuid: UUID,
-    val equipmentServiceData: ByteArray,
-    val syntheticName: String,
+public enum class LifeFitnessMachine(
+    public val displayName: String,
+    public val profile: FtmsMachineProfile,
+    public val measurementUuid: UUID,
+    public val equipmentServiceData: ByteArray,
+    public val syntheticName: String,
 ) {
     TREADMILL(
         "Treadmill",
@@ -371,17 +371,17 @@ enum class LifeFitnessMachine(
 }
 
 /** Physical PM5 identities; Concept2's internal simulator machine codes are deliberately absent. */
-enum class Concept2Machine(
-    val displayName: String,
-    val wireMachineType: Int,
-    val syntheticSerial: String,
+public enum class Concept2Machine(
+    public val displayName: String,
+    public val wireMachineType: Int,
+    public val syntheticSerial: String,
 ) {
     ROW_ERG("RowErg", 0, "900000001"),
     SKI_ERG("SkiErg", 128, "900000002"),
     BIKE_ERG("BikeErg", 192, "900000003"),
 }
 
-data class Concept2CharacteristicManifest(
+public data class Concept2CharacteristicManifest(
     val uuid: UUID,
     val readable: Boolean = false,
     val writable: Boolean = false,
@@ -389,7 +389,7 @@ data class Concept2CharacteristicManifest(
     val notifiable: Boolean = false,
 )
 
-enum class Concept2StatusPayloadRevision {
+public enum class Concept2StatusPayloadRevision {
     LEGACY_12_BYTE,
 }
 
@@ -411,7 +411,7 @@ enum class Concept2StatusPayloadRevision {
  * this persona should succeed against that hardware, and — the part a superset surface
  * breaks — a client that needs a characteristic the hardware lacks should fail here too.
  */
-enum class Concept2Pm5GattSurface(val displayName: String) {
+public enum class Concept2Pm5GattSurface(public val displayName: String) {
     /** Attested by `PM5 430392046`: no FTMS, no `0x0016`, no `CE060040`, erg service ends at `0x003B`. */
     PRE_FTMS("Pre-FTMS PM5"),
 
@@ -431,19 +431,19 @@ enum class Concept2Pm5GattSurface(val displayName: String) {
  * They select ErgData's V2 Row/Ski/Bike families while remaining below the thresholds that make
  * Additional Status 3 require fields beyond FitBridge's evidenced 12-byte payload.
  */
-enum class Concept2Pm5CompatibilityProfile(
-    val machine: Concept2Machine,
-    val advertisedName: String,
-    val serialNumber: String,
-    val displayName: String,
-    val hardwareRevision: String,
-    val firmwareIdentity: String,
-    val statusPayloadRevision: Concept2StatusPayloadRevision,
-    val gattSurface: Concept2Pm5GattSurface,
-    val deviceInformation: List<UUID>,
-    val exposesHeartRateReceive: Boolean,
-    val exposesFtms: Boolean,
-    val characteristics: List<Concept2CharacteristicManifest>,
+public enum class Concept2Pm5CompatibilityProfile(
+    public val machine: Concept2Machine,
+    public val advertisedName: String,
+    public val serialNumber: String,
+    public val displayName: String,
+    public val hardwareRevision: String,
+    public val firmwareIdentity: String,
+    public val statusPayloadRevision: Concept2StatusPayloadRevision,
+    public val gattSurface: Concept2Pm5GattSurface,
+    public val deviceInformation: List<UUID>,
+    public val exposesHeartRateReceive: Boolean,
+    public val exposesFtms: Boolean,
+    public val characteristics: List<Concept2CharacteristicManifest>,
 ) {
     ERGDATA_V2_ROW(
         machine = Concept2Machine.ROW_ERG,
@@ -534,7 +534,7 @@ enum class Concept2Pm5CompatibilityProfile(
         characteristics = preFtmsErgCharacteristics(),
     );
 
-    val parsedFirmwareNumber: Float
+    public val parsedFirmwareNumber: Float
         get() = firmwareIdentity.substring(12, 15).toFloat() +
             firmwareIdentity.substring(16).filter { it.isDigit() || it == ' ' }.toFloat() * 0.001f
 
@@ -547,12 +547,12 @@ enum class Concept2Pm5CompatibilityProfile(
         }
     }
 
-    companion object {
+    public companion object {
         /** The modern surface stays the default, so existing callers keep the ErgData-proven persona. */
-        fun forMachine(machine: Concept2Machine): Concept2Pm5CompatibilityProfile =
+        public fun forMachine(machine: Concept2Machine): Concept2Pm5CompatibilityProfile =
             forMachine(machine, Concept2Pm5GattSurface.MODERN)
 
-        fun forMachine(
+        public fun forMachine(
             machine: Concept2Machine,
             surface: Concept2Pm5GattSurface,
         ): Concept2Pm5CompatibilityProfile = entries.single {

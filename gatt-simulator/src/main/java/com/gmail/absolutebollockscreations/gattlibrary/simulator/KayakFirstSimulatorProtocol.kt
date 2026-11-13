@@ -11,7 +11,7 @@ import kotlin.math.roundToInt
 import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.KayakFirstSpec
 
 @SimulatorProbeApi
-fun kayakFirstIdleSample() = FtmsMockSample(
+public fun kayakFirstIdleSample(): FtmsMockSample = FtmsMockSample(
     elapsedSeconds = 0,
     heartRate = 0,
     caloriesTotal = 0,
@@ -28,8 +28,8 @@ fun kayakFirstIdleSample() = FtmsMockSample(
 )
 
 @SimulatorProbeApi
-sealed interface KayakFirstSimulatorCommand {
-    data object Reset : KayakFirstSimulatorCommand
+public sealed interface KayakFirstSimulatorCommand {
+    public data object Reset : KayakFirstSimulatorCommand
     /**
      * Either handshake dialect.
      *
@@ -37,7 +37,7 @@ sealed interface KayakFirstSimulatorCommand {
      * form; each is null for the other dialect. The simulator accepts both so central-side dialect
      * selection and official-client interoperability can both be exercised.
      */
-    data class Handshake(
+    public data class Handshake(
         val epochSeconds: Long,
         val timezoneMinutes: Int,
         val bodyWeightKg: Double,
@@ -45,24 +45,24 @@ sealed interface KayakFirstSimulatorCommand {
         val boatWeightKg: Double? = null,
         val variant: KayakFirstHandshakeVariant = KayakFirstHandshakeVariant.LEGACY,
     ) : KayakFirstSimulatorCommand
-    data class Display(val configuration: KayakFirstPanelConfiguration) : KayakFirstSimulatorCommand
-    data object Poll : KayakFirstSimulatorCommand
-    data object Start : KayakFirstSimulatorCommand
-    data object Stop : KayakFirstSimulatorCommand
+    public data class Display(val configuration: KayakFirstPanelConfiguration) : KayakFirstSimulatorCommand
+    public data object Poll : KayakFirstSimulatorCommand
+    public data object Start : KayakFirstSimulatorCommand
+    public data object Stop : KayakFirstSimulatorCommand
 }
 
 @SimulatorProbeApi
-sealed interface KayakFirstSimulatorInput {
-    data class Command(val value: KayakFirstSimulatorCommand) : KayakFirstSimulatorInput
-    data class Rejected(val reason: String) : KayakFirstSimulatorInput
+public sealed interface KayakFirstSimulatorInput {
+    public data class Command(val value: KayakFirstSimulatorCommand) : KayakFirstSimulatorInput
+    public data class Rejected(val reason: String) : KayakFirstSimulatorInput
 }
 
 /** Independent peripheral-side command parser. Central codecs are intentionally not reused. */
 @SimulatorProbeApi
-class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int = 256) {
+public class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int = 256) {
     private val pending = ArrayList<Byte>()
 
-    fun append(bytes: ByteArray): List<KayakFirstSimulatorInput> {
+    public fun append(bytes: ByteArray): List<KayakFirstSimulatorInput> {
         if (bytes.any { it == 0.toByte() }) {
             pending.clear()
             return listOf(KayakFirstSimulatorInput.Rejected("NUL byte"))
@@ -85,7 +85,7 @@ class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int = 256) {
         return output
     }
 
-    fun reset() = pending.clear()
+    public fun reset(): Unit = pending.clear()
 
     private fun decode(raw: ByteArray): KayakFirstSimulatorInput {
         val line = runCatching {
@@ -136,8 +136,8 @@ class KayakFirstSimulatorCommandAssembler(private val maximumBytes: Int = 256) {
 
 /** Peripheral serializer kept independent from KayakFirstMeasurement's central decoder. */
 @SimulatorProbeApi
-object KayakFirstSimulatorTelemetryEncoder {
-    const val PERIOD_MS = 1_000L
+public object KayakFirstSimulatorTelemetryEncoder {
+    public const val PERIOD_MS: Long = 1_000L
 
     /**
      * Renders one command-6 record.
@@ -153,7 +153,7 @@ object KayakFirstSimulatorTelemetryEncoder {
      * nothing new. A repeated datapoint covers zero seconds and is weighed as zero; it is not
      * inactive.
      */
-    fun generated(
+    public fun generated(
         sample: FtmsMockSample,
         running: Boolean,
         activePaddling: Boolean = running,
@@ -212,11 +212,11 @@ object KayakFirstSimulatorTelemetryEncoder {
 }
 
 @GattLibraryInternalApi
-data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric, val value: String)
+public data class KayakFirstPanelRow(val slot: Int, val metric: KayakFirstDisplayMetric, val value: String)
 
 @GattLibraryInternalApi
-object KayakFirstPanelPresenter {
-    fun rows(
+public object KayakFirstPanelPresenter {
+    public fun rows(
         configuration: KayakFirstPanelConfiguration,
         sample: FtmsMockSample?,
         imperial: Boolean = false,

@@ -39,26 +39,26 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.bytes.LittleEndian.u
  * notified once in five captures, and the plan forbids inventing either.
  */
 @SimulatorProbeApi
-object StrydFootpodEncoder {
+public object StrydFootpodEncoder {
 
     // ─────────────────────────────────────────────────────────────
     // RSC Measurement (0x2A53) - fixed 10 octets
     // ─────────────────────────────────────────────────────────────
 
     /** Instantaneous stride length present. Set in every captured frame. */
-    const val RSC_FLAG_STRIDE_LENGTH = 0x01
+    public const val RSC_FLAG_STRIDE_LENGTH: Int = 0x01
 
     /** Total distance present. Set in every captured frame. */
-    const val RSC_FLAG_TOTAL_DISTANCE = 0x02
+    public const val RSC_FLAG_TOTAL_DISTANCE: Int = 0x02
 
     /** Walking (0) or running (1). The only flag bit that toggles at run time. */
-    const val RSC_FLAG_RUNNING = 0x04
+    public const val RSC_FLAG_RUNNING: Int = 0x04
 
     /** `0x03`: the persona is stationary or walking. */
-    const val RSC_FLAGS_WALKING = RSC_FLAG_STRIDE_LENGTH or RSC_FLAG_TOTAL_DISTANCE
+    public const val RSC_FLAGS_WALKING: Int = RSC_FLAG_STRIDE_LENGTH or RSC_FLAG_TOTAL_DISTANCE
 
     /** `0x07`: the persona is running. */
-    const val RSC_FLAGS_RUNNING = RSC_FLAGS_WALKING or RSC_FLAG_RUNNING
+    public const val RSC_FLAGS_RUNNING: Int = RSC_FLAGS_WALKING or RSC_FLAG_RUNNING
 
     /**
      * Speed at or above which the captures show flag bit 2 set.
@@ -68,10 +68,10 @@ object StrydFootpodEncoder {
      * declared boundary, not a measured one. It sits inside the observed gap between the fastest
      * `0x03` frame and the slowest `0x07` frame.
      */
-    const val RUN_THRESHOLD_MPS = 2.0
+    public const val RUN_THRESHOLD_MPS: Double = 2.0
 
     /** Fixed 10-octet RSC Measurement. Stride length and total distance are always present. */
-    fun rscMeasurement(
+    public fun rscMeasurement(
         speedMps: Double,
         cadenceStridesPerMinute: Int,
         strideLengthCm: Int,
@@ -93,7 +93,7 @@ object StrydFootpodEncoder {
      * presence bits [RSC_FLAGS_WALKING] sets in every frame this persona emits. Derived from the
      * emitter rather than copied from a capture, because no capture ever read this characteristic.
      */
-    fun rscFeature(): ByteArray = u16le(RSC_FLAG_STRIDE_LENGTH or RSC_FLAG_TOTAL_DISTANCE)
+    public fun rscFeature(): ByteArray = u16le(RSC_FLAG_STRIDE_LENGTH or RSC_FLAG_TOTAL_DISTANCE)
 
     // ─────────────────────────────────────────────────────────────
     // Cycling Power Measurement (0x2A63) - fixed 8 octets
@@ -107,10 +107,10 @@ object StrydFootpodEncoder {
      * that publishes no RSC at all. Reproducing that is the whole point of the persona, so the
      * counter is fed from the same stride accumulator that drives 0x2A53.
      */
-    const val CPS_FLAGS = 0x0020
+    public const val CPS_FLAGS: Int = 0x0020
 
     /** Bit 3, crank revolution data supported: the feature bit [CPS_FLAGS] obliges. */
-    const val CPS_FEATURE_CRANK_REVOLUTION_DATA = 1 shl 3
+    public const val CPS_FEATURE_CRANK_REVOLUTION_DATA: Int = 1 shl 3
 
     /**
      * Sensor Location (0x2A5D) = 2, "in shoe".
@@ -120,10 +120,10 @@ object StrydFootpodEncoder {
      * already pins `SENSOR_LOCATION_REAR_HUB = 0x0D`, which fixes the shared CSC/CPS enumeration
      * and puts the two foot-mounted codes at 1 ("top of shoe") and 2 ("in shoe").
      */
-    const val SENSOR_LOCATION_IN_SHOE = 0x02
+    public const val SENSOR_LOCATION_IN_SHOE: Int = 0x02
 
     /** Fixed 8-octet Cycling Power Measurement with the crank pair Stryd always sends. */
-    fun cyclingPowerMeasurement(
+    public fun cyclingPowerMeasurement(
         instantaneousPowerWatts: Int,
         cumulativeStrides: Int,
         lastStrideEventTime1024: Int,
@@ -133,17 +133,17 @@ object StrydFootpodEncoder {
         u16le(lastStrideEventTime1024 and 0xFFFF)
 
     /** Cycling Power Feature (0x2A65), derived from [CPS_FLAGS] the same way [rscFeature] is. */
-    fun cyclingPowerFeature(): ByteArray = u32Saturating(CPS_FEATURE_CRANK_REVOLUTION_DATA.toLong())
+    public fun cyclingPowerFeature(): ByteArray = u32Saturating(CPS_FEATURE_CRANK_REVOLUTION_DATA.toLong())
 
     /** Sensor Location (0x2A5D). */
-    fun sensorLocation(): ByteArray = byteArrayOf(SENSOR_LOCATION_IN_SHOE.toByte())
+    public fun sensorLocation(): ByteArray = byteArrayOf(SENSOR_LOCATION_IN_SHOE.toByte())
 
     // ─────────────────────────────────────────────────────────────
     // Timing
     // ─────────────────────────────────────────────────────────────
 
     /** Both measurement characteristics notify at 1 Hz; the corpus median gap is 991 ms. */
-    const val MEASUREMENT_PERIOD_MS = 1_000L
+    public const val MEASUREMENT_PERIOD_MS: Long = 1_000L
 
     /**
      * Battery notification period.
@@ -153,7 +153,7 @@ object StrydFootpodEncoder {
      * upward drift, 45-46-47% and 67-68-69% - is not reproduced: a persona that emits a level it
      * did not derive would be inventing data, so this one discharges monotonically and says so.
      */
-    const val BATTERY_PERIOD_MS = 5_000L
+    public const val BATTERY_PERIOD_MS: Long = 5_000L
 
     // ─────────────────────────────────────────────────────────────
     // Octet helpers

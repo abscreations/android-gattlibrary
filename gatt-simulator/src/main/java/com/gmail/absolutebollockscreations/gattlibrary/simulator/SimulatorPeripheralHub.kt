@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicReference
  * controller, so the simulator cannot start a second GATT server or reach
  * around the manager's permission gating.
  */
-class SimulatorPeripheralHub(
+public class SimulatorPeripheralHub(
     context: Context,
     private val environment: SimulatorHostEnvironment,
 ) : FtmsSimulator.SimulatorPeripheralHost, ManagedPeripheralGroup {

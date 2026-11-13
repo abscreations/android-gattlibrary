@@ -31,7 +31,7 @@ import com.gmail.absolutebollockscreations.gattlibrary.core.vendor.SchwinnX70Spe
  * @param supplementalAccumulator elapsed seconds of motion, not of connection (tag `0x3C`).
  */
 @SimulatorProbeApi
-data class SchwinnX70ConsoleState(
+public data class SchwinnX70ConsoleState(
     val sequence: Int,
     val speedMph: Double,
     val powerWatts: Double,
@@ -71,7 +71,7 @@ data class SchwinnX70ConsoleState(
  * That constant carries the evidence and the open question; this class just applies it.
  */
 @SimulatorProbeApi
-class SchwinnX70ConsoleModel {
+public class SchwinnX70ConsoleModel {
 
     private var sequence = 0
     private var crankRevolutions = 0.0
@@ -93,7 +93,7 @@ class SchwinnX70ConsoleModel {
      * @param energyKcal the engine's cumulative calorie total, published verbatim.
      * @param distanceMeters the engine's cumulative distance.
      */
-    fun advance(
+    public fun advance(
         seconds: Double,
         speedKph: Double,
         powerWatts: Double,
@@ -184,18 +184,18 @@ class SchwinnX70ConsoleModel {
         secondsSinceResistanceStep = 0.0
     }
 
-    companion object {
+    public companion object {
         /** Below this the table's quadratics are not usable and the level is left where it is. */
-        const val MIN_CADENCE_FOR_RESISTANCE = 20.0
+        public const val MIN_CADENCE_FOR_RESISTANCE: Double = 20.0
 
         /** How often the simulated rider is willing to move the knob. */
-        const val RESISTANCE_STEP_SECONDS = 1.0
+        public const val RESISTANCE_STEP_SECONDS: Double = 1.0
 
         /** `SchwinnX70Measurement.TMIW_CALORIE_DIVISOR` (central), restated so the encoder needs no decoder. */
-        const val ENERGY_DIVISOR = 2_097_152.0
+        public const val ENERGY_DIVISOR: Double = 2_097_152.0
 
         /** Kilometres per statute mile; the sibling frame carries mph (restated, not imported: L22). */
-        const val KM_PER_MILE = 1.609344
+        public const val KM_PER_MILE: Double = 1.609344
 
         /**
          * Resistance level and cadence to watts, from the console's published quadratic table
@@ -210,9 +210,9 @@ class SchwinnX70ConsoleModel {
         }
 
         /** The console's clock rate, 1/1024 s. */
-        const val TICKS_PER_SECOND = 1024.0
+        public const val TICKS_PER_SECOND: Double = 1024.0
 
-        const val METRES_PER_MILE = 1609.344
+        public const val METRES_PER_MILE: Double = 1609.344
 
         /**
          * Sibling accumulator B advances 100 units per unit of distance covered at the speed the
@@ -224,6 +224,6 @@ class SchwinnX70ConsoleModel {
          * saying which unit either is in. Since speed is published in mph, B is published per mile,
          * and the two stay consistent on the wire whichever way Q12 resolves.
          */
-        const val SIBLING_DISTANCE_UNITS_PER_MILE = 100.0
+        public const val SIBLING_DISTANCE_UNITS_PER_MILE: Double = 100.0
     }
 }

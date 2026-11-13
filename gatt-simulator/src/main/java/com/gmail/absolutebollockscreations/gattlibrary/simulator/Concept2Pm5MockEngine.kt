@@ -5,7 +5,7 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-enum class Concept2Scenario {
+public enum class Concept2Scenario {
     STEADY,
     INCREASING,
     RECOVERY,
@@ -15,14 +15,14 @@ enum class Concept2Scenario {
 }
 
 @SimulatorProbeApi
-object Concept2Pm5OperationalState {
-    const val READY = 1
-    const val WORKOUT = 2
-    const val IDLE = 10
+public object Concept2Pm5OperationalState {
+    public const val READY: Int = 1
+    public const val WORKOUT: Int = 2
+    public const val IDLE: Int = 10
 }
 
 @SimulatorProbeApi
-enum class Concept2Pm5StartupPhase {
+public enum class Concept2Pm5StartupPhase {
     IDLE,
     SUBSCRIBED_IDLE,
     WAITING_FOR_ACCELERATION,
@@ -31,7 +31,7 @@ enum class Concept2Pm5StartupPhase {
 }
 
 /** One coherent, protocol-rich PM5 workout snapshot. Values are in documented wire units. */
-data class Concept2Pm5Snapshot(
+public data class Concept2Pm5Snapshot(
     val elapsedCentiseconds: Int,
     val distanceDecimetres: Int,
     val speedMillimetresPerSecond: Int,
@@ -88,9 +88,9 @@ data class Concept2Pm5Snapshot(
 
 /** Deterministic autonomous PM5 workout; it never accepts a Bluetooth control operation. */
 @SimulatorProbeApi
-class Concept2Pm5MockEngine(
+public class Concept2Pm5MockEngine(
     private val machine: Concept2Machine,
-    var scenario: Concept2Scenario = Concept2Scenario.STEADY,
+    public var scenario: Concept2Scenario = Concept2Scenario.STEADY,
     startsPaused: Boolean = false,
 ) {
     private var elapsedSeconds = 0.0
@@ -112,17 +112,17 @@ class Concept2Pm5MockEngine(
     private var autonomousIntervalNumber = 1
     private var autonomousRestRemainingSeconds: Double? = null
     @Volatile
-    var isWorkoutRunning: Boolean = !startsPaused
+    public var isWorkoutRunning: Boolean = !startsPaused
         private set
-    val isWorkoutComplete: Boolean get() = programPhase == Concept2ProgramPhase.COMPLETE
+    public val isWorkoutComplete: Boolean get() = programPhase == Concept2ProgramPhase.COMPLETE
 
     @SimulatorProbeApi
-    var startupPhase: Concept2Pm5StartupPhase = Concept2Pm5StartupPhase.IDLE
+    public var startupPhase: Concept2Pm5StartupPhase = Concept2Pm5StartupPhase.IDLE
         private set
 
     /** Start the first pull, or resume model advancement without resetting accumulated metrics. */
     @Synchronized
-    fun startWorkout(): Boolean {
+    public fun startWorkout(): Boolean {
         if (programPhase == Concept2ProgramPhase.COMPLETE) return false
         val changed = !isWorkoutRunning
         isWorkoutRunning = true
@@ -132,7 +132,7 @@ class Concept2Pm5MockEngine(
 
     /** Freeze the workout model while the peripheral, subscriptions and CSAFE session stay alive. */
     @Synchronized
-    fun pauseWorkout(): Boolean {
+    public fun pauseWorkout(): Boolean {
         val changed = isWorkoutRunning
         isWorkoutRunning = false
         return changed
@@ -140,7 +140,7 @@ class Concept2Pm5MockEngine(
 
     /** End the current workout while retaining totals for PM summary notifications. */
     @Synchronized
-    fun endWorkout(): Boolean {
+    public fun endWorkout(): Boolean {
         if (programPhase == Concept2ProgramPhase.COMPLETE) return false
         programPhase = Concept2ProgramPhase.COMPLETE
         startupPhase = Concept2Pm5StartupPhase.ACTIVE
@@ -150,7 +150,7 @@ class Concept2Pm5MockEngine(
 
     /** Clear the workout and return to a paused wireless-idle screen for fresh CSAFE setup. */
     @Synchronized
-    fun resetWorkout() {
+    public fun resetWorkout() {
         elapsedSeconds = 0.0
         distanceMetres = 0.0
         energyKcal = 0.0
@@ -175,13 +175,13 @@ class Concept2Pm5MockEngine(
 
     /** Install an accepted CSAFE program without starting physical motion. */
     @Synchronized
-    fun configureWorkout(program: Concept2WorkoutProgram) {
+    public fun configureWorkout(program: Concept2WorkoutProgram) {
         resetWorkout()
         workoutProgram = program
     }
 
     @Synchronized
-    fun programProgress(): Concept2ProgramProgress? {
+    public fun programProgress(): Concept2ProgramProgress? {
         val program = workoutProgram ?: return null
         val remaining = when (programPhase) {
             Concept2ProgramPhase.REST -> if (restIsUndefined) -1 else ceil(restRemainingSeconds).toInt().coerceAtLeast(0)
@@ -198,7 +198,7 @@ class Concept2Pm5MockEngine(
     }
 
     @Synchronized
-    fun snapshot(): Concept2Pm5Snapshot = when (startupPhase) {
+    public fun snapshot(): Concept2Pm5Snapshot = when (startupPhase) {
         Concept2Pm5StartupPhase.IDLE -> idleSnapshot()
         Concept2Pm5StartupPhase.SUBSCRIBED_IDLE -> idleSnapshot()
         Concept2Pm5StartupPhase.WAITING_FOR_ACCELERATION -> preparationSnapshot(strokeState = 1)
@@ -219,7 +219,7 @@ class Concept2Pm5MockEngine(
      * presenting a motionless PM and withholding stroke-detail channels until motion resumes.
      */
     @Synchronized
-    fun wireSnapshot(): Concept2Pm5Snapshot {
+    public fun wireSnapshot(): Concept2Pm5Snapshot {
         val current = snapshot()
         if (isWorkoutRunning || startupPhase != Concept2Pm5StartupPhase.ACTIVE) return current
         return current.copy(
@@ -248,7 +248,7 @@ class Concept2Pm5MockEngine(
     }
 
     @Synchronized
-    fun tick(dtSeconds: Double): Concept2Pm5Snapshot {
+    public fun tick(dtSeconds: Double): Concept2Pm5Snapshot {
         require(dtSeconds >= 0.0)
         if (!isWorkoutRunning) return snapshot()
         if (startupPhase == Concept2Pm5StartupPhase.IDLE) return idleSnapshot()
@@ -647,7 +647,7 @@ class Concept2Pm5MockEngine(
         strokeDataAvailable = false,
     )
 
-    companion object {
+    public companion object {
         private const val SUBSCRIBED_IDLE_SECONDS = 2.0
         private const val WAITING_FOR_ACCELERATION_SECONDS = 0.5
         private const val FIRST_PULL_PREPARATION_SECONDS = 1.0
