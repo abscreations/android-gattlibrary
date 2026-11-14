@@ -29,6 +29,7 @@ class FamilyCoverageTest {
         SimulatorPersona.KayakFirstBlue, SimulatorPersona.KayakFirstOrange -> setOf(MachineFamilyIds.KAYAK_FIRST)
         is SimulatorPersona.LifeFitness -> setOf(MachineFamilyIds.LIFE_FITNESS)
         SimulatorPersona.SchwinnX70 -> setOf(MachineFamilyIds.SCHWINN_X70)
+        is SimulatorPersona.Sole -> emptySet() // The core catalog has no Sole family ID yet.
         is SimulatorPersona.FeCBle -> setOf(MachineFamilyIds.FEC_BLE)
         is SimulatorPersona.Kickr -> kickrFamilies(p)
     }

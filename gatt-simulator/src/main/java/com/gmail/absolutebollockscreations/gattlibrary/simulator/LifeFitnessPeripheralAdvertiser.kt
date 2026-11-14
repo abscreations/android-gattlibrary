@@ -100,6 +100,14 @@ internal class LifeFitnessPeripheralAdvertiser(
     @Volatile var isAdvertising: Boolean = false
         private set
 
+    fun clearWorkoutMeasurements() {
+        latestMeasurement = null
+        val measurementUuid = machine?.measurementUuid ?: return
+        clients.values.forEach { client ->
+            synchronized(client) { client.pending.removeAll { it.uuid == measurementUuid } }
+        }
+    }
+
     fun publish(sample: FtmsMockSample) {
         val activeMachine = machine ?: return
         publishMeasurement(LifeFitnessPacketEncoder.encode(activeMachine, sample), sample.elapsedSeconds > 0)

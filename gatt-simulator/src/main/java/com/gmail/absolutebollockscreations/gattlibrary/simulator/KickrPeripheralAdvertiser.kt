@@ -174,12 +174,18 @@ internal class KickrPeripheralAdvertiser(
             synchronized(client.session) {
                 frames.forEach { frame ->
                     if (client.session.subscription(frame.characteristicUuid) == PeripheralConnection.CccdMode.NOTIFY) {
-                        client.session.enqueue(frame)
+                        client.session.enqueueWorkoutFrame(frame)
                     }
                 }
                 client.session.enqueueZwiftTelemetry()
             }
             drain(client)
+        }
+    }
+
+    fun clearWorkoutMeasurements() {
+        clients.values.forEach { client ->
+            synchronized(client.session) { client.session.clearWorkoutMeasurements() }
         }
     }
 

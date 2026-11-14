@@ -16,4 +16,8 @@ The Keiser M Series simulator uses published Keiser developer documentation
 and the phase's archived capture fixtures. Keiser Corporation's MIT-licensed
 M3i BLE-HCI simulator was a test reference, not code incorporated here.
 
+The Sole simulator replays user-supplied BLE captures. The fixtures identify
+the source capture, connection and SHA-256. Persona implementation and fixture
+payloads are independent of QDomyos-Zwift source code.
+
 See the repository's LICENSE, NOTICE, and Stage 3 provenance record.

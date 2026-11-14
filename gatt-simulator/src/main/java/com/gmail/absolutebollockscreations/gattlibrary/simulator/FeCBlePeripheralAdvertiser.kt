@@ -121,6 +121,17 @@ internal class FeCBlePeripheralAdvertiser(
     @Volatile var isAdvertising: Boolean = false
         private set
 
+    fun clearWorkoutMeasurements() {
+        clients.values.forEach { client ->
+            synchronized(client) {
+                client.pendingFec2 = null
+                client.pendingCps = null
+                client.pendingCsc = null
+                client.pendingFtms = null
+            }
+        }
+    }
+
     /** Send this tick's FE-C frame to every FEC2-subscribed client, respecting backpressure. */
     fun publish(frame: ByteArray) {
         clients.values.forEach { client ->

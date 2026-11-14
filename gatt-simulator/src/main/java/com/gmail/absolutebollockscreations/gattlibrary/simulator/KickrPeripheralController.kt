@@ -60,6 +60,14 @@ internal class KickrPeripheralController(
     private var activePersona: KickrSimulatorPersona? = null
     private var packets = 0L
     private var ticker: Runnable? = null
+    @Volatile private var workoutRunning = false
+    private val workoutLock = Any()
+
+    fun setWorkoutRunning(running: Boolean): Unit = synchronized(workoutLock) {
+        workoutRunning = running
+        if (running) model.startOrResume() else model.stopOrPause(stop = false)
+        if (!running) advertiser.clearWorkoutMeasurements()
+    }
     private val generationGate = SimulatorGenerationGate()
     @Volatile private var status = Status()
 
@@ -117,7 +125,7 @@ internal class KickrPeripheralController(
         packets = 0
         model.reset()
         model.ftmsControlEnabled = ftmsControlEnabled
-        model.startOrResume()
+        workoutRunning = false
         adapterNames.apply(plan.localName) nameCallback@{ nameResult ->
             if (operationEpoch.get() != epoch) return@nameCallback
             nameResult.fold(
@@ -195,8 +203,10 @@ internal class KickrPeripheralController(
         ticker?.let(main::removeCallbacks)
         lateinit var task: Runnable
         task = Runnable {
-            if (generationGate.observe(status.subscribed)) {
-                advertiser.publish(model.advance(TICK_SECONDS))
+            synchronized(workoutLock) {
+                if (workoutRunning && generationGate.observe(status.subscribed)) {
+                    advertiser.publish(model.advance(TICK_SECONDS))
+                }
             }
             if (activePersona != null) main.postDelayed(task, TICK_MS)
         }

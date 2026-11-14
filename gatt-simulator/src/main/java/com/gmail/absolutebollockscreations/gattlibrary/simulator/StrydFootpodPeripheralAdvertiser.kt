@@ -85,6 +85,11 @@ internal class StrydFootpodPeripheralAdvertiser(
         private set
 
     /** Offer one characteristic's newest frame; it replaces any unsent frame for that UUID. */
+    fun clearWorkoutMeasurements() {
+        latest.clear()
+        clients.values.forEach { client -> synchronized(client) { client.pending.clear() } }
+    }
+
     fun publish(characteristic: UUID, value: ByteArray) {
         latest[characteristic] = value.copyOf()
         clients.values

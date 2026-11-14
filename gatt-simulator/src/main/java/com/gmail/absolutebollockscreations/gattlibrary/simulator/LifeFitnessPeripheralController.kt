@@ -62,6 +62,8 @@ internal class LifeFitnessPeripheralController(
     )
 
     val isAdvertising: Boolean get() = advertiser.isAdvertising
+    fun clearWorkoutMeasurements() = advertiser.clearWorkoutMeasurements()
+
     fun publish(sample: FtmsMockSample) = advertiser.publish(sample)
 
     @SuppressLint("MissingPermission")

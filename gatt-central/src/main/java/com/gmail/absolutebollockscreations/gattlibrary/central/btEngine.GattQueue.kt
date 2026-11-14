@@ -210,11 +210,12 @@ internal fun <T> consumeMatchedDescriptorFailure(
 internal fun characteristicReadAccepted(accepted: Boolean): Boolean = accepted
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-internal fun BtEngine.pushRead(context: ConnectionContext, uuid: UUID) {
+internal fun BtEngine.pushRead(context: ConnectionContext, uuid: UUID, onComplete: ((Boolean) -> Unit)? = null) {
     val size = context.queue.enqueue(
         StackEntry(
             StackEntry.Op.READ,
             charUuid = uuid,
+            onComplete = onComplete,
         )
     )
     Timber.tag(BtEngineState.TAG).d(

@@ -33,6 +33,9 @@ public class KickrPeripheralSession(
 ) {
     private val subscriptions = mutableMapOf<UUID, PeripheralConnection.CccdMode>()
     private val queue = ArrayDeque<KickrTxFrame>()
+    private val workoutFrames = java.util.Collections.newSetFromMap(
+        java.util.IdentityHashMap<KickrTxFrame, Boolean>(),
+    )
     public val ftms: KickrFtmsControlProcessor = KickrFtmsControlProcessor(model)
     public val legacy: KickrLegacyControlServer? = legacyAckMode?.let { KickrLegacyControlServer(model, it) }
     public val zwift: ZwiftTrainerPeripheralServer? = zwiftServiceForm?.let { ZwiftTrainerPeripheralServer(it, model) }
@@ -124,7 +127,8 @@ public class KickrPeripheralSession(
             subscription(RideOnSpec.ASYNC_TX) != PeripheralConnection.CccdMode.NOTIFY ||
             subscription(RideOnSpec.SYNC_TX) != PeripheralConnection.CccdMode.INDICATE
         ) return
-        enqueueZwiftFrame(server.telemetryFrame())
+        val frame = server.telemetryFrame()
+        enqueueWorkoutFrame(KickrTxFrame(RideOnSpec.ASYNC_TX, frame.value, indicate = false))
     }
 
     /**
@@ -170,23 +174,38 @@ public class KickrPeripheralSession(
 
     public fun enqueue(frame: KickrTxFrame) {
         if (queue.size >= queueCapacity) {
-            queue.removeFirst()
+            workoutFrames.remove(queue.removeFirst())
             droppedFrames++
         }
         queue.addLast(frame.copy(value = frame.value.copyOf()))
     }
 
+    internal fun enqueueWorkoutFrame(frame: KickrTxFrame) {
+        enqueue(frame)
+        workoutFrames.add(queue.last())
+    }
+
+    internal fun clearWorkoutMeasurements() {
+        queue.removeAll { it in workoutFrames }
+        workoutFrames.clear()
+    }
+
     public fun enqueueCoalesced(frame: KickrTxFrame) {
         queue.removeIf { pending ->
-            pending.characteristicUuid == frame.characteristicUuid &&
+            val sameProcedure = pending.characteristicUuid == frame.characteristicUuid &&
                 pending.value.getOrNull(1) == frame.value.getOrNull(1)
+            if (sameProcedure) workoutFrames.remove(pending)
+            sameProcedure
         }
         enqueue(frame)
     }
 
     public fun beginNext(): KickrTxFrame? {
         if (inFlight != null) return null
-        return queue.pollFirst()?.also { inFlight = it }
+        return queue.pollFirst()?.also {
+            workoutFrames.remove(it)
+            inFlight = it
+        }
     }
 
     public fun completeInFlight(): KickrTxFrame? {
@@ -198,6 +217,7 @@ public class KickrPeripheralSession(
     public fun clear() {
         subscriptions.clear()
         queue.clear()
+        workoutFrames.clear()
         inFlight = null
         route = null
         ftms.disconnect()

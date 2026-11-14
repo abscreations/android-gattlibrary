@@ -89,7 +89,7 @@ internal class KayakFirstPeripheralController(
     private var server: BluetoothGattServer? = null
     private var advertiseCallback: AdvertiseCallback? = null
     private var startResult: ((Result<Unit>) -> Unit)? = null
-    private var latestSample: FtmsMockSample? = null
+    @Volatile private var latestSample: FtmsMockSample? = null
     private var activePersona: SimulatorPersona = SimulatorPersona.KayakFirstBlue
     private var status = Status()
     @Volatile var isAdvertising = false
@@ -170,6 +170,7 @@ internal class KayakFirstPeripheralController(
 
     @SuppressLint("MissingPermission")
     private fun stopResources(restoreName: Boolean) {
+        latestSample = null
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         advertiseCallback?.let { runCatching { manager?.adapter?.bluetoothLeAdvertiser?.stopAdvertising(it) } }
         advertiseCallback = null
@@ -321,7 +322,7 @@ internal class KayakFirstPeripheralController(
             KayakFirstSimulatorCommand.Poll -> {
                 client.polls++
                 status = status.copy(pollRequests = status.pollRequests + 1)
-                val sample = latestSample ?: return
+                val sample = latestSample ?: kayakFirstIdleSample()
                 // Field 7 is the session's activity state, held for the whole of an effort the way
                 // the physical console holds it, so it is derived from whether the generated
                 // workout is producing movement — never from whether a new stroke happened to land
@@ -369,6 +370,7 @@ internal class KayakFirstPeripheralController(
             return
         }
         val sample = latestSample
+        val moving = (sample?.cadence ?: 0.0) > 0.0
         val tuple = KayakFirstOrangeSimulatorProtocol.dynamicTuple(
             powerWatts = sample?.powerWatts?.toDouble() ?: 0.0,
             cadenceSpm = sample?.cadence?.takeIf { it > 0.0 } ?: 60.0,
@@ -381,11 +383,15 @@ internal class KayakFirstPeripheralController(
         // The sequence is a stroke counter, not a response counter: several commands answered
         // inside one stroke period share a value, and values are skipped when a stroke completes
         // between polls. See KayakFirstOrangeSimulatorProtocol.sequenceFor.
-        if (client.orangeResetAtMs == 0L) client.orangeResetAtMs = SystemClock.elapsedRealtime()
-        val sequence = KayakFirstOrangeSimulatorProtocol.sequenceFor(
-            tuple,
-            SystemClock.elapsedRealtime() - client.orangeResetAtMs,
-        )
+        val sequence = if (moving) {
+            if (client.orangeResetAtMs == 0L) client.orangeResetAtMs = SystemClock.elapsedRealtime()
+            KayakFirstOrangeSimulatorProtocol.sequenceFor(
+                tuple,
+                SystemClock.elapsedRealtime() - client.orangeResetAtMs,
+            )
+        } else {
+            client.orangeSequence
+        }
         client.orangeSequence = sequence
         client.setupStage = "ready"
         client.polls += 1L

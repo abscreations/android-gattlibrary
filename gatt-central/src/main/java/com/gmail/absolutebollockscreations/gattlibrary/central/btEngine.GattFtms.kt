@@ -154,6 +154,8 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
     // Queue the "enable plan" exactly once per discovery → after FEATURES is parsed.
     private var enablePlanQueued: Boolean = false
+    private var sole: SoleModel? = null
+    private var soleLegacyF80 = false
 
     // Hoisted list of FTMS characteristics for which we enable notifications/indications.
     private val notifyUuids: List<UUID> = listOf(
@@ -191,9 +193,14 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         postCccdKickDone = false
         enablePlanQueued = false
         providerAdvertiseAttempted = false
+        sole = soleModel(engine, gatt, services)
+        soleLegacyF80 = sole == SoleModel.F80 && services.none { it.uuid == SOLE_GAMING_SERVICE }
 
-        // Stash CP for later (writes / indications)
-        engine.state.controlPointChar = ftms.getCharacteristic(UUID_FITNESS_MACHINE_CONTROL_POINT)
+        engine.state.controlPointChar = ftms.getCharacteristic(UUID_FITNESS_MACHINE_CONTROL_POINT)?.takeIf {
+            sole == null || (it.properties and BluetoothGattCharacteristic.PROPERTY_WRITE != 0 &&
+                it.properties and BluetoothGattCharacteristic.PROPERTY_INDICATE != 0 &&
+                it.getDescriptor(UUID_CCCD) != null)
+        }
 
         // Log inventory (handy for vendor quirks)
         runCatching {
@@ -211,7 +218,7 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
 
         // Infer machine type from present data characteristics and publish to DiscoveredDevice
         fun BluetoothGattService.hasChar(u: UUID) = getCharacteristic(u) != null
-        val inferredActivity = when {
+        val inferredActivity = sole?.activity ?: when {
             ftms.hasChar(UUID_TREADMILL_DATA)      -> ActivityType.TREADMILL
             ftms.hasChar(UUID_ROWING_MACHINE_DATA) -> ActivityType.ROWING
             ftms.hasChar(UUID_BIKING_DATA)         -> ActivityType.BIKING
@@ -228,14 +235,35 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             Timber.tag(BtEngineState.TAG).i("Inferred FTMS machine feature = %s", act.name)
         }
 
-        // ---------- IMPORTANT: Read FEATURES FIRST ----------
-        ftms.getCharacteristic(UUID_FITNESS_MACHINE_FEATURE)?.let {
-            Timber.tag(BtEngineState.TAG).d("Queue READ 2ACC FIRST (features)")
-            engine.pushRead(context, UUID_FITNESS_MACHINE_FEATURE)
-        } ?: Timber.tag(BtEngineState.TAG).w("Features char (0x2ACC) missing")
+        val soleProfile = sole
+        // Queue the read ahead of the CCCDs so the client sees features before requesting control.
+        if (ftms.getCharacteristic(UUID_FITNESS_MACHINE_FEATURE) != null) {
+            val onComplete: ((Boolean) -> Unit)? = soleProfile?.let {
+                { success ->
+                    if (!success && engine.state.connectionRegistry.isCurrent(context)) {
+                        applySoleFeatures(engine, ByteArray(0))
+                    }
+                }
+            }
+            engine.pushRead(context, UUID_FITNESS_MACHINE_FEATURE, onComplete)
+        } else {
+            Timber.tag(BtEngineState.TAG).w("Features char (0x2ACC) missing")
+            if (soleProfile != null) applySoleFeatures(engine, ByteArray(0))
+        }
 
-        // NOTE: We DO NOT enable CCCDs here anymore.
-        // CCCD enables are queued later, after FEATURES is parsed in onCharacteristicRead(...).
+        if (soleProfile != null) {
+            // Sole data subscriptions do not depend on the Feature read result.
+            for (uuid in listOf(soleProfile.ftmsDataUuid, UUID_FITNESS_MACHINE_STATUS, UUID_FITNESS_MACHINE_CONTROL_POINT)) {
+                val characteristic = ftms.getCharacteristic(uuid) ?: continue
+                val property = if (uuid == UUID_FITNESS_MACHINE_CONTROL_POINT) {
+                    BluetoothGattCharacteristic.PROPERTY_INDICATE
+                } else BluetoothGattCharacteristic.PROPERTY_NOTIFY
+                if (characteristic.properties and property != 0 && characteristic.getDescriptor(UUID_CCCD) != null) {
+                    engine.enableNotifications(context, characteristic)
+                }
+            }
+            publishInferredActivityIfReady(engine, gatt)
+        }
 
         // Life Fitness setup, if this machine turns out to need it (plan §6). Started here
         // rather than after subscriptions because that is the order the captures show: QZ issue
@@ -321,7 +349,7 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
     override fun onCccdPlanReady(engine: BtEngine, gatt: BluetoothGatt) {
         // The final descriptor may belong to another handler on this connection, so the
         // context-wide ready event is separate from descriptor ownership routing.
-        if (!postCccdKickDone) {
+        if (!postCccdKickDone && sole == null) {
             val context = engine.state.connectionRegistry.contextForGatt(gatt) ?: return
             postCccdKickDone = true
             Timber.tag(BtEngineState.TAG)
@@ -348,19 +376,24 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
         when (ch.uuid) {
             UUID_FITNESS_MACHINE_CONTROL_POINT -> handleControlPointIndication(engine, gatt, value)
             UUID_FITNESS_MACHINE_STATUS        -> handleFitnessMachineStatus(engine, value)
-            UUID_TREADMILL_DATA                -> BtEngineFtmsParsers.doTreadmill(
-                emitter,
-                value,
-                onNativePace = { instantaneousRaw, averageRaw ->
-                    // Preserved raw so the downstream encoder re-emits this machine's own
-                    // quantisation instead of synthesising a 6 km/h-resolution field.
-                    engine.state.treadmillNativePace.publish(
-                        requireNotNull(emitter.sourceId.gattConnectionId),
-                        instantaneousRaw,
-                        averageRaw,
-                    )
-                },
-            )
+            UUID_TREADMILL_DATA                -> {
+                if (sole?.bike == true) return
+                if (handleSoleShortTreadmillData(sole, soleLegacyF80, value) {
+                    emitter.emit(MetricKind.SPEED, it)
+                }) return
+                BtEngineFtmsParsers.doTreadmill(
+                    emitter,
+                    value,
+                    onNativePace = { instantaneousRaw, averageRaw ->
+                        // Preserve the machine's own pace quantisation for downstream encoding.
+                        engine.state.treadmillNativePace.publish(
+                            requireNotNull(emitter.sourceId.gattConnectionId),
+                            instantaneousRaw,
+                            averageRaw,
+                        )
+                    },
+                )
+            }
             UUID_ELLIPTICAL_DATA               -> BtEngineFtmsParsers.doElliptical(
                 emitter,
                 value,
@@ -403,6 +436,10 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
             status,
             value.size
         )
+        if (sole != null && ch.uuid == UUID_FITNESS_MACHINE_FEATURE) {
+            if (status == BluetoothGatt.GATT_SUCCESS) applySoleFeatures(engine, value)
+            return
+        }
         if (status != BluetoothGatt.GATT_SUCCESS) {
             Timber.tag(BtEngineState.TAG).w(
                 "Read failed %s status=%d",
@@ -480,6 +517,16 @@ internal class FtmsProtocolHandler : BtEngineGattCore.ProtocolHandler {
     }
 
     // ───────────────────────── CP indication parsing ─────────────────────────
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun applySoleFeatures(engine: BtEngine, value: ByteArray) {
+        // A short or missing Feature completes the probe with the fields actually available.
+        // The standard capability path reads supported ranges before publishing controls downstream.
+        val features = if (value.size == 8 && engine.state.controlPointChar != null) value else ByteArray(8).also {
+            value.copyInto(it, endIndex = minOf(value.size, 4))
+        }
+        BtEngineCapabilities.parseFitnessMachineFeatures(engine, features)
+    }
+
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun handleControlPointIndication(
         engine: BtEngine,

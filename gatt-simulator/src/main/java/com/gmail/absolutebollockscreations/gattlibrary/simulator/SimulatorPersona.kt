@@ -128,6 +128,11 @@ public sealed interface SimulatorPersona {
         override val advertisedName: String = SCHWINN_X70_ADVERTISED_NAME
     }
 
+    /** Sole peripheral with capture-derived GATT and generated workout measurements. */
+    public data class Sole(val profile: SoleSimulatorProfile) : SimulatorPersona {
+        override val advertisedName: String = profile.advertisedName
+    }
+
     /**
      * FE-C-over-BLE equipment persona (plan `docs/fe-c-ble_simulator_implementation.md`).
      *

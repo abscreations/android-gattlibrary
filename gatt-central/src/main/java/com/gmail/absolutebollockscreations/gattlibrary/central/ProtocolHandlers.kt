@@ -72,6 +72,7 @@ internal data class ProtocolKey(val value: String) {
          * candidate and D6 never arises.
          */
         val PRECOR = ProtocolKey("precor")
+        val SOLE = ProtocolKey("sole")
 
         /**
          * Schwinn x70 — 170 / 270 / 570, proprietary (plan §7). A machine protocol, so it is
@@ -164,6 +165,7 @@ internal val MACHINE_PROTOCOLS: List<ProtocolKey> = listOf(
     ProtocolKey.FTMS,
     ProtocolKey.CONCEPT2,
     ProtocolKey.PRECOR,
+    ProtocolKey.SOLE,
     ProtocolKey.SCHWINN_X70,
     ProtocolKey.FEC,
     ProtocolKey.WAHOO_KICKR,
@@ -209,6 +211,7 @@ internal class HandlerFactory(
                 ProtocolKey.CPS to { CpsProtocolHandler() },
                 ProtocolKey.CONCEPT2 to { Concept2ProtocolHandler() },
                 ProtocolKey.PRECOR to { PrecorProtocolHandler() },
+                ProtocolKey.SOLE to ::SoleProtocolHandler,
                 ProtocolKey.SCHWINN_X70 to { SchwinnX70ProtocolHandler() },
                 ProtocolKey.FEC to { FeCOverBleProtocolHandler() },
                 ProtocolKey.WAHOO_KICKR to { WahooKickrProtocolHandler() },

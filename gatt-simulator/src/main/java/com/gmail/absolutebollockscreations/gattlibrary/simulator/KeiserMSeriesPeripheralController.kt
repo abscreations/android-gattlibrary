@@ -122,6 +122,10 @@ internal class KeiserMSeriesPeripheralController(
 
     val isAdvertising: Boolean get() = status.advertising
 
+    fun publishIdle() {
+        activePersona?.let { publish(initialPayload(it.profile)) }
+    }
+
     fun publish(manufacturerPayload: ByteArray?) {
         latestPayload = manufacturerPayload?.copyOf()
         main.post {

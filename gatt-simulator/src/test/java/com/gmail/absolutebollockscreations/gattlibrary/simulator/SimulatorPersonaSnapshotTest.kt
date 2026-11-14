@@ -174,6 +174,12 @@ class SimulatorPersonaSnapshotTest {
                 add("readValues" to SchwinnX70GattProfile.readValues())
             }
 
+            is SimulatorPersona.Sole -> {
+                val fixture = soleFixture(persona.profile).forSimulation(persona.profile)
+                add("advertisedServices" to fixture.advertisedServices)
+                add("ftmsServiceData" to fixture.ftmsServiceData)
+            }
+
             is SimulatorPersona.FeCBle -> {
                 val includeCps = persona.overlay == FeCBleSimulatorOverlay.CPS_INCYCLIST_COMPAT
                 val manifest = FeCBleGattProfile.capturedManifest(persona.identity, persona.controlEnabled)

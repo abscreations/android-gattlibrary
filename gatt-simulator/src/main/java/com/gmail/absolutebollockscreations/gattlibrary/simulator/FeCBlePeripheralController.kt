@@ -82,6 +82,18 @@ internal class FeCBlePeripheralController(
 
     @Volatile private var status = Status()
     @Volatile private var active: Boolean = false
+    @Volatile private var workoutRunning = false
+    private val workoutLock = Any()
+
+    fun setWorkoutRunning(running: Boolean): Unit = synchronized(workoutLock) {
+        if (running) state?.let { current ->
+            synchronized(current) {
+                if (current.feState != FeCEquipmentState.IN_USE) current.enterInUseWithDefaults()
+            }
+        }
+        workoutRunning = running
+        if (!running) advertiser?.clearWorkoutMeasurements()
+    }
     @Volatile private var state: FeCBleMachineState? = null
     @Volatile private var scheduler: FeCBleTelemetryScheduler? = null
     private val generationGate = SimulatorGenerationGate()
@@ -188,13 +200,6 @@ internal class FeCBlePeripheralController(
                                 ) { foreground ->
                                     foreground.fold(
                                         onSuccess = {
-                                            // Plan §9.1: READY at start, IN_USE after a 750 ms
-                                            // simulator-convenience delay. Not a hardware claim.
-                                            main.postDelayed({
-                                                if (operationEpoch.get() == epochValue) {
-                                                    synchronized(newState) { newState.enterInUseWithDefaults() }
-                                                }
-                                            }, AUTO_IN_USE_DELAY_MS)
                                             scheduleTick(epochValue)
                                             publishStatus(
                                                 status.copy(
@@ -221,6 +226,7 @@ internal class FeCBlePeripheralController(
         generationGate.reset()
         operationEpoch.incrementAndGet()
         active = false
+        workoutRunning = false
         stopResources(restoreName = true)
         state = null
         scheduler = null
@@ -242,10 +248,10 @@ internal class FeCBlePeripheralController(
                 val currentState = state
                 val currentScheduler = scheduler
                 val currentAdvertiser = advertiser
-                if (
-                    generationGate.observe(status.subscribedClients > 0) && currentState != null &&
-                    currentScheduler != null && currentAdvertiser != null
-                ) {
+                synchronized(workoutLock) {
+                    if (!workoutRunning || !generationGate.observe(status.subscribedClients > 0) ||
+                        currentState == null || currentScheduler == null || currentAdvertiser == null
+                    ) return@synchronized
                     val frame = synchronized(currentState) { currentScheduler.tick(currentState) }
                     currentAdvertiser.publish(frame)
                     // Plan §18.2: CPS power must equal this same tick's page-25 power, so it is
@@ -429,6 +435,5 @@ internal class FeCBlePeripheralController(
     companion object {
         private const val PREFS = "com.gmail.absolutebollockscreations.Fitbridge.peripheral"
         private const val KEY_ORIGINAL_NAME = "original_adapter_name_fec"
-        private const val AUTO_IN_USE_DELAY_MS = 750L
     }
 }

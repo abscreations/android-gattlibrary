@@ -370,6 +370,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/central/Handl
 	public static final field RIDEON Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field RSC Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field SCHWINN_X70 Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
+	public static final field SOLE Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static final field WAHOO_KICKR Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/central/HandlerSet$Protocol;

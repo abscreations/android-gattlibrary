@@ -507,6 +507,7 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/server/FtmsPe
 	public final fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsControlSink;)V
 	public final fun setGarminCompatibilityFraming (Z)V
 	public final fun setNotifyIntervalMs (J)V
+	public final fun setWorkoutMeasurementsEnabled (Z)V
 	public final fun start (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/server/CyclingSensorConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMeasurementCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V
 	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsPeripheralController;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/server/CyclingSensorConfig;Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsMeasurementCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;Ljava/lang/String;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
 	public final fun stop ()V
@@ -1136,11 +1137,16 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/server/Simula
 }
 
 public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/server/SimulatorHostEnvironment {
+	public fun allowsTreadmillSpeedControl ()Z
 	public abstract fun canAdvertise ()Z
 	public abstract fun getFtmsController ()Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsPeripheralController;
 	public abstract fun getKickrRuntimeAllowed ()Z
 	public abstract fun getPeripheralStatus ()Lkotlinx/coroutines/flow/MutableStateFlow;
 	public abstract fun startStandardPersona (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;ZLcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Z
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/server/SimulatorHostEnvironment$DefaultImpls {
+	public static fun allowsTreadmillSpeedControl (Lcom/gmail/absolutebollockscreations/gattlibrary/server/SimulatorHostEnvironment;)Z
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/server/SwitchableFtmsControlSink : com/gmail/absolutebollockscreations/gattlibrary/server/FtmsControlSink {

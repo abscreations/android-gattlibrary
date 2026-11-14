@@ -294,6 +294,24 @@ public class SimulatorPeripheralHub(
     )
 
 
+    @Volatile private var simulatorSoleActive = false
+    @Volatile private var simulatorControlOverride: FtmsControlSink? = null
+    @Volatile private var soleNameRestorePending = false
+    private val solePeripheral = SolePeripheral(context.applicationContext) { status ->
+        if (simulatorSoleActive) {
+            environment.peripheralStatus.value = FtmsPeripheralController.PeripheralStatus(
+                advertising = status.advertising,
+                connected = status.connected,
+                subscribed = status.subscribed,
+                machineType = "Sole workout simulator",
+                advertisedName = status.name,
+                packetsSent = status.packets,
+                completeRecords = status.packets,
+                lastError = status.error,
+            )
+        }
+    }
+
     @RequiresPermission(
         allOf = [
             Manifest.permission.BLUETOOTH_ADVERTISE,
@@ -304,6 +322,7 @@ public class SimulatorPeripheralHub(
         persona: SimulatorPersona,
         targets: TargetCapabilities,
     ): Boolean {
+        if ((simulatorSoleActive || soleNameRestorePending) && !stopSoleBeforeStart()) return false
         if (persona != SimulatorPersona.KayakFirstBlue &&
             persona != SimulatorPersona.KayakFirstOrange
         ) {
@@ -311,6 +330,39 @@ public class SimulatorPeripheralHub(
             simulatorKayakFirstActive = false
         }
         when (persona) {
+            is SimulatorPersona.Sole -> {
+                if (!environment.canAdvertise()) return false
+                environment.ftmsController.stop()
+                stopAll()
+                simulatorSoleActive = true
+                val result = AtomicReference<Result<Unit>>()
+                val latch = CountDownLatch(1)
+                val advertised = if (environment.allowsTreadmillSpeedControl()) targets
+                    else targets.copy(speed = false, speedRange = null)
+                val sink = simulatorControlOverride?.takeIf { advertised.any }?.let { delegate ->
+                    object : FtmsControlSink by delegate {
+                        override val targetCapabilities: TargetCapabilities
+                            get() = if (environment.allowsTreadmillSpeedControl()) advertised
+                                else advertised.copy(speed = false, speedRange = null)
+
+                        override fun setTargetSpeedKph(kph: Double): Boolean =
+                            targetCapabilities.supportsSpeed && delegate.setTargetSpeedKph(kph)
+                    }
+                }
+                solePeripheral.start(persona.profile, sink) {
+                    result.set(it)
+                    latch.countDown()
+                }
+                var started = false
+                try {
+                    started = latch.await(START_TIMEOUT_MS, TimeUnit.MILLISECONDS) && result.get()?.isSuccess == true
+                    return started
+                } finally {
+                    if (!started) {
+                        stopSole()
+                    }
+                }
+            }
             is SimulatorPersona.Concept2Pm5 -> {
                 if (!environment.canAdvertise()) return false
                 environment.ftmsController.stop()
@@ -572,12 +624,29 @@ public class SimulatorPeripheralHub(
         simulatorSchwinnX70Active = false
         simulatorFeCBleActive = false
         simulatorKickrActive = false
+        environment.ftmsController.setWorkoutMeasurementsEnabled(false)
         return environment.startStandardPersona(
             profile = profile,
             nativeBikeSensors = surface.nativeBikeSensors,
             targets = targets,
             advertisedMachineType = surface.advertisedMachineType,
-        )
+        ).also { if (!it) environment.ftmsController.setWorkoutMeasurementsEnabled(true) }
+    }
+
+    override fun setWorkoutRunning(running: Boolean) {
+        when {
+            simulatorFeCBleActive -> feCBleController.setWorkoutRunning(running)
+            simulatorKickrActive -> kickrController.setWorkoutRunning(running)
+            simulatorKeiserActive -> if (!running) keiserController.publishIdle()
+            simulatorKayakFirstActive -> if (!running) kayakFirstController.publish(kayakFirstIdleSample())
+            simulatorSoleActive -> solePeripheral.setWorkoutRunning(running)
+            simulatorPrecorActive -> if (!running) precorController.clearWorkoutMeasurements()
+            simulatorFlywheelActive -> if (!running) flywheelController.clearWorkoutMeasurements()
+            simulatorStrydActive -> if (!running) strydController.clearWorkoutMeasurements()
+            simulatorLifeFitnessActive -> if (!running) lifeFitnessController.clearWorkoutMeasurements()
+            simulatorSchwinnX70Active -> if (!running) schwinnX70Controller.clearWorkoutMeasurements()
+            else -> environment.ftmsController.setWorkoutMeasurementsEnabled(running)
+        }
     }
 
     @RequiresPermission(
@@ -587,6 +656,7 @@ public class SimulatorPeripheralHub(
         ],
     )
     override fun stopAdvertising() {
+        stopSole()
         environment.ftmsController.stop()
         concept2Controller.stop()
         keiserController.stop()
@@ -611,7 +681,27 @@ public class SimulatorPeripheralHub(
         simulatorKickrActive = false
     }
 
+    private fun stopSoleBeforeStart(): Boolean {
+        val stopped = CountDownLatch(1)
+        stopSole { stopped.countDown() }
+        return stopped.await(START_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+    }
+
+    private fun stopSole(onRestored: () -> Unit = {}) {
+        if (!simulatorSoleActive && !soleNameRestorePending) {
+            onRestored()
+            return
+        }
+        soleNameRestorePending = true
+        simulatorSoleActive = false
+        solePeripheral.stop {
+            soleNameRestorePending = false
+            onRestored()
+        }
+    }
+
     override fun setControlOverride(sink: FtmsControlSink?) {
+        simulatorControlOverride = sink
         environment.ftmsController.setControlOverride(sink)
     }
 
@@ -658,6 +748,10 @@ public class SimulatorPeripheralHub(
         lifeFitnessController.publish(sample)
     }
 
+    override fun publishSole(profile: SoleSimulatorProfile, sample: FtmsMockSample) {
+        if (simulatorSoleActive) solePeripheral.publishWorkout(profile, sample)
+    }
+
     override fun publishSchwinnX70(frames: List<Pair<java.util.UUID, ByteArray>>) {
         // Gated on the active flag rather than published unconditionally. A tick in flight
         // when the user switches persona would otherwise reach a controller that is no
@@ -690,7 +784,7 @@ public class SimulatorPeripheralHub(
             precorController.isAdvertising || strydController.isAdvertising ||
             flywheelController.isAdvertising || kayakFirstController.isAdvertising ||
             lifeFitnessController.isAdvertising || schwinnX70Controller.isAdvertising ||
-            feCBleController.isAdvertising || kickrController.isAdvertising
+            feCBleController.isAdvertising || kickrController.isAdvertising || solePeripheral.isAdvertising
 
     private fun awaitConcept2Start(persona: SimulatorPersona.Concept2Pm5): Boolean {
         val latch = CountDownLatch(1)
@@ -873,9 +967,10 @@ public class SimulatorPeripheralHub(
             precorController.isAdvertising || strydController.isAdvertising ||
             flywheelController.isAdvertising || kayakFirstController.isAdvertising ||
             lifeFitnessController.isAdvertising || schwinnX70Controller.isAdvertising ||
-            feCBleController.isAdvertising || kickrController.isAdvertising
+            feCBleController.isAdvertising || kickrController.isAdvertising || solePeripheral.isAdvertising
 
     override fun stopAll() {
+        stopSole()
         concept2Controller.stop()
         keiserController.stop()
         precorController.stop()
@@ -890,6 +985,7 @@ public class SimulatorPeripheralHub(
     }
 
     override fun disposeAll() {
+        stopSole()
         concept2Controller.dispose()
         keiserController.dispose()
         precorController.dispose()

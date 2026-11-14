@@ -147,6 +147,8 @@ internal class FtmsPeripheralNotifier(
     private val store: FtmsMetricStore,
     private val onCountersChanged: () -> Unit = {},
 ) {
+    @Volatile
+    var workoutMeasurementsEnabled: Boolean = true
 
     @Volatile
     var periodMs: Long = DEFAULT_PERIOD_MS
@@ -398,6 +400,7 @@ internal class FtmsPeripheralNotifier(
      * behind CSC and CPS on a slow link, tripling its effective period.
      */
     private suspend fun emitOnce(conn: PeripheralConnection) {
+        if (!workoutMeasurementsEnabled) return
         // Re-read per emission: the machine profile can change mid-session.
         val profile = advertiser.currentProfile()
         val nowMs = SystemClock.elapsedRealtime()
@@ -471,6 +474,7 @@ internal class FtmsPeripheralNotifier(
     }
 
     private fun advanceCyclingAccumulator(nowMs: Long) {
+        if (!workoutMeasurementsEnabled) return
         val accumulator = cyclingAccumulator ?: return
         val snapshot = store.snapshotForNotification(nowMs) ?: return
         latestRevolutions = accumulator

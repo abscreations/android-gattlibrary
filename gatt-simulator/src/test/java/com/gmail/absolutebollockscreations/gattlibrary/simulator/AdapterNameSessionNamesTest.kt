@@ -25,6 +25,7 @@ class AdapterNameSessionNamesTest {
         add(SimulatorPersona.KayakFirstBlue.advertisedName)
         add(SimulatorPersona.KayakFirstOrange.advertisedName)
         add(SCHWINN_X70_ADVERTISED_NAME)
+        SoleSimulatorProfile.entries.forEach { add(it.advertisedName) }
         LifeFitnessMachine.entries.forEach { add(it.syntheticName) }
         KeiserMSeriesSimulatorProfile.entries.forEach { add(it.advertisedName) }
         FeCEquipmentType.entries.forEach { add(feCBleAdvertisedName(it)) }

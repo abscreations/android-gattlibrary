@@ -136,6 +136,10 @@ internal class AdapterLivenessCoordinator(
         val policy = synchronized(lock) { policies[connectionId] } ?: return
         val selectedAdapter = policy.snapshot().selected?.adapterId
         val creditedAdapter = when {
+            selectedAdapter == SOLE_ADAPTER_ID &&
+                (sample.protocol == MetricProtocol.FTMS ||
+                    sample.sourceId.gattCharacteristicUuid == SOLE_NOTIFY) ->
+                SOLE_ADAPTER_ID
             selectedAdapter == CONCEPT2_ADAPTER_ID && sample.protocol == MetricProtocol.VENDOR ->
                 CONCEPT2_ADAPTER_ID
             selectedAdapter == WAHOO_KICKR_ADAPTER_ID && sample.protocol == MetricProtocol.CPS -> {
@@ -340,6 +344,27 @@ internal class AdapterLivenessCoordinator(
     private fun candidatesFor(context: ConnectionContext): List<AdapterCandidate> {
         // MAXPRO owns its own telemetry/status and has no normalized fitness-machine adapter.
         if (context.handlers.filterIsInstance<MaxProProtocolHandler>().any { it.hasStructuralMatch() }) return emptyList()
+        if (context.handlers.any { it is SoleProtocolHandler }) {
+            return listOf(
+                MachineAdapterCandidate(
+                    adapterId = SOLE_ADAPTER_ID,
+                    evidence = MatchEvidence(
+                        listOf(
+                            MatchEvidenceFact(
+                                kind = MatchEvidenceKind.GATT_CHARACTERISTIC,
+                                structuralValue = SOLE_NOTIFY.toString(),
+                                weight = 40,
+                                collisionRisk = CollisionRisk.LOW,
+                                note = "Sole model and UART notification endpoint confirmed",
+                            ),
+                        ),
+                    ),
+                    rank = RANK_FTMS,
+                    requiresSetup = false,
+                    livenessTimeoutMs = livenessTimeoutMs,
+                ),
+            )
+        }
         val services = centralProtocolServiceUuids(context.discoveredServiceUuids)
         // **The one candidate property that is discovered rather than declared.** Life Fitness
         // machines advertise and serve ordinary FTMS and then send nothing until a proprietary
@@ -591,6 +616,7 @@ internal class AdapterLivenessCoordinator(
         const val FTMS_ADAPTER_ID = "ftms.generic"
         const val CONCEPT2_ADAPTER_ID = "concept2.pm"
         const val PRECOR_ADAPTER_ID = "precor.chrono"
+        const val SOLE_ADAPTER_ID = "sole"
         const val WAHOO_KICKR_ADAPTER_ID = "wahoo.kickr.legacy"
         const val RIDEON_ADAPTER_ID = "wahoo.kickr.rideon"
         const val RANK_RIDEON = 90

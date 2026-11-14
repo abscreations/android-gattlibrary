@@ -18,6 +18,7 @@ public class HandlerSet private constructor(private val selected: Set<Protocol>)
         FLYWHEEL,
         KAYAK_FIRST,
         KEISER_M_SERIES,
+        SOLE,
     }
 
     internal fun includes(key: ProtocolKey): Boolean = when (key) {
@@ -28,6 +29,7 @@ public class HandlerSet private constructor(private val selected: Set<Protocol>)
         ProtocolKey.CPS -> Protocol.CPS in selected
         ProtocolKey.CONCEPT2 -> Protocol.CONCEPT2 in selected
         ProtocolKey.PRECOR -> Protocol.PRECOR in selected
+        ProtocolKey.SOLE -> Protocol.SOLE in selected
         ProtocolKey.SCHWINN_X70 -> Protocol.SCHWINN_X70 in selected
         ProtocolKey.FEC -> Protocol.FEC in selected
         ProtocolKey.WAHOO_KICKR -> Protocol.WAHOO_KICKR in selected

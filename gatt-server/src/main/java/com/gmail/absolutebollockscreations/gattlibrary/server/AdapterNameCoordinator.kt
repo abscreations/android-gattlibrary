@@ -317,6 +317,7 @@ public class AdapterNameCoordinator(
             "25100001",
             "17100001",
             "SCHWINN 170/270",
+            "F63", "F65", "F80", "F85", "LCB", "R92", "ST90",
             "LF1F17B1D000001094",
             "LF1F17B1D000002089",
             "LF0F17B1D000003095",

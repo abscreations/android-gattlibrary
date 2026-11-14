@@ -128,6 +128,23 @@ internal fun SimulatorPersona.describe(): SimulatorPersonaDescriptor = when (thi
     )
     is SimulatorPersona.LifeFitness -> describeLifeFitness(machine)
     SimulatorPersona.SchwinnX70 -> describeSchwinnX70()
+    is SimulatorPersona.Sole -> SimulatorPersonaDescriptor(
+        title = profile.displayName,
+        protocol = when (profile) {
+            SoleSimulatorProfile.ST90, SoleSimulatorProfile.F80_MODERN -> "FTMS treadmill"
+            SoleSimulatorProfile.F65 -> "FTMS short packets"
+            else -> "FTMS + Sole proprietary"
+        },
+        controlModes = ftmsControlModes(profile.testControlTargets),
+        rangeKind = if (profile.testControlTargets.any) SimulatorRangeKind.TARGETS else SimulatorRangeKind.RIDE,
+        ranges = ftmsTargetRanges(profile.testControlTargets),
+        metrics = when (profile) {
+            SoleSimulatorProfile.ST90, SoleSimulatorProfile.F80_MODERN -> "generated treadmill data"
+            SoleSimulatorProfile.F65 -> "generated speed and zero-HR packets"
+            SoleSimulatorProfile.LCB, SoleSimulatorProfile.R92 -> "speed, cadence, resistance, power"
+            else -> "speed, incline, heart rate"
+        },
+    )
     is SimulatorPersona.FeCBle -> describeFeCBle(this)
     is SimulatorPersona.Kickr -> describeKickr(device)
 }

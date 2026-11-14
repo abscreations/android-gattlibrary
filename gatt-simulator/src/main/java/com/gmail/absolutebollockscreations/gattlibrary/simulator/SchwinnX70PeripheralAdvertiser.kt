@@ -128,6 +128,11 @@ internal class SchwinnX70PeripheralAdvertiser(
      * Nothing is buffered for a client that has not written the control command — a console does not
      * hold a backlog for a client that never asked it to start.
      */
+    fun clearWorkoutMeasurements() {
+        latest = emptyList()
+        clients.values.forEach { client -> synchronized(client) { client.pending.clear() } }
+    }
+
     fun publish(frames: List<Pair<UUID, ByteArray>>) {
         latest = frames.map { it.first to it.second.copyOf() }
         clients.values.forEach { client ->

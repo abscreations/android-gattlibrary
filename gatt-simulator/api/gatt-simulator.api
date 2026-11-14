@@ -1179,9 +1179,11 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 	public static final field Companion Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$Companion;
 	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/server/SimulatedUpstreamHost;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/core/KeepAwake;)V
 	public final fun controlsAvailableFor (Lcom/gmail/absolutebollockscreations/gattlibrary/core/ftms/FtmsMachineProfile;)Z
+	public final fun controlsAvailableFor (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;)Z
 	public final fun dispose ()V
 	public final fun endConcept2Workout ()Z
 	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getWorkoutRunning ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun pauseConcept2Workout ()Z
 	public final fun refreshAdvertisingState ()V
 	public final fun resetConcept2Workout ()Z
@@ -1189,7 +1191,9 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 	public final fun start (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;ZLcom/gmail/absolutebollockscreations/gattlibrary/simulator/Concept2Scenario;)V
 	public static synthetic fun start$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;ZLcom/gmail/absolutebollockscreations/gattlibrary/simulator/Concept2Scenario;ILjava/lang/Object;)V
 	public final fun startConcept2Workout ()Z
+	public final fun startWorkout ()V
 	public final fun stop ()V
+	public final fun stopWorkout ()V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$Companion {
@@ -1208,10 +1212,12 @@ public abstract interface class com/gmail/absolutebollockscreations/gattlibrary/
 	public fun publishLifeFitness (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun publishPrecor (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun publishSchwinnX70 (Ljava/util/List;)V
+	public fun publishSole (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun publishStrydFootpod (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun resetConcept2WorkoutState ()V
 	public fun sendZwiftClickShift (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;)Z
 	public abstract fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsControlSink;)V
+	public fun setWorkoutRunning (Z)V
 	public abstract fun startAdvertising (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;)Z
 	public abstract fun stopAdvertising ()V
 }
@@ -1228,9 +1234,11 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Ftm
 	public static fun publishLifeFitness (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public static fun publishPrecor (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public static fun publishSchwinnX70 (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Ljava/util/List;)V
+	public static fun publishSole (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public static fun publishStrydFootpod (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public static fun resetConcept2WorkoutState (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;)V
 	public static fun sendZwiftClickShift (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;)Z
+	public static fun setWorkoutRunning (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$SimulatorPeripheralHost;Z)V
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsSimulator$State {
@@ -2632,10 +2640,12 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 	public fun publishLifeFitness (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun publishPrecor (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun publishSchwinnX70 (Ljava/util/List;)V
+	public fun publishSole (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun publishStrydFootpod (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/FtmsMockSample;)V
 	public fun resetConcept2WorkoutState ()V
 	public fun sendZwiftClickShift (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/ZwiftClickDirection;)Z
 	public fun setControlOverride (Lcom/gmail/absolutebollockscreations/gattlibrary/server/FtmsControlSink;)V
+	public fun setWorkoutRunning (Z)V
 	public fun startAdvertising (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona;Lcom/gmail/absolutebollockscreations/gattlibrary/server/TargetCapabilities;)Z
 	public fun stopAdvertising ()V
 	public fun stopAll ()V
@@ -2787,6 +2797,18 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona$Sole : com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona {
+	public fun <init> (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;)V
+	public final fun component1 ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public final fun copy (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona$Sole;
+	public static synthetic fun copy$default (Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona$Sole;Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;ILjava/lang/Object;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona$Sole;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getAdvertisedName ()Ljava/lang/String;
+	public final fun getProfile ()Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona$StrydFootpod : com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona {
 	public static final field INSTANCE Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorPersona$StrydFootpod;
 	public fun equals (Ljava/lang/Object;)Z
@@ -2807,6 +2829,23 @@ public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/Sim
 }
 
 public abstract interface annotation class com/gmail/absolutebollockscreations/gattlibrary/simulator/SimulatorProbeApi : java/lang/annotation/Annotation {
+}
+
+public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile : java/lang/Enum {
+	public static final field F63 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field F65 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field F80_LEGACY Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field F80_MODERN Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field F85_58 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field F85_59 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field LCB Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field R92 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static final field ST90 Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public final fun getAdvertisedName ()Ljava/lang/String;
+	public final fun getDisplayName ()Ljava/lang/String;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
+	public static fun values ()[Lcom/gmail/absolutebollockscreations/gattlibrary/simulator/SoleSimulatorProfile;
 }
 
 public final class com/gmail/absolutebollockscreations/gattlibrary/simulator/StrydFootpodEncoder {

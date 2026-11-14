@@ -709,12 +709,19 @@ public class FtmsPeripheralController(
         controlSink.override = sink
     }
 
+    /** Pause or resume workout notifications while keeping the GATT connection available. */
+    public fun setWorkoutMeasurementsEnabled(enabled: Boolean) {
+        notifier.workoutMeasurementsEnabled = enabled
+        if (!enabled) store.clear()
+    }
+
     @SuppressLint("MissingPermission")
     public fun stop() {
         desiredStart = null
         cancelRetry()
         operationEpoch.incrementAndGet()
         stopResources(publishIdle = true)
+        notifier.workoutMeasurementsEnabled = true
     }
 
     @SuppressLint("MissingPermission")

@@ -85,6 +85,8 @@ internal class StrydFootpodPeripheralController(
      * battery level that changes once per ten minutes does not need 1 Hz, and the captures show
      * multiples of five seconds throughout.
      */
+    fun clearWorkoutMeasurements() = advertiser.clearWorkoutMeasurements()
+
     fun publish(sample: FtmsMockSample, nowMs: Long = System.currentTimeMillis()) {
         val speedMps = sample.speedKph?.takeIf { it.isFinite() }?.div(3.6)
         val gait = strides.update(speedMps, nowMs)

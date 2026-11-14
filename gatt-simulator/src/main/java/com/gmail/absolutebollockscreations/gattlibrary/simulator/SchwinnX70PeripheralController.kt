@@ -75,6 +75,8 @@ internal class SchwinnX70PeripheralController(
 
     val isAdvertising: Boolean get() = advertiser.isAdvertising
 
+    fun clearWorkoutMeasurements() = advertiser.clearWorkoutMeasurements()
+
     fun publish(frames: List<Pair<UUID, ByteArray>>) = advertiser.publish(frames)
 
     @SuppressLint("MissingPermission")

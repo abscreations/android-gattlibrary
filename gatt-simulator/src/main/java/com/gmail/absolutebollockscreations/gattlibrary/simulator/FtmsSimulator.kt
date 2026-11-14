@@ -71,6 +71,9 @@ public class FtmsSimulator(
         /** Route Control Point procedures to [sink], or back to the machine on null. */
         public fun setControlOverride(sink: FtmsControlSink?)
 
+        /** Control workout output independently of advertising and setup. */
+        public fun setWorkoutRunning(running: Boolean) {}
+
         /** Publish the latest rich PM5 snapshot to the PM5 measurement scheduler. */
         public fun publishConcept2(snapshot: Concept2Pm5Snapshot) {}
 
@@ -104,6 +107,9 @@ public class FtmsSimulator(
 
         /** Publish one capture-shaped Life Fitness FTMS record after local setup unlocks the link. */
         public fun publishLifeFitness(sample: FtmsMockSample) {}
+
+        /** Publish one generated workout tick through the active Sole persona. */
+        public fun publishSole(profile: SoleSimulatorProfile, sample: FtmsMockSample) {}
 
         /**
          * Offer one tick's x70 frames, each tagged with the characteristic it belongs on.
@@ -175,6 +181,37 @@ public class FtmsSimulator(
     private val _state = MutableStateFlow(State())
     public val state: StateFlow<State> = _state
 
+    private val _workoutRunning = MutableStateFlow(false)
+    /** Local workout state for the personas that use the shared Start/Stop Workout controls. */
+    public val workoutRunning: StateFlow<Boolean> = _workoutRunning
+    private val workoutLock = Any()
+
+    /** Begin or resume generation on the current BLE link. */
+    public fun startWorkout(): Unit = synchronized(workoutLock) {
+        if (!_state.value.running || _state.value.persona is SimulatorPersona.Concept2Pm5 ||
+            _workoutRunning.value
+        ) return@synchronized
+        upstream.beginSession(haveControl = _state.value.controlsEnabled)
+        peripheral.setWorkoutRunning(true)
+        _workoutRunning.value = true
+    }
+
+    /** Pause generation and hold the workout totals while the peripheral stays connected. */
+    public fun stopWorkout(): Unit = synchronized(workoutLock) {
+        if (!_workoutRunning.value) return@synchronized
+        _workoutRunning.value = false
+        peripheral.setWorkoutRunning(false)
+        upstream.endSession()
+        _state.value = _state.value.copy(lastSample = null)
+    }
+
+    /** One atomic generation step with respect to Start/Stop Workout. */
+    private fun generate(active: FtmsMockEngine, sample: () -> FtmsMockSample) {
+        synchronized(workoutLock) {
+            if (engine === active && _workoutRunning.value) publish(sample())
+        }
+    }
+
     private var job: Job? = null
 
     @Volatile
@@ -216,7 +253,7 @@ public class FtmsSimulator(
         override fun reset(): Boolean {
             val e = engine ?: return false
             e.reset()
-            publish(e.snapshot())
+            generate(e) { e.snapshot() }
             publishTargets()
             return true
         }
@@ -259,7 +296,7 @@ public class FtmsSimulator(
             )
             // Same immediate-reflection rationale as apply(): a watch should see the accepted
             // simulation parameters within its own procedure timeout, not on the next tick.
-            publish(e.snapshot())
+            generate(e) { e.snapshot() }
             publishTargets()
             return true
         }
@@ -271,13 +308,38 @@ public class FtmsSimulator(
             // Reflect the accepted target in the measurement stream immediately
             // rather than waiting for the next tick, so a watch sees the machine
             // respond within its own procedure timeout.
-            publish(e.snapshot())
+            generate(e) { e.snapshot() }
             publishTargets()
             return true
         }
     }
 
     private val controlSink = SimulatorControlSink()
+
+    private val soleControlSink = object : FtmsControlSink by controlSink {
+        override val canControl: Boolean
+            get() = _state.value.running && _state.value.persona is SimulatorPersona.Sole && controlSink.canControl
+        override val targetCapabilities: TargetCapabilities
+            get() = (_state.value.persona as? SimulatorPersona.Sole)?.profile?.testControlTargets
+                ?.takeIf { canControl } ?: TargetCapabilities.NONE
+
+        override fun requestControl(): Boolean = canControl
+        override fun reset(): Boolean {
+            if (!canControl) return false
+            stopWorkout()
+            return controlSink.reset()
+        }
+        override fun startOrResume(): Boolean {
+            if (!canControl) return false
+            startWorkout()
+            return true
+        }
+        override fun stopOrPause(stop: Boolean): Boolean {
+            if (!canControl) return false
+            stopWorkout()
+            return true
+        }
+    }
 
     /** True when a real machine is attached; the simulator must not fight it. */
     private fun realMachineAttached(): Boolean = upstream.machineLinkAttached
@@ -297,6 +359,8 @@ public class FtmsSimulator(
 
     public fun controlsAvailableFor(machine: FtmsMachineProfile): Boolean =
         FtmsMockControlProfile.forMachine(machine).any
+
+    public fun controlsAvailableFor(profile: SoleSimulatorProfile): Boolean = profile.testControlTargets.any
 
     /** UI entry point for the simulator's Zwift Click section. */
     public fun sendZwiftClickShift(
@@ -369,6 +433,10 @@ public class FtmsSimulator(
         }
         if (!_state.value.running) generationGate.reset()
         when (persona) {
+            is SimulatorPersona.Sole -> {
+                startSole(persona, enableControls)
+                return
+            }
             is SimulatorPersona.Concept2Pm5 -> {
                 startConcept2(persona, concept2Scenario)
                 return
@@ -481,17 +549,18 @@ public class FtmsSimulator(
 
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
-            publish(mockEngine.snapshot())
+            generate(mockEngine) { mockEngine.snapshot() }
             while (isActive) {
                 delay(PERIOD_MS)
                 val e = engine ?: break
-                publish(e.tick(PERIOD_MS / 1000.0))
+                generate(e) { e.tick(PERIOD_MS / 1000.0) }
             }
         }
         Timber.tag(TAG).i("simulator started machine=%s controls=%s", machine, effectiveControls)
     }
 
     public fun stop() {
+        stopWorkout()
         schwinnX70 = null
         keiserScenario = null
         lastKeiserScenarioEvent = null
@@ -612,11 +681,11 @@ public class FtmsSimulator(
         )
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
-            publish(mockEngine.snapshot())
+            generate(mockEngine) { mockEngine.snapshot() }
             while (isActive) {
                 delay(PrecorChronoEncoder.PAIR_PERIOD_MS)
                 val active = engine ?: break
-                publish(active.tick(PrecorChronoEncoder.PAIR_PERIOD_MS / 1000.0))
+                generate(active) { active.tick(PrecorChronoEncoder.PAIR_PERIOD_MS / 1000.0) }
             }
         }
         Timber.tag(TAG).i("Precor Chrono simulator started")
@@ -660,11 +729,11 @@ public class FtmsSimulator(
         )
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
-            publish(mockEngine.snapshot())
+            generate(mockEngine) { mockEngine.snapshot() }
             while (isActive) {
                 delay(FlywheelSportsEncoder.PERIOD_MS)
                 val active = engine ?: break
-                publish(active.tick(FlywheelSportsEncoder.PERIOD_MS / 1000.0))
+                generate(active) { active.tick(FlywheelSportsEncoder.PERIOD_MS / 1000.0) }
             }
         }
         Timber.tag(TAG).i("Flywheel Sports simulator started")
@@ -698,7 +767,7 @@ public class FtmsSimulator(
         )
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
-            publish(kayakFirstIdleSample())
+            generate(mockEngine) { kayakFirstIdleSample() }
             while (isActive) {
                 while (isActive && !peripheral.generationAdvancing) {
                     delay(SUBSCRIPTION_POLL_MS)
@@ -707,7 +776,7 @@ public class FtmsSimulator(
                 delay(KayakFirstSimulatorTelemetryEncoder.PERIOD_MS)
                 if (!peripheral.generationAdvancing) continue
                 val active = engine ?: break
-                publish(active.tick(KayakFirstSimulatorTelemetryEncoder.PERIOD_MS / 1_000.0))
+                generate(active) { active.tick(KayakFirstSimulatorTelemetryEncoder.PERIOD_MS / 1_000.0) }
             }
         }
         Timber.tag(TAG).i("KayakFirst simulator started persona=%s", persona.advertisedName)
@@ -761,11 +830,11 @@ public class FtmsSimulator(
         )
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
-            publish(mockEngine.snapshot())
+            generate(mockEngine) { mockEngine.snapshot() }
             while (isActive) {
                 delay(StrydFootpodEncoder.MEASUREMENT_PERIOD_MS)
                 val active = engine ?: break
-                publish(active.tick(StrydFootpodEncoder.MEASUREMENT_PERIOD_MS / 1000.0))
+                generate(active) { active.tick(StrydFootpodEncoder.MEASUREMENT_PERIOD_MS / 1000.0) }
             }
         }
         Timber.tag(TAG).i("Stryd footpod simulator started")
@@ -809,13 +878,12 @@ public class FtmsSimulator(
             controlsAvailable = false,
             advertising = peripheral.isAdvertising,
         )
-        publish(mockEngine.snapshot())
         val periodMs = persona.profile.samplePeriodMs
         job = scope.launch {
             while (isActive) {
                 delay(periodMs)
                 val active = engine ?: break
-                publish(active.tick(periodMs / 1000.0))
+                generate(active) { active.tick(periodMs / 1000.0) }
             }
         }
         Timber.tag(TAG).i("Keiser M-series Android simulator started")
@@ -913,6 +981,42 @@ public class FtmsSimulator(
         Timber.tag(TAG).i("KICKR simulator started persona=%s", persona.device)
     }
 
+    private fun startSole(persona: SimulatorPersona.Sole, enableControls: Boolean) {
+        if (realMachineAttached()) {
+            _state.value = State(persona = persona, lastError = "Disconnect the physical machine before simulating data")
+            return
+        }
+        if (_state.value.running) stop()
+        val machine = persona.profile.machine
+        val available = persona.profile.testControlTargets
+        val targets = if (enableControls) available else TargetCapabilities.NONE
+        val mockEngine = FtmsMockEngine(machine, controlsEnabled = targets.any)
+        engine = mockEngine
+        peripheral.setControlOverride(soleControlSink.takeIf { targets.any })
+        val started = runCatching {
+            peripheral.startAdvertising(persona, targets)
+        }.getOrDefault(false)
+        if (!started) {
+            peripheral.setControlOverride(null)
+            engine = null
+            _state.value = State(persona = persona, lastError = "Could not start advertising as ${persona.advertisedName}")
+            return
+        }
+        upstream.beginSession(haveControl = false)
+        keepAwake.acquireCpu(wakeLockOwner)
+        _state.value = State(
+            running = true, persona = persona, machine = machine, advertising = peripheral.isAdvertising,
+            controlsAvailable = available.any, controlsEnabled = targets.any,
+        )
+        job = scope.launch {
+            if (!awaitClientSubscription()) return@launch
+            while (isActive && engine === mockEngine) {
+                if (peripheral.generationReady) generate(mockEngine) { mockEngine.tick(PERIOD_MS / 1000.0) }
+                delay(PERIOD_MS)
+            }
+        }
+    }
+
     private fun startSchwinnX70(persona: SimulatorPersona.SchwinnX70) {
         if (realMachineAttached()) {
             _state.value = State(
@@ -956,11 +1060,11 @@ public class FtmsSimulator(
         val periodMs = SchwinnX70Ride.PAIR_PERIOD_MS
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
-            publish(mockEngine.snapshot())
+            generate(mockEngine) { mockEngine.snapshot() }
             while (isActive) {
                 delay(periodMs)
                 val active = engine ?: break
-                publish(active.tick(periodMs / 1000.0))
+                generate(active) { active.tick(periodMs / 1000.0) }
             }
         }
         Timber.tag(TAG).i("Schwinn x70 simulator started")
@@ -1003,11 +1107,11 @@ public class FtmsSimulator(
         )
         job = scope.launch {
             if (!awaitClientSubscription()) return@launch
-            publish(lifeFitnessVisibleSample(persona.machine, mockEngine.snapshot()))
+            generate(mockEngine) { lifeFitnessVisibleSample(persona.machine, mockEngine.snapshot()) }
             while (isActive) {
                 delay(LIFE_FITNESS_PERIOD_MS)
                 val active = engine ?: break
-                publish(lifeFitnessVisibleSample(persona.machine, active.tick(LIFE_FITNESS_PERIOD_MS / 1000.0)))
+                generate(active) { lifeFitnessVisibleSample(persona.machine, active.tick(LIFE_FITNESS_PERIOD_MS / 1000.0)) }
             }
         }
         Timber.tag(TAG).i("Life Fitness simulator started machine=%s generated=true", persona.machine)
@@ -1199,6 +1303,7 @@ public class FtmsSimulator(
         if (_state.value.persona is SimulatorPersona.LifeFitness) {
             peripheral.publishLifeFitness(sample)
         }
+        (_state.value.persona as? SimulatorPersona.Sole)?.let { peripheral.publishSole(it.profile, sample) }
         schwinnX70?.let { session -> publishSchwinnX70Frames(session, sample) }
         upstream.publish(
             sample.toUpstreamSample(

@@ -60,6 +60,11 @@ internal class FlywheelSportsPeripheralAdvertiser(
     @Volatile var isAdvertising = false
         private set
 
+    fun clearWorkoutMeasurements() {
+        latest = null
+        clients.values.forEach { client -> synchronized(client) { client.pending = null } }
+    }
+
     fun publish(sample: FtmsMockSample) {
         val frame = FlywheelSportsEncoder.encode(sample)
         latest = frame.copyOf()

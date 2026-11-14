@@ -82,6 +82,11 @@ internal class PrecorChronoPeripheralAdvertiser(
     @Volatile var isAdvertising: Boolean = false
         private set
 
+    fun clearWorkoutMeasurements() {
+        latest = emptyList()
+        clients.values.forEach { client -> synchronized(client) { client.pending.clear() } }
+    }
+
     fun publish(sample: FtmsMockSample) {
         val notifications = PrecorChronoEncoder.encodeNotifications(sample)
         latest = notifications.map(ByteArray::copyOf)

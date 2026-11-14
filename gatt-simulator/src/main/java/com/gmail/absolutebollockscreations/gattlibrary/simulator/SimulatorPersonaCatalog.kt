@@ -45,6 +45,7 @@ public fun simulatorPersonaOptions(includeKickr: Boolean): List<SimulatorPersona
         KeiserMSeriesSimulatorProfile.entries.map { SimulatorPersona.KeiserMSeries(it) } +
         SimulatorPersona.PrecorChrono +
         SimulatorPersona.SchwinnX70 +
+        SoleSimulatorProfile.entries.map { SimulatorPersona.Sole(it) } +
         // plan `docs/fe-c-ble_simulator_implementation.md` §3.3: Trainer first (the only
         // control-capable persona), then the three measurement-only equipment types. The
         // Incyclist CPS overlay is not a separate entry here — it is implicit to Trainer and

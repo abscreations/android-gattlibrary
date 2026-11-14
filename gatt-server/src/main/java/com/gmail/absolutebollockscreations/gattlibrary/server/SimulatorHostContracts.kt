@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /** What the simulator peripheral hub needs from the app's peripheral manager. */
 public interface SimulatorHostEnvironment {
+    /** Host-wide treadmill speed opt-in, read at advertisement start and before each write. */
+    public fun allowsTreadmillSpeedControl(): Boolean = false
 
     /** Whether the KICKR simulator may run in this build (debug only in FitBridge). */
     public val kickrRuntimeAllowed: Boolean

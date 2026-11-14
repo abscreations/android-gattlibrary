@@ -481,6 +481,9 @@ internal class DeviceMatcherRegistry private constructor(
         definition: MatchDefinition,
         observation: MatchObservation,
     ): List<MatchEvidenceFact> = buildList {
+        if (definition.serviceUuid?.toUuid() == SOLE_UART &&
+            !SOLE_NAME.matches(observation.localName.orEmpty().trim())
+        ) return@buildList
         val service = definition.serviceUuid
 
         // Advertisement and service-data evidence are matched against what the family puts on
@@ -630,6 +633,13 @@ internal class DeviceMatcherRegistry private constructor(
                 sigDefinition(MachineFamilyIds.SIG_CSC, 0x1816, 0x2a5b..0x2a5b, KnownBleService.CSC, 200),
                 concept2Definition(),
                 precorDefinition(),
+                MatchDefinition(
+                    candidateId = "sole",
+                    serviceUuid = CanonicalUuid.fromUuid(SOLE_UART),
+                    localNamePatterns = listOf(SOLE_NAME),
+                    personaCharacteristicUuids = setOf(CanonicalUuid.fromUuid(SOLE_NOTIFY)),
+                    machineRole = true,
+                ),
                 schwinnX70Definition(),
                 flywheelDefinition(),
                 maxProDefinition(),
